@@ -1,0 +1,66 @@
+id = "4.7-11"
+title = "Compresión con momento grande y tracción en anclajes"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-11, pp. 118-124"
+feature = "base_plate.bending_large_moment"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+column_grade = "ASTM A992"
+d = "12.7 in"
+bf = "12.2 in"
+tf = "0.900 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 1.0
+PD = "100 kip"
+PL = "160 kip"
+MD = "1000 kip*in"
+ML = "1500 kip*in"
+Pu = "376 kip"
+Mu = "3600 kip*in"
+Pa = "260 kip"
+Ma = "2500 kip*in"
+N = "24 in"                  # final plate after the second iteration
+B = "22 in"
+tp = "2 in"
+f = "9.25 in"
+rods_in_tension = 2
+rod_grade = "ASTM F1554 Gr. 36"
+hef = "18 in"
+
+[expected]
+m = "5.97 in"
+n = "6.12 in"
+x = "3.35 in"
+A_Nc = "3560 in**2"
+A_Nco = "2920 in**2"
+Nb = "125 kip"
+Ncbg = "152 kip"
+phiNcbg = "106 kip"
+
+[expected.lrfd]
+e = "9.57 in"
+q_max = "48.6 kip/in"
+e_crit = "8.13 in"
+Y = "8.60 in"
+T = "42.0 kip"
+fp_max = "2.21 ksi"
+tp_req_compression = "1.92 in"
+tp_req_tension = "0.755 in"
+
+[expected.asd]
+e = "9.62 in"
+q_max = "32.3 kip/in"
+e_crit = "7.98 in"
+Y = "9.10 in"
+T = "33.9 kip"
+fp_max = "1.47 ksi"
+tp_req_compression = "1.92 in"
+tp_req_tension = "0.829 in"
+
+[tolerances]
+# The guide computes T = q_max Y - P with Y already rounded to 3 digits
+# (8.60 / 9.10 in), which inflates T by about 1.5 %.
+T = 0.025

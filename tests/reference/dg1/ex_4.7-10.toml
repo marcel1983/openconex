@@ -1,0 +1,53 @@
+id = "4.7-10"
+title = "Compresión con momento pequeño, sin tracción en anclajes"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-10, pp. 115-118"
+feature = "base_plate.bending_low_moment"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+column_grade = "ASTM A992"
+d = "12.7 in"
+bf = "12.2 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 1.0
+PD = "100 kip"
+PL = "160 kip"
+MD = "250 kip*in"
+ML = "400 kip*in"
+Pu = "376 kip"
+Mu = "940 kip*in"
+Pa = "260 kip"
+Ma = "650 kip*in"
+N = "19 in"
+B = "19 in"
+tp = "1.25 in"
+rods = 4
+rod_diameter = "0.75 in"
+rod_grade = "ASTM F1554 Gr. 36"
+
+[expected]
+e = "2.50 in"
+Y = "14.0 in"
+m = "3.47 in"
+n = "4.62 in"
+
+[expected.lrfd]
+fp_max = "2.21 ksi"
+q_max = "42.0 kip/in"
+e_crit = "5.02 in"
+q = "26.9 kip/in"
+fp = "1.41 ksi"
+tp_req_m = "0.868 in"
+tp_req = "1.16 in"
+
+[expected.asd]
+fp_max = "1.47 ksi"
+q_max = "27.9 kip/in"
+e_crit = "4.84 in"
+q = "18.6 kip/in"
+fp = "0.977 ksi"
+tp_req_m = "0.888 in"
+tp_req = "1.18 in"

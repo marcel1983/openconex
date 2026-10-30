@@ -1,0 +1,32 @@
+id = "4.7-13"
+title = "Levantamiento con momento pequeño: todos los anclajes en tracción"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-13, pp. 127-129"
+feature = "base_plate.uplift_low_moment"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+Pu = "-100 kip"
+Mu = "100 kip*in"
+Pa = "-60 kip"
+Ma = "60 kip*in"
+N = "19 in"
+B = "19 in"
+rods = 4
+f = "8 in"                   # rods at y = +/-8 in
+rod_grade = "ASTM F1554 Gr. 36"
+
+[expected]
+e = "1.00 in"
+Ix_rods = 256.0              # sum of y^2 over the rods [in^4/in^2]
+
+[expected.lrfd]
+r_rod_max = "28.1 kip"
+r_rod_min = "21.9 kip"
+
+[expected.asd]
+r_rod_max = "16.9 kip"
+r_rod_min = "13.1 kip"

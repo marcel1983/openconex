@@ -1,0 +1,42 @@
+id = "4.7-2"
+title = "Compresión axial concéntrica con confinamiento del concreto (A2 geométricamente semejante a A1)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-2, pp. 67-70"
+feature = "base_plate.axial_compression"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "3 ksi"
+pedestal_N = "24 in"
+pedestal_B = "24 in"
+Pu = "700 kip"
+Pa = "466 kip"
+N = "20 in"
+B = "18 in"
+tp = "1.25 in"
+
+[expected]
+A1_req = "211 in**2"         # with the confinement increase (factor 2), Eq. 4-7
+Delta = "1.15 in"
+A1 = "360 in**2"
+A2 = "528 in**2"             # 24 in x 22 in, geometrically similar to A1
+m = "3.97 in"
+n = "4.12 in"
+lambda_n_prime = "3.11 in"
+l = "4.12 in"
+
+[expected.lrfd]
+phiPp = "723 kip"
+X = 0.968
+lambda = 1.0
+tp_req = "1.21 in"
+
+[expected.asd]
+Pp_over_Omega = "481 kip"
+X = 0.968
+lambda = 1.0
+tp_req = "1.21 in"

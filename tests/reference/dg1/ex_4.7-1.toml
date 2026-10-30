@@ -1,0 +1,44 @@
+id = "4.7-1"
+title = "Compresión axial concéntrica sin confinamiento del concreto (A2 = A1)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-1, pp. 64-67"
+feature = "base_plate.axial_compression"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "3 ksi"
+pedestal_N = "24 in"
+pedestal_B = "24 in"
+A2_over_A1 = 1.0
+Pu = "700 kip"
+Pa = "466 kip"
+N = "22 in"
+B = "20 in"
+tp = "1.5 in"
+rods = 4
+rod_diameter = "0.75 in"
+rod_grade = "ASTM F1554 Gr. 36"
+
+[expected]
+A1_req = "422 in**2"
+Delta = "1.15 in"            # (0.95d - 0.8bf)/2, Eq. 4-17
+m = "4.97 in"
+n = "5.12 in"
+lambda_n_prime = "3.11 in"
+l = "5.12 in"
+
+[expected.lrfd]
+phiPp = "729 kip"
+X = 0.960
+lambda = 1.0
+tp_req = "1.36 in"
+
+[expected.asd]
+Pp_over_Omega = "486 kip"
+X = 0.958
+lambda = 1.0
+tp_req = "1.36 in"

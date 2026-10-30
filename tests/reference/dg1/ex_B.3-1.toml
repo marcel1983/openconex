@@ -1,0 +1,27 @@
+id = "B.3-1"
+title = "Compresión axial concéntrica por el método del área efectiva, concreto totalmente confinado"
+source = "AISC DG1 3rd ed. (2024), Example B.3-1, p. 187"
+feature = "base_plate.axial_compression_effective_area"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+tf = "0.900 in"
+tw = "0.550 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 4.0             # large pedestal: full confinement, fp(max) = 1.7 f'c
+Pu = "700 kip"
+N = "18 in"
+B = "18 in"
+tp = "1.25 in"
+
+[expected]
+c = "1.88 in"                # 1.5 tp
+A_eff = "178 in**2"          # area within c of the column profile
+
+[expected.lrfd]
+phiPn = "787 kip"

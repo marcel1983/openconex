@@ -1,0 +1,57 @@
+id = "4.7-3"
+title = "Tracción axial concéntrica (levantamiento neto)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-3, pp. 70-76"
+feature = "base_plate.axial_tension"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W10X45"
+tw = "0.350 in"
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 36"
+electrode = "E70XX"
+fc = "4 ksi"
+Pu = "-70.0 kip"
+Pa = "-45.0 kip"
+rods = 4
+rod_diameter = "0.875 in"
+rod_pattern = "4.00 in"      # square pattern inside the column profile (g)
+tp = "1 in"
+weld_size = "0.1875 in"      # 3/16 in. fillet each side of the web
+hook_eh = "2.63 in"          # 3.5 in. hook tried first (insufficient)
+hef = "15.0 in"              # final design: heavy hex nut, no edge effects
+
+[expected]
+rod_Rn = "26.8 kip"          # Fu Ase per rod, Eq. 4-22
+a = "1.83 in"                # (g - tw)/2
+b_eff = "3.66 in"
+weld_kds = 1.50
+weld_Rn = "8.35 kip/in"
+hook_Np = "8.28 kip"
+hook_phiNpn = "5.80 kip"
+A_Nc = "2400 in**2"
+A_Nco = "2030 in**2"
+Nb = "92.3 kip"
+Ncbg = "109 kip"
+phiNcbg = "76.3 kip"
+
+[expected.lrfd]
+r_rod = "17.5 kip"
+rod_strength = "20.1 kip"
+M_plate = "32.0 kip*in"
+tp_req = "0.882 in"
+weld_demand = "4.78 kip/in"
+weld_strength = "6.26 kip/in"
+web_stress = "27.3 ksi"
+web_strength = "45.0 ksi"
+
+[expected.asd]
+r_rod = "11.3 kip"
+rod_strength = "13.4 kip"
+M_plate = "20.7 kip*in"
+tp_req = "0.869 in"
+weld_demand = "3.09 kip/in"
+weld_strength = "4.18 kip/in"
+web_stress = "17.7 ksi"
+web_strength = "29.9 ksi"

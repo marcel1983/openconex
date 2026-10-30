@@ -1,0 +1,35 @@
+id = "5.3-1"
+title = "Base empotrada (Tipo I) con flexión, corte y compresión"
+source = "AISC DG1 3rd ed. (2024), Example 5.3-1, pp. 148-150"
+feature = "embedded_base"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W14X176"
+d = "15.2 in"
+bf = "15.7 in"
+tw = "0.830 in"
+tf = "1.31 in"
+column_grade = "ASTM A992"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+foundation_width = "60 in"
+Pu = "250 kip"
+Vu = "96.0 kip"
+Mu = "700 kip*ft"
+d_embed = "22.0 in"
+face_plate_thickness = "1 in"
+
+[expected]
+d_embed_estimate = "22.8 in" # 1.5 d
+fb = "6.80 ksi"              # Eq. 5-1, limited to 1.7 f'c
+M_HB = "958 kip*ft"
+A1_face_plates = "187 in**2"
+tp_min_seismic = "0.623 in"  # 0.75 tw, AISC 341 F3.5b.4
+l = "3.86 in"
+tp_min = "0.941 in"          # from Eq. 5-8
+
+[expected.lrfd]
+phiM_HB = "719 kip*ft"
+phiPp = "827 kip"

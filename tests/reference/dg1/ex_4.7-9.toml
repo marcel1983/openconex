@@ -1,0 +1,72 @@
+id = "4.7-9"
+title = "Flexión pura con anclajes en tracción, placa extendida (W18x76)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-9, pp. 109-115"
+feature = "base_plate.bending"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W18X76"
+column_grade = "ASTM A992"
+d = "18.2 in"
+bf = "11.0 in"
+tf = "0.680 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 4.0             # no adjacent edges: sqrt(A2/A1) limited to 2
+Pu = "0 kip"
+Pa = "0 kip"
+Mu = "1200 kip*in"
+Ma = "816 kip*in"
+N = "28 in"                  # plate length in the direction of the moment
+B = "12 in"
+tp = "1.5 in"
+f = "12 in"                  # column axis to anchor line
+rods = 4
+rods_in_tension = 2
+rod_diameter = "1 in"
+rod_grade = "ASTM F1554 Gr. 36"
+rod_transverse_spacing = "6 in"
+hef = "12 in"
+nut = "heavy hex"
+flange_weld = "0.25 in"      # fillet weld, both faces of each flange
+
+[expected]
+Nsa = "35.1 kip"             # steel strength of one rod in tension
+phiNsa = "26.3 kip"
+A_Nc = "1510 in**2"
+A_Nco = "1300 in**2"
+Nb = "63.6 kip"
+Ncbg = "73.9 kip"
+phiNcbg = "51.7 kip"
+Np = "48.0 kip"
+phiNpn = "33.6 kip"
+x = "3.24 in"                # Eq. 4-61
+m = "5.36 in"
+n = "1.60 in"
+weld_Rn = "123 kip"
+
+[expected.lrfd]
+fp_max = "4.42 ksi"
+q_max = "53.0 kip/in"
+Y = "0.886 in"
+T = "47.0 kip"
+r_rod = "23.5 kip"
+tp_req_tension = "1.06 in"
+tp_req_compression = "1.31 in"
+flange_force = "65.9 kip"
+weld_strength = "92.3 kip"
+
+[expected.asd]
+fp_max = "2.94 ksi"
+q_max = "35.3 kip/in"
+Y = "0.905 in"
+T = "31.9 kip"
+r_rod = "16.0 kip"
+tp_req_tension = "1.07 in"
+tp_req_compression = "1.32 in"
+flange_force = "44.8 kip"
+weld_strength = "61.5 kip"
+
+[tolerances]
+Y = 0.03

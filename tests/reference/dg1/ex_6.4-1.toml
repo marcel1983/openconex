@@ -1,0 +1,64 @@
+id = "6.4-1"
+title = "Base débil con anclajes dúctiles (diseño sísmico con sobrerresistencia)"
+source = "AISC DG1 3rd ed. (2024), Example 6.4-1, pp. 156-161"
+feature = "base_plate.seismic_weak_base"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+k_des = "1.50 in"
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 55"
+fc = "4 ksi"
+A2_over_A1 = 4.0
+Pu = "376 kip"               # loads include the overstrength factor
+Vu = "50 kip"
+Mu = "3600 kip*in"
+N = "20.0 in"
+B = "20.0 in"
+rod_edge_distance = "2 in"
+rods_per_side = 3
+rod_diameter = "1 in"
+d_reduced = "0.750 in"       # upset-thread (UT) reduced section
+L_stretch = "8.00 in"
+hef = "24.0 in"
+rod_spacing_side = "16.0 in" # outer rods on each side
+washer_plate = "2.00 in"     # square, at the embedded end
+Rt = 1.2
+seismic_concrete_factor = 0.75  # ACI 318 17.10.5.4
+tp = "1.25 in"
+x = "2.10 in"
+lug_lever = "2.00 in"        # 1.00 in. + 2.00 in./2 for the shear lug moment
+
+[expected]
+f = "8.00 in"
+A_reduced_min = "0.325 in**2"
+T_reduced = "33.1 kip"       # pi d_reduced^2/4 Fu
+RtT_reduced = "39.7 kip"
+A_brg = "3.21 in**2"
+pullout_strength = "53.9 kip"   # 0.75 phi Npn
+A_Nc = "6340 in**2"
+A_Nco = "5180 in**2"
+Nb = "202 kip"
+Ncbg = "247 kip"
+breakout_strength = "130 kip"   # 0.75 phi Ncbg
+N_required = "119 kip"          # 3 Rt T_reduced
+weld_le = "9.70 in"
+weld_D_req = 1.85               # sixteenths of an inch, E70
+M_total_with_lug = "3700 kip*in"
+
+[expected.lrfd]
+fp_max = "4.42 ksi"
+q_max = "88.4 kip/in"
+e = "9.57 in"
+e_crit = "7.87 in"
+Y = "4.80 in"
+T = "48.3 kip"
+tp_req = "1.05 in"
+
+[tolerances]
+# T = q_max Y - P computed with Y rounded to 4.80 in. (4.79 in. unrounded).
+T = 0.025
