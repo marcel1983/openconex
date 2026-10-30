@@ -36,6 +36,24 @@ jobs:
       - run: python -m pytest
       - run: openconex convert "3/4 in" thickness --to mm
 
+  outputs:
+    name: outputs (PDF and 3D extras)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: System libraries for Qt WebEngine (headless)
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libnss3 libxkbcommon0 libgbm1 libasound2t64 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1
+      - run: python -m pip install -e ".[dev,pdf,3d]"
+      - run: python -m pytest tests/outputs -ra
+      - run: openconex baseplate examples/base_plate_dg1_4_7_11.ocnx -o out/example --html --docx --pdf --dxf --step
+      - uses: actions/upload-artifact@v4
+        with:
+          name: example-outputs
+          path: out/
+
   licenses:
     runs-on: ubuntu-latest
     steps:
@@ -43,6 +61,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      # Runtime dependencies only: dev tools are not distributed.
-      - run: python -m pip install . pip-licenses
+      # Runtime dependencies only (with the optional extras): dev tools are not distributed.
+      - run: python -m pip install ".[pdf,3d]" pip-licenses
       - run: python tools/check_licenses.py

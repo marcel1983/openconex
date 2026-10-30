@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="{{ r.language }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ r.title }} — {{ r.subtitle }}</title>
+<meta name="generator" content="OpenConex">
+<style>
+  :root { --ink:#1b1f24; --muted:#5b6470; --line:#d6dbe1; --ok:#1a7f37; --ng:#c62828; --head:#f3f5f7; }
+  @page { size: A4; margin: 18mm 15mm 20mm 15mm; }
+  body { font-family: "DejaVu Sans", "Noto Sans", Arial, sans-serif; color: var(--ink);
+         font-size: 10pt; line-height: 1.35; margin: 0 auto; max-width: 190mm; padding: 8mm; background: #fff; }
+  h1 { font-size: 18pt; margin: 0 0 2mm; } h2 { font-size: 13pt; margin: 8mm 0 3mm;
+       border-bottom: 1.5px solid var(--ink); padding-bottom: 1mm; } h3 { font-size: 11pt; margin: 5mm 0 2mm; }
+  .sub { color: var(--muted); font-size: 12pt; margin-bottom: 4mm; }
+  table { border-collapse: collapse; width: 100%; margin: 2mm 0 4mm; page-break-inside: auto; }
+  th, td { border: 1px solid var(--line); padding: 1.2mm 2mm; text-align: left; vertical-align: top; }
+  th { background: var(--head); font-weight: 600; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ok { color: var(--ok); font-weight: 600; } .ng { color: var(--ng); font-weight: 700; }
+  .verdict { padding: 3mm 4mm; border-radius: 2mm; margin: 4mm 0; font-weight: 600; }
+  .verdict.ok { background: #e8f5ec; } .verdict.ng { background: #fdecea; }
+  .check { page-break-inside: avoid; border: 1px solid var(--line); border-radius: 2mm;
+           padding: 2mm 4mm 3mm; margin: 3mm 0; }
+  .check .meta { color: var(--muted); font-size: 9pt; }
+  .trace td { border: none; border-bottom: 1px dotted var(--line); }
+  .trace td.clause { color: var(--muted); font-size: 8.5pt; white-space: nowrap; }
+  math { font-size: 105%; }
+  footer { margin-top: 10mm; color: var(--muted); font-size: 8.5pt; border-top: 1px solid var(--line); padding-top: 2mm; }
+</style>
+</head>
+<body>
+<header>
+  <h1>{{ r.title }}</h1>
+  <div class="sub">{{ r.subtitle }}</div>
+  <table>
+    {% for label, value in r.info %}<tr><th style="width:30%">{{ label }}</th><td>{{ value }}</td></tr>{% endfor %}
+  </table>
+</header>
+
+<div class="verdict {{ 'ok' if r.ok else 'ng' }}">{{ t('report.result_ok' if r.ok else 'report.result_ng') }}</div>
+
+<h2>1. {{ t('report.codes') }}</h2>
+<ul>{% for c in r.codes %}<li>{{ c }}</li>{% endfor %}</ul>
+<h3>{{ t('report.assumptions') }}</h3>
+<ul>{% for a in r.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>
+
+<h2>2. {{ t('report.inputs') }}</h2>
+<table>
+  <tr><th>{{ t('report.item') }}</th><th>{{ t('report.value') }}</th></tr>
+  {% for row in r.inputs %}<tr><td>{{ row.cells[0] }}</td><td class="num">{{ row.cells[1] }}</td></tr>{% endfor %}
+</table>
+<h3>{{ t('report.loads') }}</h3>
+<table>
+  <tr><th>ID</th><th>{{ t('report.item') }}</th><th>P</th><th>V</th><th>M</th></tr>
+  {% for row in r.cases %}<tr><td>{{ row.cells[0] }}</td><td>{{ row.cells[1] }}</td><td class="num">{{ row.cells[2] }}</td><td class="num">{{ row.cells[3] }}</td><td class="num">{{ row.cells[4] }}</td></tr>{% endfor %}
+</table>
+
+<h2>3. {{ t('report.combinations_title') }}</h2>
+<table>
+  <tr><th>ID</th><th>{{ t('report.method') }}</th><th>{{ t('report.factors') }}</th><th>{{ t('report.source') }}</th></tr>
+  {% for row in r.combinations %}<tr>{% for c in row.cells %}<td>{{ c }}</td>{% endfor %}</tr>{% endfor %}
+</table>
+
+<h2>4. {{ t('report.summary') }}</h2>
+<table>
+  <tr><th>{{ t('report.check') }}</th><th>{{ t('report.combination') }}</th><th>{{ t('report.demand') }}</th><th>{{ t('report.capacity') }}</th><th>{{ t('report.ratio') }}</th><th>{{ t('report.status_col') }}</th></tr>
+  {% for row in r.summary %}<tr><td>{{ row.cells[0] }}</td><td>{{ row.cells[1] }}</td><td class="num">{{ row.cells[2] }}</td><td class="num">{{ row.cells[3] }}</td><td class="num">{{ row.cells[4] }}</td><td class="{{ row.status }}">{{ t('status.' ~ row.status) }}</td></tr>{% endfor %}
+</table>
+
+<h2>5. {{ t('report.checks') }}</h2>
+{% for b in r.checks %}
+<section class="check" id="{{ b.check_id }}">
+  <h3>5.{{ loop.index }} {{ b.title }} <span class="{{ b.status }}">— {{ t('status.' ~ b.status) }}</span></h3>
+  <div class="meta">{{ t('report.clause') }}: {{ b.clause }} · {{ t('report.combination') }}: {{ b.combo }}</div>
+  <table class="trace">
+    {% for l in b.lines %}<tr>
+      <td>{{ math(l.symbol) }}{% if l.expression %} = {{ math(l.expression) }}{% endif %}</td>
+      <td class="num">{{ l.value }}</td><td class="clause">{{ l.clause }}</td></tr>{% endfor %}
+    <tr><td><b>{{ t('report.demand') }} / {{ t('report.capacity') }}</b></td>
+        <td class="num"><b>{{ b.demand }} / {{ b.capacity }} = {{ '%.3f' % b.ratio }}</b></td><td></td></tr>
+  </table>
+</section>
+{% endfor %}
+
+<footer>{{ r.footer }}<br>{{ r.disclaimer }}</footer>
+</body>
+</html>

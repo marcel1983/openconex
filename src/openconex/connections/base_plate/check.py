@@ -69,10 +69,30 @@ class BasePlate:
 
 
 def _thickness(check_id: str, required: float, provided: float, method: Method, combo: str,
-               clause: str) -> CheckResult:
+               clause: str, steps: list | None = None, expression: str = "") -> CheckResult:
     c = Calc(method, combo)
-    c.step("t_{p,req}", "", required, Kind.THICKNESS, clause)
+    c.steps.extend(steps or [])
+    c.step("t_{p,req}", expression, required, Kind.THICKNESS, clause)
     return c.result(check_id, clause, required, provided, Kind.THICKNESS)
+
+
+def _compression_steps(method: Method, fp: float, Y: float, m: float, n: float,
+                       Fy: float) -> tuple[float, list]:
+    """Required thickness at the bearing interface with its trace (DG1 Eq. 4-47 to 4-52)."""
+    c = Calc(method)
+    lc = c.step("l", r"\max(m, n)", max(m, n), Kind.LENGTH, f"{DG1} Eq. 4-10, 4-11",
+                m=(m, Kind.LENGTH), n=(n, Kind.LENGTH))
+    c.step("f_p", "", fp, Kind.STRESS, DG1)
+    c.step("Y", "", Y, Kind.LENGTH, DG1)
+    expr = (r"\frac{f_p l^2}{2}" if Y >= lc else r"f_p Y\left(l - \frac{Y}{2}\right)")
+    mpl = fp * lc**2 / 2 if Y >= lc else fp * Y * (lc - Y / 2)
+    c.step("M_{pl}", expr, mpl, Kind.FORCE, f"{DG1} Eq. 4-47")
+    return bpl.plate_thickness_compression(fp, Y, lc, Fy, method), c.steps
+
+
+def _tp_expression(method: Method, moment: str) -> str:
+    k = r"\sqrt{4/\phi_b}" if method is Method.LRFD else r"\sqrt{4\Omega_b}"
+    return k + moment
 
 
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
@@ -105,25 +125,38 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                                   method, combo, f"{DG1} Eq. 4-15"))
     elif bend.case == "low_moment":
         c = Calc(method, combo)
-        c.step("Y", "N - 2e", bend.Y, Kind.LENGTH, f"{DG1} §4.3.3")
+        c.step("e", "M/P", bend.e, Kind.LENGTH, f"{DG1} Eq. 4-39")
+        c.step("e_{crit}", r"\frac{N}{2} - \frac{P}{2 q_{max}}", bend.e_crit, Kind.LENGTH,
+               f"{DG1} Eq. 4-40")
+        c.step("Y", "N - 2e", bend.Y, Kind.LENGTH, f"{DG1} Eq. 4-42")
+        c.step("q", "P/Y", bend.q, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-43")
+        c.step("q_{max}", "f_{p(max)} B", bend.q_max, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-37")
         results.append(c.result("base_plate.bearing", f"{DG1} §4.3.3", bend.q, bend.q_max,
                                 Kind.FORCE_PER_LENGTH))
-        fp = bend.q / bp.B
-        tp_req = max(bpl.plate_thickness_compression(fp, bend.Y, lc, bp.Fy, method)
-                     for lc in (m, n))
+        tp_req, steps = _compression_steps(method, bend.q / bp.B, bend.Y, m, n, bp.Fy)
         results.append(_thickness("base_plate.thickness_compression", tp_req, bp.tp, method,
-                                  combo, f"{DG1} Eq. 4-51"))
+                                  combo, f"{DG1} Eq. 4-51", steps,
+                                  _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
     else:
         T = bend.T
+        c = Calc(method, combo)
+        c.step("q_{max}", "f_{p(max)} B", bend.q_max, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-37")
+        c.step("Y", r"\left(f + \frac{N}{2}\right) - \sqrt{\left(f + \frac{N}{2}\right)^2 - "
+               r"\frac{2(Pf + M)}{q_{max}}}", bend.Y, Kind.LENGTH, f"{DG1} Eq. 4-58")
+        c.step("T", "q_{max} Y - P", T, Kind.FORCE, f"{DG1} Eq. 4-55")
+        bearing_steps = list(c.steps)
         if bend.Y > 0:
-            tp_req = max(bpl.plate_thickness_compression(bend.fp_max, bend.Y, lc, bp.Fy, method)
-                         for lc in (m, n))
+            tp_req, steps = _compression_steps(method, bend.fp_max, bend.Y, m, n, bp.Fy)
             results.append(_thickness("base_plate.thickness_compression", tp_req, bp.tp,
-                                      method, combo, f"{DG1} Eq. 4-51"))
+                                      method, combo, f"{DG1} Eq. 4-51", bearing_steps + steps,
+                                      _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
         x = bp.f - col.d / 2 + col.tf / 2
+        c = Calc(method, combo)
+        c.step("x", r"f - \frac{d}{2} + \frac{t_f}{2}", x, Kind.LENGTH, f"{DG1} Eq. 4-61")
         results.append(_thickness("base_plate.thickness_tension",
                                   bpl.plate_thickness_tension(T, x, bp.B, bp.Fy, method), bp.tp,
-                                  method, combo, f"{DG1} Eq. 4-62"))
+                                  method, combo, f"{DG1} Eq. 4-62", bearing_steps + c.steps,
+                                  _tp_expression(method, r"\sqrt{\frac{T x}{B F_y}}")))
 
     # --- anchors -------------------------------------------------------------
     if bend.case == "uplift" and bend.Y == 0:
