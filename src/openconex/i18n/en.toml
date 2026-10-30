@@ -1,0 +1,91 @@
+# English catalog. Keys must match es.toml.
+
+[app]
+name = "OpenConex"
+tagline = "Steel connection design to AISC"
+
+[status]
+ok = "OK"
+ng = "Not OK"
+"n/a" = "Not applicable"
+
+[kind]
+length = "Length"
+thickness = "Thickness"
+force = "Force"
+moment = "Moment"
+stress = "Stress"
+area = "Area"
+force_per_length = "Force per unit length"
+section_modulus = "Section modulus"
+moment_of_inertia = "Moment of inertia"
+dimensionless = "Dimensionless"
+
+[report]
+demand = "Demand"
+capacity = "Capacity"
+ratio = "Demand/capacity ratio"
+clause = "Reference"
+combination = "Combination"
+governing = "Governing check: {check} (ratio {ratio:.2f}, {combo})"
+
+[load]
+D = "Dead load"
+L = "Live load"
+Lr = "Roof live load"
+S = "Snow"
+R = "Rain"
+W = "Wind"
+E = "Horizontal seismic"
+lrfd = "LRFD (load and resistance factor design)"
+asd = "ASD (allowable strength design)"
+overstrength = "With overstrength factor Ω0"
+
+[part]
+bolt = "Bolt"
+anchor_rod = "Anchor rod"
+plate = "Plate"
+base_plate = "Base plate"
+fillet_weld = "Fillet weld"
+groove_weld = "Groove weld"
+shear_lug = "Shear lug"
+grout = "Grout"
+pedestal = "Pedestal"
+stiffener = "Stiffener"
+
+[hole]
+STD = "Standard hole"
+OVS = "Oversized hole"
+SSL = "Short-slotted hole"
+LSL = "Long-slotted hole"
+
+[check.bolt]
+shear = "Bolt shear"
+tension = "Bolt tension"
+bearing = "Bearing at bolt hole"
+tearout = "Tearout at bolt hole"
+slip = "Slip resistance"
+combined = "Combined tension and shear in bolt"
+
+[check.element]
+tension_yielding = "Tension yielding"
+tension_rupture = "Tension rupture"
+shear_yielding = "Shear yielding"
+shear_rupture = "Shear rupture"
+block_shear = "Block shear"
+
+[check.weld]
+strength = "Weld strength"
+
+[check.concrete]
+bearing = "Concrete bearing"
+
+[check.anchor]
+steel_tension = "Steel strength of anchor in tension"
+concrete_breakout_tension = "Concrete breakout in tension"
+pullout = "Anchor pullout"
+side_face_blowout = "Concrete side-face blowout"
+steel_shear = "Steel strength of anchor in shear"
+concrete_breakout_shear = "Concrete breakout in shear"
+pryout = "Concrete pryout"
+interaction = "Tension and shear interaction in anchors"

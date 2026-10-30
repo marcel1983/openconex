@@ -1,0 +1,91 @@
+# Catálogo en español. Las claves deben coincidir con en.toml.
+
+[app]
+name = "OpenConex"
+tagline = "Diseño de conexiones metálicas según AISC"
+
+[status]
+ok = "Cumple"
+ng = "No cumple"
+"n/a" = "No aplica"
+
+[kind]
+length = "Longitud"
+thickness = "Espesor"
+force = "Fuerza"
+moment = "Momento"
+stress = "Esfuerzo"
+area = "Área"
+force_per_length = "Fuerza por unidad de longitud"
+section_modulus = "Módulo de sección"
+moment_of_inertia = "Momento de inercia"
+dimensionless = "Adimensional"
+
+[report]
+demand = "Demanda"
+capacity = "Capacidad"
+ratio = "Relación demanda/capacidad"
+clause = "Referencia"
+combination = "Combinación"
+governing = "Verificación gobernante: {check} (relación {ratio:.2f}, {combo})"
+
+[load]
+D = "Carga muerta"
+L = "Carga viva"
+Lr = "Carga viva de techo"
+S = "Nieve"
+R = "Lluvia"
+W = "Viento"
+E = "Sismo horizontal"
+lrfd = "LRFD (diseño por factores de carga y resistencia)"
+asd = "ASD (diseño por resistencias admisibles)"
+overstrength = "Con factor de sobrerresistencia Ω0"
+
+[part]
+bolt = "Perno"
+anchor_rod = "Barra de anclaje"
+plate = "Placa"
+base_plate = "Placa base"
+fillet_weld = "Soldadura de filete"
+groove_weld = "Soldadura de ranura"
+shear_lug = "Llave de corte"
+grout = "Mortero de nivelación"
+pedestal = "Pedestal"
+stiffener = "Rigidizador"
+
+[hole]
+STD = "Agujero estándar"
+OVS = "Agujero agrandado"
+SSL = "Ranura corta"
+LSL = "Ranura larga"
+
+[check.bolt]
+shear = "Corte en el perno"
+tension = "Tracción en el perno"
+bearing = "Aplastamiento en el agujero"
+tearout = "Desgarro en el agujero"
+slip = "Resistencia al deslizamiento"
+combined = "Interacción tracción y corte en el perno"
+
+[check.element]
+tension_yielding = "Fluencia en tracción"
+tension_rupture = "Rotura en tracción"
+shear_yielding = "Fluencia en corte"
+shear_rupture = "Rotura en corte"
+block_shear = "Bloque de corte"
+
+[check.weld]
+strength = "Resistencia de la soldadura"
+
+[check.concrete]
+bearing = "Aplastamiento en el concreto"
+
+[check.anchor]
+steel_tension = "Resistencia del acero del anclaje a tracción"
+concrete_breakout_tension = "Arrancamiento del concreto a tracción"
+pullout = "Extracción del anclaje"
+side_face_blowout = "Desprendimiento lateral del concreto"
+steel_shear = "Resistencia del acero del anclaje a corte"
+concrete_breakout_shear = "Arrancamiento del concreto a corte"
+pryout = "Desprendimiento del concreto por palanca"
+interaction = "Interacción tracción y corte en anclajes"
