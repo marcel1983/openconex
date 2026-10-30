@@ -2,7 +2,7 @@ id = "B.2-1"
 title = "Compresión con momento pequeño, distribución triangular de presiones"
 source = "AISC DG1 3rd ed. (2024), Example B.2-1, pp. 179-182"
 feature = "base_plate.bending_low_moment_triangular"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

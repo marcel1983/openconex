@@ -2,7 +2,7 @@ id = "5.3-1"
 title = "Base empotrada (Tipo I) con flexión, corte y compresión"
 source = "AISC DG1 3rd ed. (2024), Example 5.3-1, pp. 148-150"
 feature = "embedded_base"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

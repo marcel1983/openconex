@@ -2,7 +2,7 @@ id = "4.7-12"
 title = "Levantamiento con momento grande (viento): tracción en anclajes y longitud de apoyo"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-12, pp. 125-127"
 feature = "base_plate.uplift_large_moment"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

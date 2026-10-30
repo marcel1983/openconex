@@ -101,6 +101,9 @@ steel_shear = "Resistencia del acero del anclaje a corte"
 concrete_breakout_shear = "Arrancamiento del concreto a corte"
 pryout = "Desprendimiento del concreto por palanca"
 interaction = "Interacción tracción y corte en anclajes"
+shear_lug_bearing = "Aplastamiento del concreto en la llave de corte"
+shear_lug_breakout = "Arrancamiento del concreto por la llave de corte"
+reinforcement = "Refuerzo de anclaje en tracción"
 
 [check.prying]
 tension = "Tracción en perno con efecto palanca"
@@ -118,3 +121,12 @@ web_yielding = "Fluencia local del alma"
 web_crippling = "Aplastamiento local del alma"
 web_compression_buckling = "Pandeo del alma por compresión"
 panel_zone = "Corte en la zona de panel"
+
+[check.base_plate]
+bearing = "Aplastamiento en el concreto bajo la placa"
+thickness_compression = "Espesor de placa en la interfaz de compresión"
+thickness_tension = "Espesor de placa en la interfaz de tracción"
+friction = "Corte por fricción"
+rod_combined = "Barra de anclaje con tracción, corte y flexión"
+plate_bending_rods = "Flexión de la placa por los anclajes en tracción"
+embedded_moment = "Momento resistente de la base empotrada"

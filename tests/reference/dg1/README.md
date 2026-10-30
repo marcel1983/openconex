@@ -2,7 +2,7 @@
 
 Cada archivo `*.toml` resume **solo los datos numéricos** (entradas y resultados) de un ejemplo de diseño de *AISC Design Guide 1: Base Connection Design for Steel Structures*, 3.ª edición (2024). No se reproduce el texto, las figuras ni el procedimiento del libro: para eso hay que consultar la publicación de AISC, citada en el campo `source` de cada caso.
 
-Estos casos son el criterio de aceptación del módulo de placas base (fase F2). Mientras una funcionalidad no esté implementada, su caso queda con `status = "pending"` y las pruebas solo validan el formato del archivo.
+Estos casos son el criterio de aceptación del módulo de placas base. Los casos con `status = "implemented"` se comparan con el programa en `tests/base_plate/test_dg1_acceptance.py`; los `pending` solo validan el formato del archivo.
 
 ## Formato
 

@@ -2,7 +2,7 @@ id = "4.7-11"
 title = "Compresión con momento grande y tracción en anclajes"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-11, pp. 118-124"
 feature = "base_plate.bending_large_moment"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

@@ -2,7 +2,7 @@ id = "4.7-9"
 title = "Flexión pura con anclajes en tracción, placa extendida (W18x76)"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-9, pp. 109-115"
 feature = "base_plate.bending"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

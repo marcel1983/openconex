@@ -2,7 +2,7 @@ id = "4.7-4"
 title = "Corte concéntrico resistido por anclajes, limitado por la distancia al borde"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-4, pp. 76-78"
 feature = "base_plate.shear_anchors"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

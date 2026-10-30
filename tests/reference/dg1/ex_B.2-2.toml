@@ -2,7 +2,7 @@ id = "B.2-2"
 title = "Compresión con momento grande y tracción en anclajes, distribución triangular de presiones"
 source = "AISC DG1 3rd ed. (2024), Example B.2-2, pp. 182-185"
 feature = "base_plate.bending_large_moment_triangular"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]
