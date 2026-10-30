@@ -239,6 +239,8 @@ Python 3.12+, PySide6 (Qt 6), pydantic, pint, shapely, numpy/scipy, OCP/build123
 
 ## 9. Hoja de ruta
 
+**Estado (2026-10-30):** F0 terminada. F1 (núcleo de verificaciones) implementada en `src/openconex/kernel/`: pernos (§J3), soldaduras (§J2), elementos (§J4), efecto palanca (Manual Parte 9), grupos de pernos y de soldaduras por los métodos elástico y del centro instantáneo, y fuerzas concentradas (§J10). Pendiente de F1: validar los coeficientes de grupos excéntricos contra las Tablas 7-6 a 7-14 y 8-4 a 8-11 del Manual.
+
 | Fase | Contenido | Duración (1 desarrollador) |
 |---|---|---|
 | F0 | Repositorio, CI multiplataforma, licencias, modelos, unidades, catálogo AISC, traza y estructura de las verificaciones | 4 sem |

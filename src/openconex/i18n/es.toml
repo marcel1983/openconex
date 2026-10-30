@@ -67,6 +67,10 @@ bearing = "Aplastamiento en el agujero"
 tearout = "Desgarro en el agujero"
 slip = "Resistencia al deslizamiento"
 combined = "Interacción tracción y corte en el perno"
+min_spacing = "Separación mínima entre pernos"
+max_spacing = "Separación máxima entre pernos"
+min_edge = "Distancia mínima al borde"
+max_edge = "Distancia máxima al borde"
 
 [check.element]
 tension_yielding = "Fluencia en tracción"
@@ -74,9 +78,16 @@ tension_rupture = "Rotura en tracción"
 shear_yielding = "Fluencia en corte"
 shear_rupture = "Rotura en corte"
 block_shear = "Bloque de corte"
+compression = "Compresión en elemento de conexión"
+flexural_yielding = "Fluencia en flexión"
+flexural_rupture = "Rotura en flexión"
 
 [check.weld]
 strength = "Resistencia de la soldadura"
+min_size = "Tamaño mínimo de soldadura de filete"
+max_size = "Tamaño máximo de soldadura de filete"
+min_length = "Longitud mínima de soldadura de filete"
+pjp = "Resistencia de soldadura de penetración parcial"
 
 [check.concrete]
 bearing = "Aplastamiento en el concreto"
@@ -90,3 +101,20 @@ steel_shear = "Resistencia del acero del anclaje a corte"
 concrete_breakout_shear = "Arrancamiento del concreto a corte"
 pryout = "Desprendimiento del concreto por palanca"
 interaction = "Interacción tracción y corte en anclajes"
+
+[check.prying]
+tension = "Tracción en perno con efecto palanca"
+min_thickness = "Espesor mínimo para despreciar el efecto palanca"
+
+[check.bolt_group]
+eccentric = "Grupo de pernos con carga excéntrica"
+
+[check.weld_group]
+eccentric = "Grupo de soldaduras con carga excéntrica"
+
+[check.local]
+flange_bending = "Flexión local del ala"
+web_yielding = "Fluencia local del alma"
+web_crippling = "Aplastamiento local del alma"
+web_compression_buckling = "Pandeo del alma por compresión"
+panel_zone = "Corte en la zona de panel"
