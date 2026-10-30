@@ -20,7 +20,7 @@ def test_parts_and_exports(tmp_path, project):
     plate = next(p for p in parts if p.name == "base_plate")
     props = GProp_GProps()
     BRepGProp.VolumeProperties_s(plate.shape, props)
-    expected = (24 * 22 * 2 - 4 * 3.14159265 * (1.8125 / 2) ** 2 * 2) * 25.4**3
+    expected = (24 * 22 * 2 - 4 * 3.14159265 * (1.875 / 2) ** 2 * 2) * 25.4**3
     assert props.Mass() == pytest.approx(expected, rel=1e-4)
     step = write_step(parts, tmp_path / "bp.step")
     assert step.read_text()[:14] == "ISO-10303-21;\n"[:14]
