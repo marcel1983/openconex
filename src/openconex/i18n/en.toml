@@ -67,6 +67,10 @@ bearing = "Bearing at bolt hole"
 tearout = "Tearout at bolt hole"
 slip = "Slip resistance"
 combined = "Combined tension and shear in bolt"
+min_spacing = "Minimum bolt spacing"
+max_spacing = "Maximum bolt spacing"
+min_edge = "Minimum edge distance"
+max_edge = "Maximum edge distance"
 
 [check.element]
 tension_yielding = "Tension yielding"
@@ -74,9 +78,16 @@ tension_rupture = "Tension rupture"
 shear_yielding = "Shear yielding"
 shear_rupture = "Shear rupture"
 block_shear = "Block shear"
+compression = "Compression of connecting element"
+flexural_yielding = "Flexural yielding"
+flexural_rupture = "Flexural rupture"
 
 [check.weld]
 strength = "Weld strength"
+min_size = "Minimum fillet weld size"
+max_size = "Maximum fillet weld size"
+min_length = "Minimum fillet weld length"
+pjp = "Partial-joint-penetration weld strength"
 
 [check.concrete]
 bearing = "Concrete bearing"
@@ -90,3 +101,20 @@ steel_shear = "Steel strength of anchor in shear"
 concrete_breakout_shear = "Concrete breakout in shear"
 pryout = "Concrete pryout"
 interaction = "Tension and shear interaction in anchors"
+
+[check.prying]
+tension = "Bolt tension including prying action"
+min_thickness = "Minimum thickness to neglect prying"
+
+[check.bolt_group]
+eccentric = "Eccentrically loaded bolt group"
+
+[check.weld_group]
+eccentric = "Eccentrically loaded weld group"
+
+[check.local]
+flange_bending = "Flange local bending"
+web_yielding = "Web local yielding"
+web_crippling = "Web local crippling"
+web_compression_buckling = "Web compression buckling"
+panel_zone = "Web panel-zone shear"

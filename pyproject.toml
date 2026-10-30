@@ -55,7 +55,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
-ignore = ["RUF001", "RUF002", "RUF003"]  # unicode symbols (², ·, ″) are intended
+ignore = [
+    "RUF001", "RUF002", "RUF003",  # unicode symbols (², ·, ″) are intended
+    "N803", "N806",  # code symbols as argument and variable names (Ag, Fy, Znet…)
+]
 
 [tool.ruff.lint.pep8-naming]
 # Engineering symbols keep their code notation (Fy, Fu, Fnt, FEXX…).
