@@ -2,7 +2,7 @@ id = "4.7-3"
 title = "Tracción axial concéntrica (levantamiento neto)"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-3, pp. 70-76"
 feature = "base_plate.axial_tension"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

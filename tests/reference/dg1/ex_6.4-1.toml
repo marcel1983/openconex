@@ -2,7 +2,7 @@ id = "6.4-1"
 title = "Base débil con anclajes dúctiles (diseño sísmico con sobrerresistencia)"
 source = "AISC DG1 3rd ed. (2024), Example 6.4-1, pp. 156-161"
 feature = "base_plate.seismic_weak_base"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]
@@ -60,5 +60,7 @@ T = "48.3 kip"
 tp_req = "1.05 in"
 
 [tolerances]
-# T = q_max Y - P computed with Y rounded to 4.80 in. (4.79 in. unrounded).
+# T = q_max Y - P computed with Y rounded to 4.80 in. (4.79 in. unrounded);
+# A_reduced_min is proportional to T.
 T = 0.025
+A_reduced_min = 0.025

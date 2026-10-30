@@ -2,7 +2,7 @@ id = "B.3-1"
 title = "Compresión axial concéntrica por el método del área efectiva, concreto totalmente confinado"
 source = "AISC DG1 3rd ed. (2024), Example B.3-1, p. 187"
 feature = "base_plate.axial_compression_effective_area"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

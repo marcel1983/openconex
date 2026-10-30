@@ -2,7 +2,7 @@ id = "4.7-10"
 title = "Compresión con momento pequeño, sin tracción en anclajes"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-10, pp. 115-118"
 feature = "base_plate.bending_low_moment"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

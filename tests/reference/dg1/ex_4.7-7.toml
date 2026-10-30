@@ -2,7 +2,7 @@ id = "4.7-7"
 title = "Base en arriostramiento con tracción y corte combinados (8 anclajes, placa de asiento)"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-7, pp. 96-104"
 feature = "base_plate.anchor_tension_shear"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

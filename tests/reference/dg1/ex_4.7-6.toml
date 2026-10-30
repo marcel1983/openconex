@@ -2,7 +2,7 @@ id = "4.7-6"
 title = "Anclajes con tracción y corte combinados, con flexión de la barra (estados límite del acero)"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-6, pp. 91-96"
 feature = "base_plate.anchor_tension_shear_bending"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

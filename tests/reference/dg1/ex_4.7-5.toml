@@ -2,7 +2,7 @@ id = "4.7-5"
 title = "Corte concéntrico resistido por llave de corte"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-5, pp. 80-91"
 feature = "base_plate.shear_lug"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

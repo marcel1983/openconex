@@ -2,7 +2,7 @@ id = "4.7-13"
 title = "Levantamiento con momento pequeño: todos los anclajes en tracción"
 source = "AISC DG1 3rd ed. (2024), Example 4.7-13, pp. 127-129"
 feature = "base_plate.uplift_low_moment"
-status = "pending"
+status = "implemented"
 tolerance = 0.01
 
 [given]

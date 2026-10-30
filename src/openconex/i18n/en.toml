@@ -101,6 +101,9 @@ steel_shear = "Steel strength of anchor in shear"
 concrete_breakout_shear = "Concrete breakout in shear"
 pryout = "Concrete pryout"
 interaction = "Tension and shear interaction in anchors"
+shear_lug_bearing = "Concrete bearing on shear lug"
+shear_lug_breakout = "Concrete breakout of shear lug"
+reinforcement = "Anchor reinforcement in tension"
 
 [check.prying]
 tension = "Bolt tension including prying action"
@@ -118,3 +121,12 @@ web_yielding = "Web local yielding"
 web_crippling = "Web local crippling"
 web_compression_buckling = "Web compression buckling"
 panel_zone = "Web panel-zone shear"
+
+[check.base_plate]
+bearing = "Concrete bearing under the plate"
+thickness_compression = "Plate thickness at the bearing interface"
+thickness_tension = "Plate thickness at the tension interface"
+friction = "Shear by friction"
+rod_combined = "Anchor rod in tension, shear and bending"
+plate_bending_rods = "Plate bending from anchor rods in tension"
+embedded_moment = "Moment strength of embedded base"
