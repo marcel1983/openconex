@@ -243,6 +243,8 @@ Python 3.12+, PySide6 (Qt 6), pydantic, pint, shapely, numpy/scipy, OCP/build123
 
 **F2 (placas base)** implementada en `src/openconex/connections/base_plate/` y `src/openconex/kernel/anchors.py` (ACI 318-19 Cap. 17): compresión, flexión rectangular y triangular, levantamiento, flexión biaxial, corte (fricción, llave de corte, anclajes con flexión), tracción, soldaduras, base débil sísmica y base empotrada, con verificación completa por combinación. Los 20 ejemplos de la DG1 son pruebas de aceptación (369 valores publicados comparados).
 
+**F3 (salidas)** implementada para placas base: archivo de proyecto `.ocnx` (JSON), memoria de cálculo ES/EN en HTML (ecuaciones MathML), DOCX y PDF (Qt WebEngine, extra `pdf`), plano DXF R2013 (planta, elevación, lista de materiales, notas y cajetín) y modelo 3D STEP/STL (OpenCASCADE, extra `3d`), todo desde `openconex baseplate`. La memoria PDF se genera con Qt WebEngine en lugar de WeasyPrint, como estaba previsto.
+
 | Fase | Contenido | Duración (1 desarrollador) |
 |---|---|---|
 | F0 | Repositorio, CI multiplataforma, licencias, modelos, unidades, catálogo AISC, traza y estructura de las verificaciones | 4 sem |

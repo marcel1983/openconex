@@ -1,0 +1,154 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+"""Report content, independent of the output format.
+
+The report only renders the trace stored in each CheckResult: it never
+recalculates anything.
+"""
+
+from __future__ import annotations
+
+import datetime as dt
+from dataclasses import dataclass, field
+
+from openconex import __version__
+from openconex.connections.base_plate.check import check_envelope
+from openconex.core.checks import CheckResult, Status
+from openconex.i18n import tr
+from openconex.io.project import Project
+from openconex.units import Kind, UnitSystem, format_value
+
+__all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "fmt"]
+
+CODES = [
+    "ANSI/AISC 360-22, Specification for Structural Steel Buildings",
+    "AISC Design Guide 1, Base Connection Design for Steel Structures, 3rd ed. (2024)",
+    "ACI 318-19, Building Code Requirements for Structural Concrete, Chapter 17",
+    "ASCE/SEI 7-22, Minimum Design Loads and Associated Criteria, Chapter 2",
+]
+
+
+def fmt(value: float, kind: Kind, units: UnitSystem, precision: int = 4) -> str:
+    if kind is Kind.DIMENSIONLESS:
+        return f"{value:.{precision}g}"
+    return format_value(value, kind, units, precision)
+
+
+@dataclass
+class Row:
+    cells: list[str]
+    status: str = ""
+
+
+@dataclass
+class TraceLine:
+    symbol: str
+    expression: str
+    value: str
+    clause: str
+
+
+@dataclass
+class CheckBlock:
+    title: str
+    check_id: str
+    combo: str
+    clause: str
+    lines: list[TraceLine]
+    demand: str
+    capacity: str
+    ratio: float
+    status: str
+
+
+@dataclass
+class Report:
+    language: str
+    units: UnitSystem
+    title: str
+    subtitle: str
+    info: list[tuple[str, str]]
+    codes: list[str]
+    assumptions: list[str]
+    inputs: list[Row]
+    cases: list[Row]
+    combinations: list[Row]
+    summary: list[Row]
+    checks: list[CheckBlock]
+    ok: bool
+    footer: str
+    disclaimer: str
+    results: list[CheckResult] = field(default_factory=list)
+
+
+def _block(result: CheckResult, lang: str, units: UnitSystem) -> CheckBlock:
+    lines = [TraceLine(s.symbol, s.expression, fmt(s.value, s.kind, units), s.clause)
+             for s in result.steps]
+    return CheckBlock(
+        title=tr(result.text_id, lang), check_id=result.id, combo=result.combo,
+        clause=result.clause, lines=lines, demand=fmt(result.demand, result.kind, units),
+        capacity=fmt(result.capacity, result.kind, units), ratio=result.ratio,
+        status=result.status.value)
+
+
+def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:
+    info = project.info
+    lang, units = info.language, info.unit_system()
+    bp_in = project.base_plate
+    bp = project.base_plate_model()
+    combos = project.load_combinations()
+    results, _ = check_envelope(bp, combos, project.case_forces())
+
+    # Governing combination of each check, in order of first appearance.
+    governing: dict[str, CheckResult] = {}
+    for r in results:
+        if r.applicable and (r.id not in governing or r.ratio > governing[r.id].ratio):
+            governing[r.id] = r
+    ok = all(r.status is not Status.NG for r in results)
+
+    def q(value, kind):
+        return fmt(value, kind, units)
+
+    L, T = Kind.LENGTH, Kind.THICKNESS
+    inputs = [
+        Row([tr("input.column", lang), f"{bp_in.column} ({bp_in.column_grade})"]),
+        Row([tr("input.N", lang), q(bp.N, L)]),
+        Row([tr("input.B", lang), q(bp.B, L)]),
+        Row([tr("input.tp", lang), q(bp.tp, T)]),
+        Row([tr("input.grade", lang), bp.plate_grade]),
+        Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+        Row([tr("input.A2_over_A1", lang), f"{bp.A2_over_A1:g}"]),
+        Row([tr("input.rods", lang), f"{2 * bp.rods_per_side} × {q(bp.rod.diameter, L)} "
+             f"{bp.rod.grade}"]),
+        Row([tr("input.f", lang), q(bp.f, L)]),
+        Row([tr("input.rod_spacing", lang), q(bp.rod_spacing, L)]),
+        Row([tr("input.hef", lang), q(bp.hef, L)]),
+    ]
+    if bp.flange_weld:
+        inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+    cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),
+                  q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)])
+             for c, f in zip(project.cases, project.case_forces().values(), strict=True)]
+    combinations = [Row([c.name, c.method.value,
+                         " + ".join(f"{v:g}·{k}" for k, v in c.factors.items()), c.source])
+                    for c in combos]
+    summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
+                    f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
+    assumptions = [tr("report.assumption_rigid", lang), tr("report.assumption_aci_lrfd", lang)]
+    if bp.cracked:
+        assumptions.append(tr("report.assumption_cracked", lang))
+    if bp.seismic:
+        assumptions.append(tr("report.assumption_seismic", lang))
+    today = today or dt.date.today()
+    return Report(
+        language=lang, units=units, title=tr("report.title", lang),
+        subtitle=tr("report.subtitle_base_plate", lang),
+        info=[(tr("report.project", lang), info.name or "—")] + [
+            (tr(f"report.{k}", lang), getattr(info, k) or "—")
+            for k in ("number", "client", "engineer", "revision", "date")],
+        codes=CODES, assumptions=assumptions, inputs=inputs, cases=cases,
+        combinations=combinations, summary=summary,
+        checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
+        footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",
+                  date=today.isoformat()),
+        disclaimer=tr("report.disclaimer", lang), results=results)

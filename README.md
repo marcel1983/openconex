@@ -3,7 +3,7 @@
 Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC.
 *Free (GPL-3.0) software for the design of steel connections to AISC.*
 
-> **Estado: pre-alfa.** Todavía no calcula conexiones. Ver el [plan de desarrollo](docs/PLAN.md).
+> **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19) y genera memoria, planos DXF y modelo 3D desde la línea de comandos. La interfaz gráfica está en desarrollo. Ver el [plan de desarrollo](docs/PLAN.md).
 
 ## Alcance previsto
 - **Conexiones:** placas base, viga–columna y viga–viga (corte y momento), empalmes de viga y columna.
@@ -23,6 +23,15 @@ python -m pytest
 ```bash
 openconex convert "3/4 in" thickness --to mm
 ```
+
+### Calcular una placa base
+```bash
+pip install -e ".[pdf,3d]"
+```
+```bash
+openconex baseplate examples/base_plate_dg1_4_7_11.ocnx --html --docx --pdf --dxf --step
+```
+El comando calcula todas las combinaciones de ASCE 7-22, imprime el resumen y devuelve 1 si alguna verificación no cumple. `--lang en` y `--units SI_kN_m` cambian el idioma y las unidades de las salidas.
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md).
 
