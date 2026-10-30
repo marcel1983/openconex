@@ -34,6 +34,8 @@ class LoadType(StrEnum):
     SNOW = "S"
     RAIN = "R"
     WIND = "W"
+    TORNADO = "WT"
+    """Tornado load (ASCE 7-22 Ch. 32); alternative to W where the code says "W or W_T"."""
     SEISMIC = "E"
     """Horizontal seismic effect Q_E of one direction (before ρ or Ω0)."""
 
@@ -110,14 +112,15 @@ def combine(combo: LoadCombination, forces: Mapping[str, Forces]) -> Forces:
 # Each combination: (clause, required variable load, terms). A term is
 # (case type, factor); "roof" is one of Lr, S or R at a time ("Lr or S or R")
 # and its factor is a pair (factor on Lr and R, factor on S), because ASCE 7-22
-# gives snow its own strength-level factors. "wind" is one wind case with
-# either sign, and "L*" the live load whose factor ASCE 7 allows to reduce to
-# 0.5. A combination whose required variable load does not exist is skipped.
+# gives snow its own strength-level factors. "wind" is one wind or tornado
+# case with either sign ("W or W_T"), "W only" one wind case (no tornado),
+# and "L*" the live load whose factor ASCE 7 allows to reduce to 0.5.
+# A combination whose required variable load does not exist is skipped.
 _LRFD = [
     ("2.3.1 (1)", None, [("D", 1.4)]),
     ("2.3.1 (2)", None, [("D", 1.2), ("L", 1.6), ("roof", (0.5, 0.3))]),
     ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("L*", 1.0)]),
-    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("wind", 0.5)]),
+    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("W only", 0.5)]),
     ("2.3.1 (4)", "wind", [("D", 1.2), ("wind", 1.0), ("L*", 1.0), ("roof", (0.5, 0.3))]),
     ("2.3.1 (5)", "wind", [("D", 0.9), ("wind", 1.0)]),
 ]
@@ -163,7 +166,8 @@ def asce7_combinations(
     for case in cases:
         by_type[case.type.value].append(case.name)
     roofs = [(name, t) for t in ("Lr", "S", "R") for name in by_type[t]]
-    winds = [(name, sign) for name in by_type["W"] for sign in (1.0, -1.0)]
+    winds = [(name, sign) for t in ("W", "WT") for name in by_type[t] for sign in (1.0, -1.0)]
+    winds_only = [(name, sign) for name in by_type["W"] for sign in (1.0, -1.0)]
     quakes = [(name, sign) for name in by_type["E"] for sign in (1.0, -1.0)]
 
     combos: list[LoadCombination] = []
@@ -189,7 +193,12 @@ def asce7_combinations(
         if (required == "roof" and not roofs) or (required == "wind" and not winds):
             continue
         roof_options = roofs if "roof" in types and roofs else [None]
-        wind_options = winds if "wind" in types else [None]
+        if "wind" in types:
+            wind_options = winds
+        elif "W only" in types and winds_only:
+            wind_options = winds_only
+        else:
+            wind_options = [None]
         for roof, wind in product(roof_options, wind_options):
             factors: dict[str, float] = {}
             tags: list[str] = []
@@ -200,7 +209,9 @@ def asce7_combinations(
                         other, snow = factor
                         put(factors, [name], snow if roof_type == "S" else other)
                         tags.append(name)
-                elif kind == "wind":
+                elif kind in ("wind", "W only"):
+                    if wind is None:
+                        continue
                     name, sign = wind
                     put(factors, [name], sign * factor)
                     tags.append(("+" if sign > 0 else "-") + name)

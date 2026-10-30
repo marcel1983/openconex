@@ -94,3 +94,22 @@ def test_asd_set():
 
 def test_no_seismic_without_parameters():
     assert not any(c.seismic for c in asce7_combinations(CASES))
+
+
+def test_tornado_is_an_alternative_to_wind():
+    cases = [
+        LoadCase(name="D", type=LoadType.DEAD),
+        LoadCase(name="Lr", type=LoadType.ROOF_LIVE),
+        LoadCase(name="WX", type=LoadType.WIND),
+        LoadCase(name="WT1", type=LoadType.TORNADO),
+    ]
+    lrfd = _factors(asce7_combinations(cases))
+    assert {"D": 1.2, "WT1": 1.0, "Lr": 0.5} in lrfd  # 2.3.1 (4): W or W_T
+    assert {"D": 0.9, "WT1": -1.0} in lrfd  # 2.3.1 (5)
+    assert {"D": 1.2, "Lr": 1.6, "WX": 0.5} in lrfd  # 2.3.1 (3): 0.5W only
+    assert not any("WT1" in f and "WX" in f for f in lrfd)
+    assert not any(f.get("WT1") == 0.5 for f in lrfd)
+    asd = _factors(asce7_combinations(cases, Method.ASD))
+    assert {"D": 1.0, "WT1": 0.6} in asd  # 2.4.1 (5a)
+    assert {"D": 1.0, "WT1": 0.45, "Lr": 0.75} in asd  # 2.4.1 (6a)
+    assert {"D": 0.6, "WT1": -0.6} in asd  # 2.4.1 (7a)
