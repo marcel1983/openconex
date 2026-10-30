@@ -56,8 +56,12 @@ def test_lrfd_full_set():
     combos = asce7_combinations(CASES, seismic=seismic)
     factors = _factors(combos)
     assert {"D": 1.2, "SD": 1.2, "L": 1.6, "Lr": 0.5} in factors
-    assert {"D": 1.2, "SD": 1.2, "S": 1.6, "WX": -0.5} in factors
-    assert {"D": 1.2, "SD": 1.2, "WX": 1.0, "L": 1.0, "S": 0.5} in factors
+    # ASCE 7-22 snow is strength level: 0.3S / 1.0S instead of 0.5S / 1.6S
+    assert {"D": 1.2, "SD": 1.2, "L": 1.6, "S": 0.3} in factors
+    assert {"D": 1.2, "SD": 1.2, "S": 1.0, "WX": -0.5} in factors
+    assert {"D": 1.2, "SD": 1.2, "Lr": 1.6, "WX": -0.5} in factors
+    assert {"D": 1.2, "SD": 1.2, "WX": 1.0, "L": 1.0, "S": 0.3} in factors
+    assert not any(f.get("S") in (0.5, 1.6) for f in factors)
     assert {"D": 0.9, "SD": 0.9, "WX": -1.0} in factors
     # 2.3.6 (6): (1.2 + 0.2 SDS) D + rho QE + L + 0.15 S
     assert {"D": 1.4, "SD": 1.4, "EX": 1.3, "L": 1.0, "S": 0.15} in factors
@@ -80,9 +84,11 @@ def test_asd_set():
     factors = _factors(asce7_combinations(CASES, Method.ASD, seismic))
     assert {"D": 1.0, "SD": 1.0, "L": 1.0} in factors
     assert {"D": 1.0, "SD": 1.0, "L": 0.75, "WX": 0.45, "Lr": 0.75} in factors
+    assert {"D": 1.0, "SD": 1.0, "S": 0.7} in factors
+    assert {"D": 1.0, "SD": 1.0, "L": 0.75, "S": 0.525} in factors
     assert {"D": 0.6, "SD": 0.6, "WX": -0.6} in factors
     assert {"D": 1.07, "SD": 1.07, "EX": 0.7} in factors
-    assert {"D": 1.0525, "SD": 1.0525, "EX": -0.525, "L": 0.75, "S": 0.75} in factors
+    assert {"D": 1.0525, "SD": 1.0525, "EX": -0.525, "L": 0.75, "S": 0.1} in factors
     assert {"D": 0.53, "SD": 0.53, "EX": 0.7} in factors
 
 

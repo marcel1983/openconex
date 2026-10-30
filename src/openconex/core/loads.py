@@ -108,25 +108,27 @@ def combine(combo: LoadCombination, forces: Mapping[str, Forces]) -> Forces:
 # ---------------------------------------------------------------------------
 
 # Each combination: (clause, required variable load, terms). A term is
-# (case type, factor); "roof" is one of Lr, S or R at a time ("Lr or S or R"),
-# "wind" one wind case with either sign, and "L*" the live load whose factor
-# ASCE 7 allows to reduce to 0.5. A combination whose required variable load
-# does not exist is skipped.
+# (case type, factor); "roof" is one of Lr, S or R at a time ("Lr or S or R")
+# and its factor is a pair (factor on Lr and R, factor on S), because ASCE 7-22
+# gives snow its own strength-level factors. "wind" is one wind case with
+# either sign, and "L*" the live load whose factor ASCE 7 allows to reduce to
+# 0.5. A combination whose required variable load does not exist is skipped.
 _LRFD = [
     ("2.3.1 (1)", None, [("D", 1.4)]),
-    ("2.3.1 (2)", None, [("D", 1.2), ("L", 1.6), ("roof", 0.5)]),
-    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", 1.6), ("L*", 1.0)]),
-    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", 1.6), ("wind", 0.5)]),
-    ("2.3.1 (4)", "wind", [("D", 1.2), ("wind", 1.0), ("L*", 1.0), ("roof", 0.5)]),
+    ("2.3.1 (2)", None, [("D", 1.2), ("L", 1.6), ("roof", (0.5, 0.3))]),
+    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("L*", 1.0)]),
+    ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("wind", 0.5)]),
+    ("2.3.1 (4)", "wind", [("D", 1.2), ("wind", 1.0), ("L*", 1.0), ("roof", (0.5, 0.3))]),
     ("2.3.1 (5)", "wind", [("D", 0.9), ("wind", 1.0)]),
 ]
 _ASD = [
     ("2.4.1 (1)", None, [("D", 1.0)]),
     ("2.4.1 (2)", None, [("D", 1.0), ("L", 1.0)]),
-    ("2.4.1 (3)", "roof", [("D", 1.0), ("roof", 1.0)]),
-    ("2.4.1 (4)", None, [("D", 1.0), ("L", 0.75), ("roof", 0.75)]),
+    ("2.4.1 (3)", "roof", [("D", 1.0), ("roof", (1.0, 0.7))]),
+    ("2.4.1 (4)", None, [("D", 1.0), ("L", 0.75), ("roof", (0.75, 0.75 * 0.7))]),
     ("2.4.1 (5)", "wind", [("D", 1.0), ("wind", 0.6)]),
-    ("2.4.1 (6)", "wind", [("D", 1.0), ("L", 0.75), ("wind", 0.45), ("roof", 0.75)]),
+    ("2.4.1 (6)", "wind",
+     [("D", 1.0), ("L", 0.75), ("wind", 0.75 * 0.6), ("roof", (0.75, 0.75 * 0.7))]),
     ("2.4.1 (7)", "wind", [("D", 0.6), ("wind", 0.6)]),
 ]
 # Seismic: (clause, D factor, coefficient of SDS on D (Ev), Eh factor, other terms).
@@ -136,7 +138,7 @@ _LRFD_SEISMIC = [
 ]
 _ASD_SEISMIC = [
     ("2.4.5 (8)", 1.0, 0.14, 0.7, []),
-    ("2.4.5 (9)", 1.0, 0.105, 0.525, [("L", 0.75), ("S", 0.75)]),
+    ("2.4.5 (9)", 1.0, 0.105, 0.525, [("L", 0.75), ("S", 0.1)]),
     ("2.4.5 (10)", 0.6, -0.14, 0.7, []),
 ]
 
@@ -150,7 +152,8 @@ def asce7_combinations(
     """Generate the basic ASCE 7-22 combinations (§2.3 LRFD or §2.4 ASD).
 
     Each wind and seismic case is taken with both signs, and one roof load
-    (Lr, S or R) at a time. All D cases share the D factor and all L cases the
+    (Lr, S or R) at a time; snow uses the strength-level factors of ASCE 7-22
+    (e.g. 1.0S and 0.3S in LRFD, 0.7S in ASD). All D cases share the D factor and all L cases the
     L factor. ``live_factor`` is the factor on L in LRFD combinations 3, 4
     and 6 (1.0, or 0.5 where ASCE 7-22 §2.3.1 permits).
     Duplicate combinations are removed.
@@ -159,7 +162,7 @@ def asce7_combinations(
     by_type: dict[str, list[str]] = {t.value: [] for t in LoadType}
     for case in cases:
         by_type[case.type.value].append(case.name)
-    roofs = by_type["Lr"] + by_type["S"] + by_type["R"]
+    roofs = [(name, t) for t in ("Lr", "S", "R") for name in by_type[t]]
     winds = [(name, sign) for name in by_type["W"] for sign in (1.0, -1.0)]
     quakes = [(name, sign) for name in by_type["E"] for sign in (1.0, -1.0)]
 
@@ -193,8 +196,10 @@ def asce7_combinations(
             for kind, factor in terms:
                 if kind == "roof":
                     if roof:
-                        put(factors, [roof], factor)
-                        tags.append(roof)
+                        name, roof_type = roof
+                        other, snow = factor
+                        put(factors, [name], snow if roof_type == "S" else other)
+                        tags.append(name)
                 elif kind == "wind":
                     name, sign = wind
                     put(factors, [name], sign * factor)
