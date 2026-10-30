@@ -81,6 +81,9 @@ class LoadCombination(BaseModel):
     seismic: bool = False
     overstrength: bool = False
     """True when the seismic effect is amplified by Ω0 (ASCE 7-22 §12.4.3)."""
+    allowable_increase: float = 1.0
+    """Factor permitted on ASD allowable strengths: 1.2 for the ASD combinations
+    with E_m (ASCE 7-22 §2.4.5), not to be combined with other increases."""
     source: str = ""
     """Origin, e.g. ``ASCE 7-22 §2.3.1 (2)`` or ``imported``."""
 
@@ -236,6 +239,8 @@ def asce7_combinations(
                 f = factor * live_factor if kind == "L*" else factor
                 put(factors, by_type["L" if kind == "L*" else kind], f)
             tags = [("+" if sign > 0 else "-") + quake] + (["Ω0"] if over else [])
-            add(clause, factors, tags, seismic=True, overstrength=over)
+            increase = 1.2 if over and method is Method.ASD else 1.0
+            add(clause, factors, tags, seismic=True, overstrength=over,
+                allowable_increase=increase)
 
     return combos

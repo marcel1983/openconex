@@ -113,3 +113,15 @@ def test_tornado_is_an_alternative_to_wind():
     assert {"D": 1.0, "WT1": 0.6} in asd  # 2.4.1 (5a)
     assert {"D": 1.0, "WT1": 0.45, "Lr": 0.75} in asd  # 2.4.1 (6a)
     assert {"D": 0.6, "WT1": -0.6} in asd  # 2.4.1 (7a)
+
+
+def test_asd_overstrength_allows_stress_increase():
+    seismic = SeismicParameters(SDS=0.5, omega0=2.0)
+    asd = asce7_combinations(CASES, Method.ASD, seismic)
+    over = [c for c in asd if c.overstrength]
+    assert over and all(c.allowable_increase == 1.2 for c in over)
+    assert all(c.allowable_increase == 1.0 for c in asd if not c.overstrength)
+    # 2.4.5 (9) with E_m: 1.0D + 0.525Ev + 0.525Emh + 0.75L + 0.1S
+    assert {"D": 1.0525, "SD": 1.0525, "EX": 1.05, "L": 0.75, "S": 0.1} in _factors(over)
+    lrfd = asce7_combinations(CASES, Method.LRFD, seismic)
+    assert all(c.allowable_increase == 1.0 for c in lrfd)
