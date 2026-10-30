@@ -1,0 +1,96 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+from fractions import Fraction as Fr
+
+import pytest
+from pydantic import ValidationError
+
+from openconex.core.bolting import (
+    HoleType,
+    bolt_area,
+    hole_size,
+    min_edge_distance,
+    min_pretension,
+    min_spacing,
+)
+from openconex.core.model import BoltGroup, BoltSpec, FilletWeld, IShape, SteelPlate, Threads
+from openconex.units import Kind, from_internal, to_internal
+
+
+def _in(mm: float) -> float:
+    return from_internal(mm, Kind.LENGTH, "in")
+
+
+@pytest.mark.parametrize(
+    ("d", "hole", "width", "length"),
+    [
+        (Fr(3, 4), HoleType.STANDARD, 13 / 16, 13 / 16),
+        (Fr(7, 8), HoleType.OVERSIZED, 17 / 16, 17 / 16),
+        (Fr(1), HoleType.SHORT_SLOT, 9 / 8, 21 / 16),
+        (Fr(5, 8), HoleType.LONG_SLOT, 11 / 16, 25 / 16),
+        (Fr(5, 4), HoleType.STANDARD, 11 / 8, 11 / 8),  # d + 1/8
+        (Fr(5, 4), HoleType.OVERSIZED, 25 / 16, 25 / 16),  # d + 5/16
+        (Fr(3, 2), HoleType.LONG_SLOT, 13 / 8, 15 / 4),  # (d + 1/8) x 2.5d
+    ],
+)
+def test_hole_size_table_j3_3(d, hole, width, length):
+    w, ln = hole_size(d, hole)
+    assert _in(w) == pytest.approx(width)
+    assert _in(ln) == pytest.approx(length)
+
+
+def test_hole_size_accepts_float_diameter():
+    assert hole_size(0.75) == hole_size(Fr(3, 4))
+
+
+@pytest.mark.parametrize(("d", "edge"), [(0.75, 1.0), (1.0, 1.25), (1.25, 1.625), (1.5, 1.875)])
+def test_min_edge_distance_table_j3_4(d, edge):
+    assert _in(min_edge_distance(d)) == pytest.approx(edge)
+
+
+@pytest.mark.parametrize(("d", "group", "kips"), [(0.75, 120, 28), (1.0, 150, 64), (1.5, 120, 118)])
+def test_min_pretension_table_j3_1(d, group, kips):
+    assert from_internal(min_pretension(d, group), Kind.FORCE, "kip") == pytest.approx(kips)
+
+
+def test_area_and_spacing():
+    d = to_internal(0.75, "in", Kind.LENGTH)
+    assert from_internal(bolt_area(d), Kind.AREA, "in**2") == pytest.approx(0.4418, abs=1e-4)
+    assert _in(min_spacing(d)) == pytest.approx(2.0)
+
+
+def test_unknown_sizes_raise():
+    with pytest.raises(ValueError):
+        hole_size(Fr(3, 8))
+    with pytest.raises(ValueError):
+        min_pretension(2.0)
+
+
+def test_bolt_spec():
+    bolt = BoltSpec(diameter=to_internal(0.875, "in", Kind.LENGTH), threads=Threads.EXCLUDED)
+    assert from_internal(bolt.Fnv, Kind.STRESS, "ksi") == pytest.approx(68)
+    assert _in(bolt.hole_dimensions[0]) == pytest.approx(15 / 16)
+    with pytest.raises(ValidationError):
+        BoltSpec(diameter=20, grade="ASTM X999")
+
+
+def test_bolt_group_coordinates_are_centered():
+    group = BoltGroup(bolt=BoltSpec(diameter=19.05), rows=3, columns=2, pitch=76.2, gage=140)
+    coords = group.coordinates()
+    assert group.count == len(coords) == 6
+    assert sum(x for x, _ in coords) == pytest.approx(0)
+    assert sum(y for _, y in coords) == pytest.approx(0)
+    assert max(y for _, y in coords) == pytest.approx(76.2)
+    with pytest.raises(ValidationError):
+        BoltGroup(bolt=group.bolt, rows=2)
+
+
+def test_parts_validate():
+    assert SteelPlate(width=300, length=400, thickness=25).material.name == "ASTM A36"
+    assert FilletWeld(size=8, length=200).throat == pytest.approx(5.657, abs=1e-3)
+    w = IShape(name="W14X90", d=356, bf=368, tf=18.0, tw=11.2)
+    assert w.area == pytest.approx(2 * 368 * 18 + (356 - 36) * 11.2)
+    with pytest.raises(ValidationError):
+        IShape(name="bad", d=20, bf=100, tf=12, tw=5)
+    with pytest.raises(ValidationError):
+        SteelPlate(width=300, length=400, thickness=25, extra=1)
