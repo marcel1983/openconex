@@ -1,0 +1,46 @@
+id = "B.2-1"
+title = "Compresión con momento pequeño, distribución triangular de presiones"
+source = "AISC DG1 3rd ed. (2024), Example B.2-1, pp. 179-182"
+feature = "base_plate.bending_low_moment_triangular"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 1.0
+Pu = "376 kip"
+Mu = "940 kip*in"
+Pa = "260 kip"
+Ma = "650 kip*in"
+N = "19 in"
+B = "19 in"
+
+[expected]
+m = "3.47 in"
+n = "4.62 in"
+e = "2.50 in"
+e_kern = "3.17 in"           # N/6
+
+[expected.lrfd]
+fp_axial = "1.04 ksi"
+fp_bending = "0.822 ksi"
+fp_max = "1.86 ksi"
+fp_min = "0.218 ksi"
+fp_available = "2.21 ksi"
+fp_at_m = "1.56 ksi"
+M_plate = "11.1 kip*in/in"   # governing moment per unit width of plate
+tp_req = "0.993 in"
+
+[expected.asd]
+fp_axial = "0.720 ksi"
+fp_bending = "0.569 ksi"
+fp_max = "1.29 ksi"
+fp_min = "0.151 ksi"
+fp_available = "1.47 ksi"
+fp_at_m = "1.08 ksi"
+M_plate = "7.68 kip*in/in"
+tp_req = "1.01 in"

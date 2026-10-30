@@ -1,0 +1,52 @@
+id = "4.7-14"
+title = "Flexión biaxial con compresión axial"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-14, pp. 130-134"
+feature = "base_plate.biaxial_bending"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W8X48"
+d = "8.50 in"
+bf = "8.11 in"
+plate_grade = "ASTM A572 Gr. 50"
+fc = "4 ksi"
+A2_over_A1 = 4.0
+Pu = "90 kip"
+Mux = "700 kip*in"
+Muy = "450 kip*in"
+N = "14 in"
+B = "14 in"
+tp = "1.75 in"
+rod_edge_distance = "1.5 in"
+rods_per_face = 2
+rod_diameter = "0.625 in"
+rod_grade = "ASTM F1554 Gr. 55"
+
+[expected.lrfd]
+f = "5.50 in"
+fp_max = "4.42 ksi"
+q_max = "61.9 kip/in"
+e_crit = "6.27 in"
+ex = "7.78 in"
+ey = "5.00 in"
+Y = "1.70 in"
+T = "15.2 kip"
+m = "2.96 in"
+n = "3.76 in"
+tp_req_compression = "1.67 in"
+x = "1.59 in"
+tp_req_tension = "0.392 in"
+T_capacity = "25.4 kip"      # two 5/8 in. F1554 Gr. 55 rods per face
+Y_capacity = "1.86 in"
+Mx_capacity = "837 kip*in"
+My_capacity = "837 kip*in"
+interaction = 0.988          # (Mux/Mx)^2 + (Muy/My)^2, Eq. 4-69
+
+[tolerances]
+# The guide takes Y = 12.5 in. - 10.8 in. = 1.70 in. after rounding the square
+# root; unrounded, Y = 1.65 in. and T = 12.4 kips. The rounded Y propagates to T
+# and to the plate thickness at the tension interface.
+Y = 0.05
+T = 0.25
+tp_req_tension = 0.12

@@ -1,0 +1,47 @@
+id = "B.2-2"
+title = "Compresión con momento grande y tracción en anclajes, distribución triangular de presiones"
+source = "AISC DG1 3rd ed. (2024), Example B.2-2, pp. 182-185"
+feature = "base_plate.bending_large_moment_triangular"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W8X31"
+d = "8.00 in"
+bf = "8.00 in"
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 36"
+fc = "3 ksi"
+A2_over_A1 = 4.0
+Pu = "90 kip"
+Mu = "720 kip*in"
+Pa = "60 kip"
+Ma = "480 kip*in"
+N = "14 in"
+B = "14 in"
+tp = "1.25 in"
+rod_edge_distance = "1.5 in" # N' = 12.5 in, A' = 5.5 in
+rods_in_tension = 2
+
+[expected]
+e = "8.00 in"
+bearing_length = "4.80 in"   # A in Eq. B-21
+m = "3.20 in"
+
+[expected.lrfd]
+fp_available = "3.32 ksi"
+T = "21.6 kip"
+r_rod = "10.8 kip"
+fp_at_m = "1.11 ksi"
+M_plate_compression = "13.2 kip*in/in"
+M_plate_tension = "5.40 kip*in/in"
+tp_req = "1.08 in"
+
+[expected.asd]
+fp_available = "2.21 ksi"
+T = "14.3 kip"
+r_rod = "7.15 kip"
+fp_at_m = "0.737 ksi"
+M_plate_compression = "8.80 kip*in/in"
+M_plate_tension = "3.58 kip*in/in"
+tp_req = "1.08 in"

@@ -1,0 +1,41 @@
+id = "4.7-12"
+title = "Levantamiento con momento grande (viento): tracción en anclajes y longitud de apoyo"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-12, pp. 125-127"
+feature = "base_plate.uplift_large_moment"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W12X96"
+d = "12.7 in"
+bf = "12.2 in"
+fc = "4 ksi"
+A2_over_A1 = 1.0
+Pu = "-100 kip"              # 1.0W uplift
+Mu = "1000 kip*in"
+Pa = "-60 kip"               # 0.6W
+Ma = "600 kip*in"
+N = "19 in"
+B = "19 in"
+f = "8 in"
+rods = 4
+rod_grade = "ASTM F1554 Gr. 36"
+
+[expected]
+e = "10.0 in"
+
+[expected.lrfd]
+q_max = "42.0 kip/in"
+Y = "0.300 in"
+T = "113 kip"
+
+[expected.asd]
+q_max = "27.9 kip/in"
+Y = "0.300 in"
+T = "68.4 kip"
+
+[tolerances]
+# The guide rounds (f + N/2) and the square root before subtracting them,
+# so Y (0.274 in LRFD / 0.247 in ASD unrounded) and T are reported high.
+Y = 0.25
+T = 0.025
