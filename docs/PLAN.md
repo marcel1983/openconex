@@ -275,7 +275,7 @@ Con dos desarrolladores (uno en el motor y las conexiones, otro en interfaz, mem
 | Precalificadas sísmicas (AISC 358) | Opción en F6, con límites de precalificación verificados explícitamente |
 | Licencia de Osdag ambigua | Consultar al equipo; distribuir como GPL-3.0-only si se incorpora su código |
 | Portar el 3D de pythonOCC a OCP | API casi idéntica; empezar por las piezas sencillas |
-| AISC Shapes Database y ejemplos del Manual | Confirmar términos; en las pruebas solo datos numéricos |
+| AISC Shapes Database y ejemplos del Manual | **Decisión:** el catálogo se incluye como SQL de texto (`data/shapes/aisc_v16.sql`, generado con `tools/build_shapes_db.py`) con aviso de atribución (`NOTICE.md`) y fuera de la GPL. Pedir permiso a AISC; si lo niega, se retira y se genera en la instalación. En las pruebas, solo datos numéricos |
 | Compatibilidad del DXF y firma de instaladores | Ver versión 1.2 del plan |
 
 ## 12. Próximos pasos
