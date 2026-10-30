@@ -64,9 +64,9 @@ class Section:
     label: str
     type: str
     properties: dict[str, float | None]
-    """Numeric properties in internal units (see module docstring)."""
+    """Numeric properties in internal units, keyed by spreadsheet header (``"bf/2tf"``)."""
     raw: dict[str, object]
-    """Row as stored in the catalog (U.S. customary units)."""
+    """Row as published by AISC (U.S. customary units), keyed by spreadsheet header."""
 
     def __getitem__(self, key: str) -> float:
         value = self.properties.get(key)
@@ -92,6 +92,13 @@ class ShapeDatabase:
         self._db.execute(
             "CREATE INDEX IF NOT EXISTS shapes_norm ON shapes "
             "(upper(replace(AISC_Manual_Label, ' ', '')))"
+        )
+        has_map = self._db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'columns'"
+        ).fetchone()
+        # SQL column name -> spreadsheet header (e.g. "bf_2tf" -> "bf/2tf", "b_2" -> "b").
+        self._headers: dict[str, str] = (
+            dict(self._db.execute("SELECT name, header FROM columns")) if has_map else {}
         )
 
     @classmethod
@@ -128,7 +135,7 @@ class ShapeDatabase:
         row = self._row(label)
         if row is None:
             raise ShapeDatabaseError(f"shape not found: {label}")
-        raw = dict(row)
+        raw = {self._headers.get(k, k): v for k, v in dict(row).items()}
         props: dict[str, float | None] = {}
         for key, value in raw.items():
             if key in _TEXT:

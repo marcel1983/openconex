@@ -69,25 +69,36 @@ def convert(xlsx: Path, out: Path, version: str = "v16.0") -> int:
     if not header:
         raise SystemExit(f"header row with {HEADER_KEY!r} not found in {xlsx}")
 
-    # First occurrence of each name = U.S. customary block.
-    keep: list[tuple[int, str]] = []
+    # First occurrence of each name = U.S. customary block. SQLite column names
+    # are case-insensitive, so the second of "B" and "b" is stored as "b_2"; the
+    # "columns" table maps every SQL column back to its spreadsheet header.
+    keep: list[tuple[int, str, str]] = []
     seen: set[str] = set()
+    sql_names: set[str] = set()
     for idx, name in enumerate(header):
-        col = _column_name(name) if name else ""
-        if col and col not in seen:
-            seen.add(col)
-            keep.append((idx, col))
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        col = _column_name(name)
+        if col.lower() in sql_names:
+            col = f"{col}_2"
+        sql_names.add(col.lower())
+        keep.append((idx, col, name))
 
     lines = [SQL_HEADER.format(version=version, source=xlsx.name)]
-    columns = ", ".join(f'"{c}" {"TEXT" if c in TEXT_COLUMNS else "REAL"}' for _, c in keep)
+    columns = ", ".join(f'"{c}" {"TEXT" if c in TEXT_COLUMNS else "REAL"}' for _, c, _ in keep)
     lines.append(f"CREATE TABLE shapes ({columns});")
-    names = ", ".join(f'"{c}"' for _, c in keep)
+    lines.append("CREATE TABLE columns (name TEXT PRIMARY KEY, header TEXT NOT NULL);")
+    lines.extend(
+        f"INSERT INTO columns VALUES ({_sql_value(c)}, {_sql_value(h)});" for _, c, h in keep
+    )
+    names = ", ".join(f'"{c}"' for _, c, _ in keep)
     label_idx = header.index(HEADER_KEY)
     count = 0
     for row in rows:
         if label_idx >= len(row) or not row[label_idx]:
             continue
-        values = ", ".join(_sql_value(row[i] if i < len(row) else None) for i, _ in keep)
+        values = ", ".join(_sql_value(row[i] if i < len(row) else None) for i, _, _ in keep)
         lines.append(f"INSERT INTO shapes ({names}) VALUES ({values});")
         count += 1
     lines.append(f'CREATE UNIQUE INDEX shapes_label ON shapes ("{HEADER_KEY}");')
