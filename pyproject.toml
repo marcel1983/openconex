@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "openconex"
+dynamic = ["version"]
+description = "Free software for the design of steel connections to AISC 360 (base plates, beam-column, beam-beam, splices)"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "The OpenConex contributors" }]
+keywords = ["steel", "connections", "AISC", "base plate", "structural engineering"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "pint>=0.24",
+    "pydantic>=2.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "pip-licenses>=5",
+]
+
+[project.scripts]
+openconex = "openconex.cli:main"
+
+[project.urls]
+Repository = "https://github.com/marcel1983/openconex"
+
+[tool.hatch.version]
+path = "src/openconex/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openconex"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # unicode symbols (², ·, ″) are intended
+
+[tool.ruff.lint.pep8-naming]
+# Engineering symbols keep their code notation (Fy, Fu, Fnt, FEXX…).
+ignore-names = ["F*", "E", "E_*"]
