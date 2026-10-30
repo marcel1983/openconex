@@ -1,0 +1,60 @@
+id = "4.7-8"
+title = "Base en arriostramiento con compresión y corte combinados; corte por fricción"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-8, pp. 104-109"
+feature = "base_plate.compression_shear_friction"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W24X104"
+tw = "0.500 in"
+plate_grade = "ASTM A572 Gr. 50"
+column_grade = "ASTM A992"
+fc = "4 ksi"
+A2_over_A1 = 4.0             # supporting area exceeds 4 A1: Pp = 1.7 f'c A1
+PD = "410 kip"
+brace_V_W = "127 kip"        # horizontal component of the brace (1.0W)
+brace_P_W = "127 kip"        # vertical component (compression)
+N = "25.0 in"
+B = "13.0 in"
+tp = "1.25 in"
+friction_mu = 0.4
+weld_size = "0.1875 in"      # 3/16 in. fillet, both sides of the web
+weld_length = "20.0 in"      # each weld
+
+[expected]
+A1 = "325 in**2"
+Pp = "2210 kip"
+m = "1.05 in"
+n = "1.38 in"
+n_prime = "4.39 in"
+weld_kds = 1.00
+weld_Rn = "223 kip"
+web_rupture_Rn = "390 kip"
+
+[expected.lrfd]
+P_max = "619 kip"            # 1.2D + 1.0W, with V = 127 kips
+P_min = "496 kip"            # 0.9D + 1.0W, with V = 127 kips
+P_1a = "574 kip"             # 1.4D
+V = "127 kip"
+phiPp = "1440 kip"
+X = 0.390
+lambda = 0.701
+l = "3.08 in"
+tp_req = "0.896 in"
+friction_phiVn = "129 kip"   # Eq. 4-30 with P_min
+weld_strength = "167 kip"
+web_rupture_strength = "293 kip"
+
+[expected.asd]
+P_max = "486 kip"            # D + 0.6W
+P_min = "322 kip"            # 0.6D + 0.6W
+P_1a = "410 kip"
+V = "76.2 kip"
+Pp_over_Omega = "957 kip"
+X = 0.460
+lambda = 0.782
+l = "3.43 in"
+tp_req = "1.08 in"
+weld_strength = "112 kip"
+web_rupture_strength = "195 kip"

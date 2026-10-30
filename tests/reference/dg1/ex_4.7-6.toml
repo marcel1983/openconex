@@ -1,0 +1,67 @@
+id = "4.7-6"
+title = "Anclajes con tracción y corte combinados, con flexión de la barra (estados límite del acero)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-6, pp. 91-96"
+feature = "base_plate.anchor_tension_shear_bending"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W10X45"
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 36"
+tp = "1 in"
+PD = "22.0 kip"
+PW = "93.0 kip"              # uplift from 1.0W
+VW = "38.0 kip"              # shear from 1.0W
+rods = 4
+rods_resisting_shear = 4     # plate washers welded to the base plate
+washer_thickness = "0.375 in"
+washer_diameter = "4 in"
+washer_grade = "ASTM A572 Gr. 50"
+trial_rod_diameter = "1.125 in"
+rod_diameter = "1.5 in"      # final
+hole = "STD"
+
+[expected]
+lever_arm = "0.594 in"       # (tp + washer/2)/2
+Fnt = "43.5 ksi"
+Fnv = "26.1 ksi"
+trial_Z = "0.237 in**3"
+Z = "0.563 in**3"
+washer_lc = "1.19 in"
+
+[expected.lrfd]
+V = "38.0 kip"
+N = "73.2 kip"               # -0.9D + 1.0W
+M_rod = "5.64 kip*in"
+trial_fv = "9.56 ksi"
+trial_fb = "23.8 ksi"
+trial_fa = "18.4 ksi"
+trial_ft = "42.2 ksi"
+trial_Fnt_prime_available = "26.5 ksi"
+fv = "5.37 ksi"
+fb = "10.0 ksi"
+fa = "10.3 ksi"
+ft = "20.3 ksi"
+Fnt_available = "32.6 ksi"   # phi Fnt, upper limit of phi F'nt
+washer_bearing_force = "9.50 kip"
+washer_bearing_strength = "82.5 kip"
+washer_tearout_strength = "32.6 kip"
+
+[expected.asd]
+V = "22.8 kip"
+N = "42.6 kip"               # -0.6D + 0.6W
+M_rod = "3.39 kip*in"
+trial_fv = "5.73 ksi"
+trial_fb = "14.3 ksi"
+trial_fa = "10.7 ksi"
+trial_ft = "25.0 ksi"
+trial_Fnt_prime_available = "18.7 ksi"
+fv = "3.22 ksi"
+fb = "6.02 ksi"
+fa = "6.02 ksi"
+ft = "12.0 ksi"
+Fnt_available = "21.8 ksi"
+washer_bearing_force = "5.70 kip"
+washer_bearing_strength = "55.0 kip"
+washer_tearout_strength = "21.8 kip"

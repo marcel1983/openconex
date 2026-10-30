@@ -1,0 +1,101 @@
+id = "4.7-5"
+title = "Corte concéntrico resistido por llave de corte"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-5, pp. 80-91"
+feature = "base_plate.shear_lug"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W14X90"
+column_grade = "ASTM A992"
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 36"
+fc = "4 ksi"
+wall_width = "30 in"
+Vu = "25.0 kip"              # wind
+Va = "16.0 kip"
+N = "15.0 in"
+B = "15.0 in"
+rods = 4
+rod_diameter = "0.75 in"
+rod_pattern = "8.50 in"
+hef = "12.0 in"
+lug_width = "8 in"
+lug_embedment = "2 in"       # h_sl
+lug_thickness = "1 in"
+lug_weld = "0.3125 in"       # 5/16 in. fillet
+
+[expected]
+e = "3.00 in"                # from bottom of plate to mid-depth of lug embedment
+f = "4.25 in"
+hef_min_lug = "5.00 in"      # 2.5 h_sl
+c_sl = "4.25 in"
+hef_min_csl = "10.6 in"      # 2.5 c_sl
+Nb = "63.6 kip"
+ca_min = "10.8 in"
+psi_ed_N = 0.880
+A_Nco = "1300 in**2"
+A_Nc = "1280 in**2"
+Ncbg = "55.1 kip"
+phiNcbg = "38.6 kip"
+A_ef_sl = "16.0 in**2"
+V_brg_sl = "109 kip"
+phiV_brg_sl = "70.9 kip"
+lug_ca1 = "14.5 in"
+lug_A_Vc = "1210 in**2"
+lug_A_Vco = "946 in**2"
+lug_Vb = "31.4 kip"
+lug_Vcb = "40.2 kip"
+lug_phiVcb = "26.1 kip"
+lug_shear_yield_Rn = "240 kip"
+lug_shear_rupture_Rn = "312 kip"
+weld_throat_arm = "1.21 in"
+weld_kds = 1.50
+weld_Rn = "13.9 kip/in"
+plate_local_Zy = "2.00 in**3"
+web_weld_Rn = "5.57 kip/in"
+web_shear_Rn = "172 kip"
+
+[expected.lrfd]
+fp_max = "4.42 ksi"
+M = "75.0 kip*in"
+q_max = "66.3 kip/in"
+Y = "0.0967 in"
+T = "6.41 kip"
+r_rod = "3.21 kip"
+rod_strength = "14.5 kip"
+pullout_strength = "20.4 kip"
+lug_shear_yield = "240 kip"
+lug_shear_rupture = "234 kip"
+lug_flexure_yield = "90.0 kip*in"
+lug_flexure_other = "97.5 kip*in"
+weld_demand = "7.91 kip/in"
+weld_strength = "10.4 kip/in"
+plate_local_M = "47.8 kip*in"
+plate_local_strength = "90.0 kip*in"
+web_weld_demand = "1.25 kip/in"
+web_weld_strength = "4.18 kip/in"
+web_shear_strength = "129 kip"
+
+[expected.asd]
+fp_max = "2.94 ksi"
+M = "48.0 kip*in"
+q_max = "44.1 kip/in"
+Y = "0.0930 in"
+T = "4.10 kip"
+r_rod = "2.05 kip"
+rod_strength = "9.69 kip"
+lug_shear_yield = "160 kip"
+lug_shear_rupture = "156 kip"
+lug_flexure_yield = "59.9 kip*in"
+lug_flexure_other = "65.0 kip*in"
+weld_demand = "5.06 kip/in"
+weld_strength = "6.95 kip/in"
+plate_local_M = "30.6 kip*in"
+plate_local_strength = "59.9 kip*in"
+web_weld_demand = "0.800 kip/in"
+web_weld_strength = "2.79 kip/in"
+web_shear_strength = "86.0 kip"
+
+[tolerances]
+Y = 0.05

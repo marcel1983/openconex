@@ -1,0 +1,49 @@
+id = "4.7-15"
+title = "Refuerzo de anclaje para evitar el arrancamiento del concreto en tracción"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-15, pp. 134-139"
+feature = "anchors.anchor_reinforcement"
+status = "pending"
+tolerance = 0.01
+
+[given]
+rods = 4
+rod_diameter = "0.875 in"
+rod_grade = "ASTM F1554 Gr. 36"
+nut = "heavy hex"
+rod_pattern = "4.00 in"
+concrete_column = "20.0 in"  # square, anchors at the center
+fc = "4 ksi"
+rebar_grade = "ASTM A615 Gr. 60"
+fy_rebar = "60 ksi"
+Pu = "-70.0 kip"
+anchor_reinforcement = "4 #6"
+rebar_db = "0.750 in"
+rebar_area_each = "0.44 in**2"
+clear_cover = "2.00 in"      # c_c used for the required embedment
+hef_final = "14.0 in"
+
+[expected]
+hef_effective = "5.33 in"    # limited by edge distances (ACI 318 17.6.2.1.2)
+A_Nc = "400 in**2"
+A_Nco = "256 in**2"
+psi_ec_N = 1.00
+Nb = "18.7 kip"
+Ncbg = "29.2 kip"
+phi_reinforcement = 0.75
+As_req = "1.56 in**2"
+As = "1.76 in**2"
+g = "2.83 in"                # anchor to reinforcing bar, horizontal
+psi_c_hook = 0.867
+ldh = "9.71 in"
+ldh_min = "6.00 in"          # 8 db
+hef_req = "13.6 in"          # ldh + g/1.5 + cover
+cb = "4.00 in"
+confinement_term = 2.5
+ld = "17.1 in"
+le = "15.2 in"               # available development length, > 12.0 in.
+reinforcement_length = "25.3 in"
+ca1 = "8.00 in"
+side_face_limit = "20.0 in"  # 2.5 ca1 > hef: side-face blowout not applicable
+
+[expected.lrfd]
+phiNcbg = "20.4 kip"         # < 70 kips: anchor reinforcement required

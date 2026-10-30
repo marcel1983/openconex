@@ -1,0 +1,72 @@
+id = "4.7-7"
+title = "Base en arriostramiento con tracción y corte combinados (8 anclajes, placa de asiento)"
+source = "AISC DG1 3rd ed. (2024), Example 4.7-7, pp. 96-104"
+feature = "base_plate.anchor_tension_shear"
+status = "pending"
+tolerance = 0.01
+
+[given]
+column = "W21X83"
+tw = "0.5 in"                # value used in the example for the moment arm
+plate_grade = "ASTM A572 Gr. 50"
+rod_grade = "ASTM F1554 Gr. 36"
+fc = "5 ksi"
+brace_force_lrfd = "180 kip" # tension-only brace, wind
+brace_force_asd = "120 kip"
+brace_slope_horizontal = 10.125
+brace_slope_vertical = 12.0
+rods = 8
+rod_diameter = "1.5 in"
+rod_spacing_long = ["8 in", "6 in", "6 in", "8 in"]  # along the plate length
+rod_spacing_short = "6.5 in"              # 2 x 3.25 in.
+hef = "24.0 in"
+A_brg = "3.12 in**2"         # heavy hex nut bearing area
+grout_pad = true             # 0.80 factor on steel shear strength
+setting_plate_thickness = "0.25 in"
+tp = "1.75 in"
+weld_size = "0.25 in"
+edges = "none"
+
+[expected]
+Nsa = "81.8 kip"
+phiNsa = "61.4 kip"
+A_Nc = "7850 in**2"
+A_Nco = "5180 in**2"
+Nb = "226 kip"
+Ncbg = "342 kip"
+phiNcbg = "239 kip"
+Np = "125 kip"
+phiNpn = "87.5 kip"
+Vsa = "39.3 kip"
+phiVsa = "25.5 kip"
+Ncpg = "342 kip"
+Vcpg = "684 kip"
+phiVcpg = "479 kip"
+interaction = 1.15           # N/phiNn + V/phiVn <= 1.2, ACI 318 Eq. 17.8.3
+setting_plate_Rn = "58.5 kip"
+a = "3.00 in"
+b_e = "6.00 in"
+plate_Mn = "230 kip*in"
+weld_length = "48.0 in"
+
+[expected.lrfd]
+V = "116 kip"
+N = "138 kip"
+V_rod = "14.5 kip"
+N_rod = "17.3 kip"
+setting_plate_strength = "43.9 kip"
+field_weld_strength = "134 kip"
+M_plate = "51.9 kip*in"
+plate_strength = "207 kip*in"
+weld_strength = "401 kip"
+
+[expected.asd]
+V = "77.4 kip"
+N = "91.7 kip"
+V_rod = "9.68 kip"
+N_rod = "11.5 kip"
+setting_plate_strength = "29.3 kip"
+field_weld_strength = "89.0 kip"
+M_plate = "34.5 kip*in"
+plate_strength = "138 kip*in"
+weld_strength = "268 kip"
