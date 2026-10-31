@@ -71,11 +71,12 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 
 | Campo | Por defecto | Significado |
 |---|---|---|
+| `connection_type` | `"exposed"` | Tipo de conexión: `exposed` (placa base expuesta) o `embedded` (base empotrada). Si se omite, se deduce de `embedded_base`. |
 | `column` | (obligatorio) | Columna: etiqueta del catálogo AISC (`"W12X96"`) o sección genérica (ver más abajo). |
 | `column_grade` | `"ASTM A992"` | Acero de la columna cuando `column` es una etiqueta del catálogo. |
-| `N` | (obligatorio) | Largo de la placa, en la dirección del eje fuerte. |
-| `B` | (obligatorio) | Ancho de la placa. |
-| `tp` | (obligatorio) | Espesor de la placa. |
+| `N` | (obligatorio en `exposed`) | Largo de la placa, en la dirección del eje fuerte. |
+| `B` | (obligatorio en `exposed`) | Ancho de la placa. |
+| `tp` | (obligatorio en `exposed`) | Espesor de la placa. |
 | `plate_grade` | `"ASTM A572 Gr. 50"` | Acero de la placa. |
 | `pressure_model` | `"rectangular"` | Distribución de presiones: `rectangular` (DG1 §4.3) o `triangular` (DG1 Apéndice B.2). |
 | `bearing_area_model` | `"plate"` | Área para el aplastamiento: `plate` (B × N) o `effective` (área efectiva bajo la columna, DG1 Apéndice B.3). |
@@ -84,10 +85,10 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `bearing_area` | ninguno | Área de apoyo de la tuerca o placa embebida para la extracción del anclaje; si se omite, se usa la tuerca hexagonal pesada. |
 | `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal; solo se usan en los planos y el modelo 3D. |
 | `grout` | `"1.5 in"` | Espesor del mortero de nivelación. Se usa en los planos y en el brazo de la llave de corte. |
-| `rod_diameter` | (obligatorio) | Diámetro de las barras de anclaje. |
+| `rod_diameter` | (obligatorio en `exposed`) | Diámetro de las barras de anclaje. |
 | `rod_grade` | `"ASTM F1554 Gr. 36"` | Material de las barras. |
 | `rods_per_side` | `2` | Barras en cada fila. |
-| `f` | (obligatorio) | Distancia del eje de la columna a cada fila de anclajes. |
+| `f` | (obligatorio en `exposed`) | Distancia del eje de la columna a cada fila de anclajes. |
 | `rod_spacing` | `0` | Distancia entre las barras extremas de una fila. Con 0 o una sola barra por fila, el eje débil no tiene anclajes que trabajen a tracción. |
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
@@ -195,6 +196,7 @@ La verificación es LRFD, requiere el modelo de presión rectangular, no admite 
 Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal, con placas de cara soldadas para la compresión axial (ejemplo 5.3-1):
 
 ```json
+"connection_type": "embedded",
 "embedded_base": {
   "embedment": "22 in",
   "foundation_width": "60 in",
@@ -210,7 +212,7 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
 | `face_plate_thickness` | (obligatorio) | Espesor de las placas de cara. |
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
 
-Cuando se define `embedded_base`, la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta. Es LRFD, solo para perfiles I y no admite momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta. Es LRFD, solo para perfiles I y no admite momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
 
 ### Barras del pedestal (`pedestal_rebars`)
 

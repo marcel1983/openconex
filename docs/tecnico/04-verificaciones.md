@@ -17,8 +17,8 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.biaxial` | Interacción de flexión biaxial (M/M_cap)² + (M2/M2_cap)² ≤ 1 | DG1 §4.3.7, Ec. 4-69 | ✔ |
 | `base_plate.weak_base_area` | Sección reducida de la barra dúctil | DG1 §6.4.2 | ✔ |
 | `base_plate.weak_base_stretch` | Longitud de estiramiento de la barra dúctil | DG1 §6.4.2 | ✔ |
-| `base_plate.anchor_column_clearance` | Separación de los anclajes a la columna | DG1 §4.2 | ✔ sin `embedded_base` |
-| `base_plate.anchor_plate_edge` | Distancia de los anclajes al borde de la placa | AISC 360-22 §J3.4 | ✔ sin `embedded_base` |
+| `base_plate.anchor_column_clearance` | Separación de los anclajes a la columna | DG1 §4.2 | ✔ con placa expuesta |
+| `base_plate.anchor_plate_edge` | Distancia de los anclajes al borde de la placa | AISC 360-22 §J3.4 | ✔ con placa expuesta |
 | `base_plate.anchor_lug_clearance` | Separación de los anclajes a la llave de corte | DG1 §4.5 | ✔ con `shear_lug` |
 | `base_plate.anchor_rebar_clearance` | Separación de los anclajes a las barras del pedestal | AISC 360-22 §J3.3 | ✔ con `pedestal_rebars` |
 | `base_plate.friction` | Corte por fricción | DG1 §4.3.5, Ec. 4-30 | ✔ |

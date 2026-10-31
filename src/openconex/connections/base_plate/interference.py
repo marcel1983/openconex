@@ -20,7 +20,7 @@ from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
 from openconex.core.model import HSSKind, HSSShape
 from openconex.kernel.design import Calc
-from openconex.units import Kind, from_internal
+from openconex.units import Kind, from_internal, to_internal
 
 from .check import BasePlate
 
@@ -38,8 +38,15 @@ def _rod_positions(bp: BasePlate) -> list[tuple[float, float]]:
 
 
 def _washer_size(bp: BasePlate) -> float:
-    """Square plate-washer size [internal length] from Manual Table 14-2."""
-    _, size, _ = base_plate_hole(from_internal(bp.rod.diameter, Kind.LENGTH, "in"))
+    """Square plate-washer size [internal length] from Manual Table 14-2.
+
+    Small rods not listed in Table 14-2 use a conservative 2 in. washer.
+    """
+    d_in = from_internal(bp.rod.diameter, Kind.LENGTH, "in")
+    try:
+        _, size, _ = base_plate_hole(d_in)
+    except ValueError:
+        size = to_internal(max(2.0, 1.5 * d_in + 0.125), "in", Kind.LENGTH)
     return size
 
 

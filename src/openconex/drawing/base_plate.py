@@ -89,6 +89,7 @@ class _Sheet:
         style.dxf.dimexe = size * 0.4
         style.dxf.dimexo = size * 0.4
         style.dxf.dimgap = size * 0.3
+        style.dxf.dimlfac = 1.0
         if self.unit == "mm":
             style.dxf.dimlunit, style.dxf.dimdec = 2, 0  # decimal, whole millimetres
         else:

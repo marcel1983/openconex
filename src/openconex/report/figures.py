@@ -9,7 +9,13 @@ from dataclasses import dataclass
 
 from openconex.connections.base_plate.check import BasePlate
 from openconex.drawing.base_plate import BasePlateDrawing, base_plate_dxf
-from openconex.geometry3d.base_plate import base_plate_parts, isometric_svg, occ_available
+from openconex.drawing.embedded_base import embedded_base_dxf
+from openconex.geometry3d.base_plate import (
+    base_plate_parts,
+    embedded_base_parts,
+    isometric_svg,
+    occ_available,
+)
 from openconex.i18n import tr
 from openconex.io.project import Project
 from openconex.units import Kind, UnitSystem
@@ -38,7 +44,9 @@ def dxf_to_svg(doc, width: float = 210, height: float = 150) -> str:
 
     backend = SVGBackend()
     Frontend(RenderContext(doc), backend).draw_layout(doc.modelspace())
-    return backend.get_string(Page(width, height))
+    svg = backend.get_string(Page(width, height))
+    # ezdxf uses a dark model-space background; reports are printed on white.
+    return svg.replace('fill="#212830"', 'fill="#ffffff"')
 
 
 def svg_to_png(svg: str, width: int = 1600) -> bytes | None:
@@ -78,22 +86,33 @@ def _options(project: Project) -> BasePlateDrawing:
         title=info.name, number=info.number, revision=info.revision, date=info.date)
 
 
+def _add_isometric(figures: list[Figure], parts, lang: str) -> None:
+    svg = isometric_svg(parts)
+    if svg:
+        figures.append(Figure("isometric", tr("report.figure_isometric", lang), svg,
+                              png=svg_to_png(svg)))
+
+
 def base_plate_figures(project: Project, bp: BasePlate, lang: str,
                        units: UnitSystem) -> list[Figure]:
-    """Plan and elevation figures rendered from the same DXF as the report drawing."""
+    """Plan, elevation and isometric figures of the connection."""
     options = _options(project)
+    embedded = bp.embedded_base
     figures = []
     for key, view in (("plan", "plan"), ("elevation", "elevation")):
-        doc = base_plate_dxf(bp, units, lang, options, view=view)
+        doc = (embedded_base_dxf(bp, units, lang, options, view=view)
+               if embedded is not None else
+               base_plate_dxf(bp, units, lang, options, view=view))
         svg = dxf_to_svg(doc)
         figures.append(Figure(
             key=key,
             caption=tr(f"report.figure_{key}", lang),
             svg=svg, png=svg_to_png(svg)))
     if occ_available():
-        parts = base_plate_parts(bp, options.grout, options.pedestal_N, options.pedestal_B)
-        svg = isometric_svg(parts)
-        if svg:
-            figures.append(Figure("isometric", tr("report.figure_isometric", lang), svg,
-                                  png=svg_to_png(svg)))
+        if embedded is not None:
+            parts = embedded_base_parts(bp, options.pedestal_B)
+        else:
+            parts = base_plate_parts(bp, options.grout, options.pedestal_N,
+                                     options.pedestal_B)
+        _add_isometric(figures, parts, lang)
     return figures

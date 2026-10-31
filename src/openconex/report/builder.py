@@ -33,6 +33,14 @@ CODES = [
     "ASCE/SEI 7-22, Minimum Design Loads and Associated Criteria, Chapter 2",
 ]
 
+EMBEDDED_CODES = [
+    "ANSI/AISC 360-22, Specification for Structural Steel Buildings",
+    "AISC Design Guide 1, Base Connection Design for Steel Structures, 3rd ed. (2024)",
+    "ANSI/AISC 341-22, Seismic Provisions for Structural Steel Buildings",
+    "ACI 318-19, Building Code Requirements for Structural Concrete",
+    "ASCE/SEI 7-22, Minimum Design Loads and Associated Criteria, Chapter 2",
+]
+
 
 def fmt(value: float, kind: Kind, units: UnitSystem, precision: int = 4) -> str:
     if kind is Kind.DIMENSIONLESS:
@@ -129,54 +137,62 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         return fmt(value, kind, units)
 
     L, T = Kind.LENGTH, Kind.THICKNESS
-    inputs = [
-        Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
-        Row([tr("input.N", lang), q(bp.N, L)]),
-        Row([tr("input.B", lang), q(bp.B, L)]),
-        Row([tr("input.tp", lang), q(bp.tp, T)]),
-        Row([tr("input.grade", lang), bp.plate_grade]),
-        Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
-        Row([tr("input.A2_over_A1", lang), f"{bp.A2_over_A1:g}"]),
-        Row([tr("input.rods", lang), f"{2 * bp.rods_per_side} × {q(bp.rod.diameter, L)} "
-             f"{bp.rod.grade}"]),
-        Row([tr("input.f", lang), q(bp.f, L)]),
-        Row([tr("input.rod_spacing", lang), q(bp.rod_spacing, L)]),
-        Row([tr("input.hef", lang), q(bp.hef, L)]),
-    ]
-    if bp.flange_weld:
-        inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
-    if bp.rod_bending_lever is not None:
-        inputs.append(Row([tr("input.rod_bending_lever", lang), q(bp.rod_bending_lever, L)]))
-    if bp.reinforcement is not None:
-        reinforcement = bp.reinforcement
-        inputs.append(Row([tr("input.reinforcement", lang),
-                           f"{reinforcement.bars or '—'} · "
-                           f"{q(reinforcement.area, Kind.AREA)} · "
-                           f"{q(reinforcement.fy, Kind.STRESS)}"]))
-    if bp.pedestal_rebars:
-        inputs.append(Row([tr("input.pedestal_rebars", lang),
-                           f"{len(bp.pedestal_rebars)} × Ø "
-                           f"{q(bp.pedestal_rebars[0].diameter, L)}"]))
-    if bp.bearing_area is not None:
-        inputs.append(Row([tr("input.bearing_area", lang), q(bp.bearing_area, Kind.AREA)]))
-    if bp.weak_base is not None:
-        weak = bp.weak_base
-        inputs.append(Row([tr("input.weak_base", lang),
-                           f"Ø {q(weak.reduced_diameter, L)} · "
-                           f"L_str {q(weak.stretch_length, L)} · Rt {weak.Rt:g}"]))
-    if bp.embedded_base is not None:
-        embedded = bp.embedded_base
-        inputs.append(Row([tr("input.embedded_base", lang),
-                           f"h_e {q(embedded.embedment, L)} · "
-                           f"B_f {q(embedded.foundation_width, L)} · "
-                           f"t_pf {q(embedded.face_plate_thickness, T)} · "
-                           f"β1 {embedded.beta1:g}"]))
-    if bp.shear_lug:
-        lug = bp.shear_lug
-        inputs.append(Row([tr("input.shear_lug", lang),
-                           f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
-                           f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
-                           + tr(f"input.lug_direction_{lug.direction}", lang)]))
+    embedded = bp.embedded_base
+    if embedded is not None:
+        inputs = [
+            Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
+            Row([tr("input.grade", lang), bp.plate_grade]),
+            Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+            Row([tr("input.embedment", lang), q(embedded.embedment, L)]),
+            Row([tr("input.foundation_width", lang), q(embedded.foundation_width, L)]),
+            Row([tr("input.face_plate_thickness", lang),
+                 q(embedded.face_plate_thickness, T)]),
+            Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]),
+        ]
+    else:
+        inputs = [
+            Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
+            Row([tr("input.N", lang), q(bp.N, L)]),
+            Row([tr("input.B", lang), q(bp.B, L)]),
+            Row([tr("input.tp", lang), q(bp.tp, T)]),
+            Row([tr("input.grade", lang), bp.plate_grade]),
+            Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+            Row([tr("input.A2_over_A1", lang), f"{bp.A2_over_A1:g}"]),
+            Row([tr("input.rods", lang), f"{2 * bp.rods_per_side} × "
+                 f"{q(bp.rod.diameter, L)} {bp.rod.grade}"]),
+            Row([tr("input.f", lang), q(bp.f, L)]),
+            Row([tr("input.rod_spacing", lang), q(bp.rod_spacing, L)]),
+            Row([tr("input.hef", lang), q(bp.hef, L)]),
+        ]
+        if bp.flange_weld:
+            inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+        if bp.rod_bending_lever is not None:
+            inputs.append(Row([tr("input.rod_bending_lever", lang),
+                               q(bp.rod_bending_lever, L)]))
+        if bp.reinforcement is not None:
+            reinforcement = bp.reinforcement
+            inputs.append(Row([tr("input.reinforcement", lang),
+                               f"{reinforcement.bars or '—'} · "
+                               f"{q(reinforcement.area, Kind.AREA)} · "
+                               f"{q(reinforcement.fy, Kind.STRESS)}"]))
+        if bp.pedestal_rebars:
+            inputs.append(Row([tr("input.pedestal_rebars", lang),
+                               f"{len(bp.pedestal_rebars)} × Ø "
+                               f"{q(bp.pedestal_rebars[0].diameter, L)}"]))
+        if bp.bearing_area is not None:
+            inputs.append(Row([tr("input.bearing_area", lang),
+                               q(bp.bearing_area, Kind.AREA)]))
+        if bp.weak_base is not None:
+            weak = bp.weak_base
+            inputs.append(Row([tr("input.weak_base", lang),
+                               f"Ø {q(weak.reduced_diameter, L)} · "
+                               f"L_str {q(weak.stretch_length, L)} · Rt {weak.Rt:g}"]))
+        if bp.shear_lug:
+            lug = bp.shear_lug
+            inputs.append(Row([tr("input.shear_lug", lang),
+                               f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
+                               f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
+                               + tr(f"input.lug_direction_{lug.direction}", lang)]))
     forces = project.case_forces()
     biaxial = any(f.V3 or f.M2 for f in forces.values())
     case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]
@@ -191,32 +207,38 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
                     for c in combos]
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
-    assumptions = [tr("report.assumption_rigid", lang), tr("report.assumption_aci_lrfd", lang)]
-    if bp.cracked:
-        assumptions.append(tr("report.assumption_cracked", lang))
-    if bp.seismic:
-        assumptions.append(tr("report.assumption_seismic", lang))
-    if isinstance(bp.column, HSSShape):
-        key = ("report.assumption_hss_round"
-               if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
-        assumptions.append(tr(key, lang))
-    if bp.pressure_model is PressureModel.TRIANGULAR:
-        assumptions.append(tr("report.assumption_triangular", lang))
-    if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
-        assumptions.append(tr("report.assumption_effective_area", lang))
-    if bp.weak_base is not None:
-        assumptions.append(tr("report.assumption_weak_base", lang))
-    if bp.embedded_base is not None:
-        assumptions.append(tr("report.assumption_embedded_base", lang))
+    if embedded is not None:
+        assumptions = [tr("report.assumption_embedded_lrfd", lang),
+                       tr("report.assumption_embedded_base", lang),
+                       tr("report.assumption_embedded_limits", lang)]
+    else:
+        assumptions = [tr("report.assumption_rigid", lang),
+                       tr("report.assumption_aci_lrfd", lang)]
+        if bp.cracked:
+            assumptions.append(tr("report.assumption_cracked", lang))
+        if bp.seismic:
+            assumptions.append(tr("report.assumption_seismic", lang))
+        if isinstance(bp.column, HSSShape):
+            key = ("report.assumption_hss_round"
+                   if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
+            assumptions.append(tr(key, lang))
+        if bp.pressure_model is PressureModel.TRIANGULAR:
+            assumptions.append(tr("report.assumption_triangular", lang))
+        if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
+            assumptions.append(tr("report.assumption_effective_area", lang))
+        if bp.weak_base is not None:
+            assumptions.append(tr("report.assumption_weak_base", lang))
     figures = base_plate_figures(project, bp, lang, units)
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),
-        subtitle=tr("report.subtitle_base_plate", lang),
+        subtitle=tr("report.subtitle_embedded_base" if embedded is not None
+                    else "report.subtitle_base_plate", lang),
         info=[(tr("report.project", lang), info.name or "—")] + [
             (tr(f"report.{k}", lang), getattr(info, k) or "—")
             for k in ("number", "client", "engineer", "revision", "date")],
-        codes=CODES, assumptions=assumptions, inputs=inputs, cases=cases, case_headers=case_headers,
+        codes=EMBEDDED_CODES if embedded is not None else CODES,
+        assumptions=assumptions, inputs=inputs, cases=cases, case_headers=case_headers,
         combinations=combinations, summary=summary,
         checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",

@@ -11,21 +11,13 @@
     "units": "US"
   },
   "base_plate": {
+    "connection_type": "embedded",
     "column": "W14X176",
     "column_grade": "ASTM A992",
-    "N": "24 in",
-    "B": "24 in",
-    "tp": "1 in",
     "plate_grade": "ASTM A572 Gr. 50",
     "pressure_model": "rectangular",
     "bearing_area_model": "plate",
     "fc": "4 ksi",
-    "rod_diameter": "1 in",
-    "rod_grade": "ASTM F1554 Gr. 36",
-    "rods_per_side": 2,
-    "f": "8 in",
-    "rod_spacing": "0 in",
-    "hef": "0 in",
     "embedded_base": {
       "embedment": "22 in",
       "foundation_width": "60 in",
@@ -34,12 +26,25 @@
     }
   },
   "cases": [
-    {"name": "S1", "type": "E", "P": "250 kip", "M": "700 kip*ft", "V": "96 kip"}
+    {
+      "name": "S1",
+      "type": "E",
+      "P": "250 kip",
+      "M": "700 kip*ft",
+      "V": "96 kip"
+    }
   ],
   "combinations": {
     "include_code": false,
     "custom": [
-      {"name": "S1-LRFD", "method": "LRFD", "factors": {"S1": 1.0}, "source": "DG1 5.3-1"}
+      {
+        "name": "S1-LRFD",
+        "method": "LRFD",
+        "factors": {
+          "S1": 1.0
+        },
+        "source": "DG1 5.3-1"
+      }
     ]
   }
 }

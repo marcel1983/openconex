@@ -19,8 +19,8 @@ from openconex.connections.base_plate.check import BasePlate
 from openconex.core.model import HSSKind, HSSShape
 from openconex.drawing.base_plate import _rod_positions, anchor_hole, plate_washer
 
-__all__ = ["Part", "base_plate_parts", "isometric_svg", "occ_available", "write_step",
-           "write_stl"]
+__all__ = ["Part", "base_plate_parts", "embedded_base_parts", "isometric_svg",
+           "occ_available", "write_step", "write_stl"]
 
 
 def occ_available() -> bool:
@@ -130,6 +130,45 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         parts.append(Part(f"washer_{i}", washer))
         parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top + w_t, af, d, d)))
         parts.append(Part(f"nut_embedded_{i}", _hex_nut(x, y, -hef, af, d, d)))
+    return parts
+
+
+def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
+                        foundation_depth: float | None = None,
+                        column_height: float | None = None) -> list[Part]:
+    """Solids of a Type I embedded base: foundation, column and face plates."""
+    _require()
+    embedded = bp.embedded_base
+    col = bp.column
+    fw = embedded.foundation_width
+    fl = foundation_length or fw
+    depth = foundation_depth or embedded.embedment + 304.8
+    h = column_height or 1.5 * col.d
+    z0 = -embedded.embedment
+    parts = [Part("foundation", _box(-fw / 2, -fl / 2, -depth, fw, fl, depth))]
+    if isinstance(col, HSSShape):
+        if col.kind is HSSKind.ROUND:
+            outer = _cylinder(0, 0, z0, col.d / 2, embedded.embedment + h)
+            inner = _cylinder(0, 0, z0 - 1, col.d / 2 - col.t, embedded.embedment + h + 2)
+        else:
+            outer = _box(-col.d / 2, -col.bf / 2, z0, col.d, col.bf, embedded.embedment + h)
+            inner = _box(-col.d / 2 + col.t, -col.bf / 2 + col.t, z0 - 1,
+                         col.d - 2 * col.t, col.bf - 2 * col.t,
+                         embedded.embedment + h + 2)
+        column = _cut_all(outer, [inner])
+    else:
+        flanges = [_box(sx * col.d / 2 - (col.tf if sx > 0 else 0), -col.bf / 2, z0,
+                        col.tf, col.bf, embedded.embedment + h) for sx in (-1, 1)]
+        web = _box(-col.d / 2 + col.tf, -col.tw / 2, z0,
+                   col.d - 2 * col.tf, col.tw, embedded.embedment + h)
+        column = _fuse_all([*flanges, web])
+    parts.append(Part("column", column))
+    tp = embedded.face_plate_thickness
+    x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
+    parts.append(Part("face_plate_front", _box(
+        x0, col.tw / 2, z0 - tp, x1 - x0, (col.bf - col.tw) / 2, tp)))
+    parts.append(Part("face_plate_back", _box(
+        x0, -col.bf / 2, z0 - tp, x1 - x0, (col.bf - col.tw) / 2, tp)))
     return parts
 
 

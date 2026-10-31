@@ -9,7 +9,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Área efectiva: integrada para compresión concéntrica de perfiles I (`bearing_area_model = "effective"`).
 - Refuerzo de anclaje: integrado con capacidad, desarrollo y empotramiento (`reinforcement`).
 - Base sísmica débil: integrada con anclajes dúctiles y diseño por capacidad (`weak_base`).
-- Base empotrada tipo I: integrada con momento por apoyo horizontal y placas de cara (`embedded_base`).
+- Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con entradas, revisión y figuras específicas.
 - El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
 
 ## Matriz de cierre
@@ -21,7 +21,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
-| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Integrada en el proyecto y la memoria |
+| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo de conexión, memoria y figuras propias |
 | Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
 | Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
 | HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |

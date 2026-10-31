@@ -4,7 +4,7 @@ Código: `connections/base_plate/check.py` (`check_base_plate`) con los modelos 
 
 Para cada combinación se calculan las fuerzas P, V = √(V2² + V3²), M = |M3| y M2 = |M2|, y se siguen estos pasos.
 
-Si el proyecto define `embedded_base`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta.
+Si el proyecto define `connection_type = "embedded"`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta.
 
 ## 0. Llave de corte (si la hay)
 
@@ -93,7 +93,7 @@ Las verificaciones de concreto son solo LRFD.
 
 Cada ala transmite la fuerza R = M/d como carga transversal (θ = 90°) sobre una soldadura de filete de largo b_f (DG1 Ejemplo 4.7-9; AISC 360-22 §J2.4).
 
-## 7. Base empotrada (si se define `embedded_base`)
+## 7. Base empotrada (si `connection_type = "embedded"`)
 
 La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seismic.face_plate_design`:
 

@@ -2,26 +2,30 @@
 # Copyright (C) 2026 The OpenConex contributors
 import datetime as dt
 import re
+from pathlib import Path
 
 import pytest
 from docx import Document
 
 from openconex.connections.base_plate.check import PressureModel
 from openconex.geometry3d.base_plate import occ_available
-from openconex.io.project import CustomCombinationInput, HSSSectionInput
+from openconex.io.project import CustomCombinationInput, HSSSectionInput, load_project
 from openconex.report.builder import build_base_plate_report, factor_expression
 from openconex.report.docx import latex_to_text, write_docx
 from openconex.report.html import latex_to_mathml, render_html
 from openconex.report.pdf import pdf_available, write_pdf
 
 TODAY = dt.date(2026, 10, 30)
+EXAMPLES = Path(__file__).parents[2] / "examples"
 
 
 def test_report_content(project):
     r = build_base_plate_report(project, TODAY)
     assert r.ok
-    assert len(r.summary) == len(r.checks) == 7
-    assert {b.check_id for b in r.checks} >= {"base_plate.bearing", "anchor.steel_tension"}
+    assert len(r.summary) == len(r.checks) == 9
+    assert {b.check_id for b in r.checks} >= {
+        "base_plate.bearing", "anchor.steel_tension",
+        "base_plate.anchor_column_clearance", "base_plate.anchor_plate_edge"}
     assert all(b.lines for b in r.checks)
     worst = max(r.checks, key=lambda b: b.ratio)
     assert worst.ratio == pytest.approx(0.976, abs=0.001)
@@ -37,6 +41,21 @@ def test_report_figures(project):
     html = render_html(r)
     assert html.count("<figure>") == len(r.figures)
     assert html.count("data:image/svg+xml;base64") == len(r.figures)
+
+
+def test_embedded_report_uses_its_own_inputs_and_codes():
+    project = load_project(EXAMPLES / "base_plate_embedded_base.ocnx")
+    r = build_base_plate_report(project, TODAY)
+    assert r.subtitle == "Base empotrada de columna"
+    labels = [row.cells[0] for row in r.inputs]
+    assert "Profundidad de empotramiento h_e" in labels
+    assert "Ancho del cimiento B_f" in labels
+    assert "Espesor de las placas de cara t_pf" in labels
+    assert "Largo N" not in labels and "Barras de anclaje" not in labels
+    assert any("341-22" in code for code in r.codes)
+    assert not any("Placa rígida" in assumption for assumption in r.assumptions)
+    assert [figure.key for figure in r.figures] == (
+        ["plan", "elevation", "isometric"] if occ_available() else ["plan", "elevation"])
 
 
 @pytest.mark.parametrize(("lang", "title", "status"), [("es", "Memoria de cálculo", "Cumple"),

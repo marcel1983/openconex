@@ -229,13 +229,15 @@ class WeakBaseInput(_Input):
 
 
 class BasePlateInput(_Input):
+    connection_type: Literal["exposed", "embedded"] | None = None
+    """``exposed`` (default) or ``embedded``. Omitted: inferred from ``embedded_base``."""
     column: str | ColumnSectionInput
     """AISC label (e.g. ``W12X96``) or a generic section object."""
     column_grade: str = "ASTM A992"
     """Grade of the catalog shape; generic sections carry their own ``grade``."""
-    N: Quantity
-    B: Quantity
-    tp: Quantity
+    N: Quantity | None = None
+    B: Quantity | None = None
+    tp: Quantity | None = None
     plate_grade: str = "ASTM A572 Gr. 50"
     pressure_model: PressureModel = PressureModel.RECTANGULAR
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
@@ -248,10 +250,10 @@ class BasePlateInput(_Input):
     pedestal_N: Quantity | None = None
     pedestal_B: Quantity | None = None
     grout: Quantity = "1.5 in"
-    rod_diameter: Quantity
+    rod_diameter: Quantity | None = None
     rod_grade: str = "ASTM F1554 Gr. 36"
     rods_per_side: int = 2
-    f: Quantity
+    f: Quantity | None = None
     """Column axis to each anchor row."""
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
@@ -357,6 +359,20 @@ class Project(_Input):
                 raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
         elif column.grade not in library:
             raise ValueError(f"unknown column material: {column.grade!r}")
+        embedded = self.base_plate.embedded_base
+        connection = self.base_plate.connection_type or (
+            "embedded" if embedded is not None else "exposed")
+        if connection == "embedded" and embedded is None:
+            raise ValueError("connection_type 'embedded' requires embedded_base")
+        if connection == "exposed" and embedded is not None:
+            raise ValueError("embedded_base requires connection_type 'embedded'")
+        if connection == "exposed":
+            missing = [name for name, value in (
+                ("N", self.base_plate.N), ("B", self.base_plate.B),
+                ("tp", self.base_plate.tp), ("rod_diameter", self.base_plate.rod_diameter),
+                ("f", self.base_plate.f)) if value is None]
+            if missing:
+                raise ValueError(f"exposed base plate needs {', '.join(missing)}")
         if self.base_plate.bearing_area_model is BearingAreaModel.EFFECTIVE:
             if isinstance(column, HSSSectionInput):
                 raise ValueError("effective bearing area is only defined for I-shapes")
@@ -379,7 +395,6 @@ class Project(_Input):
         if (self.base_plate.bearing_area is not None
                 and self.quantity(self.base_plate.bearing_area, Kind.AREA) <= 0):
             raise ValueError("bearing_area must be positive")
-        embedded = self.base_plate.embedded_base
         if embedded is not None:
             if weak is not None:
                 raise ValueError("embedded base and weak base cannot be combined")
@@ -468,12 +483,16 @@ class Project(_Input):
         library = self.material_library()
         column = self.column_model(library)
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
+
+        def dim(value, kind, default=0.0):
+            return default if value is None else self.quantity(value, kind)
+
         return BasePlate(
-            column=column, N=self.quantity(bp.N, L), B=self.quantity(bp.B, L),
-            tp=self.quantity(bp.tp, T),
+            column=column, N=dim(bp.N, L), B=dim(bp.B, L), tp=dim(bp.tp, T),
             fc=self.quantity(bp.fc, Kind.STRESS),
-            rod=BoltSpec(diameter=self.quantity(bp.rod_diameter, L), grade=bp.rod_grade),
-            f=self.quantity(bp.f, L), rods_per_side=bp.rods_per_side,
+            rod=BoltSpec(diameter=dim(bp.rod_diameter, L, self.quantity("1 in", L)),
+                         grade=bp.rod_grade),
+            f=dim(bp.f, L), rods_per_side=bp.rods_per_side,
             rod_spacing=self.quantity(bp.rod_spacing, L), hef=self.quantity(bp.hef, L),
             plate_grade=bp.plate_grade, pressure_model=bp.pressure_model,
             bearing_area_model=bp.bearing_area_model,
