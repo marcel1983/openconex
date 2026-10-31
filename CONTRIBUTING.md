@@ -28,6 +28,16 @@ git commit -s -m "mensaje"
 - **Documentación:** se actualiza en el mismo pull request que el cambio (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`). La guía está en [docs/tecnico/08-mantener-documentacion.md](docs/tecnico/08-mantener-documentacion.md); `tests/test_docs.py` falla si algo queda sin documentar.
 - **Estilo:** `ruff check .`
 
+### Pull requests encadenados
+Un PR encadenado es uno cuya base es la rama de otro PR, no `main`.
+  1. Hacer el merge del PR de base primero.
+  2. Antes de hacer el merge del PR encadenado, cambiar su base a `main` (en GitHub: *Edit* junto al título, o `gh pr edit <n> --base main`) y esperar a que la CI vuelva a pasar.
+  3. Después del merge, comprobar que el commit está en `main` (`git merge-base --is-ancestor <commit> origin/main`).
+
+  Si se hace el merge sin cambiar la base, el PR queda "fusionado" en la rama del otro PR y su contenido nunca llega a `main` (pasó con el PR #24).
+
+  Alternativa más segura: abrir el PR encadenado con base `main` desde el principio. Hasta que se haga el merge del otro PR, su diff incluye también los commits de ese PR (indicarlo en la descripción), pero nunca puede quedar fuera de `main`.
+
 ### Entorno
 ```bash
 python -m venv .venv
@@ -40,6 +50,7 @@ python -m venv .venv
 
 Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
 
+- **Stacked pull requests** (base is another PR's branch): merge the base PR first, then retarget the stacked PR to `main` (`gh pr edit <n> --base main`) and wait for CI before merging it; otherwise it merges into the other branch and never reaches `main`.
 - **DCO, no CLA:** sign off every commit (`git commit -s`) to certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/).
 - **SPDX header** in every Python file (see above); derived code keeps its original copyright notice.
 - **Third-party code** only under GPL-3.0-compatible licenses.

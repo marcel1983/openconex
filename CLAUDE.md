@@ -13,6 +13,14 @@ La tabla de qué actualizar según el tipo de cambio está en `docs/tecnico/08-m
 ## Convenciones del proyecto
 
 - Rama nueva y pull request para cada cambio; no hacer merge sin que lo pida el usuario.
+- **PRs encadenados** (un PR cuya base es la rama de otro PR, no `main`):
+  1. Hacer el merge del PR de base primero.
+  2. Antes de hacer el merge del PR encadenado, cambiar su base a `main` (en GitHub: *Edit* junto al título, o `gh pr edit <n> --base main`) y esperar a que la CI vuelva a pasar.
+  3. Después del merge, comprobar que el commit está en `main` (`git merge-base --is-ancestor <commit> origin/main`).
+
+  Si se hace el merge sin cambiar la base, el PR queda "fusionado" en la rama del otro PR y su contenido nunca llega a `main` (pasó con el PR #24).
+
+  Alternativa más segura: abrir el PR encadenado con base `main` desde el principio. Hasta que se haga el merge del otro PR, su diff incluye también los commits de ese PR (indicarlo en la descripción), pero nunca puede quedar fuera de `main`.
 - Commits con `git commit -s` (DCO).
 - Encabezado SPDX en cada archivo Python.
 - Motor en N, mm y MPa; convertir solo en los bordes con `openconex.units`.
