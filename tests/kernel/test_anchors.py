@@ -130,6 +130,27 @@ def test_dg1_4_7_15_edges_and_reinforcement():
     assert kips(reinf.capacity) == pytest.approx(0.75 * 60 * 1.76)
 
 
+def test_dg1_4_7_15_hooked_bar_geometry():
+    development = A.hooked_bar_ldh(ksi(60), ksi(4), inch(0.75))
+    assert from_internal(development.ldh, Kind.LENGTH, "in") == pytest.approx(9.71, rel=0.01)
+    assert from_internal(development.ldh_min, Kind.LENGTH, "in") == pytest.approx(6.0)
+    assert development.psi_c == pytest.approx(0.867, rel=0.01)
+
+
+def test_dg1_4_7_15_reinforcement_design():
+    checks = A.anchor_reinforcement_design(
+        to_internal(70, "kip", Kind.FORCE), ksi(60), to_internal(1.76, "in**2", Kind.AREA),
+        inch(0.75), inch(2.0), inch(2.83), ksi(4), inch(14), inch(15.2), LRFD)
+    by_id = {check.id: check for check in checks}
+    assert set(by_id) == {"anchor.reinforcement", "anchor.reinforcement_development",
+                          "anchor.reinforcement_embedment"}
+    assert all(check.status == "ok" for check in checks)
+    capacity = by_id["anchor.reinforcement"]
+    assert in2(step(capacity, "A_{s,req}")) == pytest.approx(1.56, rel=0.01)
+    assert in2(step(capacity, "A_s")) == pytest.approx(1.76, rel=0.01)
+    assert kips(capacity.capacity) == pytest.approx(79.2, rel=0.01)
+
+
 def test_dg1_6_4_1_seismic():
     bo = A.breakout_tension(inch(24), ksi(4), 0.0, LRFD, span_x=inch(16), seismic=True)
     assert in2(step(bo, "A_{Nc}")) == pytest.approx(6340, rel=0.005)

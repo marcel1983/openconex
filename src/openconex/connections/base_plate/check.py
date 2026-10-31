@@ -46,6 +46,7 @@ __all__ = [
     "BasePlate",
     "BearingAreaModel",
     "PressureModel",
+    "Reinforcement",
     "ShearLug",
     "check_base_plate",
     "check_envelope",
@@ -94,6 +95,21 @@ class ShearLug:
 
 
 @dataclass(frozen=True)
+class Reinforcement:
+    """Hooked anchor reinforcement developed on both sides of the breakout."""
+
+    area: float
+    fy: float
+    db: float
+    clear_cover: float
+    anchor_to_bar: float
+    """Horizontal distance from the anchor to the reinforcing bar."""
+    le: float
+    """Available development length."""
+    bars: str = ""
+
+
+@dataclass(frozen=True)
 class BasePlate:
     column: IShape | HSSShape
     N: float
@@ -127,6 +143,7 @@ class BasePlate:
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
     rod_bending_lever: float | None = None
     """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
+    reinforcement: Reinforcement | None = None
 
     @property
     def Fy(self) -> float:
@@ -512,7 +529,13 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if method is Method.LRFD:
         if rod_t > 0:
             results.append(anchors.steel_tension(bp.rod.diameter, Fu, Fy, rod_t, method, combo))
-            if bp.hef:
+            if bp.reinforcement is not None:
+                reinforcement = bp.reinforcement
+                results += anchors.anchor_reinforcement_design(
+                    group_t, reinforcement.fy, reinforcement.area, reinforcement.db,
+                    reinforcement.clear_cover, reinforcement.anchor_to_bar, bp.fc,
+                    bp.hef, reinforcement.le, method, combo)
+            elif bp.hef:
                 bo = anchors.breakout_tension(bp.hef, bp.fc, group_t, method,
                                               span_x=bp.rod_spacing, edges=bp.edges,
                                               cracked=bp.cracked, seismic=bp.seismic,

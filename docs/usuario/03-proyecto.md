@@ -13,6 +13,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_triangular.ocnx` | distribución triangular de presiones (DG1 B.2-1) |
 | `examples/base_plate_effective_area.ocnx` | área efectiva en compresión (DG1 B.3-1) |
 | `examples/base_plate_rod_bending.ocnx` | flexión de placa por los anclajes (DG1 4.7-3) |
+| `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -86,6 +87,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `f` | (obligatorio) | Distancia del eje de la columna a cada fila de anclajes. |
 | `rod_spacing` | `0` | Distancia entre las barras extremas de una fila. Con 0 o una sola barra por fila, el eje débil no tiene anclajes que trabajen a tracción. |
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
+| `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
@@ -133,6 +135,34 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `grade` | Acero; obligatorio. Nombre de la librería integrada o de `materials`. |
 
 Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensiones exteriores para HSS rectangular o cuadrada, y a 0,8 del diámetro para HSS circular (DG1 §4.3.3).
+
+### Refuerzo de anclaje (`reinforcement`)
+
+Cuando el arrancamiento del concreto en tracción no alcanza, se puede definir un refuerzo con gancho desarrollado a ambos lados de la superficie de falla (ACI 318-19 §17.5.2.1, DG1 4.7-15):
+
+```json
+"reinforcement": {
+  "bars": "4 #6",
+  "area": "1.76 in**2",
+  "fy": "60 ksi",
+  "db": "0.75 in",
+  "clear_cover": "2 in",
+  "anchor_to_bar": "2.83 in",
+  "le": "15.2 in"
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `bars` | `""` | Etiqueta para la memoria. |
+| `area` | (obligatorio) | Área total de refuerzo. |
+| `fy` | (obligatorio) | Fluencia del refuerzo. |
+| `db` | (obligatorio) | Diámetro de la barra. |
+| `clear_cover` | `"2 in"` | Recubrimiento libre usado en el empotramiento requerido. |
+| `anchor_to_bar` | (obligatorio) | Distancia horizontal del anclaje a la barra. |
+| `le` | (obligatorio) | Longitud de desarrollo disponible. |
+
+Si se define refuerzo, la verificación de arrancamiento del concreto se sustituye por las comprobaciones de capacidad, desarrollo y empotramiento del refuerzo.
 
 ### Llave de corte (`shear_lug`)
 

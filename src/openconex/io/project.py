@@ -20,6 +20,7 @@ from openconex.connections.base_plate.check import (
     BasePlate,
     BearingAreaModel,
     PressureModel,
+    Reinforcement,
     ShearLug,
 )
 from openconex.core.loads import (
@@ -48,12 +49,13 @@ __all__ = [
     "MaterialInput",
     "Project",
     "ProjectInfo",
+    "ReinforcementInput",
     "WSectionInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 5
+FORMAT_VERSION = 6
 Quantity = str | float
 
 
@@ -176,6 +178,22 @@ class ShearLugInput(_Input):
     """Edge distances at both sides of the lug (null: far)."""
 
 
+class ReinforcementInput(_Input):
+    """Hooked reinforcement developed on both sides of the concrete breakout."""
+
+    bars: str = ""
+    """Label for the report, e.g. ``"4 #6"``."""
+    area: Quantity
+    """Total provided area of reinforcement."""
+    fy: Quantity
+    db: Quantity
+    clear_cover: Quantity = "2 in"
+    anchor_to_bar: Quantity
+    """Horizontal distance from the anchor to the reinforcing bar."""
+    le: Quantity
+    """Available development length."""
+
+
 class BasePlateInput(_Input):
     column: str | ColumnSectionInput
     """AISC label (e.g. ``W12X96``) or a generic section object."""
@@ -201,6 +219,7 @@ class BasePlateInput(_Input):
     """Column axis to each anchor row."""
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
+    reinforcement: ReinforcementInput | None = None
     edges: dict[str, Quantity] = Field(default_factory=dict)
     """Distances from the outer anchors to concrete edges: left, right, bottom, top."""
     washer_thickness: Quantity | None = None
@@ -308,6 +327,16 @@ class Project(_Input):
             if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
                 raise ValueError(
                     "triangular pressure model does not support weak-axis moment yet")
+        reinforcement = self.base_plate.reinforcement
+        if reinforcement is not None:
+            for value, kind in ((reinforcement.area, Kind.AREA),
+                                (reinforcement.fy, Kind.STRESS),
+                                (reinforcement.db, Kind.LENGTH),
+                                (reinforcement.clear_cover, Kind.LENGTH),
+                                (reinforcement.anchor_to_bar, Kind.LENGTH),
+                                (reinforcement.le, Kind.LENGTH)):
+                if self.quantity(value, kind) <= 0:
+                    raise ValueError("reinforcement dimensions and strengths must be positive")
         return self
 
     def material_library(self) -> dict[str, SteelGrade]:
@@ -374,6 +403,7 @@ class Project(_Input):
             bearing_area_model=bp.bearing_area_model,
             rod_bending_lever=(None if bp.rod_bending_lever is None
                                else self.quantity(bp.rod_bending_lever, L)),
+            reinforcement=self._reinforcement(),
             A2_over_A1=bp.A2_over_A1, edges=edges,
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
@@ -382,6 +412,19 @@ class Project(_Input):
             friction_mu=bp.friction_mu, cracked=bp.cracked, seismic=bp.seismic,
             shear_lug=self._shear_lug(), materials=library,
         )
+
+    def _reinforcement(self) -> Reinforcement | None:
+        reinforcement, L = self.base_plate.reinforcement, Kind.LENGTH
+        if reinforcement is None:
+            return None
+        return Reinforcement(
+            area=self.quantity(reinforcement.area, Kind.AREA),
+            fy=self.quantity(reinforcement.fy, Kind.STRESS),
+            db=self.quantity(reinforcement.db, L),
+            clear_cover=self.quantity(reinforcement.clear_cover, L),
+            anchor_to_bar=self.quantity(reinforcement.anchor_to_bar, L),
+            le=self.quantity(reinforcement.le, L),
+            bars=reinforcement.bars)
 
     def _shear_lug(self) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH
