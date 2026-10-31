@@ -13,94 +13,33 @@ Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC
 - **Unidades** SI, MKS e imperiales, configurables por magnitud.
 - **Multiplataforma:** Windows, macOS y Linux.
 
+## Documentación
+
+- **[Manual de usuario](docs/usuario/README.md):** instalación, inicio rápido, archivo de proyecto, comandos, importación desde SAP2000, resultados, unidades y limitaciones.
+- **[Documentación técnica](docs/tecnico/README.md):** arquitectura, convenciones, algoritmo de la placa base, catálogo de verificaciones, combinaciones, importación y validación.
+- **[Plan de desarrollo](docs/PLAN.md)**
+
+## Uso en 30 segundos
+
+```bash
+pip install -e .
+```
+```bash
+openconex baseplate examples/base_plate_dg1_4_7_11.ocnx --html --docx --dxf
+```
+
+Calcula una placa base del Ejemplo 4.7-11 de la Guía de Diseño 1 y escribe la memoria y el plano. Para importar un modelo de SAP2000, ver [Importar desde SAP2000 / ETABS](docs/usuario/05-importar-sap2000.md).
+
 ## Desarrollo
+
 ```bash
 pip install -e ".[dev]"
 ```
 ```bash
 python -m pytest
 ```
-```bash
-openconex convert "3/4 in" thickness --to mm
-```
 
-### Calcular una placa base
-```bash
-pip install -e ".[pdf,3d]"
-```
-```bash
-openconex baseplate examples/base_plate_dg1_4_7_11.ocnx --html --docx --pdf --dxf --step
-```
-El comando calcula todas las combinaciones de ASCE 7-22, imprime el resumen y devuelve 1 si alguna verificación no cumple. `--lang en` y `--units SI_kN_m` cambian el idioma y las unidades de las salidas.
-
-### Combinaciones personalizadas
-Cada proyecto puede definir su propio conjunto de combinaciones en `combinations.custom`:
-
-```json
-"combinations": {
-  "include_code": false,
-  "custom": [
-    {"name": "C-1", "method": "LRFD", "factors": {"D": 1.2, "L": 1.6}, "source": "Criterio del proyecto"},
-    {"name": "C-2", "method": "ASD", "factors": {"D": 1.0, "W": -0.6}, "source": "Criterio del proyecto"}
-  ]
-}
-```
-
-- `include_code` (por defecto `true`) genera además las combinaciones ASCE 7-22 de `methods`; con `false` se usan solo las personalizadas.
-- `factors` aplica un factor a cada caso de carga por su `name`; un valor negativo invierte el signo. Todos los casos referenciados deben existir.
-- `method` (`LRFD` o `ASD`, por defecto `LRFD`) selecciona las verificaciones aplicables; `seismic`, `overstrength`, `allowable_increase` y `source` son opcionales.
-- Los nombres de las combinaciones y de los casos deben ser únicos.
-
-Ver `examples/base_plate_custom_combinations.ocnx`.
-
-### Secciones de columna genéricas
-Además de las etiquetas del catálogo AISC (por ejemplo `"column": "W12X96"`), la columna puede definirse por dimensiones.
-
-**Perfil W (I genérico):**
-
-```json
-"column": {
-  "type": "W",
-  "name": "W genérica 20×12",
-  "d": "20 in",
-  "bf": "12 in",
-  "tf": "1 in",
-  "tw": "0.5 in",
-  "k_des": "1.5 in",
-  "grade": "ASTM A992"
-}
-```
-
-**HSS rectangular o cuadrada:**
-
-```json
-"column": {
-  "type": "HSS",
-  "shape": "rectangular",
-  "d": "12 in",
-  "bf": "8 in",
-  "t": "0.5 in",
-  "grade": "ASTM A500 Gr. C (rectangular)"
-}
-```
-
-Para una sección cuadrada use `"shape": "square"` y puede omitirse `bf` (se toma igual a `d`). Para una sección circular:
-
-```json
-"column": {
-  "type": "HSS",
-  "shape": "round",
-  "d": "12.75 in",
-  "t": "0.5 in",
-  "grade": "ASTM A500 Gr. C (round)"
-}
-```
-
-En HSS circular, `d` es el diámetro exterior y no se admite `bf`. El área desprecia los radios de esquina. `column_grade` solo se usa con etiquetas del catálogo; las secciones genéricas llevan su propio `grade`. En compresión, las líneas de fluencia de la placa siguen DG1 §4.3.3: 0.95 de las dimensiones exteriores para HSS rectangular/cuadrada y 0.8 del diámetro para HSS circular, sin λn'.
-
-Ver `examples/base_plate_generic_w.ocnx`, `examples/base_plate_hss_square.ocnx` y `examples/base_plate_hss_round.ocnx`.
-
-Ver [CONTRIBUTING.md](CONTRIBUTING.md).
+Ver [CONTRIBUTING.md](CONTRIBUTING.md). La documentación se actualiza en el mismo pull request que cada cambio.
 
 ## Licencia
 [GPL-3.0-or-later](LICENSE). Las memorias de cálculo, planos y modelos que generes con OpenConex son tuyos y no quedan sujetos a la GPL.

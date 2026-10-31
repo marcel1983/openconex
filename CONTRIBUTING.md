@@ -25,6 +25,7 @@ git commit -s -m "mensaje"
 - **Unidades:** dentro del motor todo es `float` en N, mm y MPa. Convierte solo en los bordes con `openconex.units`.
 - **Verificaciones:** cada una devuelve un `CheckResult` con su traza y la cláusula de la norma.
 - **Pruebas:** `python -m pytest`. Toda verificación nueva necesita al menos un ejemplo de referencia.
+- **Documentación:** se actualiza en el mismo pull request que el cambio (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`). La guía está en [docs/tecnico/08-mantener-documentacion.md](docs/tecnico/08-mantener-documentacion.md); `tests/test_docs.py` falla si algo queda sin documentar.
 - **Estilo:** `ruff check .`
 
 ### Entorno
@@ -45,4 +46,5 @@ Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
 - **Do not copy** text, tables or figures from AISC/ACI/ASCE publications; tests may use numeric data from worked examples, with a citation.
 - **Units:** the engine works in N, mm and MPa floats; convert only at the boundaries via `openconex.units`.
 - **Checks** return a `CheckResult` with a full trace and code clause.
+- **Documentation** is updated in the same pull request as the change (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`); `tests/test_docs.py` fails when something is left undocumented.
 - Run `python -m pytest` and `ruff check .` before opening a pull request.
