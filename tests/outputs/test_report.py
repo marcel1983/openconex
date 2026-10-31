@@ -65,10 +65,13 @@ def test_factor_expression():
     assert factor_expression({"W": -1.0}) == "-1·W"
 
 
-@pytest.mark.parametrize(("shape", "text"), [("square", "0.95"), ("round", "0.8")])
-def test_hss_column_report(project, shape, text):
+@pytest.mark.parametrize(("shape", "grade", "text"), [
+    ("square", "ASTM A500 Gr. C (rectangular)", "0.95"),
+    ("round", "ASTM A500 Gr. C (round)", "0.8"),
+])
+def test_hss_column_report(project, shape, grade, text):
     project.base_plate.column = HSSSectionInput(
-        type="HSS", shape=shape, d="12 in", t="0.5 in")
+        type="HSS", shape=shape, d="12 in", t="0.5 in", grade=grade)
     r = build_base_plate_report(project, TODAY)
     assert r.inputs[0].cells[1].startswith("HSS ")
     assert any("HSS" in assumption and text in assumption for assumption in r.assumptions)

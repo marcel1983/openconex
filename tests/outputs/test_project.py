@@ -175,7 +175,8 @@ def test_generic_w_column():
     ("round", None, HSSKind.ROUND, "ASTM A500 Gr. C (round)"),
 ])
 def test_generic_hss_columns(shape, bf, kind, grade):
-    column = {"type": "HSS", "shape": shape, "d": "12 in", "t": "0.5 in"}
+    column = {"type": "HSS", "shape": shape, "d": "12 in", "t": "0.5 in",
+              "grade": grade}
     if bf is not None:
         column["bf"] = bf
     section = _project_with_column(column).column_model()
@@ -187,22 +188,32 @@ def test_generic_hss_columns(shape, bf, kind, grade):
     assert section.grade == grade
 
 
+def test_generic_section_material_is_required():
+    with pytest.raises(ValueError):
+        _project_with_column({"type": "W", "d": "20 in", "bf": "12 in", "tf": "1 in",
+                              "tw": "0.5 in"})
+    with pytest.raises(ValueError):
+        _project_with_column({"type": "HSS", "shape": "square", "d": "12 in",
+                              "t": "0.5 in"})
+
+
 def test_generic_hss_requires_width():
     with pytest.raises(ValueError, match="needs its width"):
         _project_with_column({"type": "HSS", "shape": "rectangular", "d": "12 in",
-                              "t": "0.5 in"})
+                              "t": "0.5 in", "grade": "ASTM A500 Gr. C (rectangular)"})
     with pytest.raises(ValueError, match="bf is not allowed"):
         _project_with_column({"type": "HSS", "shape": "round", "d": "12 in",
-                              "bf": "12 in", "t": "0.5 in"})
+                              "bf": "12 in", "t": "0.5 in",
+                              "grade": "ASTM A500 Gr. C (round)"})
 
 
 def test_generic_section_dimensions_are_validated():
     with pytest.raises(ValueError, match="flanges thicker"):
         _project_with_column({"type": "W", "d": "20 in", "bf": "12 in", "tf": "11 in",
-                              "tw": "0.5 in"}).column_model()
+                              "tw": "0.5 in", "grade": "ASTM A992"}).column_model()
     with pytest.raises(ValueError, match="wall thickness"):
         _project_with_column({"type": "HSS", "shape": "round", "d": "12 in",
-                              "t": "7 in"}).column_model()
+                              "t": "7 in", "grade": "ASTM A500 Gr. C (round)"}).column_model()
 
 
 @pytest.mark.parametrize(("filename", "kind"), [

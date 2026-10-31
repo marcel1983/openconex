@@ -109,7 +109,8 @@ class WSectionInput(_Input):
     tf: Quantity
     tw: Quantity
     k_des: Quantity = 0.0
-    grade: str = "ASTM A992"
+    grade: str = Field(min_length=1)
+    """Material name from the built-in library or from ``materials``."""
 
     def label(self) -> str:
         return self.name or "W " + "×".join(
@@ -127,8 +128,8 @@ class HSSSectionInput(_Input):
     bf: Quantity | None = None
     """Outside width (rectangular/square); omitted for square or round sections."""
     t: Quantity
-    grade: str | None = None
-    """Steel grade; defaults to ASTM A500 Gr. C for the section shape."""
+    grade: str = Field(min_length=1)
+    """Material name from the built-in library or from ``materials``."""
 
     @model_validator(mode="after")
     def _width_required(self) -> HSSSectionInput:
@@ -287,7 +288,7 @@ class Project(_Input):
         if isinstance(column, str):
             if self.base_plate.column_grade not in library:
                 raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
-        elif column.grade is not None and column.grade not in library:
+        elif column.grade not in library:
             raise ValueError(f"unknown column material: {column.grade!r}")
         return self
 
@@ -334,11 +335,8 @@ class Project(_Input):
         kind = section.shape
         width = (None if kind is HSSKind.ROUND else
                  self.quantity(section.d if section.bf is None else section.bf, L))
-        grade = section.grade or (
-            "ASTM A500 Gr. C (round)" if kind is HSSKind.ROUND
-            else "ASTM A500 Gr. C (rectangular)")
         return HSSShape(name=section.label(), kind=kind, d=self.quantity(section.d, L),
-                        width=width, t=self.quantity(section.t, L), grade=grade,
+                        width=width, t=self.quantity(section.t, L), grade=section.grade,
                         materials=library)
 
     def base_plate_model(self) -> BasePlate:

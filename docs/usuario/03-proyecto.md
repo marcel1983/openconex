@@ -101,7 +101,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
            "tf": "9.65 mm", "tw": "6.35 mm", "k_des": "20 mm", "grade": "ASTM A572 Gr. 50"}
 ```
 
-`type` (`"W"`), `name`, `d`, `bf`, `tf`, `tw`, `k_des` (por defecto 0) y `grade` (por defecto `"ASTM A992"`).
+`type` (`"W"`), `name`, `d`, `bf`, `tf`, `tw`, `k_des` (por defecto 0) y `grade` (obligatorio). El material debe ser un nombre de la librería integrada o de `materials`.
 
 ### Columna HSS genérica
 
@@ -118,7 +118,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `d` | Peralte exterior, o diámetro exterior si es `round`. |
 | `bf` | Ancho exterior; obligatorio en `rectangular`, se omite en `square` y no se admite en `round`. |
 | `t` | Espesor de pared. |
-| `grade` | Acero; por defecto ASTM A500 Gr. C del tipo de sección. |
+| `grade` | Acero; obligatorio. Nombre de la librería integrada o de `materials`. |
 
 Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensiones exteriores para HSS rectangular o cuadrada, y a 0,8 del diámetro para HSS circular (DG1 §4.3.3).
 

@@ -181,8 +181,12 @@ def test_column_input():
     box = column_input(_column("HSS6X6X3/8", "Box/Tube", "A500GrB46", 152.4, 152.4, 8.87, 8.87))[0]
     assert isinstance(box, HSSSectionInput) and box.shape is HSSKind.SQUARE
     assert box.grade == "ASTM A500 Gr. B (rectangular)"
-    pipe = column_input(_column("P", "Pipe", "A53", 100, 0, 0, 6))[0]
-    assert pipe.shape is HSSKind.ROUND and pipe.grade is None
+    pipe, pipe_grade, pipe_warning = column_input(_column("P", "Pipe", "A53", 100, 0, 0, 6))
+    assert pipe is None and pipe_grade is None and "unknown material" in pipe_warning
+    pipe, pipe_grade, pipe_warning = column_input(
+        _column("P", "Pipe", "A53", 100, 0, 0, 6), "ASTM A500 Gr. C (round)")
+    assert pipe.shape is HSSKind.ROUND and pipe.grade == pipe_grade
+    assert pipe_grade == "ASTM A500 Gr. C (round)" and "unknown material" in pipe_warning
     assert column_input(_column("X", "Channel", "A36", 1, 1, 1, 1))[0] is None
 
 

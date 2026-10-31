@@ -77,7 +77,7 @@ openconex baseplate proyectos/column-HSS6X6X3_8.ocnx --html --docx --dxf
 
 ### Qué hace la importación
 
-- **Columna:** si la sección es un perfil W con nombre del catálogo AISC, se usa el catálogo. Si no, se crea una sección genérica (W, HSS rectangular o cuadrada, o tubo) con las dimensiones de SAP2000. El acero se deduce del nombre del material: A992, A572 Gr. 50, A36, A500 Gr. B o A500 Gr. C.
+- **Columna:** si la sección es un perfil W con nombre del catálogo AISC, se usa el catálogo. Si no, se crea una sección genérica (W, HSS rectangular o cuadrada, o tubo) con las dimensiones de SAP2000. El acero se deduce del nombre del material según la librería integrada. Si no se reconoce, se usa `column_grade` de la plantilla y se emite un aviso; revise ese grado antes de calcular.
 - **Ejes:** las reacciones se pasan a los ejes locales de la columna. `P` es la reacción vertical (compresión positiva); `V` y `M` son las componentes en el eje fuerte (local 2 y 3) y `V_weak` y `M_weak` las del eje débil.
 - **Tipos de caso:** se toman de la definición de cada caso: Dead → `D`, Live → `L`, Roof Live → `Lr`, Snow → `S`, Wind → `W`, Quake → `E`. Los casos con otro tipo (por ejemplo, nocionales) se avisan y no se usan en el modo `cases`.
 - **Combinaciones sísmicas:** en el modo `combinations`, una combinación se marca como sísmica si incluye un patrón de tipo Quake, aunque sea a través de casos no lineales o de otras combinaciones.

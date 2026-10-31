@@ -37,7 +37,8 @@ def test_hss_column_volume(project):
     from openconex.geometry3d.base_plate import base_plate_parts
 
     project.base_plate.column = HSSSectionInput(
-        type="HSS", shape="round", d="12 in", t="0.5 in")
+        type="HSS", shape="round", d="12 in", t="0.5 in",
+        grade="ASTM A500 Gr. C (round)")
     parts = base_plate_parts(project.base_plate_model())
     column = next(p for p in parts if p.name == "column")
     props = GProp_GProps()
