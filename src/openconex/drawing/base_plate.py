@@ -130,6 +130,18 @@ def _i_shape(sheet: _Sheet, d, bf, tf, tw, cx, cy, layer):
                              dxfattribs={"layer": layer})
 
 
+def _lug_rectangles(bp: BasePlate) -> list[tuple[float, float]]:
+    """Plan dimensions (x, y) of each shear lug, before drawing-unit scaling."""
+    lug = bp.shear_lug
+    if lug is None:
+        return []
+    if lug.direction == "strong":
+        return [(lug.thickness, lug.width)]
+    if lug.direction == "weak":
+        return [(lug.width, lug.thickness)]
+    return [(lug.thickness, lug.width), (lug.width, lug.thickness)]
+
+
 def _hss_shape(sheet: _Sheet, kind: HSSKind, d, bf, t, cx, cy, layer):
     """Outline of a rectangular/square or round HSS seen in plan."""
     if kind is HSSKind.ROUND:
@@ -148,6 +160,8 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     def t(key, **kw):
         return tr(f"drawing.{key}", lang, **kw)
 
+    if bp.shear_lug:
+        s.doc.layers.add("BP-LLAVE", color=2, linetype="DASHED")
     col = bp.column
     N, B, tp = s.u(bp.N), s.u(bp.B), s.u(bp.tp)
     s.setup_dims(max(N, B) / 40)
@@ -166,6 +180,8 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
         _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
     else:
         _i_shape(s, s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw), 0, 0, "BP-COLUMNA")
+    for dx, dy in _lug_rectangles(bp):
+        s.rect(-s.u(dx) / 2, -s.u(dy) / 2, s.u(dx) / 2, s.u(dy) / 2, "BP-LLAVE")
     w_size, w_t = (s.u(v) for v in plate_washer(bp.rod.diameter, bp.washer_thickness))
     for x, y in rods:
         s.rect(x - w_size / 2, y - w_size / 2, x + w_size / 2, y + w_size / 2, "BP-ANCLAJE")
@@ -199,6 +215,13 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     s.rect(d / 2 - tf, cy0, d / 2, cy0 + stub, "BP-COLUMNA")
     s.msp.add_line((-d / 2 + tf, cy0 + stub), (d / 2 - tf, cy0 + stub),
                    dxfattribs={"layer": "BP-COLUMNA"})
+    if bp.shear_lug:
+        lug = bp.shear_lug
+        lug_w = s.u(lug.width if lug.direction in ("weak", "both") else lug.thickness)
+        lug_bottom = y0 - s.u(lug.embedment)
+        s.rect(-lug_w / 2, lug_bottom, lug_w / 2, y0 + grout, "BP-LLAVE")
+        s.vdim(lug_bottom, y0, -lug_w / 2, -max(pN, N) / 2 - 9 * h)
+        s.text(t("shear_lug"), -lug_w / 2, lug_bottom - 2 * h)
     proj = 3 * d_rod
     for x in sorted({x for x, _ in rods}):
         s.rect(x - d_rod / 2, y0 - hef, x + d_rod / 2, cy0 + proj, "BP-ANCLAJE")
@@ -229,6 +252,14 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     washer = plate_washer(bp.rod.diameter, bp.washer_thickness)
     rows.append(("5", str(bp.rods), f"{t('washer')} {s.label(washer[1])} × {s.label(washer[0])}"
                  f" × {s.label(washer[0])}", bp.plate_grade, ""))
+    if bp.shear_lug:
+        lug = bp.shear_lug
+        count = 2 if lug.direction == "both" else 1
+        length = lug.grout + lug.embedment
+        mass = lug.width * lug.thickness * length * STEEL_DENSITY * count
+        rows.append((str(len(rows) + 1), str(count),
+                     f"{t('shear_lug')} {s.label(lug.width)} × {s.label(lug.thickness)} × "
+                     f"{s.label(length)}", lug.grade, f"{mass:.1f} kg"))
     widths = [3, 3, 26, 14, 8]
     bx = max(pN, N) / 2 + 14 * h
     by = top
@@ -242,6 +273,8 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     notes = [t("note_units", unit=s.unit), t("note_holes"), t("note_length")]
     if bp.flange_weld:
         notes.append(t("note_weld", size=s.label(bp.flange_weld)))
+    if bp.shear_lug:
+        notes.append(t("note_lug", size=s.label(bp.shear_lug.weld)))
     ny = by - (len(rows) + 2) * 2 * h
     s.text(t("notes"), bx, ny, 1.1 * h)
     for i, note in enumerate(notes, 1):

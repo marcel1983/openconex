@@ -16,7 +16,7 @@
 - **Modelo de presiones:** por defecto, distribución rectangular con placa rígida (DG1 §4.3). La distribución triangular (DG1 Apéndice B.2) está disponible como opción, pero solo para el eje fuerte y combinaciones con compresión; el eje débil sigue usando el modelo rectangular.
 - **Área efectiva:** el área efectiva bajo el perfil I (DG1 Apéndice B.3) está disponible para la capacidad de aplastamiento en compresión concéntrica; no se aplica a HSS ni a combinaciones con momento.
 - **Flexión biaxial:** cada eje se verifica por separado y se combina con la interacción de la DG1 Ec. 4-69. No es un análisis de presiones biaxial completo.
-- **Llave de corte:** no se dibuja en el DXF ni en el modelo 3D. Tampoco se verifica la flexión local de la placa base en la soldadura de la llave.
+- **Llave de corte:** se dibuja en el DXF y se modela en 3D. Todavía no se verifica la flexión local de la placa base en la soldadura de la llave.
 - **Refuerzo de anclaje:** se comprueba la capacidad, el desarrollo del gancho y el empotramiento requerido. No se comprueba la longitud de desarrollo recta ni el detalle completo de la armadura del pedestal.
 - **Bases sísmicas especiales:** las funciones de base débil con anclajes dúctiles y de base empotrada (DG1 Capítulos 5 y 6) existen en la biblioteca, pero todavía no se usan desde el proyecto.
 - **Importación:** solo SAP2000 (ETABS usa otros nombres de tabla); solo columnas verticales que nacen en el apoyo.

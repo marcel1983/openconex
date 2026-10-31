@@ -20,7 +20,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Pendiente de flujo y capacidad |
 | Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Pendiente de entrada y checks |
-| Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
+| Llave de corte en DXF/3D | — | 4.7-5 | Integrada en DXF y 3D |
 | Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
 | HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |
 | Optimización N/B/tp | `plate.optimize_plan` | — | Pendiente de flujo y CLI |
@@ -38,7 +38,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 1. **Fase 1 (hecha):** presión triangular y área efectiva en el eje fuerte.
 2. **Fase 2:** flexión de placa por anclajes; decidir si `a` se deriva o se pide explícitamente.
 3. **Fase 3 (hecha):** refuerzo de anclaje; capacidad, desarrollo y empotramiento.
-4. **Fase 4:** llave de corte en DXF/3D y flexión local si hay método validado.
+4. **Fase 4 (parcial):** llave de corte integrada en DXF/3D; falta la flexión local si hay método validado.
 5. **Fase 5:** bases sísmicas débiles y empotradas, en dos PRs separados.
 6. **Fase 6:** HSS con momento; validar o declarar la limitación.
 7. **Fase 7:** optimización de N, B y tp.

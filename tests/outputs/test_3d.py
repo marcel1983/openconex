@@ -5,7 +5,9 @@ import math
 import pytest
 
 from openconex.geometry3d.base_plate import occ_available
-from openconex.io.project import HSSSectionInput
+from openconex.io.project import HSSSectionInput, load_project
+
+from .conftest import EXAMPLE
 
 pytestmark = pytest.mark.skipif(not occ_available(), reason="OCP not installed (openconex[3d])")
 
@@ -28,6 +30,23 @@ def test_parts_and_exports(tmp_path, project):
     step = write_step(parts, tmp_path / "bp.step")
     assert step.read_text()[:14] == "ISO-10303-21;\n"[:14]
     assert write_stl(parts, tmp_path / "bp.stl").stat().st_size > 10_000
+
+
+def test_shear_lug_volume():
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+
+    from openconex.geometry3d.base_plate import base_plate_parts
+
+    project = load_project(EXAMPLE.with_name("base_plate_shear_lug.ocnx"))
+    bp = project.base_plate_model()
+    parts = base_plate_parts(bp, grout=bp.shear_lug.grout)
+    lug = next(p for p in parts if p.name == "shear_lug")
+    props = GProp_GProps()
+    BRepGProp.VolumeProperties_s(lug.shape, props)
+    width, thickness = 8 * 25.4, 1 * 25.4
+    height = 2 * 25.4 + 2 * 25.4  # grout + embedment
+    assert props.Mass() == pytest.approx(width * thickness * height, rel=1e-4)
 
 
 def test_hss_column_volume(project):
