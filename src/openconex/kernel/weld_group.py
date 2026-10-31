@@ -23,23 +23,32 @@ Manual tables.
 
 from __future__ import annotations
 
+import itertools
 import math
 from dataclasses import dataclass
 
 from openconex.core.checks import CheckResult
 from openconex.kernel.bolt_group import _cross, _direction, solve_icr
 from openconex.kernel.design import SPEC, WELD, Calc, Method
-from openconex.units import Kind
+from openconex.units import Kind, from_internal, to_internal
 
 __all__ = [
+    "ELECTRODE_COEFFICIENT",
     "WeldGroupResult",
     "WeldLine",
     "elastic_strength",
+    "electrode_coefficient",
     "icr_strength",
     "weld_group_eccentric",
 ]
 
 CLAUSE = f"{SPEC} §J2.4(c); AISC Manual 16th ed., Part 8"
+
+# Manual Table 8-3, electrode strength coefficient C1: {FEXX [ksi]: C1}. Above E70
+# the values are lower than FEXX/70.
+ELECTRODE_COEFFICIENT: dict[int, float] = {
+    60: 0.857, 70: 1.00, 80: 1.03, 90: 1.16, 100: 1.21, 110: 1.34,
+}
 
 
 @dataclass(frozen=True)
@@ -191,14 +200,36 @@ def elastic_strength(lines: list[WeldLine], w: float, FEXX: float,
     return 0.60 * FEXX * (w / math.sqrt(2)) / fmax
 
 
+def electrode_coefficient(FEXX: float) -> float:
+    """C1 for an electrode of strength ``FEXX`` [MPa], Manual Table 8-3 (linear between rows)."""
+    ksi = from_internal(FEXX, Kind.STRESS, "ksi")
+    keys = sorted(ELECTRODE_COEFFICIENT)
+    if not keys[0] - 0.5 <= ksi <= keys[-1] + 0.5:
+        raise ValueError(f"no Table 8-3 coefficient for FEXX = {ksi:.1f} ksi")
+    ksi = min(max(ksi, keys[0]), keys[-1])
+    for lo, hi in itertools.pairwise(keys):
+        if ksi <= hi:
+            c_lo, c_hi = ELECTRODE_COEFFICIENT[lo], ELECTRODE_COEFFICIENT[hi]
+            return c_lo + (c_hi - c_lo) * (ksi - lo) / (hi - lo)
+    return ELECTRODE_COEFFICIENT[keys[-1]]
+
+
 def weld_group_eccentric(lines: list[WeldLine], w: float, FEXX: float,
                          load_point: tuple[float, float], demand: float, method: Method,
                          angle: float = 0.0, use_icr: bool = True,
                          combo: str = "") -> CheckResult:
+    """Eccentrically loaded fillet weld group, inputs in internal units (mm, MPa, N).
+
+    The ICR strength is computed for E70 electrodes and multiplied by the
+    coefficient C1 of Manual Table 8-3, as in the Manual tables.
+    """
     c = Calc(method, combo)
     if use_icr:
-        rn = icr_strength(lines, w, FEXX, load_point, angle).Rn
         clause = CLAUSE + " (instantaneous center of rotation)"
+        c1 = c.step("C_1", "", electrode_coefficient(FEXX),
+                    clause="AISC Manual 16th ed., Table 8-3", F_EXX=(FEXX, Kind.STRESS))
+        rn = c1 * icr_strength(lines, w, to_internal(70.0, "ksi", Kind.STRESS), load_point,
+                               angle).Rn
     else:
         rn = elastic_strength(lines, w, FEXX, load_point, angle)
         clause = CLAUSE + " (elastic method)"
