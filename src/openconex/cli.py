@@ -132,7 +132,7 @@ def _create_projects(args: argparse.Namespace, data) -> int:
     import re
     from pathlib import Path
 
-    from openconex.io.csi_projects import LoadSource, base_plate_projects
+    from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
     from openconex.io.project import load_project, save_project
 
     if not args.template:
@@ -141,13 +141,13 @@ def _create_projects(args: argparse.Namespace, data) -> int:
         return 2
     projects, warnings = base_plate_projects(
         data, load_project(args.template), LoadSource(args.loads), args.include,
-        args.envelopes, Method(args.method) if args.method else None)
+        args.envelopes, Method(args.method) if args.method else None, Grouping(args.group))
     for warning in warnings:
         print(f"warning: {warning}")
     out = Path(args.create)
     out.mkdir(parents=True, exist_ok=True)
-    for joint, project in projects.items():
-        path = out / f"joint-{re.sub(r'[^A-Za-z0-9_.-]', '_', joint)}.ocnx"
+    for key, project in projects.items():
+        path = out / f"{args.group}-{re.sub(r'[^A-Za-z0-9_.-]', '_', key)}.ocnx"
         save_project(project, path)
         print(f"-> {path}  ({len(project.cases)} cases)")
     return 0 if projects else 1
@@ -197,6 +197,8 @@ def main(argv: list[str] | None = None) -> int:
                      help="only cases or combinations whose name matches, e.g. '^CU'")
     sup.add_argument("--envelopes", action="store_true",
                      help="with --loads combinations, also use Max/Min envelopes")
+    sup.add_argument("--group", choices=["joint", "column"], default="joint",
+                     help="one project per support (joint) or per column section (column)")
     sup.add_argument("--method", choices=["LRFD", "ASD"],
                      help="method of the imported combinations (default: template's)")
     sup.set_defaults(func=_supports)

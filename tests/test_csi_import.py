@@ -2,6 +2,7 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Import of supports and reactions from SAP2000 / ETABS tables exported to Excel."""
 
+import dataclasses
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,7 @@ from openconex.cli import main
 from openconex.core.loads import LoadType, Method
 from openconex.core.model import HSSKind
 from openconex.io.csi import CaseKind, ImportedColumn, import_supports, read_tables
-from openconex.io.csi_projects import LoadSource, base_plate_projects, column_input
+from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects, column_input
 from openconex.io.project import HSSSectionInput, WSectionInput, load_project
 
 TEMPLATE = Path(__file__).parents[1] / "examples" / "base_plate_generic_w.ocnx"
@@ -225,3 +226,50 @@ def test_cli_create_projects(export, tmp_path, capsys):
     assert sorted(p.name for p in out.iterdir()) == ["joint-1.ocnx", "joint-2.ocnx"]
     assert load_project(out / "joint-1.ocnx").cases[0].name == "U1"
     assert main(["supports", str(export), "--create", str(out)]) == 2
+
+
+def _same_column(data):
+    """Both supports with the W14X90 column of joint 1."""
+    s1, s2 = data.supports
+    return dataclasses.replace(data, supports=[s1, dataclasses.replace(s2, column=s1.column)])
+
+
+def test_group_by_column(export):
+    data = _same_column(import_supports(export))
+    projects, _ = base_plate_projects(data, load_project(TEMPLATE), group=Grouping.COLUMN)
+    assert list(projects) == ["W14X90"]
+    project = projects["W14X90"]
+    assert [c.name for c in project.cases] == ["1: DEAD", "1: SX", "2: DEAD"]
+    assert "joints 1, 2" in project.info.name
+    combos = project.load_combinations()
+    assert all(len({name.split(":")[0] for name in c.factors}) == 1 for c in combos)
+    assert {c.name.split(":")[0] for c in combos} == {"1", "2"}
+    by_joint = base_plate_projects(data, load_project(TEMPLATE))[0]
+    assert len(combos) == sum(len(p.load_combinations()) for p in by_joint.values())
+
+
+def test_group_by_column_with_imported_combinations(export):
+    data = _same_column(import_supports(export))
+    projects, _ = base_plate_projects(data, load_project(TEMPLATE), LoadSource.COMBINATIONS,
+                                      group=Grouping.COLUMN)
+    custom = projects["W14X90"].combinations.custom
+    assert [(c.name, c.factors, c.seismic) for c in custom] == [
+        ("1: U1", {"1: U1": 1.0}, True), ("2: U1", {"2: U1": 1.0}, True)]
+
+
+def test_cli_group_by_column(export, tmp_path):
+    out = tmp_path / "types"
+    assert main(["supports", str(export), "--create", str(out), "--template", str(TEMPLATE),
+                 "--group", "column"]) == 0
+    assert sorted(p.name for p in out.iterdir()) == ["column-HSS6X6X3_8.ocnx",
+                                                     "column-W14X90.ocnx"]
+
+
+def test_repeated_warnings_are_joined(export):
+    tables = read_tables(export)
+    tables["Joint Reactions"].rows.append(dict(tables["Joint Reactions"].rows[6],
+                                               OutputCase="NX", CaseType="LinStatic"))
+    tables["Joint Reactions"].rows.append(dict(tables["Joint Reactions"].rows[0],
+                                               OutputCase="NX", CaseType="LinStatic"))
+    _, warnings = base_plate_projects(import_supports(tables), load_project(TEMPLATE))
+    assert "joints 1, 2: load cases without a design type, not used: NX" in warnings
