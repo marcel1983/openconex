@@ -14,6 +14,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_effective_area.ocnx` | área efectiva en compresión (DG1 B.3-1) |
 | `examples/base_plate_rod_bending.ocnx` | flexión de placa por los anclajes (DG1 4.7-3) |
 | `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
+| `examples/base_plate_weak_base.ocnx` | base sísmica débil (DG1 6.4-1) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -79,6 +80,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `bearing_area_model` | `"plate"` | Área para el aplastamiento: `plate` (B × N) o `effective` (área efectiva bajo la columna, DG1 Apéndice B.3). |
 | `fc` | (obligatorio) | Resistencia del concreto f'c. |
 | `A2_over_A1` | `1.0` | Relación entre el área de apoyo del concreto y el área de la placa, A2/A1 (1 a 4). Aumenta la resistencia al aplastamiento según √(A2/A1) ≤ 2. |
+| `bearing_area` | ninguno | Área de apoyo de la tuerca o placa embebida para la extracción del anclaje; si se omite, se usa la tuerca hexagonal pesada. |
 | `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal; solo se usan en los planos y el modelo 3D. |
 | `grout` | `"1.5 in"` | Espesor del mortero de nivelación. Se usa en los planos y en el brazo de la llave de corte. |
 | `rod_diameter` | (obligatorio) | Diámetro de las barras de anclaje. |
@@ -88,6 +90,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `rod_spacing` | `0` | Distancia entre las barras extremas de una fila. Con 0 o una sola barra por fila, el eje débil no tiene anclajes que trabajen a tracción. |
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
+| `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
@@ -163,6 +166,26 @@ Cuando el arrancamiento del concreto en tracción no alcanza, se puede definir u
 | `le` | (obligatorio) | Longitud de desarrollo disponible. |
 
 Si se define refuerzo, la verificación de arrancamiento del concreto se sustituye por las comprobaciones de capacidad, desarrollo y empotramiento del refuerzo.
+
+### Base sísmica débil (`weak_base`)
+
+Base con barras de anclaje de sección reducida (upset-thread) que fluyen antes que los estados no dúctiles (DG1 §6.4, ejemplo 6.4-1):
+
+```json
+"weak_base": {
+  "reduced_diameter": "0.75 in",
+  "stretch_length": "8 in",
+  "Rt": 1.2
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `reduced_diameter` | (obligatorio) | Diámetro de la sección reducida. |
+| `stretch_length` | (obligatorio) | Longitud de estiramiento disponible. |
+| `Rt` | `1.2` | Factor de sobrerresistencia del acero. |
+
+La verificación es LRFD, requiere el modelo de presión rectangular, no admite momento débil y exige un grado de barra con `Fy` definido (por ejemplo F1554). La capacidad de los estados no dúctiles se comprueba con `n Rt T_red`.
 
 ### Llave de corte (`shear_lug`)
 

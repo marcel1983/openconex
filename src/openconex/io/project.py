@@ -22,6 +22,7 @@ from openconex.connections.base_plate.check import (
     PressureModel,
     Reinforcement,
     ShearLug,
+    WeakBase,
 )
 from openconex.core.loads import (
     Forces,
@@ -51,11 +52,12 @@ __all__ = [
     "ProjectInfo",
     "ReinforcementInput",
     "WSectionInput",
+    "WeakBaseInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 6
+FORMAT_VERSION = 7
 Quantity = str | float
 
 
@@ -194,6 +196,14 @@ class ReinforcementInput(_Input):
     """Available development length."""
 
 
+class WeakBaseInput(_Input):
+    """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
+
+    reduced_diameter: Quantity
+    stretch_length: Quantity
+    Rt: float = Field(default=1.2, ge=1.0)
+
+
 class BasePlateInput(_Input):
     column: str | ColumnSectionInput
     """AISC label (e.g. ``W12X96``) or a generic section object."""
@@ -209,6 +219,8 @@ class BasePlateInput(_Input):
     """Anchor-to-web/flange distance for the plate bending check at the anchors."""
     fc: Quantity
     A2_over_A1: float = 1.0
+    bearing_area: Quantity | None = None
+    """Bearing area of the embedded nut or plate for anchor pullout."""
     pedestal_N: Quantity | None = None
     pedestal_B: Quantity | None = None
     grout: Quantity = "1.5 in"
@@ -220,6 +232,7 @@ class BasePlateInput(_Input):
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
     reinforcement: ReinforcementInput | None = None
+    weak_base: WeakBaseInput | None = None
     edges: dict[str, Quantity] = Field(default_factory=dict)
     """Distances from the outer anchors to concrete edges: left, right, bottom, top."""
     washer_thickness: Quantity | None = None
@@ -327,6 +340,19 @@ class Project(_Input):
             if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
                 raise ValueError(
                     "triangular pressure model does not support weak-axis moment yet")
+        weak = self.base_plate.weak_base
+        if weak is not None:
+            if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
+                raise ValueError("weak base requires the rectangular pressure model")
+            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
+                raise ValueError("weak base does not support weak-axis moment yet")
+            if self.quantity(weak.reduced_diameter, Kind.LENGTH) <= 0:
+                raise ValueError("weak base reduced diameter must be positive")
+            if self.quantity(weak.stretch_length, Kind.LENGTH) <= 0:
+                raise ValueError("weak base stretch length must be positive")
+        if (self.base_plate.bearing_area is not None
+                and self.quantity(self.base_plate.bearing_area, Kind.AREA) <= 0):
+            raise ValueError("bearing_area must be positive")
         reinforcement = self.base_plate.reinforcement
         if reinforcement is not None:
             for value, kind in ((reinforcement.area, Kind.AREA),
@@ -403,7 +429,9 @@ class Project(_Input):
             bearing_area_model=bp.bearing_area_model,
             rod_bending_lever=(None if bp.rod_bending_lever is None
                                else self.quantity(bp.rod_bending_lever, L)),
-            reinforcement=self._reinforcement(),
+            reinforcement=self._reinforcement(), weak_base=self._weak_base(),
+            bearing_area=(None if bp.bearing_area is None
+                          else self.quantity(bp.bearing_area, Kind.AREA)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
@@ -425,6 +453,14 @@ class Project(_Input):
             anchor_to_bar=self.quantity(reinforcement.anchor_to_bar, L),
             le=self.quantity(reinforcement.le, L),
             bars=reinforcement.bars)
+
+    def _weak_base(self) -> WeakBase | None:
+        weak, L = self.base_plate.weak_base, Kind.LENGTH
+        if weak is None:
+            return None
+        return WeakBase(reduced_diameter=self.quantity(weak.reduced_diameter, L),
+                        stretch_length=self.quantity(weak.stretch_length, L),
+                        Rt=weak.Rt)
 
     def _shear_lug(self) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH

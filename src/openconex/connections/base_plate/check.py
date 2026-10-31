@@ -40,7 +40,7 @@ from openconex.kernel.design import Calc
 from openconex.units import Kind
 
 from . import plate as bpl
-from . import transfer
+from . import seismic, transfer
 
 __all__ = [
     "BasePlate",
@@ -48,6 +48,7 @@ __all__ = [
     "PressureModel",
     "Reinforcement",
     "ShearLug",
+    "WeakBase",
     "check_base_plate",
     "check_envelope",
 ]
@@ -110,6 +111,15 @@ class Reinforcement:
 
 
 @dataclass(frozen=True)
+class WeakBase:
+    """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
+
+    reduced_diameter: float
+    stretch_length: float
+    Rt: float = 1.2
+
+
+@dataclass(frozen=True)
 class BasePlate:
     column: IShape | HSSShape
     N: float
@@ -144,6 +154,7 @@ class BasePlate:
     rod_bending_lever: float | None = None
     """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
     reinforcement: Reinforcement | None = None
+    weak_base: WeakBase | None = None
 
     @property
     def Fy(self) -> float:
@@ -233,7 +244,8 @@ def _triangular_bending(t: bpl.TriangularResult, P_: float, B: float) -> bpl.Ben
 def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: float,
                     x: float, m: float, n: float, method: Method, combo: str,
                     suffix: str, pressure_model: PressureModel = PressureModel.RECTANGULAR,
-                    rod_edge: float = 0.0, rods_in_tension: int = 2
+                    rod_edge: float = 0.0, rods_in_tension: int = 2,
+                    tension_demand: float | None = None
                     ) -> tuple[bpl.BendingResult, float, list[CheckResult]]:
     """Bearing and plate thickness about one axis; returns (model, T, results)."""
     col = bp.column
@@ -335,10 +347,13 @@ def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: f
             c = Calc(method, combo)
             c.step("x", "" if suffix else r"f - \frac{d}{2} + \frac{t_f}{2}", x, Kind.LENGTH,
                    f"{DG1} Eq. 4-61")
+            tension = T if tension_demand is None else tension_demand
+            if tension != T:
+                c.step("T_{req}", "", tension, Kind.FORCE, f"{DG1} §6.4")
             results.append(_thickness(
                 f"base_plate.thickness_tension{suffix}",
-                bpl.plate_thickness_tension(T, x, B, bp.Fy, method), bp.tp, method, combo,
-                f"{DG1} Eq. 4-62", bearing_steps + c.steps,
+                bpl.plate_thickness_tension(tension, x, B, bp.Fy, method), bp.tp, method,
+                combo, f"{DG1} Eq. 4-62", bearing_steps + c.steps,
                 _tp_expression(method, r"\sqrt{\frac{T x}{B F_y}}")))
 
     return bend, T, results
@@ -480,13 +495,48 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     m, n = _cantilevers(col, bp.N, bp.B)
     if bp.pressure_model is PressureModel.TRIANGULAR and M2:
         raise ValueError("the triangular pressure model does not support weak-axis moment yet")
+    weak = bp.weak_base if method is Method.LRFD else None
+    ductile = None
+    tension_demand = None
+    if weak is not None:
+        if bp.pressure_model is not PressureModel.RECTANGULAR:
+            raise ValueError("weak base requires the rectangular pressure model")
+        if M2:
+            raise ValueError("weak base does not support weak-axis moment yet")
+        if bp.rod.material.Fy is None:
+            raise ValueError("weak base requires an anchor grade with a defined yield stress")
+        preliminary = bpl.rectangular_bending(P_, M, bp.N, bp.B, bp.f, bp.fc,
+                                              bp.A2_over_A1, method)
+        if preliminary.T > 0:
+            ductile = seismic.ductile_anchors(
+                preliminary.T, bp.rods_per_side, bp.rod.material.Fy, bp.rod.material.Fu,
+                weak.reduced_diameter, bp.f, bp.rod.diameter, weak.Rt)
+            tension_demand = ductile.N_required
     triangular = bp.pressure_model is PressureModel.TRIANGULAR and P_ > 0
 
     bend, T, axis = _bending_checks(
         bp, P_, M, bp.N, bp.B, bp.f, _tension_lever(bp, False), m, n, method, combo, "",
         PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR,
-        rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side)
+        rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side,
+        tension_demand=tension_demand)
     results += axis
+    if ductile is not None and weak is not None:
+        c = Calc(method, combo)
+        c.step(r"T_{red}", r"\frac{\pi d_r^2}{4}F_u", ductile.T_reduced, Kind.FORCE,
+               f"{DG1} §6.4.2")
+        c.step(r"R_t T_{red}", "", ductile.RtT_reduced, Kind.FORCE, f"{DG1} §6.4.2")
+        c.step("N_{req}", r"n R_t T_{red}", ductile.N_required, Kind.FORCE,
+               f"{DG1} §6.4.2")
+        c.step("A_{s,red,req}", r"\frac{T}{n\phi F_y}", ductile.A_reduced_min,
+               Kind.AREA, f"{DG1} §6.4.2")
+        provided = math.pi * weak.reduced_diameter**2 / 4
+        results.append(c.result("base_plate.weak_base_area", f"{DG1} §6.4.2",
+                                ductile.A_reduced_min, provided, Kind.AREA))
+        c = Calc(method, combo)
+        c.step("L_{stretch,min}", r"\max(8d_a,\ f)", ductile.L_stretch_min, Kind.LENGTH,
+               f"{DG1} §6.4.2")
+        results.append(c.result("base_plate.weak_base_stretch", f"{DG1} §6.4.2",
+                                ductile.L_stretch_min, weak.stretch_length, Kind.LENGTH))
     if bend.case == "not_possible":
         return results
     T_weak, bend_weak = 0.0, None
@@ -518,6 +568,10 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
             elastic = _elastic_rod_forces(bp, P_, M, M2)
             rod_t = max(rod_t, max(elastic))
             group_t = max(group_t, sum(r for r in elastic if r > 0))
+    rod_t_nd = rod_t
+    if ductile is not None:
+        rod_t_nd = max(rod_t, ductile.RtT_reduced)
+        group_t = max(group_t, ductile.N_required)
     if bp.rod_bending_lever is not None and rod_t > 0:
         results.append(transfer.plate_bending_at_rods(
             rod_t, bp.rod_bending_lever, bp.tp, bp.Fy, method, combo))
@@ -542,8 +596,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                                               combo=combo)
                 results.append(bo)
             area = bp.bearing_area or anchors.heavy_hex_bearing_area(bp.rod.diameter)
-            results.append(anchors.pullout(area, bp.fc, rod_t, method, bp.cracked, bp.seismic,
-                                           combo))
+            results.append(anchors.pullout(area, bp.fc, rod_t_nd, method, bp.cracked,
+                                           bp.seismic, combo))
         if V > 0 and use_friction:
             results.append(transfer.friction(P_, bp.N * bp.B, bp.fc, V, bp.friction_mu, combo))
         elif V > 0:
@@ -555,8 +609,9 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         if V > 0:
             results.append(bolts.bolt_shear(bp.rod, rod_v, method, combo=combo))
     if V > 0 and bp.washer_thickness:
-        results.append(transfer.rod_tension_shear_bending(bp.rod, bp.rods, group_t, V, bp.tp,
-                                                          bp.washer_thickness, method, combo))
+        results.append(transfer.rod_tension_shear_bending(
+            bp.rod, bp.rods, max(group_t, rod_t_nd * bp.rods_per_side), V, bp.tp,
+            bp.washer_thickness, method, combo))
 
     if M2 and bend_weak is not None:
         results.append(_biaxial_interaction(bp, P_, M, M2, method, combo))

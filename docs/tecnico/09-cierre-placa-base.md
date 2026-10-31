@@ -18,7 +18,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Área efectiva | `plate.effective_area` | B.3-1 | Integrada en compresión concéntrica de perfiles I |
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
-| Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Pendiente de flujo y capacidad |
+| Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
 | Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Pendiente de entrada y checks |
 | Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
 | Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
