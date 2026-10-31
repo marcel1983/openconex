@@ -178,6 +178,10 @@ def test_column_input():
                                               450, 300, 9.652, 6.35))
     assert isinstance(built_up, WSectionInput) and built_up.d == "450 mm"
     assert (built_up.grade, grade) == ("ASTM A572 Gr. 50", "ASTM A572 Gr. 50")
+    built_up, grade, warning = column_input(
+        _column("COL-2", "I/Wide Flange", "X", 450, 300, 9.652, 6.35), "ASTM A36")
+    assert built_up.grade == grade == "ASTM A36"
+    assert "unknown material" in warning
     box = column_input(_column("HSS6X6X3/8", "Box/Tube", "A500GrB46", 152.4, 152.4, 8.87, 8.87))[0]
     assert isinstance(box, HSSSectionInput) and box.shape is HSSKind.SQUARE
     assert box.grade == "ASTM A500 Gr. B (rectangular)"

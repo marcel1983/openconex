@@ -47,7 +47,7 @@ En perfiles I, el eje fuerte es el local 3: `M` del proyecto = M3, `M_weak` = M2
 ## Proyectos
 
 `base_plate_projects` copia la plantilla y, para cada apoyo con columna:
-- **Columna:** si es un perfil I con nombre del catálogo AISC, se usa el catálogo. Si no, se crea una sección genérica (`WSectionInput` o `HSSSectionInput`). El acero se deduce del nombre del material con expresiones regulares.
+- **Columna:** si es un perfil I con nombre del catálogo AISC, se usa el catálogo. Si no, se crea una sección genérica (`WSectionInput` o `HSSSectionInput`). El acero se deduce del nombre del material con expresiones regulares; si no está en la librería, se usa `column_grade` de la plantilla y se emite un aviso.
 - **Modo `cases`:** casos con tipo conocido y `include_code = true`, para que OpenConex genere las combinaciones de la plantilla.
 - **Modo `combinations`:** cada combinación del programa es un caso de tipo `D` (marcador) con una combinación propia de factor 1,0, el método elegido y la marca sísmica.
 - **Agrupación por columna (`Grouping.COLUMN`):** primero se crean los proyectos por apoyo y después se unen por sección. Los casos llevan el prefijo `"<nodo>: "`, y las combinaciones de cada apoyo (ya expandidas con `load_combinations`) se copian como combinaciones propias con los nombres prefijados. Así ninguna combinación mezcla apoyos.
