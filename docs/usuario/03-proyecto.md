@@ -318,7 +318,7 @@ Los signos de `V` y `M` se conservan al combinar los casos; las verificaciones u
 | `methods` | `["LRFD"]` | Métodos con los que se generan las combinaciones ASCE 7-22: `LRFD`, `ASD` o ambos. |
 | `include_code` | `true` | Genera las combinaciones de ASCE 7-22 §2.3 (LRFD) y §2.4 (ASD) a partir de los tipos de los casos. |
 | `live_factor` | `1.0` | Factor de L en las combinaciones LRFD 3, 4 y 6 de ASCE 7-22 §2.3.1 y en las sísmicas (1,0, o 0,5 donde la norma lo permite). |
-| `SDS` | ninguno | Parámetro S_DS. **Las combinaciones con sismo solo se generan si se da `SDS`**: incluyen el sismo vertical E_v = 0,2 S_DS D (ASCE 7-22 §2.3.6 y §2.4.5). Sin `SDS`, los casos `E` no entran en las combinaciones generadas. |
+| `SDS` | ninguno | Parámetro S_DS. **Obligatorio si hay casos `E` y `include_code` es `true`**: sin él, el proyecto da error en lugar de omitir el sismo. Las combinaciones sísmicas incluyen el sismo vertical E_v = 0,2 S_DS D (ASCE 7-22 §2.3.6 y §2.4.5); use `0` para no considerar E_v. |
 | `rho` | `1.0` | Factor de redundancia ρ aplicado a E. |
 | `omega0` | ninguno | Factor de sobrerresistencia Ω0; con `SDS`, agrega las combinaciones con E_mh = Ω0 E (en ASD con aumento de 1,2 de las resistencias admisibles). |
 | `custom` | `[]` | Combinaciones propias (ver abajo). |

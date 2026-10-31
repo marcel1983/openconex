@@ -191,6 +191,11 @@ def base_plate_projects(data: CsiImport, template: Project,
     ``method`` sets the method of those combinations (template's first by default).
     Returns ({joint or column section: project}, warnings).
     """
+    if (source is LoadSource.CASES and template.combinations.SDS is None
+            and any(c.load_type is LoadType.SEISMIC and c.kind is CaseKind.LOAD_CASE
+                    for c in data.cases.values())):
+        raise ValueError("the model has seismic load cases: set combinations.SDS in the "
+                         "template (SDS = 0 omits the vertical effect Ev)")
     projects, warnings = _joint_projects(data, template, source, include, envelopes, method)
     warnings = _merge_warnings(warnings)
     if group is Grouping.JOINT:

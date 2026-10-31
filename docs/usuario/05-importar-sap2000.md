@@ -51,6 +51,8 @@ joint 50  x=6 m y=8 m  HSS6X6X3/8 (Box/Tube, frame 78, angle 0°)
 
 Copie `examples/base_plate_template_sap2000.ocnx` y ajuste lo que el modelo no tiene: placa (`N`, `B`, `tp`), concreto (`fc`, pedestal), anclajes (diámetro, grado, cantidad, separación, `hef`), llave de corte si la hay, y opciones (`seismic`, `SDS`, métodos). La columna y las cargas de la plantilla se reemplazan.
 
+Si el modelo tiene casos sísmicos y se usa `--loads cases`, la plantilla debe tener `combinations.SDS` (puede ser `0`); si no, `--create` termina con un error en lugar de omitir el sismo.
+
 ## 4. Crear los proyectos
 
 **Con los casos de carga** (OpenConex genera las combinaciones ASCE 7-22):

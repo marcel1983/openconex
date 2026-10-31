@@ -358,6 +358,12 @@ class Project(_Input):
         repeated = _repeated(case_names)
         if repeated:
             raise ValueError(f"duplicate load case names: {repeated}")
+        opts = self.combinations
+        quakes = [c.name for c in self.cases if c.type is LoadType.SEISMIC]
+        if opts.include_code and opts.methods and quakes and opts.SDS is None:
+            raise ValueError(
+                f"seismic load cases {quakes} need combinations.SDS to generate the ASCE 7-22 "
+                "seismic combinations (use SDS = 0 to omit the vertical effect Ev)")
         custom = self.combinations.custom
         repeated = _repeated([combination.name for combination in custom])
         if repeated:

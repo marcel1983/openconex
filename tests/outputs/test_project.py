@@ -513,3 +513,15 @@ def test_custom_materials_round_trip(tmp_path, project):
     assert again.materials == project.materials
     assert again.material_library()["Acero del proyecto"].Fy == pytest.approx(
         project.quantity("50 ksi", Kind.STRESS))
+
+
+def test_seismic_cases_without_sds_are_rejected():
+    data = json.loads(EXAMPLE.read_text(encoding="utf-8"))
+    data["cases"].append({"name": "EQ", "type": "E", "M": "10 kN*m"})
+    data["combinations"].pop("SDS", None)
+    data["combinations"]["include_code"] = True
+    with pytest.raises(ValueError, match="SDS"):
+        Project.model_validate(data)
+    data["combinations"]["SDS"] = 0.0
+    combos = Project.model_validate(data).load_combinations()
+    assert any(c.seismic for c in combos)

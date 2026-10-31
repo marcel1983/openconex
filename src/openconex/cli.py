@@ -167,9 +167,13 @@ def _create_projects(args: argparse.Namespace, data) -> int:
         print("error: --create needs --template (a .ocnx with plate, concrete and rods)",
               file=sys.stderr)
         return 2
-    projects, warnings = base_plate_projects(
-        data, load_project(args.template), LoadSource(args.loads), args.include,
-        args.envelopes, Method(args.method) if args.method else None, Grouping(args.group))
+    try:
+        projects, warnings = base_plate_projects(
+            data, load_project(args.template), LoadSource(args.loads), args.include,
+            args.envelopes, Method(args.method) if args.method else None, Grouping(args.group))
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
     for warning in warnings:
         print(f"warning: {warning}")
     out = Path(args.create)
