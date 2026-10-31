@@ -93,15 +93,22 @@ def _stress(FEXX: float, theta: float, p: float) -> float:
     return 0.60 * FEXX * (1 + 0.5 * math.sin(math.radians(theta)) ** 1.5) * f
 
 
+def _translation(elems, w, FEXX, u) -> float:
+    """All elements share the deformation of the most critical one (ICR at infinity)."""
+    thetas = [_theta(tx, ty, *u) for *_, tx, ty in elems]
+    delta = min(_du(w, th) for th in thetas)
+    throat = w / math.sqrt(2)
+    return sum(_stress(FEXX, th, delta / _dm(w, th)) * throat * L
+               for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
+
+
 def _concentric(elems, w, FEXX, u) -> float:
     thetas = [_theta(tx, ty, *u) for *_, tx, ty in elems]
     throat = w / math.sqrt(2)
     if max(thetas) - min(thetas) < 1e-6:  # elements in line or parallel, §J2.4(b)
         return sum(_stress(FEXX, th, 1.0) * throat * L
                    for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
-    delta = min(_du(w, th) for th in thetas)
-    rn = sum(_stress(FEXX, th, delta / _dm(w, th)) * throat * L
-             for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
+    rn = _translation(elems, w, FEXX, u)
     if all(th < 1e-6 or th > 90 - 1e-6 for th in thetas):
         # longitudinal and transverse elements, §J2.4(d), Eq. J2-6, without directional increase
         rnwl = sum(0.60 * FEXX * throat * L for (*_, L, _, _), th in zip(elems, thetas, strict=True)
@@ -158,6 +165,12 @@ def icr_strength(lines: list[WeldLine], w: float, FEXX: float, load_point: tuple
     scale = 0.60 * FEXX * w * total
     icr, it, p = solve_icr(lambda g: _residual(g, elems, w, FEXX, load_point, u), guess, span,
                            tol * scale, max_iter, direction=(-r0 * u[1], r0 * u[0]))
+    if (icr[0] - cx) * r0 * -u[1] + (icr[1] - cy) * r0 * u[0] < 0:
+        # The load passes close to the centroid of strength and the ICR lies beyond
+        # infinity, on the side opposite to the elastic estimate (reversed rotation).
+        # Conservatively not greater than the translation (ICR at infinity), which
+        # is what Manual Table 8-10 gives in these cases.
+        p = min(p, _translation(elems, w, FEXX, u))
     return WeldGroupResult(p, icr, it)
 
 
