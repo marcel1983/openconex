@@ -8,6 +8,7 @@ import argparse
 import sys
 
 from openconex import __version__
+from openconex.core.loads import Method
 from openconex.units import CHOICES, PRESETS, Kind, UnitError, format_value, parse
 
 
@@ -103,6 +104,8 @@ def _supports(args: argparse.Namespace) -> int:
     def f(value, kind):
         return format_value(value, kind, system, precision=3)
 
+    if args.create:
+        return _create_projects(args, data)
     for s in data.supports:
         col = s.column
         column = f"{col.section} ({col.shape}, frame {col.frame}, angle {col.angle:g}°)" \
@@ -122,6 +125,32 @@ def _supports(args: argparse.Namespace) -> int:
             case = max(forces, key=lambda c, key=key: key(forces[c]))
             print(f"  {label:12} {f(shown(forces[case]), kind):>14}  {case}")
     return 0
+
+
+def _create_projects(args: argparse.Namespace, data) -> int:
+    """Write one base plate project per support, from a template project."""
+    import re
+    from pathlib import Path
+
+    from openconex.io.csi_projects import LoadSource, base_plate_projects
+    from openconex.io.project import load_project, save_project
+
+    if not args.template:
+        print("error: --create needs --template (a .ocnx with plate, concrete and rods)",
+              file=sys.stderr)
+        return 2
+    projects, warnings = base_plate_projects(
+        data, load_project(args.template), LoadSource(args.loads), args.include,
+        args.envelopes, Method(args.method) if args.method else None)
+    for warning in warnings:
+        print(f"warning: {warning}")
+    out = Path(args.create)
+    out.mkdir(parents=True, exist_ok=True)
+    for joint, project in projects.items():
+        path = out / f"joint-{re.sub(r'[^A-Za-z0-9_.-]', '_', joint)}.ocnx"
+        save_project(project, path)
+        print(f"-> {path}  ({len(project.cases)} cases)")
+    return 0 if projects else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -159,6 +188,17 @@ def main(argv: list[str] | None = None) -> int:
     sup.add_argument("--units", choices=sorted(PRESETS), default="SI_kN_m")
     sup.add_argument("--all-cases", action="store_true",
                      help="include unfactored load cases (default: combinations and envelopes)")
+    sup.add_argument("--create", metavar="DIR",
+                     help="write one base plate project (.ocnx) per support in DIR")
+    sup.add_argument("--template", help="project (.ocnx) with plate, concrete, rods and options")
+    sup.add_argument("--loads", choices=["cases", "combinations"], default="cases",
+                     help="load cases (OpenConex combines them) or the program's combinations")
+    sup.add_argument("--include", metavar="REGEX",
+                     help="only cases or combinations whose name matches, e.g. '^CU'")
+    sup.add_argument("--envelopes", action="store_true",
+                     help="with --loads combinations, also use Max/Min envelopes")
+    sup.add_argument("--method", choices=["LRFD", "ASD"],
+                     help="method of the imported combinations (default: template's)")
     sup.set_defaults(func=_supports)
 
     args = parser.parse_args(argv)

@@ -63,6 +63,8 @@ STEELS: dict[str, SteelGrade] = {
         SteelGrade(name="ASTM A36", Fy=_ksi(36), Fu=_ksi(58)),
         SteelGrade(name="ASTM A572 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
         SteelGrade(name="ASTM A992", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A500 Gr. B (rectangular)", Fy=_ksi(46), Fu=_ksi(58)),
+        SteelGrade(name="ASTM A500 Gr. B (round)", Fy=_ksi(42), Fu=_ksi(58)),
         SteelGrade(name="ASTM A500 Gr. C (rectangular)", Fy=_ksi(50), Fu=_ksi(62)),
         SteelGrade(name="ASTM A500 Gr. C (round)", Fy=_ksi(46), Fu=_ksi(62)),
     )

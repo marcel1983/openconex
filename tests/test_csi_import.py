@@ -2,12 +2,20 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Import of supports and reactions from SAP2000 / ETABS tables exported to Excel."""
 
+import math
+from pathlib import Path
+
 import pytest
 from openpyxl import Workbook
 
 from openconex.cli import main
-from openconex.core.loads import LoadType
-from openconex.io.csi import CaseKind, import_supports, read_tables
+from openconex.core.loads import LoadType, Method
+from openconex.core.model import HSSKind
+from openconex.io.csi import CaseKind, ImportedColumn, import_supports, read_tables
+from openconex.io.csi_projects import LoadSource, base_plate_projects, column_input
+from openconex.io.project import HSSSectionInput, WSectionInput, load_project
+
+TEMPLATE = Path(__file__).parents[1] / "examples" / "base_plate_generic_w.ocnx"
 
 TONF, CM = 9806.65, 10.0  # N, mm
 
@@ -40,6 +48,12 @@ def export(tmp_path):
            [["DEAD", "LinStatic", "Dead"], ["LIVE", "LinStatic", "Live"],
             ["SX", "LinStatic", "Quake"], ["NX", "LinStatic", "Notional"],
             ["MODAL", "LinModal", "Quake"]])
+    _sheet(wb, "Combination Definitions", "Combination Definitions",
+           ["ComboName", "ComboType", "CaseType", "CaseName", "ScaleFactor"],
+           ["Text", "Text", "Text", "Text", "Unitless"],
+           [["U1", "Linear Add", "Linear Static", "DEAD", 1.2],
+            ["U1", "Linear Add", "Linear Static", "SX", 1.0],
+            ["ENV", "Envelope", "Linear Static", "DEAD", 1.0]])
     _sheet(wb, "Joint Reactions", "Joint Reactions",
            ["Joint", "OutputCase", "CaseType", "StepType", "StepNum",
             "F1", "F2", "F3", "M1", "M2", "M3"],
@@ -73,7 +87,8 @@ def export(tmp_path):
            ["SectionName", "Material", "Shape", "t3", "t2", "tf", "tw"],
            ["Text", "Text", "Text", "cm", "cm", "cm", "cm"],
            [["W14X90", "A992Fy50", "I/Wide Flange", 35.6, 36.9, 1.80, 1.12],
-            ["HSS6X6X3/8", "A500GrB46", "Box/Tube", 15.24, 15.24, 0.887, 0.887]])
+            ["HSS6X6X3/8", "A500GrB46", "Box/Tube", 15.24, 15.24, 0.887, 0.887],
+            ["W8X10", "A992Fy50", "I/Wide Flange", 20.0, 10.0, 0.52, 0.43]])
     path = tmp_path / "export.xlsx"
     wb.save(path)
     return path
@@ -114,6 +129,8 @@ def test_case_classification(export):
     assert (cases["DEAD"].kind, cases["DEAD"].load_type) == (CaseKind.LOAD_CASE, LoadType.DEAD)
     assert cases["SX"].load_type is LoadType.SEISMIC
     assert cases["U1"].kind is CaseKind.COMBINATION
+    assert cases["U1"].seismic and cases["SX"].seismic
+    assert not cases["DEAD"].seismic and not cases["ENV (Max)"].seismic
     assert cases["ENV (Max)"].kind is CaseKind.ENVELOPE
     assert any("MODAL" in w for w in data.warnings)
 
@@ -147,3 +164,65 @@ def test_cli_supports(export, capsys):
     assert "2 supports, 3 of 5 output cases" in out
     assert "W14X90 (I/Wide Flange, frame C1, angle 90°)" in out
     assert "max P" in out and "ENV (Max)" in out
+
+
+def _column(section, shape, material, t3, t2, tf, tw):
+    return ImportedColumn("C", section, shape, 0.0, material,
+                          {"t3": t3, "t2": t2, "tf": tf, "tw": tw})
+
+
+def test_column_input():
+    assert column_input(_column("W14X90", "I/Wide Flange", "A992Fy50", 356, 369, 18, 11))[:2] \
+        == ("W14X90", "ASTM A992")
+    built_up, grade, _ = column_input(_column("COL-1", "I/Wide Flange", "A572Gr50",
+                                              450, 300, 9.652, 6.35))
+    assert isinstance(built_up, WSectionInput) and built_up.d == "450 mm"
+    assert (built_up.grade, grade) == ("ASTM A572 Gr. 50", "ASTM A572 Gr. 50")
+    box = column_input(_column("HSS6X6X3/8", "Box/Tube", "A500GrB46", 152.4, 152.4, 8.87, 8.87))[0]
+    assert isinstance(box, HSSSectionInput) and box.shape is HSSKind.SQUARE
+    assert box.grade == "ASTM A500 Gr. B (rectangular)"
+    pipe = column_input(_column("P", "Pipe", "A53", 100, 0, 0, 6))[0]
+    assert pipe.shape is HSSKind.ROUND and pipe.grade is None
+    assert column_input(_column("X", "Channel", "A36", 1, 1, 1, 1))[0] is None
+
+
+def test_projects_from_load_cases(export):
+    projects, warnings = base_plate_projects(import_supports(export), load_project(TEMPLATE))
+    assert set(projects) == {"1", "2"}
+    p1 = projects["1"]
+    assert p1.base_plate.column == "W14X90"
+    assert [(c.name, c.type) for c in p1.cases] == [("DEAD", LoadType.DEAD),
+                                                    ("SX", LoadType.SEISMIC)]
+    dead = p1.case_forces()["DEAD"]
+    assert dead.P == pytest.approx(10 * TONF)
+    assert dead.V2 == pytest.approx(math.hypot(1, 2) * TONF)
+    assert dead.M3 == pytest.approx(-30 * TONF * CM)
+    assert p1.combinations.include_code and not p1.combinations.custom
+    assert p1.load_combinations()
+    assert any("joint 1" in w and "M2" in w for w in warnings)
+    assert isinstance(projects["2"].base_plate.column, HSSSectionInput)
+
+
+def test_projects_from_combinations(export):
+    data = import_supports(export)
+    projects, _ = base_plate_projects(data, load_project(TEMPLATE), LoadSource.COMBINATIONS,
+                                      method=Method.ASD)
+    p1 = projects["1"]
+    assert [c.name for c in p1.cases] == ["U1"]
+    (combo,) = p1.combinations.custom
+    assert (combo.name, combo.method, combo.factors, combo.seismic) == \
+        ("U1", Method.ASD, {"U1": 1.0}, True)
+    assert not p1.combinations.include_code
+    projects, _ = base_plate_projects(data, load_project(TEMPLATE), LoadSource.COMBINATIONS,
+                                      include="^ENV", envelopes=True)
+    assert [c.name for c in projects["1"].cases] == ["ENV (Max)", "ENV (Min)"]
+    assert "2" not in projects  # joint 2 has no envelope
+
+
+def test_cli_create_projects(export, tmp_path, capsys):
+    out = tmp_path / "projects"
+    assert main(["supports", str(export), "--create", str(out), "--template", str(TEMPLATE),
+                 "--loads", "combinations"]) == 0
+    assert sorted(p.name for p in out.iterdir()) == ["joint-1.ocnx", "joint-2.ocnx"]
+    assert load_project(out / "joint-1.ocnx").cases[0].name == "U1"
+    assert main(["supports", str(export), "--create", str(out)]) == 2

@@ -13,6 +13,9 @@ Joint Coordinates                       position of the supports
 Joint Restraint Assignments             which joints are supports
 Joint Reactions                         forces per output case
 Load Case Definitions                   design type of each load case (D, L, E…)
+Load Pattern Definitions                design type of each load pattern
+Case - Static 1 - Load Assignments      patterns applied by each static case
+Combination Definitions                 cases of each combination
 Connectivity - Frame                    column connected to each support
 Frame Section Assignments               section of that column
 Frame Local Axes Assignments 1 - Typical  rotation of the column local axes
@@ -132,6 +135,8 @@ class ImportedCase:
     kind: CaseKind
     load_type: LoadType | None = None
     design_type: str = ""
+    seismic: bool = False
+    """Includes a seismic load pattern, directly or through cases and combinations."""
 
 
 @dataclass(frozen=True)
@@ -186,6 +191,31 @@ def _cases(tables: dict[str, Table]) -> dict[str, tuple[str, LoadType | None]]:
     return {str(r["Case"]): (str(r.get("DesignType") or ""),
                              _DESIGN_TYPES.get(str(r.get("DesignType") or "").lower()))
             for r in table.rows}
+
+
+def _seismic_cases(tables: dict[str, Table]) -> set[str]:
+    """Load cases and combinations that include a seismic (Quake) load pattern."""
+    def rows(name):
+        return tables[name].rows if name in tables else []
+
+    quake = {str(r["LoadPat"]) for r in rows("Load Pattern Definitions")
+             if str(r.get("DesignType") or "").lower() == "quake"}
+    direct = {str(r["Case"]) for r in rows("Load Case Definitions")
+              if str(r.get("DesignType") or "").lower() == "quake"}
+    direct |= {str(r["Case"]) for r in rows("Case - Static 1 - Load Assignments")
+               if str(r.get("LoadName")) in quake}
+    children: dict[str, set[str]] = {}
+    for r in rows("Combination Definitions"):
+        children.setdefault(str(r["ComboName"]), set()).add(str(r["CaseName"]))
+    found: dict[str, bool] = {}
+
+    def seismic(name: str) -> bool:
+        if name not in found:
+            found[name] = False  # guards against cycles
+            found[name] = name in direct or any(seismic(c) for c in children.get(name, ()))
+        return found[name]
+
+    return {name for name in direct | set(children) if seismic(name)}
 
 
 def _columns(tables: dict[str, Table], coords, warnings) -> dict[str, ImportedColumn]:
@@ -252,6 +282,7 @@ def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
     coords = {j: xyz for j, xyz in coords.items() if j in restraints}
     columns = _columns(tables, coords, warnings)
     case_info = _cases(tables)
+    seismic = _seismic_cases(tables)
 
     reactions = tables["Joint Reactions"]
     force = {k: _converter(reactions, k, Kind.FORCE) for k in ("F1", "F2", "F3")}
@@ -276,7 +307,8 @@ def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
                 kind = CaseKind.COMBINATION
             else:
                 kind = CaseKind.LOAD_CASE
-            cases[label] = ImportedCase(label, output, case_type, kind, load_type, design_type)
+            cases[label] = ImportedCase(label, output, case_type, kind, load_type, design_type,
+                                        output in seismic)
         angle = columns[joint].angle if joint in columns else 0.0
         forces[joint][label] = _plate_forces(*(force[k](r[k]) for k in ("F1", "F2", "F3")),
                                              *(moment[k](r[k]) for k in ("M1", "M2", "M3")),
