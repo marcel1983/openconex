@@ -1,0 +1,57 @@
+# 9. Cierre de la placa base
+
+Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaciones ya validadas contra AISC DG1 3ª ed.
+
+## Estado
+
+- Modelo rectangular: implementado y usado por defecto.
+- Modelo triangular: integrado en el eje fuerte (`pressure_model = "triangular"`).
+- Área efectiva: integrada para compresión concéntrica de perfiles I (`bearing_area_model = "effective"`).
+- El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
+
+## Matriz de cierre
+
+| Funcionalidad | Función existente | Ejemplos DG1 | Estado |
+|---|---|---|---|
+| Presión triangular | `plate.triangular_bending` | B.2-1, B.2-2 | Integrada en eje fuerte |
+| Área efectiva | `plate.effective_area` | B.3-1 | Integrada en compresión concéntrica de perfiles I |
+| Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Pendiente de entrada y check |
+| Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Pendiente de entrada y check |
+| Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Pendiente de flujo y capacidad |
+| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Pendiente de entrada y checks |
+| Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
+| Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
+| HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |
+| Optimización N/B/tp | `plate.optimize_plan` | — | Pendiente de flujo y CLI |
+
+## Decisiones de la fase 1
+
+- Los valores por defecto siguen siendo `pressure_model = "rectangular"` y `bearing_area_model = "plate"`; los proyectos existentes no cambian.
+- `pressure_model = "triangular"` solo se aplica al eje fuerte y a combinaciones con `P > 0`. Las combinaciones con levantamiento usan el modelo rectangular.
+- El modelo triangular no admite `M_weak` en esta fase; el proyecto lo rechaza con un mensaje claro.
+- `bearing_area_model = "effective"` solo se aplica a compresión concéntrica de perfiles I. No se admite en HSS ni junto con el modelo triangular.
+- La memoria muestra una hipótesis específica cuando se usa cualquiera de los dos modelos.
+
+## Orden de implementación
+
+1. **Fase 1 (hecha):** presión triangular y área efectiva en el eje fuerte.
+2. **Fase 2:** flexión de placa por anclajes; decidir si `a` se deriva o se pide explícitamente.
+3. **Fase 3:** refuerzo de anclaje; definir área, `fy` y longitud de desarrollo.
+4. **Fase 4:** llave de corte en DXF/3D y flexión local si hay método validado.
+5. **Fase 5:** bases sísmicas débiles y empotradas, en dos PRs separados.
+6. **Fase 6:** HSS con momento; validar o declarar la limitación.
+7. **Fase 7:** optimización de N, B y tp.
+
+## Criterio de aceptación
+
+- Cada ejemplo DG1 afectado se prueba de extremo a extremo, no solo la función aislada.
+- Cada nueva verificación aparece en la memoria con traza, demanda, capacidad y cláusula.
+- Los proyectos existentes conservan sus resultados con la configuración por defecto.
+- La documentación y los ejemplos se actualizan en el mismo PR.
+- `python -m pytest` y `ruff check .` pasan antes de cada merge.
+
+## Riesgos
+
+- La interacción del modelo triangular con biaxial y levantamiento puede requerir un tratamiento específico; por eso la fase 1 lo limita al eje fuerte con compresión.
+- Las bases sísmicas no son solo una conexión de funciones: requieren diseño por capacidad y nuevos estados límite.
+- El modelo HSS con momento no tiene todavía una referencia de aceptación clara; no conviene presentarlo como validado.
