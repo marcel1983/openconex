@@ -3,7 +3,7 @@
 Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC.
 *Free (GPL-3.0) software for the design of steel connections to AISC.*
 
-> **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19) y genera memoria, planos DXF y modelo 3D desde la línea de comandos. La interfaz gráfica está en desarrollo. Ver el [plan de desarrollo](docs/PLAN.md).
+> **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19) y genera memoria, planos DXF y modelo 3D desde la línea de comandos o desde una interfaz gráfica inicial. Ver el [plan de desarrollo](docs/PLAN.md).
 
 ## Alcance previsto
 - **Conexiones:** placas base, viga–columna y viga–viga (corte y momento), empalmes de viga y columna.
@@ -28,7 +28,7 @@ pip install -e .
 openconex baseplate examples/base_plate_dg1_4_7_11.ocnx --html --docx --dxf
 ```
 
-Calcula una placa base del Ejemplo 4.7-11 de la Guía de Diseño 1 y escribe la memoria y el plano. Para importar un modelo de SAP2000, ver [Importar desde SAP2000 / ETABS](docs/usuario/05-importar-sap2000.md).
+Calcula una placa base del Ejemplo 4.7-11 de la Guía de Diseño 1 y escribe la memoria y el plano. La interfaz gráfica se instala con `pip install -e ".[gui]"` y se abre con `openconex-gui`. Para importar un modelo de SAP2000 o ETABS, ver [Importar desde SAP2000 / ETABS](docs/usuario/05-importar-sap2000.md).
 
 ## Desarrollo
 
