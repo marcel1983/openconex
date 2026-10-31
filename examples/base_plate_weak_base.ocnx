@@ -1,0 +1,48 @@
+{
+  "format_version": 7,
+  "info": {
+    "name": "Ejemplo: base sísmica débil (DG1 6.4-1)",
+    "number": "OC-0011",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W12X96",
+    "column_grade": "ASTM A992",
+    "N": "20 in",
+    "B": "20 in",
+    "tp": "2.5 in",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "rectangular",
+    "bearing_area_model": "plate",
+    "fc": "4 ksi",
+    "A2_over_A1": 4.0,
+    "bearing_area": "3.21 in**2",
+    "grout": "1.5 in",
+    "rod_diameter": "1 in",
+    "rod_grade": "ASTM F1554 Gr. 55",
+    "rods_per_side": 3,
+    "f": "8 in",
+    "rod_spacing": "16 in",
+    "hef": "24 in",
+    "seismic": true,
+    "weak_base": {
+      "reduced_diameter": "0.75 in",
+      "stretch_length": "8 in",
+      "Rt": 1.2
+    }
+  },
+  "cases": [
+    {"name": "S1", "type": "E", "P": "376 kip", "M": "3600 kip*in", "V": "50 kip"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "S1-LRFD", "method": "LRFD", "factors": {"S1": 1.0}, "source": "DG1 6.4-1"}
+    ]
+  }
+}

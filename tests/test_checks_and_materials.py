@@ -50,6 +50,7 @@ def test_result_serializes_with_trace():
         (BOLTS, "ASTM F3125 Gr. A325", "Fnv_N", 54),
         (BOLTS, "ASTM F3125 Gr. A490", "Fnt", 113),
         (BOLTS, "ASTM F1554 Gr. 36", "Fnt", 43.5),
+        (BOLTS, "ASTM F1554 Gr. 55", "Fy", 55),
         (ELECTRODES, "E70XX", "FEXX", 70),
     ],
 )

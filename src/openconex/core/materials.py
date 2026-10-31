@@ -47,6 +47,8 @@ class BoltGrade(BaseModel):
     """Nominal shear stress, threads excluded from the shear plane [MPa]."""
     Fu: float
     """Specified minimum tensile strength [MPa]."""
+    Fy: float | None = None
+    """Specified minimum yield stress [MPa], when the grade defines one."""
 
 
 class WeldElectrode(BaseModel):
@@ -106,7 +108,7 @@ BOLTS: dict[str, BoltGrade] = {
         # Threaded parts (anchor rods): Fnt = 0.75 Fu, Fnv = 0.450 Fu (N) / 0.563 Fu (X).
         *(
             BoltGrade(name=f"ASTM F1554 Gr. {gr}", Fnt=_ksi(0.75 * fu), Fnv_N=_ksi(0.450 * fu),
-                      Fnv_X=_ksi(0.563 * fu), Fu=_ksi(fu))
+                      Fnv_X=_ksi(0.563 * fu), Fu=_ksi(fu), Fy=_ksi(gr))
             for gr, fu in ((36, 58), (55, 75), (105, 125))
         ),
     )
