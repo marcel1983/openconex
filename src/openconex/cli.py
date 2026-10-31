@@ -82,6 +82,48 @@ def _baseplate(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _supports(args: argparse.Namespace) -> int:
+    """List the supports, columns and governing reactions of a SAP2000 / ETABS export."""
+    import math
+
+    from openconex.io.csi import CaseKind, import_supports
+
+    try:
+        data = import_supports(args.file)
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    system = PRESETS[args.units]
+    kinds = {CaseKind.COMBINATION, CaseKind.ENVELOPE} if not args.all_cases else set(CaseKind)
+    cases = [c.name for c in data.cases.values() if c.kind in kinds]
+    for warning in data.warnings:
+        print(f"warning: {warning}")
+    print(f"{len(data.supports)} supports, {len(cases)} of {len(data.cases)} output cases")
+
+    def f(value, kind):
+        return format_value(value, kind, system, precision=3)
+
+    for s in data.supports:
+        col = s.column
+        column = f"{col.section} ({col.shape}, frame {col.frame}, angle {col.angle:g}°)" \
+            if col else "no column"
+        print(f"\njoint {s.joint}  x={f(s.x, Kind.LENGTH)} y={f(s.y, Kind.LENGTH)}  {column}")
+        forces = {c: s.forces[c] for c in cases if c in s.forces}
+        if not forces:
+            continue
+        # (label, ranking key, shown value, kind); P < 0 is tension
+        rows = (("max P", lambda F: F.P, lambda F: F.P, Kind.FORCE),
+                ("min P", lambda F: -F.P, lambda F: F.P, Kind.FORCE),
+                ("max shear V", lambda F: math.hypot(F.V2, F.V3),
+                 lambda F: math.hypot(F.V2, F.V3), Kind.FORCE),
+                ("max |M3|", lambda F: abs(F.M3), lambda F: F.M3, Kind.MOMENT),
+                ("max |M2|", lambda F: abs(F.M2), lambda F: F.M2, Kind.MOMENT))
+        for label, key, shown, kind in rows:
+            case = max(forces, key=lambda c, key=key: key(forces[c]))
+            print(f"  {label:12} {f(shown(forces[case]), kind):>14}  {case}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="openconex", description=__doc__)
     parser.add_argument("--version", action="version", version=f"OpenConex {__version__}")
@@ -110,6 +152,14 @@ def main(argv: list[str] | None = None) -> int:
                        ("stl", "STL 3D model (needs openconex[3d])")):
         bp.add_argument(f"--{flag}", action="store_true", help=text)
     bp.set_defaults(func=_baseplate)
+
+    sup = sub.add_parser("supports",
+                         help="list supports and reactions exported from SAP2000 / ETABS (.xlsx)")
+    sup.add_argument("file", help="Excel file with the exported database tables")
+    sup.add_argument("--units", choices=sorted(PRESETS), default="SI_kN_m")
+    sup.add_argument("--all-cases", action="store_true",
+                     help="include unfactored load cases (default: combinations and envelopes)")
+    sup.set_defaults(func=_supports)
 
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):
