@@ -1,8 +1,8 @@
 # Manual de usuario
 
-OpenConex calcula conexiones metálicas según AISC 360-22, la Guía de Diseño 1 de AISC (3ª ed.) y ACI 318-19. Hoy calcula **placas base de columna** desde la línea de comandos. Genera memoria de cálculo (HTML, Word y PDF), planos DXF y modelo 3D (STEP y STL), y también importa los apoyos de un modelo de SAP2000.
+OpenConex calcula conexiones metálicas según AISC 360-22, la Guía de Diseño 1 de AISC (3ª ed.) y ACI 318-19. Hoy calcula **placas base de columna** desde la línea de comandos y desde una interfaz gráfica inicial. Genera memoria de cálculo (HTML, Word y PDF), planos DXF y modelo 3D (STEP y STL), y también importa los apoyos de un modelo de SAP2000 o ETABS.
 
-> **Estado: alfa.** La interfaz gráfica y los demás tipos de conexión están en desarrollo ([plan](../PLAN.md)). La responsabilidad del diseño es del profesional que lo firma, que debe verificar los resultados.
+> **Estado: alfa.** La interfaz gráfica cubre el flujo individual de placa base; los demás tipos de conexión están en desarrollo ([plan](../PLAN.md)). La responsabilidad del diseño es del profesional que lo firma, que debe verificar los resultados.
 
 ## Contenido
 
@@ -14,6 +14,7 @@ OpenConex calcula conexiones metálicas según AISC 360-22, la Guía de Diseño 
 6. [Resultados](06-resultados.md): memoria, planos y modelo 3D.
 7. [Unidades y materiales](07-unidades-materiales.md)
 8. [Alcance y limitaciones](08-limitaciones.md)
+9. [Interfaz gráfica](09-interfaz.md): abrir, calcular, revisar y exportar desde el escritorio.
 
 ## Flujo de trabajo
 

@@ -32,6 +32,7 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["PySide6>=6.8"]
+gui = ["PySide6>=6.8"]
 3d = ["cadquery-ocp-novtk>=7.8"]
 dev = [
     "pytest>=8",
@@ -42,6 +43,7 @@ dev = [
 
 [project.scripts]
 openconex = "openconex.cli:main"
+openconex-gui = "openconex.gui:main"
 
 [project.urls]
 Repository = "https://github.com/marcel1983/openconex"
