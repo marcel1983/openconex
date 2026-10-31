@@ -28,7 +28,7 @@ pip install -e .
 openconex baseplate examples/base_plate_dg1_4_7_11.ocnx --html --docx --dxf
 ```
 
-Calcula una placa base del Ejemplo 4.7-11 de la Guía de Diseño 1 y escribe la memoria y el plano. La interfaz gráfica se instala con `pip install -e ".[gui]"` y se abre con `openconex-gui`. Para importar un modelo de SAP2000 o ETABS, ver [Importar desde SAP2000 / ETABS](docs/usuario/05-importar-sap2000.md).
+Calcula una placa base del Ejemplo 4.7-11 de la Guía de Diseño 1 y escribe la memoria y el plano. La interfaz gráfica se instala con `pip install -e ".[gui]"` y se abre con `openconex-gui`; incluye bibliotecas de secciones y materiales y cambio de unidades con conversión del formulario. Para importar un modelo de SAP2000 o ETABS, ver [Importar desde SAP2000 / ETABS](docs/usuario/05-importar-sap2000.md).
 
 ## Desarrollo
 

@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con cinco bloques: `info`, `materials` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `sections` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -52,6 +52,19 @@ La librería integrada contiene los aceros típicos de AISC 360-22. Para usar un
 | `E` | `"29000 ksi"` | Módulo de elasticidad. |
 
 Los materiales propios se usan en todo el cálculo: secciones de columna, placa base y llave de corte. Las barras de anclaje y los electrodos mantienen sus librerías propias (`rod_grade` y el electrodo de la soldadura).
+
+## Secciones propias (`sections`)
+
+El bloque opcional `sections` guarda las secciones genéricas creadas desde la interfaz para que sigan disponibles al reabrir el proyecto. Cada elemento usa el mismo formato que una columna genérica (`type`, `name`, `d`, `bf`, `tf`, `tw`, `k_des`, `grade` para W; `type`, `shape`, `d`, `bf`, `t`, `grade` para HSS):
+
+```json
+"sections": [
+  {"type": "W", "name": "COL-1", "d": "14 in", "bf": "10 in",
+   "tf": "0.5 in", "tw": "0.3 in", "k_des": "1 in", "grade": "ASTM A992"}
+]
+```
+
+La columna activa puede ser una etiqueta del catálogo AISC, una sección del bloque `sections` o un objeto de sección escrito directamente en `base_plate.column`.
 
 ## Placa base (`base_plate`)
 

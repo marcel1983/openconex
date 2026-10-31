@@ -12,6 +12,7 @@ from openconex.io.project import (
     CustomCombinationInput,
     MaterialInput,
     Project,
+    WSectionInput,
     load_project,
     save_project,
 )
@@ -45,6 +46,26 @@ def test_round_trip(tmp_path, project):
     again = load_project(path)
     assert again == project
     assert json.loads(path.read_text())["format_version"] == FORMAT_VERSION
+
+
+def test_custom_section_library_round_trip(tmp_path, project):
+    project.sections = [
+        WSectionInput(type="W", name="COL-1", d="14", bf="10", tf="0.5",
+                      tw="0.3", grade="ASTM A992"),
+    ]
+    path = tmp_path / "sections.ocnx"
+    save_project(project, path)
+    again = load_project(path)
+    assert [section.label() for section in again.sections] == ["COL-1"]
+    assert again.sections[0].grade == "ASTM A992"
+
+
+def test_custom_section_names_are_unique(project):
+    section = WSectionInput(type="W", name="COL-1", d="14", bf="10", tf="0.5",
+                            tw="0.3", grade="ASTM A992")
+    project.sections = [section, section]
+    with pytest.raises(ValueError, match="duplicate custom section"):
+        Project.model_validate(project.model_dump())
 
 
 def test_custom_combinations_example():

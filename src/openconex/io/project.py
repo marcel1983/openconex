@@ -63,7 +63,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 8
+FORMAT_VERSION = 9
 Quantity = str | float
 
 
@@ -346,6 +346,8 @@ class Project(_Input):
     info: ProjectInfo = Field(default_factory=ProjectInfo)
     materials: list[MaterialInput] = Field(default_factory=list)
     """Structural steels added to the built-in AISC library for this project."""
+    sections: list[ColumnSectionInput] = Field(default_factory=list)
+    """Custom column sections saved with the project, available in the GUI."""
     base_plate: BasePlateInput
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
@@ -372,6 +374,12 @@ class Project(_Input):
                 and self.base_plate.shear_lug.grade not in library):
             raise ValueError(f"unknown shear lug material: "
                              f"{self.base_plate.shear_lug.grade!r}")
+        repeated = _repeated([section.label() for section in self.sections])
+        if repeated:
+            raise ValueError(f"duplicate custom section names: {repeated}")
+        for section in self.sections:
+            if section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
         column = self.base_plate.column
         if isinstance(column, str):
             if self.base_plate.column_grade not in library:
