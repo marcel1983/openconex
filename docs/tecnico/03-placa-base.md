@@ -4,6 +4,8 @@ Código: `connections/base_plate/check.py` (`check_base_plate`) con los modelos 
 
 Para cada combinación se calculan las fuerzas P, V = √(V2² + V3²), M = |M3| y M2 = |M2|, y se siguen estos pasos.
 
+Si el proyecto define `embedded_base`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta.
+
 ## 0. Llave de corte (si la hay)
 
 La llave toma la componente del corte de su orientación: |V2| con `strong`, |V3| con `weak`, ambas con `both`. Su momento V·e, con e = espesor del mortero + h_sl/2, se suma al momento de la placa en el mismo eje, como en DG1 Ejemplo 4.7-5. El corte que queda (√ de las componentes no tomadas) pasa a fricción o a los anclajes.
@@ -91,8 +93,24 @@ Las verificaciones de concreto son solo LRFD.
 
 Cada ala transmite la fuerza R = M/d como carga transversal (θ = 90°) sobre una soldadura de filete de largo b_f (DG1 Ejemplo 4.7-9; AISC 360-22 §J2.4).
 
+## 7. Base empotrada (si se define `embedded_base`)
+
+La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seismic.face_plate_design`:
+
+- **Momento por apoyo horizontal** (DG1 §5.2, Ec. 5-1 y 5-6):
+  f_b = 1,54 √f'c (B_f/b_f)^0,66 ≤ 1,7 f'c;
+  M_HB = −V d_e/2 − V²/(4 b_f f_b) + β1 b_f d_e² f_b (2 − β1)/4;
+  φM_HB = 0,75 M_HB.
+- **Aplastamiento de las placas de cara** (DG1 §5.3, Ec. 5-7):
+  A1 = (b_f − t_w)(d − 2t_f); φP_p = 0,65 (1,7 f'c) A1.
+- **Espesor de las placas de cara** (DG1 §5.3, Ec. 5-8):
+  l = √(d b_f)/4; t_p,min = l √[2P/(0,9 F_y A1)].
+- **Detalle sísmico:** t_p ≥ 0,75 t_w (AISC 341-22 §F3.5b.4).
+
+Solo se admite en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+
 ## Lo que no hace la verificación completa
 
-Las siguientes funciones existen en la biblioteca y están validadas con la DG1, pero `check_base_plate` todavía no las usa:
-- bases sísmicas: base débil con anclajes dúctiles y base empotrada (`seismic.py`, DG1 Cap. 5 y 6);
-- refuerzo de anclaje (`anchors.anchor_reinforcement`).
+- La base empotrada no comprueba el levantamiento neto ni el momento débil.
+- El modelo de base empotrada es el tipo I sin refuerzo adherido; no cubre el tipo II.
+- La llave de corte no se dibuja en el DXF ni en el modelo 3D, y no se verifica la flexión local de la placa en su soldadura.

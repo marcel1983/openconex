@@ -158,6 +158,13 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         inputs.append(Row([tr("input.weak_base", lang),
                            f"Ø {q(weak.reduced_diameter, L)} · "
                            f"L_str {q(weak.stretch_length, L)} · Rt {weak.Rt:g}"]))
+    if bp.embedded_base is not None:
+        embedded = bp.embedded_base
+        inputs.append(Row([tr("input.embedded_base", lang),
+                           f"h_e {q(embedded.embedment, L)} · "
+                           f"B_f {q(embedded.foundation_width, L)} · "
+                           f"t_pf {q(embedded.face_plate_thickness, T)} · "
+                           f"β1 {embedded.beta1:g}"]))
     if bp.shear_lug:
         lug = bp.shear_lug
         inputs.append(Row([tr("input.shear_lug", lang),
@@ -193,6 +200,8 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         assumptions.append(tr("report.assumption_effective_area", lang))
     if bp.weak_base is not None:
         assumptions.append(tr("report.assumption_weak_base", lang))
+    if bp.embedded_base is not None:
+        assumptions.append(tr("report.assumption_embedded_base", lang))
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),

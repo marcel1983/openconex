@@ -26,7 +26,10 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.lug_weld` | Llave de corte: soldadura a la placa | AISC 360-22 §J2.4; DG1 Ej. 4.7-5 | ✔ |
 | `base_plate.lug_anchor_embedment` | Empotramiento de anclajes con llave (h_ef ≥ 2,5 h_sl) | ACI 318-19 §17.11.1 | ✔ |
 | `base_plate.plate_bending_rods` | Flexión de la placa por los anclajes en tracción | DG1 Ej. 4.7-3, 4.7-7 | — |
-| `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | — |
+| `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | ✔ con `embedded_base` |
+| `base_plate.face_plate_bearing` | Aplastamiento del concreto en las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
+| `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
+| `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 

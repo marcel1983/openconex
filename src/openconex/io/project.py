@@ -19,6 +19,7 @@ from openconex import __version__
 from openconex.connections.base_plate.check import (
     BasePlate,
     BearingAreaModel,
+    EmbeddedBase,
     PressureModel,
     Reinforcement,
     ShearLug,
@@ -45,6 +46,7 @@ __all__ = [
     "ColumnSectionInput",
     "CombinationOptions",
     "CustomCombinationInput",
+    "EmbeddedBaseInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "MaterialInput",
@@ -57,7 +59,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 7
+FORMAT_VERSION = 8
 Quantity = str | float
 
 
@@ -196,6 +198,18 @@ class ReinforcementInput(_Input):
     """Available development length."""
 
 
+class EmbeddedBaseInput(_Input):
+    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+
+    embedment: Quantity
+    """Depth of the column embedded in the concrete below the base plate."""
+    foundation_width: Quantity
+    """Width of the concrete foundation in the direction of bending."""
+    face_plate_thickness: Quantity
+    beta1: float = Field(default=0.85, gt=0.0, le=1.0)
+    """Concrete stress-block factor used in the horizontal bearing equation."""
+
+
 class WeakBaseInput(_Input):
     """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
 
@@ -233,6 +247,7 @@ class BasePlateInput(_Input):
     hef: Quantity = 0.0
     reinforcement: ReinforcementInput | None = None
     weak_base: WeakBaseInput | None = None
+    embedded_base: EmbeddedBaseInput | None = None
     edges: dict[str, Quantity] = Field(default_factory=dict)
     """Distances from the outer anchors to concrete edges: left, right, bottom, top."""
     washer_thickness: Quantity | None = None
@@ -353,6 +368,27 @@ class Project(_Input):
         if (self.base_plate.bearing_area is not None
                 and self.quantity(self.base_plate.bearing_area, Kind.AREA) <= 0):
             raise ValueError("bearing_area must be positive")
+        embedded = self.base_plate.embedded_base
+        if embedded is not None:
+            if weak is not None:
+                raise ValueError("embedded base and weak base cannot be combined")
+            if self.base_plate.shear_lug is not None:
+                raise ValueError("embedded base does not support a shear lug yet")
+            if isinstance(column, HSSSectionInput):
+                raise ValueError("embedded base is only defined for I-shapes")
+            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
+                raise ValueError("embedded base does not support weak-axis moment yet")
+            if ((self.combinations.include_code
+                 and Method.ASD in self.combinations.methods)
+                    or any(c.method is Method.ASD for c in self.combinations.custom)):
+                raise ValueError("embedded base requires LRFD combinations")
+            for value, kind in ((embedded.embedment, Kind.LENGTH),
+                                (embedded.foundation_width, Kind.LENGTH),
+                                (embedded.face_plate_thickness, Kind.THICKNESS)):
+                if self.quantity(value, kind) <= 0:
+                    raise ValueError("embedded base dimensions must be positive")
+            if embedded.beta1 <= 0:
+                raise ValueError("embedded base beta1 must be positive")
         reinforcement = self.base_plate.reinforcement
         if reinforcement is not None:
             for value, kind in ((reinforcement.area, Kind.AREA),
@@ -430,6 +466,7 @@ class Project(_Input):
             rod_bending_lever=(None if bp.rod_bending_lever is None
                                else self.quantity(bp.rod_bending_lever, L)),
             reinforcement=self._reinforcement(), weak_base=self._weak_base(),
+            embedded_base=self._embedded_base(),
             bearing_area=(None if bp.bearing_area is None
                           else self.quantity(bp.bearing_area, Kind.AREA)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
@@ -461,6 +498,17 @@ class Project(_Input):
         return WeakBase(reduced_diameter=self.quantity(weak.reduced_diameter, L),
                         stretch_length=self.quantity(weak.stretch_length, L),
                         Rt=weak.Rt)
+
+    def _embedded_base(self) -> EmbeddedBase | None:
+        embedded = self.base_plate.embedded_base
+        if embedded is None:
+            return None
+        return EmbeddedBase(
+            embedment=self.quantity(embedded.embedment, Kind.LENGTH),
+            foundation_width=self.quantity(embedded.foundation_width, Kind.LENGTH),
+            face_plate_thickness=self.quantity(embedded.face_plate_thickness,
+                                               Kind.THICKNESS),
+            beta1=embedded.beta1)
 
     def _shear_lug(self) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH

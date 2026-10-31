@@ -45,6 +45,7 @@ from . import seismic, transfer
 __all__ = [
     "BasePlate",
     "BearingAreaModel",
+    "EmbeddedBase",
     "PressureModel",
     "Reinforcement",
     "ShearLug",
@@ -111,6 +112,16 @@ class Reinforcement:
 
 
 @dataclass(frozen=True)
+class EmbeddedBase:
+    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+
+    embedment: float
+    foundation_width: float
+    face_plate_thickness: float
+    beta1: float = 0.85
+
+
+@dataclass(frozen=True)
 class WeakBase:
     """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
 
@@ -155,6 +166,7 @@ class BasePlate:
     """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
     reinforcement: Reinforcement | None = None
     weak_base: WeakBase | None = None
+    embedded_base: EmbeddedBase | None = None
 
     @property
     def Fy(self) -> float:
@@ -479,12 +491,58 @@ def _lug_bearing(bp: BasePlate, P_: float, V: float, method: Method,
     return check.model_copy(update={"steps": (*c.steps, *check.steps)})
 
 
+def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: float,
+                          method: Method, combo: str) -> list[CheckResult]:
+    """Checks of a Type I embedded base (DG1 §5.2 and §5.3)."""
+    if method is not Method.LRFD:
+        raise ValueError("embedded base requires LRFD")
+    if isinstance(bp.column, HSSShape):
+        raise ValueError("embedded base is only defined for I-shapes")
+    if M2:
+        raise ValueError("embedded base does not support weak-axis moment yet")
+    if bp.weak_base is not None:
+        raise ValueError("embedded base and weak base cannot be combined")
+    if bp.shear_lug is not None:
+        raise ValueError("embedded base does not support a shear lug yet")
+    if P_ < 0:
+        raise ValueError("embedded base does not support net uplift yet")
+    embedded = bp.embedded_base
+    col = bp.column
+    results = [seismic.embedded_base_moment(
+        V, embedded.embedment, col.bf, embedded.foundation_width, bp.fc, M,
+        embedded.beta1, combo)]
+    face = seismic.face_plate_design(P_, col.d, col.bf, col.tf, col.tw, bp.fc, bp.Fy)
+    if P_ > 0:
+        c = Calc(method, combo)
+        c.step("A_1", r"(b_f - t_w)(d - 2t_f)", face["A1"], Kind.AREA, f"{DG1} §5.3")
+        c.step(r"\phi P_p", "0.65 (1.7 f'_c) A_1", face["phiPp"], Kind.FORCE,
+               f"{DG1} §5.3")
+        results.append(c.result("base_plate.face_plate_bearing", f"{DG1} §5.3",
+                                P_, face["phiPp"], Kind.FORCE))
+        c = Calc(method, combo)
+        c.step("l", r"\frac{\sqrt{db_f}}{4}", face["l"], Kind.LENGTH, f"{DG1} §5.3")
+        c.step("t_{p,min}", r"l\sqrt{\frac{2P}{0.9F_y A_1}}", face["tp_min"],
+               Kind.THICKNESS, f"{DG1} §5.3")
+        results.append(c.result("base_plate.face_plate_thickness", f"{DG1} §5.3",
+                                face["tp_min"], embedded.face_plate_thickness,
+                                Kind.THICKNESS))
+    c = Calc(method, combo)
+    c.step("t_{p,min,seismic}", "0.75 t_w", face["tp_min_seismic"], Kind.THICKNESS,
+           "AISC 341-22 §F3.5b.4")
+    results.append(c.result("base_plate.face_plate_seismic",
+                            "AISC 341-22 §F3.5b.4", face["tp_min_seismic"],
+                            embedded.face_plate_thickness, Kind.THICKNESS))
+    return results
+
+
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
     col = bp.column
     P_, V = forces.P, math.hypot(forces.V2, forces.V3)
     M, M2 = abs(forces.M3), abs(forces.M2)
+    if bp.embedded_base is not None:
+        return _embedded_base_checks(bp, P_, V, M, M2, method, combo)
     lug_shear = (0.0, 0.0)
     if bp.shear_lug:
         lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)

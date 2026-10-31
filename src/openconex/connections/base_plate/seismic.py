@@ -75,6 +75,6 @@ def face_plate_design(P: float, d: float, bf: float, tf: float, tw: float, fc: f
         "A1": a1,
         "phiPp": 0.65 * 1.7 * fc * a1,
         "l": l_crit,
-        "tp_min": l_crit * math.sqrt(2 * P / (0.9 * Fy * a1)),
+        "tp_min": l_crit * math.sqrt(max(2 * P, 0.0) / (0.9 * Fy * a1)),
         "tp_min_seismic": 0.75 * tw,
     }

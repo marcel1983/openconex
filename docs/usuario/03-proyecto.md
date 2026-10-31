@@ -15,6 +15,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_rod_bending.ocnx` | flexión de placa por los anclajes (DG1 4.7-3) |
 | `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
 | `examples/base_plate_weak_base.ocnx` | base sísmica débil (DG1 6.4-1) |
+| `examples/base_plate_embedded_base.ocnx` | base empotrada tipo I (DG1 5.3-1) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -91,6 +92,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
 | `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
+| `embedded_base` | ninguno | Base empotrada tipo I con placas de cara (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
@@ -186,6 +188,28 @@ Base con barras de anclaje de sección reducida (upset-thread) que fluyen antes 
 | `Rt` | `1.2` | Factor de sobrerresistencia del acero. |
 
 La verificación es LRFD, requiere el modelo de presión rectangular, no admite momento débil y exige un grado de barra con `Fy` definido (por ejemplo F1554). La capacidad de los estados no dúctiles se comprueba con `n Rt T_red`.
+
+### Base empotrada (`embedded_base`)
+
+Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal, con placas de cara soldadas para la compresión axial (ejemplo 5.3-1):
+
+```json
+"embedded_base": {
+  "embedment": "22 in",
+  "foundation_width": "60 in",
+  "face_plate_thickness": "1 in",
+  "beta1": 0.85
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto. |
+| `foundation_width` | (obligatorio) | Ancho del cimiento en la dirección del momento. |
+| `face_plate_thickness` | (obligatorio) | Espesor de las placas de cara. |
+| `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
+
+Cuando se define `embedded_base`, la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta. Es LRFD, solo para perfiles I y no admite momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
 
 ### Llave de corte (`shear_lug`)
 

@@ -18,7 +18,7 @@
 - **Flexión biaxial:** cada eje se verifica por separado y se combina con la interacción de la DG1 Ec. 4-69. No es un análisis de presiones biaxial completo.
 - **Llave de corte:** no se dibuja en el DXF ni en el modelo 3D. Tampoco se verifica la flexión local de la placa base en la soldadura de la llave.
 - **Refuerzo de anclaje:** se comprueba la capacidad, el desarrollo del gancho y el empotramiento requerido. No se comprueba la longitud de desarrollo recta ni el detalle completo de la armadura del pedestal.
-- **Bases sísmicas especiales:** las funciones de base débil con anclajes dúctiles y de base empotrada (DG1 Capítulos 5 y 6) existen en la biblioteca, pero todavía no se usan desde el proyecto.
+- **Bases sísmicas especiales:** la base débil con anclajes dúctiles (`weak_base`, DG1 §6.4) y la base empotrada tipo I (`embedded_base`, DG1 Capítulo 5) están integradas en el proyecto. La base débil exige LRFD, presión rectangular y un grado con `Fy`; la base empotrada exige LRFD, perfiles I y no admite momento débil, levantamiento neto, llave de corte ni base débil.
 - **Importación:** solo SAP2000 (ETABS usa otros nombres de tabla); solo columnas verticales que nacen en el apoyo.
 - **Otras conexiones:** viga–columna, viga–viga y empalmes están en desarrollo; el núcleo de verificaciones (pernos, soldaduras, grupos, elementos, fuerzas concentradas) ya existe.
 - **Sin interfaz gráfica** por ahora.
