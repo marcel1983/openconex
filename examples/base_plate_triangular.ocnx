@@ -1,0 +1,43 @@
+{
+  "format_version": 4,
+  "info": {
+    "name": "Ejemplo: presión triangular (DG1 B.2-1)",
+    "number": "OC-0007",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W12X96",
+    "column_grade": "ASTM A992",
+    "N": "19 in",
+    "B": "19 in",
+    "tp": "1.25 in",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "triangular",
+    "bearing_area_model": "plate",
+    "fc": "4 ksi",
+    "A2_over_A1": 1.0,
+    "grout": "1.5 in",
+    "rod_diameter": "1 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "9.5 in",
+    "rod_spacing": "0 in",
+    "hef": "0 in"
+  },
+  "cases": [
+    {"name": "B21", "type": "D", "P": "376 kip", "M": "940 kip*in"},
+    {"name": "B21A", "type": "D", "P": "260 kip", "M": "650 kip*in"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "B21-LRFD", "method": "LRFD", "factors": {"B21": 1.0}, "source": "DG1 B.2-1"},
+      {"name": "B21-ASD", "method": "ASD", "factors": {"B21A": 1.0}, "source": "DG1 B.2-1"}
+    ]
+  }
+}

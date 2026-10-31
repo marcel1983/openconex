@@ -4,6 +4,7 @@ import json
 
 import pytest
 
+from openconex.connections.base_plate.check import BearingAreaModel, PressureModel
 from openconex.core.loads import Method
 from openconex.core.model import HSSKind, HSSShape, IShape
 from openconex.io.project import (
@@ -267,6 +268,39 @@ def test_custom_material_for_catalog_column():
     column = Project.model_validate(data).column_model()
     assert column.grade == "Acero del proyecto"
     assert column.material.name == "Acero del proyecto"
+
+
+def test_pressure_model_options_are_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["pressure_model"] = "triangular"
+    project = Project.model_validate(data)
+    assert project.base_plate_model().pressure_model is PressureModel.TRIANGULAR
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["bearing_area_model"] = "effective"
+    project = Project.model_validate(data)
+    assert project.base_plate_model().bearing_area_model is BearingAreaModel.EFFECTIVE
+    data["base_plate"]["pressure_model"] = "triangular"
+    with pytest.raises(ValueError, match="rectangular pressure model"):
+        Project.model_validate(data)
+
+
+def test_effective_area_requires_an_i_shape():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["column"] = {
+        "type": "HSS", "shape": "square", "d": "12 in", "t": "0.5 in",
+        "grade": "ASTM A500 Gr. C (rectangular)",
+    }
+    data["base_plate"]["bearing_area_model"] = "effective"
+    with pytest.raises(ValueError, match="I-shapes"):
+        Project.model_validate(data)
+
+
+def test_triangular_model_rejects_weak_axis_moment():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["pressure_model"] = "triangular"
+    data["cases"][0]["M_weak"] = "10 kip*in"
+    with pytest.raises(ValueError, match="weak-axis"):
+        Project.model_validate(data)
 
 
 def test_custom_material_names_must_be_unique():

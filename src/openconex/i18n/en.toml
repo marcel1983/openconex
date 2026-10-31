@@ -63,6 +63,8 @@ assumption_aci_lrfd = "Concrete anchorage checks (ACI 318) use LRFD combinations
 assumption_seismic = "Seismic option: 0.75 factor on concrete tension strengths (ACI 318-19 §17.10.5.4)."
 assumption_hss_rect = "Rectangular HSS column: yield lines at 0.95 of the outside dimensions and no λn' (AISC DG1 3rd ed., §4.3.3)."
 assumption_hss_round = "Round HSS column: yield lines at 0.8 of the diameter and no λn' (AISC DG1 3rd ed., §4.3.3)."
+assumption_triangular = "Triangular bearing pressure distribution under the plate (AISC DG1 3rd ed., Appendix B.2)."
+assumption_effective_area = "Bearing capacity using the effective area under the column (AISC DG1 3rd ed., Appendix B.3)."
 
 [load]
 D = "Dead load"

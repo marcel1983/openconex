@@ -1,0 +1,41 @@
+{
+  "format_version": 4,
+  "info": {
+    "name": "Ejemplo: área efectiva (DG1 B.3-1)",
+    "number": "OC-0008",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W12X96",
+    "column_grade": "ASTM A992",
+    "N": "18 in",
+    "B": "18 in",
+    "tp": "1.5 in",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "rectangular",
+    "bearing_area_model": "effective",
+    "fc": "4 ksi",
+    "A2_over_A1": 4.0,
+    "grout": "1.5 in",
+    "rod_diameter": "1 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "9 in",
+    "rod_spacing": "0 in",
+    "hef": "0 in"
+  },
+  "cases": [
+    {"name": "B31", "type": "D", "P": "700 kip", "M": "0 kip*in"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "B31-LRFD", "method": "LRFD", "factors": {"B31": 1.0}, "source": "DG1 B.3-1"}
+    ]
+  }
+}

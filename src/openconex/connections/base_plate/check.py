@@ -29,6 +29,7 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from openconex.core.checks import CheckResult, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
@@ -41,9 +42,30 @@ from openconex.units import Kind
 from . import plate as bpl
 from . import transfer
 
-__all__ = ["BasePlate", "ShearLug", "check_base_plate", "check_envelope"]
+__all__ = [
+    "BasePlate",
+    "BearingAreaModel",
+    "PressureModel",
+    "ShearLug",
+    "check_base_plate",
+    "check_envelope",
+]
 
 DG1 = "AISC DG1 3rd ed."
+
+
+class PressureModel(StrEnum):
+    RECTANGULAR = "rectangular"
+    """Uniform bearing stress over the compression block (DG1 §4.3)."""
+    TRIANGULAR = "triangular"
+    """Linear bearing stress over the compression block (DG1 Appendix B)."""
+
+
+class BearingAreaModel(StrEnum):
+    PLATE = "plate"
+    """Bearing capacity over the full plate area B × N."""
+    EFFECTIVE = "effective"
+    """Bearing capacity over the effective area under the column (DG1 App. B.3)."""
 
 
 @dataclass(frozen=True)
@@ -101,6 +123,8 @@ class BasePlate:
     shear_lug: ShearLug | None = None
     materials: Mapping[str, SteelGrade] = field(default_factory=lambda: dict(STEELS), repr=False)
     """Steel library used by the plate and the shear lug; defaults to the built-ins."""
+    pressure_model: PressureModel = PressureModel.RECTANGULAR
+    bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
 
     @property
     def Fy(self) -> float:
@@ -171,13 +195,37 @@ def _weak_anchors(bp: BasePlate) -> bool:
     return bp.rods_per_side >= 2 and bp.rod_spacing > 0
 
 
+def _triangular_bending(t: bpl.TriangularResult, P_: float, B: float) -> bpl.BendingResult:
+    """Adapt the triangular model to the common bending result."""
+    if t.case == "not_possible":
+        return bpl.BendingResult("not_possible", t.e, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+    if t.case == "low_moment":
+        return bpl.BendingResult(
+            "low_moment", t.e, t.e_kern, t.fp_available * B, t.fp_max, t.bearing_length,
+            P_ / t.bearing_length, 0.0, M_plate=t.M_plate, M_plate_tension=0.0,
+            bearing_stress=t.fp_max, bearing_capacity=t.fp_available)
+    return bpl.BendingResult(
+        "large_moment", t.e, t.e_kern, t.fp_available * B, t.fp_max, t.bearing_length,
+        t.fp_available * B, t.T, M_plate=t.M_plate,
+        M_plate_tension=t.M_plate_tension, bearing_stress=t.fp_max,
+        bearing_capacity=t.fp_available)
+
+
 def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: float,
                     x: float, m: float, n: float, method: Method, combo: str,
-                    suffix: str) -> tuple[bpl.BendingResult, float, list[CheckResult]]:
+                    suffix: str, pressure_model: PressureModel = PressureModel.RECTANGULAR,
+                    rod_edge: float = 0.0, rods_in_tension: int = 2
+                    ) -> tuple[bpl.BendingResult, float, list[CheckResult]]:
     """Bearing and plate thickness about one axis; returns (model, T, results)."""
     col = bp.column
     results: list[CheckResult] = []
-    bend = bpl.rectangular_bending(P_, M, N, B, f, bp.fc, bp.A2_over_A1, method)
+    if pressure_model is PressureModel.TRIANGULAR:
+        triangular = bpl.triangular_bending(
+            P_, M, N, B, m, n, bp.fc, bp.A2_over_A1, method, rod_edge=rod_edge,
+            rods_in_tension=rods_in_tension)
+        bend = _triangular_bending(triangular, P_, B)
+    else:
+        bend = bpl.rectangular_bending(P_, M, N, B, f, bp.fc, bp.A2_over_A1, method)
     T = 0.0
     if bend.case == "not_possible":
         c = Calc(method, combo)
@@ -192,25 +240,46 @@ def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: f
         c = Calc(method, combo)
         c.step("f_{p(max)}", r"\phi_c 0.85 f'_c \sqrt{A_2/A_1}", comp.fp_max, Kind.STRESS,
                "AISC 360-22 §J8")
+        if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
+            if isinstance(col, HSSShape):
+                raise ValueError("effective bearing area is only defined for I-shapes")
+            _, area = bpl.effective_area(col.d, col.bf, col.tf, col.tw, bp.tp, N, B)
+            c.step("A_{eff}", "", area, Kind.AREA, f"{DG1} App. B.3")
+            capacity = comp.fp_max * area
+        else:
+            capacity = comp.Pp_available
         results.append(c.result(f"base_plate.bearing{suffix}", "AISC 360-22 §J8", P_,
-                                comp.Pp_available, Kind.FORCE))
+                                capacity, Kind.FORCE))
         results.append(_thickness(f"base_plate.thickness_compression{suffix}", comp.tp_req,
                                   bp.tp,
                                   method, combo, f"{DG1} Eq. 4-15"))
     elif bend.case == "low_moment":
         c = Calc(method, combo)
-        c.step("e", "M/P", bend.e, Kind.LENGTH, f"{DG1} Eq. 4-39")
-        c.step("e_{crit}", r"\frac{N}{2} - \frac{P}{2 q_{max}}", bend.e_crit, Kind.LENGTH,
-               f"{DG1} Eq. 4-40")
-        c.step("Y", "N - 2e", bend.Y, Kind.LENGTH, f"{DG1} Eq. 4-42")
-        c.step("q", "P/Y", bend.q, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-43")
-        c.step("q_{max}", "f_{p(max)} B", bend.q_max, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-37")
-        results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} §4.3.3", bend.q, bend.q_max,
-                                Kind.FORCE_PER_LENGTH))
-        tp_req, steps = _compression_steps(method, bend.q / B, bend.Y, m, n, bp.Fy)
-        results.append(_thickness(f"base_plate.thickness_compression{suffix}", tp_req, bp.tp,
-                                  method, combo, f"{DG1} Eq. 4-51", steps,
-                                  _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
+        if bend.bearing_stress is not None:
+            c.step("f_{p,max}", "", bend.bearing_stress, Kind.STRESS, f"{DG1} App. B.2")
+            results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} App. B.2",
+                                    bend.bearing_stress, bend.bearing_capacity, Kind.STRESS))
+        else:
+            c.step("e", "M/P", bend.e, Kind.LENGTH, f"{DG1} Eq. 4-39")
+            c.step("e_{crit}", r"\frac{N}{2} - \frac{P}{2 q_{max}}", bend.e_crit,
+                   Kind.LENGTH, f"{DG1} Eq. 4-40")
+            c.step("Y", "N - 2e", bend.Y, Kind.LENGTH, f"{DG1} Eq. 4-42")
+            c.step("q", "P/Y", bend.q, Kind.FORCE_PER_LENGTH, f"{DG1} Eq. 4-43")
+            c.step("q_{max}", "f_{p(max)} B", bend.q_max, Kind.FORCE_PER_LENGTH,
+                   f"{DG1} Eq. 4-37")
+            results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} §4.3.3", bend.q,
+                                    bend.q_max, Kind.FORCE_PER_LENGTH))
+        if bend.M_plate is not None:
+            c.step("M_{pl}", "", bend.M_plate, Kind.MOMENT, f"{DG1} App. B.2")
+            tp_req = bpl.plate_thickness_from_moment(bend.M_plate, bp.Fy, method)
+            results.append(_thickness(
+                f"base_plate.thickness_compression{suffix}", tp_req, bp.tp, method, combo,
+                f"{DG1} App. B.2", c.steps, _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
+        else:
+            tp_req, steps = _compression_steps(method, bend.q / B, bend.Y, m, n, bp.Fy)
+            results.append(_thickness(f"base_plate.thickness_compression{suffix}", tp_req,
+                                      bp.tp, method, combo, f"{DG1} Eq. 4-51", steps,
+                                      _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
     else:
         T = bend.T
         c = Calc(method, combo)
@@ -219,18 +288,39 @@ def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: f
                r"\frac{2(Pf + M)}{q_{max}}}", bend.Y, Kind.LENGTH, f"{DG1} Eq. 4-58")
         c.step("T", "q_{max} Y - P", T, Kind.FORCE, f"{DG1} Eq. 4-55")
         bearing_steps = list(c.steps)
-        if bend.Y > 0:
+        if bend.bearing_stress is not None:
+            results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} App. B.2",
+                                    bend.bearing_stress, bend.bearing_capacity, Kind.STRESS))
+        if bend.M_plate is not None:
+            c.step("M_{pl}", "", bend.M_plate, Kind.MOMENT, f"{DG1} App. B.2")
+            tp_req = bpl.plate_thickness_from_moment(bend.M_plate, bp.Fy, method)
+            results.append(_thickness(
+                f"base_plate.thickness_compression{suffix}", tp_req, bp.tp, method, combo,
+                f"{DG1} App. B.2", bearing_steps + c.steps,
+                _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
+        elif bend.Y > 0:
             tp_req, steps = _compression_steps(method, bend.fp_max, bend.Y, m, n, bp.Fy)
-            results.append(_thickness(f"base_plate.thickness_compression{suffix}", tp_req, bp.tp,
-                                      method, combo, f"{DG1} Eq. 4-51", bearing_steps + steps,
+            results.append(_thickness(f"base_plate.thickness_compression{suffix}", tp_req,
+                                      bp.tp, method, combo, f"{DG1} Eq. 4-51",
+                                      bearing_steps + steps,
                                       _tp_expression(method, r"\sqrt{M_{pl}/F_y}")))
-        c = Calc(method, combo)
-        c.step("x", "" if suffix else r"f - \frac{d}{2} + \frac{t_f}{2}", x, Kind.LENGTH,
-               f"{DG1} Eq. 4-61")
-        results.append(_thickness(f"base_plate.thickness_tension{suffix}",
-                                  bpl.plate_thickness_tension(T, x, B, bp.Fy, method), bp.tp,
-                                  method, combo, f"{DG1} Eq. 4-62", bearing_steps + c.steps,
-                                  _tp_expression(method, r"\sqrt{\frac{T x}{B F_y}}")))
+        if bend.M_plate_tension is not None and bend.M_plate_tension > 0:
+            c = Calc(method, combo)
+            c.step("M_{pl,t}", "", bend.M_plate_tension, Kind.MOMENT, f"{DG1} App. B.2")
+            tp_req = bpl.plate_thickness_from_moment(bend.M_plate_tension, bp.Fy, method)
+            results.append(_thickness(
+                f"base_plate.thickness_tension{suffix}", tp_req, bp.tp, method, combo,
+                f"{DG1} App. B.2", bearing_steps + c.steps,
+                _tp_expression(method, r"\sqrt{M_{pl,t}/F_y}")))
+        else:
+            c = Calc(method, combo)
+            c.step("x", "" if suffix else r"f - \frac{d}{2} + \frac{t_f}{2}", x, Kind.LENGTH,
+                   f"{DG1} Eq. 4-61")
+            results.append(_thickness(
+                f"base_plate.thickness_tension{suffix}",
+                bpl.plate_thickness_tension(T, x, B, bp.Fy, method), bp.tp, method, combo,
+                f"{DG1} Eq. 4-62", bearing_steps + c.steps,
+                _tp_expression(method, r"\sqrt{\frac{T x}{B F_y}}")))
 
     return bend, T, results
 
@@ -369,9 +459,14 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         V = math.hypot(abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
     results: list[CheckResult] = []
     m, n = _cantilevers(col, bp.N, bp.B)
+    if bp.pressure_model is PressureModel.TRIANGULAR and M2:
+        raise ValueError("the triangular pressure model does not support weak-axis moment yet")
+    triangular = bp.pressure_model is PressureModel.TRIANGULAR and P_ > 0
 
-    bend, T, axis = _bending_checks(bp, P_, M, bp.N, bp.B, bp.f, _tension_lever(bp, False),
-                                    m, n, method, combo, "")
+    bend, T, axis = _bending_checks(
+        bp, P_, M, bp.N, bp.B, bp.f, _tension_lever(bp, False), m, n, method, combo, "",
+        PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR,
+        rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side)
     results += axis
     if bend.case == "not_possible":
         return results

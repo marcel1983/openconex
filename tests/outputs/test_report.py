@@ -5,6 +5,7 @@ import datetime as dt
 import pytest
 from docx import Document
 
+from openconex.connections.base_plate.check import PressureModel
 from openconex.io.project import CustomCombinationInput, HSSSectionInput
 from openconex.report.builder import build_base_plate_report, factor_expression
 from openconex.report.docx import latex_to_text, write_docx
@@ -57,6 +58,12 @@ def test_custom_combinations_in_report(project):
     assert [row.cells[0] for row in r.combinations] == ["C-1"]
     assert r.combinations[0].cells[3] == "Personalizada"
     assert {block.combo for block in r.checks} == {"C-1"}
+
+
+def test_triangular_pressure_assumption_in_report(project):
+    project.base_plate.pressure_model = PressureModel.TRIANGULAR
+    r = build_base_plate_report(project, TODAY)
+    assert any("triangular" in assumption.lower() for assumption in r.assumptions)
 
 
 def test_factor_expression():

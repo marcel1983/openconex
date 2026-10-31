@@ -63,6 +63,8 @@ assumption_aci_lrfd = "Las verificaciones del concreto (ACI 318) se hacen con co
 assumption_seismic = "Opción sísmica: factor 0.75 en resistencias del concreto en tracción (ACI 318-19 §17.10.5.4)."
 assumption_hss_rect = "Columna HSS rectangular: líneas de fluencia a 0.95 de las dimensiones exteriores y sin λn' (AISC DG1 3ª ed., §4.3.3)."
 assumption_hss_round = "Columna HSS circular: líneas de fluencia a 0.8 del diámetro y sin λn' (AISC DG1 3ª ed., §4.3.3)."
+assumption_triangular = "Distribución triangular de presiones bajo la placa (AISC DG1 3ª ed., Apéndice B.2)."
+assumption_effective_area = "Capacidad de aplastamiento con el área efectiva bajo la columna (AISC DG1 3ª ed., Apéndice B.3)."
 
 [load]
 D = "Carga muerta"
