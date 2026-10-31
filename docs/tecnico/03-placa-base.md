@@ -32,7 +32,7 @@ Según la excentricidad e = M/P se clasifica el caso (`plate.rectangular_bending
 ## 2. Eje débil y flexión biaxial (si M2 ≠ 0)
 
 Se repite el paso 1 con la placa girada:
-- N y B intercambiados.
+- N y B intercambiados, junto con el peralte y el ancho de la columna: m se mide contra b_f y n contra d.
 - f = `rod_spacing`/2, con dos barras por cara (la barra extrema de cada fila).
 - En la interfaz de tracción, x = rod_spacing/2 − b_f/2 en perfiles I (punta de las alas) y x = rod_spacing/2 − b/2 + t/2 en HSS.
 

@@ -146,6 +146,18 @@ def _cantilevers(column: IShape | HSSShape, N: float, B: float) -> tuple[float, 
     return (N - 0.95 * column.d) / 2, (B - 0.8 * column.bf) / 2
 
 
+def _cantilevers_weak(column: IShape | HSSShape, N: float, B: float) -> tuple[float, float]:
+    """Critical projections m and n for M2, with the column rotated 90°.
+
+    The plate bending direction is now B, so m is measured against the flange
+    width and n against the depth (DG1 §4.3.7).
+    """
+    if isinstance(column, HSSShape):
+        coefficient = 0.8 if column.kind is HSSKind.ROUND else 0.95
+        return (B - coefficient * column.bf) / 2, (N - coefficient * column.d) / 2
+    return (B - 0.95 * column.bf) / 2, (N - 0.8 * column.d) / 2
+
+
 def _tension_lever(bp: BasePlate, weak: bool) -> float:
     """Anchor row to the plate bending line at the tension face (DG1 Eq. 4-61)."""
     col = bp.column
@@ -366,9 +378,10 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     T_weak, bend_weak = 0.0, None
     if M2:
         if _weak_anchors(bp):
+            m_weak, n_weak = _cantilevers_weak(col, bp.N, bp.B)
             bend_weak, T_weak, axis = _bending_checks(bp, P_, M2, bp.B, bp.N, bp.rod_spacing / 2,
-                                                      _tension_lever(bp, True), m, n, method,
-                                                      combo, "_weak")
+                                                      _tension_lever(bp, True), m_weak, n_weak,
+                                                      method, combo, "_weak")
             results += axis
         else:
             results.append(_weak_axis_without_anchors(bp, P_, M2, method, combo))
