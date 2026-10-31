@@ -4,12 +4,13 @@
 
 from __future__ import annotations
 
+import io
 import re
 from pathlib import Path
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt, RGBColor
+from docx.shared import Cm, Pt, RGBColor
 
 from openconex.i18n import tr
 from openconex.report.builder import Report
@@ -106,6 +107,16 @@ def write_docx(report: Report, path: str | Path) -> Path:
     _table(doc, [t("report.item"), t("report.value")], [r.cells for r in report.inputs])
     doc.add_heading(t("report.loads"), level=2)
     _table(doc, report.case_headers, [r.cells for r in report.cases])
+    if report.figures:
+        doc.add_heading(t("report.figures"), level=2)
+        figures = [figure for figure in report.figures if figure.png]
+        if figures:
+            for figure in figures:
+                doc.add_picture(io.BytesIO(figure.png), width=Cm(16.5))
+                caption = doc.add_paragraph(figure.caption)
+                caption.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        else:
+            doc.add_paragraph(t("report.figure_unavailable"))
 
     doc.add_heading(f"3. {t('report.combinations_title')}", level=1)
     _table(doc, ["ID", t("report.method"), t("report.factors"), t("report.source")],

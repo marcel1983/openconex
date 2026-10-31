@@ -1,0 +1,50 @@
+{
+  "format_version": 8,
+  "info": {
+    "name": "Ejemplo: base empotrada tipo I (DG1 5.3-1)",
+    "number": "OC-0012",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-31",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "connection_type": "embedded",
+    "column": "W14X176",
+    "column_grade": "ASTM A992",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "rectangular",
+    "bearing_area_model": "plate",
+    "fc": "4 ksi",
+    "embedded_base": {
+      "embedment": "22 in",
+      "foundation_width": "60 in",
+      "face_plate_thickness": "1 in",
+      "beta1": 0.85
+    }
+  },
+  "cases": [
+    {
+      "name": "S1",
+      "type": "E",
+      "P": "250 kip",
+      "M": "700 kip*ft",
+      "V": "96 kip"
+    }
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {
+        "name": "S1-LRFD",
+        "method": "LRFD",
+        "factors": {
+          "S1": 1.0
+        },
+        "source": "DG1 5.3-1"
+      }
+    ]
+  }
+}

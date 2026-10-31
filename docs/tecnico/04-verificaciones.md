@@ -17,6 +17,10 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.biaxial` | Interacción de flexión biaxial (M/M_cap)² + (M2/M2_cap)² ≤ 1 | DG1 §4.3.7, Ec. 4-69 | ✔ |
 | `base_plate.weak_base_area` | Sección reducida de la barra dúctil | DG1 §6.4.2 | ✔ |
 | `base_plate.weak_base_stretch` | Longitud de estiramiento de la barra dúctil | DG1 §6.4.2 | ✔ |
+| `base_plate.anchor_column_clearance` | Separación de los anclajes a la columna | DG1 §4.2 | ✔ con placa expuesta |
+| `base_plate.anchor_plate_edge` | Distancia de los anclajes al borde de la placa | AISC 360-22 §J3.4 | ✔ con placa expuesta |
+| `base_plate.anchor_lug_clearance` | Separación de los anclajes a la llave de corte | DG1 §4.5 | ✔ con `shear_lug` |
+| `base_plate.anchor_rebar_clearance` | Separación de los anclajes a las barras del pedestal | AISC 360-22 §J3.3 | ✔ con `pedestal_rebars` |
 | `base_plate.friction` | Corte por fricción | DG1 §4.3.5, Ec. 4-30 | ✔ |
 | `base_plate.rod_combined` | Barra con tracción, corte y flexión (arandelas soldadas) | AISC 360-22 §J3.8; DG1 Ej. 4.7-6 | ✔ |
 | `base_plate.lug_shear_yielding` | Llave de corte: fluencia por corte | AISC 360-22 §J4.2(a) | ✔ |
@@ -26,7 +30,10 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.lug_weld` | Llave de corte: soldadura a la placa | AISC 360-22 §J2.4; DG1 Ej. 4.7-5 | ✔ |
 | `base_plate.lug_anchor_embedment` | Empotramiento de anclajes con llave (h_ef ≥ 2,5 h_sl) | ACI 318-19 §17.11.1 | ✔ |
 | `base_plate.plate_bending_rods` | Flexión de la placa por los anclajes en tracción | DG1 Ej. 4.7-3, 4.7-7 | — |
-| `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | — |
+| `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | ✔ con `embedded_base` |
+| `base_plate.face_plate_bearing` | Aplastamiento del concreto en las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
+| `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
+| `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara, máx(0,75 t_w, 3/8 in) | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 

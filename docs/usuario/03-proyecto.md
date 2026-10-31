@@ -15,6 +15,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_rod_bending.ocnx` | flexión de placa por los anclajes (DG1 4.7-3) |
 | `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
 | `examples/base_plate_weak_base.ocnx` | base sísmica débil (DG1 6.4-1) |
+| `examples/base_plate_embedded_base.ocnx` | base empotrada tipo I (DG1 5.3-1) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -70,11 +71,12 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 
 | Campo | Por defecto | Significado |
 |---|---|---|
+| `connection_type` | `"exposed"` | Tipo de conexión: `exposed` (placa base expuesta) o `embedded` (base empotrada). Si se omite, se deduce de `embedded_base`. |
 | `column` | (obligatorio) | Columna: etiqueta del catálogo AISC (`"W12X96"`) o sección genérica (ver más abajo). |
 | `column_grade` | `"ASTM A992"` | Acero de la columna cuando `column` es una etiqueta del catálogo. |
-| `N` | (obligatorio) | Largo de la placa, en la dirección del eje fuerte. |
-| `B` | (obligatorio) | Ancho de la placa. |
-| `tp` | (obligatorio) | Espesor de la placa. |
+| `N` | (obligatorio en `exposed`) | Largo de la placa, en la dirección del eje fuerte. |
+| `B` | (obligatorio en `exposed`) | Ancho de la placa. |
+| `tp` | (obligatorio en `exposed`) | Espesor de la placa. |
 | `plate_grade` | `"ASTM A572 Gr. 50"` | Acero de la placa. |
 | `pressure_model` | `"rectangular"` | Distribución de presiones: `rectangular` (DG1 §4.3) o `triangular` (DG1 Apéndice B.2). |
 | `bearing_area_model` | `"plate"` | Área para el aplastamiento: `plate` (B × N) o `effective` (área efectiva bajo la columna, DG1 Apéndice B.3). |
@@ -83,15 +85,17 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `bearing_area` | ninguno | Área de apoyo de la tuerca o placa embebida para la extracción del anclaje; si se omite, se usa la tuerca hexagonal pesada. |
 | `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal; solo se usan en los planos y el modelo 3D. |
 | `grout` | `"1.5 in"` | Espesor del mortero de nivelación. Se usa en los planos y en el brazo de la llave de corte. |
-| `rod_diameter` | (obligatorio) | Diámetro de las barras de anclaje. |
+| `rod_diameter` | (obligatorio en `exposed`) | Diámetro de las barras de anclaje. |
 | `rod_grade` | `"ASTM F1554 Gr. 36"` | Material de las barras. |
 | `rods_per_side` | `2` | Barras en cada fila. |
-| `f` | (obligatorio) | Distancia del eje de la columna a cada fila de anclajes. |
+| `f` | (obligatorio en `exposed`) | Distancia del eje de la columna a cada fila de anclajes. |
 | `rod_spacing` | `0` | Distancia entre las barras extremas de una fila. Con 0 o una sola barra por fila, el eje débil no tiene anclajes que trabajen a tracción. |
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
 | `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
+| `embedded_base` | ninguno | Base empotrada tipo I con placas de cara (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
+| `pedestal_rebars` | `[]` | Barras longitudinales del pedestal para el revisor de interferencias (ver más abajo). |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
 | `flange_weld` | ninguno | Tamaño de la soldadura de filete en las alas de la columna; si se da, se verifica para el momento. |
@@ -186,6 +190,56 @@ Base con barras de anclaje de sección reducida (upset-thread) que fluyen antes 
 | `Rt` | `1.2` | Factor de sobrerresistencia del acero. |
 
 La verificación es LRFD, requiere el modelo de presión rectangular, no admite momento débil y exige un grado de barra con `Fy` definido (por ejemplo F1554). La capacidad de los estados no dúctiles se comprueba con `n Rt T_red`.
+
+### Base empotrada (`embedded_base`)
+
+Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal. Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1):
+
+```json
+"connection_type": "embedded",
+"embedded_base": {
+  "embedment": "22 in",
+  "foundation_width": "60 in",
+  "face_plate_thickness": "1 in",
+  "beta1": 0.85
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto. |
+| `foundation_width` | (obligatorio) | Ancho del cimiento en la dirección del momento. |
+| `face_plate_thickness` | (obligatorio) | Espesor de las placas de cara. |
+| `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
+
+Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta.
+
+Alcance implementado:
+
+- Tipo I, sin refuerzo horizontal ni placa embebida: no se incluyen los términos de refuerzo de la Ec. 5-6, la placa del fondo ni la soldadura de las placas de cara.
+- Solo LRFD, perfiles I y eje fuerte.
+- No admite levantamiento neto, momento débil, llave de corte, base débil ni combinaciones ASD.
+- El espesor sísmico mínimo de las placas de cara es `máx(0,75 t_w, 3/8 in)`.
+- No se aplica el factor adicional 0,8 sobre `M_HB` para limitar el daño.
+
+### Barras del pedestal (`pedestal_rebars`)
+
+Posiciones en planta de las barras longitudinales del pedestal, respecto al eje de la columna. `x` va en la dirección de `N` y `y` en la de `B`:
+
+```json
+"pedestal_rebars": [
+  {"x": "-7 in", "y": "7 in", "diameter": "0.75 in"},
+  {"x": "7 in", "y": "-7 in", "diameter": "0.75 in"}
+]
+```
+
+| Campo | Significado |
+|---|---|
+| `x` | Posición en la dirección de `N`. |
+| `y` | Posición en la dirección de `B`. |
+| `diameter` | Diámetro de la barra. |
+
+El revisor comprueba que las barras de anclaje no choquen con estas barras. Si la lista está vacía, no se ejecuta esa comprobación.
 
 ### Llave de corte (`shear_lug`)
 

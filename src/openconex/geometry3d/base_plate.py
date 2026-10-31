@@ -19,7 +19,8 @@ from openconex.connections.base_plate.check import BasePlate
 from openconex.core.model import HSSKind, HSSShape
 from openconex.drawing.base_plate import _rod_positions, anchor_hole, plate_washer
 
-__all__ = ["Part", "base_plate_parts", "occ_available", "write_step", "write_stl"]
+__all__ = ["Part", "base_plate_parts", "embedded_base_parts", "isometric_svg",
+           "occ_available", "write_step", "write_stl"]
 
 
 def occ_available() -> bool:
@@ -130,6 +131,120 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top + w_t, af, d, d)))
         parts.append(Part(f"nut_embedded_{i}", _hex_nut(x, y, -hef, af, d, d)))
     return parts
+
+
+def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
+                        foundation_depth: float | None = None,
+                        column_height: float | None = None) -> list[Part]:
+    """Solids of a Type I embedded base: foundation, column and face plates."""
+    _require()
+    embedded = bp.embedded_base
+    col = bp.column
+    fw = embedded.foundation_width
+    fl = foundation_length or fw
+    depth = foundation_depth or embedded.embedment + 304.8
+    h = column_height or 1.5 * col.d
+    z0 = -embedded.embedment
+    parts = [Part("foundation", _box(-fw / 2, -fl / 2, -depth, fw, fl, depth))]
+    if isinstance(col, HSSShape):
+        if col.kind is HSSKind.ROUND:
+            outer = _cylinder(0, 0, z0, col.d / 2, embedded.embedment + h)
+            inner = _cylinder(0, 0, z0 - 1, col.d / 2 - col.t, embedded.embedment + h + 2)
+        else:
+            outer = _box(-col.d / 2, -col.bf / 2, z0, col.d, col.bf, embedded.embedment + h)
+            inner = _box(-col.d / 2 + col.t, -col.bf / 2 + col.t, z0 - 1,
+                         col.d - 2 * col.t, col.bf - 2 * col.t,
+                         embedded.embedment + h + 2)
+        column = _cut_all(outer, [inner])
+    else:
+        flanges = [_box(sx * col.d / 2 - (col.tf if sx > 0 else 0), -col.bf / 2, z0,
+                        col.tf, col.bf, embedded.embedment + h) for sx in (-1, 1)]
+        web = _box(-col.d / 2 + col.tf, -col.tw / 2, z0,
+                   col.d - 2 * col.tf, col.tw, embedded.embedment + h)
+        column = _fuse_all([*flanges, web])
+    parts.append(Part("column", column))
+    tp = embedded.face_plate_thickness
+    x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
+    # Face bearing plates bear on the top of the foundation (DG1 §5.3).
+    parts.append(Part("face_plate_front", _box(
+        x0, col.tw / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
+    parts.append(Part("face_plate_back", _box(
+        x0, -col.bf / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
+    return parts
+
+
+def _projected_edges(shape) -> list[list[tuple[float, float]]]:
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    from OCP.GCPnts import GCPnts_QuasiUniformDeflection
+    from OCP.TopAbs import TopAbs_EDGE
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopoDS import TopoDS
+
+    lines = []
+    explorer = TopExp_Explorer(shape, TopAbs_EDGE)
+    while explorer.More():
+        curve = BRepAdaptor_Curve(TopoDS.Edge(explorer.Current()))
+        discretizer = GCPnts_QuasiUniformDeflection(curve, 0.8)
+        if discretizer.IsDone() and discretizer.NbPoints() >= 2:
+            lines.append([(discretizer.Value(i).X(), discretizer.Value(i).Y())
+                          for i in range(1, discretizer.NbPoints() + 1)])
+        explorer.Next()
+    return lines
+
+
+def isometric_svg(parts: list[Part], width: float = 210, height: float = 150) -> str:
+    """Vector isometric view of the 3D parts with hidden-line removal."""
+    _require()
+    from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+    from OCP.HLRAlgo import HLRAlgo_Projector
+    from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
+
+    algo = HLRBRep_Algo()
+    for part in parts:
+        algo.Add(part.shape)
+    # Keep the world Z axis (the column) vertical on the sheet: the projection
+    # plane X axis must be horizontal.
+    projector = HLRAlgo_Projector(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(1, 1, 1),
+                                         gp_Dir(-1, 1, 0)))
+    algo.Projector(projector)
+    algo.Update()
+    algo.Hide()
+    hlr = HLRBRep_HLRToShape(algo)
+    groups = (
+        (False, (hlr.VCompound(), hlr.OutLineVCompound(), hlr.Rg1LineVCompound())),
+        (True, (hlr.HCompound(), hlr.OutLineHCompound(), hlr.Rg1LineHCompound())),
+    )
+    lines: list[tuple[bool, list[tuple[float, float]]]] = []
+    for hidden, shapes in groups:
+        for shape in shapes:
+            if shape is not None:
+                lines += [(hidden, line) for line in _projected_edges(shape)]
+    if not lines:
+        return ""
+    points = [point for _, line in lines for point in line]
+    min_x = min(point[0] for point in points)
+    max_x = max(point[0] for point in points)
+    min_y = min(point[1] for point in points)
+    max_y = max(point[1] for point in points)
+    pad = 6.0
+    scale = min((width - 2 * pad) / max(max_x - min_x, 1e-9),
+                (height - 2 * pad) / max(max_y - min_y, 1e-9))
+    x0 = pad + ((width - 2 * pad) - (max_x - min_x) * scale) / 2
+    y0 = pad + ((height - 2 * pad) - (max_y - min_y) * scale) / 2
+
+    def point(xy: tuple[float, float]) -> str:
+        x, y = xy
+        return f"{x0 + (x - min_x) * scale:.2f},{height - y0 - (y - min_y) * scale:.2f}"
+
+    body = []
+    for hidden, line in lines:
+        style = ' class="hidden"' if hidden else ' class="visible"'
+        body.append(f'<polyline{style} points="{" ".join(point(p) for p in line)}"/>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}mm" '
+            f'height="{height}mm" viewBox="0 0 {width} {height}">'
+            '<style>.visible{fill:none;stroke:#1b1f24;stroke-width:0.35}'
+            '.hidden{fill:none;stroke:#9aa3ad;stroke-width:0.18;'
+            'stroke-dasharray:1.2 1.2}</style>' + "".join(body) + "</svg>")
 
 
 @contextlib.contextmanager

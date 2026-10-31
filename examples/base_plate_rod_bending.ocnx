@@ -1,5 +1,5 @@
 {
-  "format_version": 7,
+  "format_version": 8,
   "info": {
     "name": "Ejemplo: flexión de placa por anclajes (DG1 4.7-3)",
     "number": "OC-0009",
@@ -26,7 +26,7 @@
     "rod_diameter": "0.875 in",
     "rod_grade": "ASTM F1554 Gr. 36",
     "rods_per_side": 2,
-    "f": "2 in",
+    "f": "6.5 in",
     "rod_spacing": "4 in",
     "hef": "15 in"
   },

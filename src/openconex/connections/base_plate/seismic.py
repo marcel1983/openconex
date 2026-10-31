@@ -68,13 +68,16 @@ def embedded_base_moment(V: float, d_embed: float, bf: float, bw: float, fc: flo
 
 def face_plate_design(P: float, d: float, bf: float, tf: float, tw: float, fc: float,
                       Fy: float) -> dict[str, float]:
-    """Face bearing plates of an embedded base in axial compression (DG1 §5.3, Eq. 5-7, 5-8)."""
+    """Face bearing plates on top of the foundation (DG1 §5.3, Eq. 5-7, 5-8).
+
+    The minimum seismic thickness is ``max(0.75 tw, 3/8 in.)``.
+    """
     a1 = (bf - tw) * (d - 2 * tf)
     l_crit = math.sqrt(d * bf) / 4
     return {
         "A1": a1,
         "phiPp": 0.65 * 1.7 * fc * a1,
         "l": l_crit,
-        "tp_min": l_crit * math.sqrt(2 * P / (0.9 * Fy * a1)),
-        "tp_min_seismic": 0.75 * tw,
+        "tp_min": l_crit * math.sqrt(max(2 * P, 0.0) / (0.9 * Fy * a1)),
+        "tp_min_seismic": max(0.75 * tw, to_internal(0.375, "in", Kind.THICKNESS)),
     }
