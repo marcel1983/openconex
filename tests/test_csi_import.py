@@ -15,7 +15,7 @@ from openconex.io.csi import CaseKind, ImportedColumn, Table, import_supports, r
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects, column_input
 from openconex.io.project import HSSSectionInput, WSectionInput, load_project
 
-TEMPLATE = Path(__file__).parents[1] / "examples" / "base_plate_generic_w.ocnx"
+TEMPLATE = Path(__file__).parents[1] / "examples" / "base_plate_template_sap2000.ocnx"
 
 TONF, CM, M = 9806.65, 10.0, 1000.0  # N, mm
 
@@ -429,3 +429,17 @@ def test_repeated_warnings_are_joined(export):
                                                OutputCase="NX", CaseType="LinStatic"))
     _, warnings = base_plate_projects(import_supports(tables), load_project(TEMPLATE))
     assert "joints 1, 2: load cases without a design type, not used: NX" in warnings
+
+
+def test_seismic_cases_need_sds_in_the_template(export, tmp_path):
+    template = load_project(TEMPLATE)
+    no_sds = template.model_copy(update={"combinations": template.combinations.model_copy(
+        update={"SDS": None})})
+    with pytest.raises(ValueError, match="SDS"):
+        base_plate_projects(import_supports(export), no_sds)
+    # combinations mode does not generate seismic combinations, so SDS is not needed
+    assert base_plate_projects(import_supports(export), no_sds, LoadSource.COMBINATIONS)[0]
+    path = tmp_path / "no_sds.ocnx"
+    path.write_text(no_sds.model_dump_json(), encoding="utf-8")
+    assert main(["supports", str(export), "--create", str(tmp_path / "out"),
+                 "--template", str(path)]) == 2

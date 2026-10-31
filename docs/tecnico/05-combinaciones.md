@@ -20,7 +20,7 @@ Reglas:
 
 ## Sismo
 
-Solo si se da `SDS`. Para cada sismo y cada signo:
+Requiere `SDS` cuando hay casos `E` y `include_code` es verdadero; si falta, la validación del proyecto da error (antes los casos `E` se omitían sin aviso). `SDS = 0` genera las combinaciones sin E_v. Para cada sismo y cada signo:
 - **LRFD:** (1,2 + 0,2 S_DS) D + ρ E + L + 0,15 S y (0,9 − 0,2 S_DS) D + ρ E.
 - **ASD:** los equivalentes de §2.4.5.
 

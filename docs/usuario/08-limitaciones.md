@@ -11,7 +11,6 @@
 
 ## Limitaciones conocidas
 
-- **Sismo sin `SDS`:** las combinaciones con sismo solo se generan si se da `combinations.SDS`. Sin él, los casos `E` no entran en las combinaciones generadas.
 - **Concreto solo en LRFD:** las verificaciones de ACI 318 (aplastamiento de la llave, arrancamiento, extracción, corte en el anclaje) se hacen solo con combinaciones LRFD. En ASD se verifican los anclajes como pernos según AISC 360-22 §J3.
 - **Modelo de presiones:** por defecto, distribución rectangular con placa rígida (DG1 §4.3). La distribución triangular (DG1 Apéndice B.2) está disponible como opción, pero solo para el eje fuerte y combinaciones con compresión; el eje débil sigue usando el modelo rectangular.
 - **Área efectiva:** el área efectiva bajo el perfil I (DG1 Apéndice B.3) está disponible para la capacidad de aplastamiento en compresión concéntrica; no se aplica a HSS ni a combinaciones con momento.
@@ -23,6 +22,6 @@
 - **Bases sísmicas especiales:** la base débil con anclajes dúctiles (`weak_base`, DG1 §6.4) y la base empotrada tipo I (`embedded_base`, DG1 Capítulo 5) están integradas en el proyecto. La base débil exige LRFD, presión rectangular y un grado con `Fy`; la base empotrada exige LRFD, perfiles I y no admite momento débil, levantamiento neto, llave de corte ni base débil. La base empotrada admite refuerzo horizontal y placa embebida, pero no verifica la soldadura de las placas de apoyo frontal, la flexión de la placa embebida por apoyo vertical ni la tracción. El Tipo II no está implementado.
 - **Importación:** SAP2000 v27 y ETABS 23.2 están probados. Solo se importan columnas verticales que nacen en el apoyo; las secciones de hormigón, Section Designer y otras formas no incluidas en el catálogo se avisan y se omiten.
 - **Otras conexiones:** viga–columna, viga–viga y empalmes están en desarrollo; el núcleo de verificaciones (pernos, soldaduras, grupos, elementos, fuerzas concentradas) ya existe.
-- **Sin interfaz gráfica** por ahora.
+- **Interfaz gráfica** (`openconex-gui`, ver [Interfaz gráfica](09-interfaz.md)): cubre el cálculo individual de placa base; el cálculo por lotes y la importación desde SAP2000/ETABS se hacen por ahora desde la línea de comandos.
 
 La responsabilidad del diseño corresponde al profesional que lo firma, que debe verificar los resultados.
