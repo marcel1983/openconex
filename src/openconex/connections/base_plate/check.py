@@ -125,6 +125,8 @@ class BasePlate:
     """Steel library used by the plate and the shear lug; defaults to the built-ins."""
     pressure_model: PressureModel = PressureModel.RECTANGULAR
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
+    rod_bending_lever: float | None = None
+    """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
 
     @property
     def Fy(self) -> float:
@@ -499,6 +501,9 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
             elastic = _elastic_rod_forces(bp, P_, M, M2)
             rod_t = max(rod_t, max(elastic))
             group_t = max(group_t, sum(r for r in elastic if r > 0))
+    if bp.rod_bending_lever is not None and rod_t > 0:
+        results.append(transfer.plate_bending_at_rods(
+            rod_t, bp.rod_bending_lever, bp.tp, bp.Fy, method, combo))
     shear_rods = bp.rods if bp.washer_thickness else max(bp.rods_per_side, 1)
     rod_v = V / shear_rods
     use_friction = P_ > 0 and method is Method.LRFD and not bp.washer_thickness
