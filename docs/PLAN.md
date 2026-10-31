@@ -223,6 +223,8 @@ Cartela con Whitmore, método de la fuerza uniforme (UFM), riostras HSS y de án
 - **Agrupación** de conexiones iguales en tipos (BP-1, SC-3, MC-2…), con optimización y uniformidad por tipo.
 - **API de CSI en vivo:** fase posterior, solo Windows.
 
+**Estado (2026-10-31):** primer paso de la F4 hecho. `openconex.io.csi` lee las tablas exportadas a Excel por SAP2000 (probado con una exportación real de SAP2000 v27, en kgf y m): nodos con apoyo, reacciones por caso, combinación o envolvente (Max/Min), tipo de cada caso (D, L, Lr, S, W, E), columna conectada a cada apoyo con su sección y dimensiones, y giro de sus ejes locales. Las reacciones se pasan a los ejes locales de la columna. El comando `openconex supports archivo.xlsx` lista los apoyos y las reacciones que gobiernan. Pendiente: ETABS (nombres de tablas propios), creación de los proyectos de placa base por apoyo y agrupación en tipos.
+
 ## 6. Unidades e idiomas
 Sin cambios respecto a la versión 1.2: cada magnitud se configura por separado, internamente todo se guarda en SI, las ecuaciones empíricas se evalúan en sus unidades originales, y la invariancia de unidades se prueba automáticamente. Interfaz y memoria en ES/EN por separado, con glosario controlado.
 
