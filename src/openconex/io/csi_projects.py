@@ -10,6 +10,10 @@ anchor rods and options. Each support gets a copy with its column and loads:
 * ``combinations``: the combinations of the analysis program, already factored,
   each one entered as a case with a custom combination of factor 1.0.
 
+With ``Grouping.COLUMN`` the supports with the same column section share one
+project: each case is prefixed with its joint ("50: DEAD") and the combinations
+are formed joint by joint, so loads of different supports are never added.
+
 Each case keeps the column-axis components: P, V = V2 and M = M3 (strong axis),
 V_weak = V3 and M_weak = M2 (weak axis, checked for biaxial bending).
 """
@@ -32,7 +36,14 @@ from openconex.io.project import (
     WSectionInput,
 )
 
-__all__ = ["LoadSource", "base_plate_projects", "column_input"]
+__all__ = ["Grouping", "LoadSource", "base_plate_projects", "column_input"]
+
+class Grouping(StrEnum):
+    JOINT = "joint"
+    """One project per support."""
+    COLUMN = "column"
+    """One project per column section with the loads of all its supports."""
+
 
 class LoadSource(StrEnum):
     CASES = "cases"
@@ -132,14 +143,63 @@ def _loads(support: Support, data: CsiImport, template: Project, source: LoadSou
 def base_plate_projects(data: CsiImport, template: Project,
                         source: LoadSource = LoadSource.CASES, include: str | None = None,
                         envelopes: bool = False, method: Method | None = None,
+                        group: Grouping = Grouping.JOINT,
                         ) -> tuple[dict[str, Project], list[str]]:
-    """One project per support with a column, from ``template``.
+    """Base plate projects for the supports with a column, from ``template``.
 
     ``include`` is a regular expression on the case or combination names;
     ``envelopes`` adds the Max/Min envelopes in ``combinations`` mode, and
     ``method`` sets the method of those combinations (template's first by default).
-    Returns ({joint: project}, warnings).
+    Returns ({joint or column section: project}, warnings).
     """
+    projects, warnings = _joint_projects(data, template, source, include, envelopes, method)
+    warnings = _merge_warnings(warnings)
+    if group is Grouping.JOINT:
+        return projects, warnings
+    sections: dict[str, list[str]] = {}
+    for support in data.supports:
+        if support.joint in projects:
+            sections.setdefault(support.column.section, []).append(support.joint)
+    return {section: _merge(template, section, {j: projects[j] for j in joints})
+            for section, joints in sections.items()}, warnings
+
+
+def _merge_warnings(warnings: list[str]) -> list[str]:
+    """Join "joint X: message" lines that repeat the same message."""
+    joints: dict[str, list[str]] = {}
+    for warning in warnings:
+        tag, sep, message = warning.partition(": ")
+        if sep and tag.startswith("joint "):
+            joints.setdefault(message, []).append(tag.removeprefix("joint "))
+        else:
+            joints.setdefault(warning, [])
+    return [f"joint{'s' if len(j) > 1 else ''} {', '.join(j)}: {m}" if j else m
+            for m, j in joints.items()]
+
+
+def _merge(template: Project, section: str, projects: dict[str, Project]) -> Project:
+    """One project with the cases of several supports, combined support by support."""
+    cases, custom = [], []
+    for joint, project in projects.items():
+        prefix = f"{joint}: "
+        cases += [c.model_copy(update={"name": prefix + c.name}) for c in project.cases]
+        custom += [CustomCombinationInput(
+            name=prefix + c.name, method=c.method,
+            factors={prefix + k: v for k, v in c.factors.items()}, seismic=c.seismic,
+            overstrength=c.overstrength, allowable_increase=c.allowable_increase,
+            source=c.source) for c in project.load_combinations()]
+    first = next(iter(projects.values()))
+    info = template.info.model_copy(update={
+        "name": f"{template.info.name} - {section} "
+                f"(joints {', '.join(projects)})".strip(" -")})
+    combinations = template.combinations.model_copy(update={"include_code": False,
+                                                            "custom": custom})
+    merged = template.model_copy(update={"info": info, "base_plate": first.base_plate,
+                                         "cases": cases, "combinations": combinations})
+    return Project.model_validate(merged.model_dump())
+
+
+def _joint_projects(data, template, source, include, envelopes, method):
     projects: dict[str, Project] = {}
     warnings: list[str] = []
     for support in data.supports:
