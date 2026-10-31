@@ -42,6 +42,11 @@ def test_result_serializes_with_trace():
     [
         (STEELS, "ASTM A992", "Fy", 50),
         (STEELS, "ASTM A36", "Fu", 58),
+        (STEELS, "ASTM A53 Gr. B", "Fy", 35),
+        (STEELS, "ASTM A572 Gr. 60", "Fu", 75),
+        (STEELS, "ASTM A913 Gr. 70", "Fy", 70),
+        (STEELS, "ASTM A1065 Gr. 50W", "Fu", 70),
+        (STEELS, "ASTM A1085", "Fu", 65),
         (BOLTS, "ASTM F3125 Gr. A325", "Fnv_N", 54),
         (BOLTS, "ASTM F3125 Gr. A490", "Fnt", 113),
         (BOLTS, "ASTM F1554 Gr. 36", "Fnt", 43.5),
@@ -51,3 +56,8 @@ def test_result_serializes_with_trace():
 def test_material_values(table, name, attr, ksi):
     value = getattr(table[name], attr)
     assert from_internal(value, Kind.STRESS, "ksi") == pytest.approx(ksi)
+
+
+def test_steel_library_is_consistent():
+    assert len(STEELS) >= 25
+    assert all(g.Fy > 0 and g.Fu >= g.Fy and g.E > 0 for g in STEELS.values())

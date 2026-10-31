@@ -57,16 +57,41 @@ class WeldElectrode(BaseModel):
     """Filler metal classification strength [MPa]."""
 
 
+# Typical structural steels of AISC 360-22 Table 2-1 (Manual Part 2). Fy and
+# Fu are the specified minimum values in ksi; E is the same for every grade.
 STEELS: dict[str, SteelGrade] = {
     g.name: g
     for g in (
         SteelGrade(name="ASTM A36", Fy=_ksi(36), Fu=_ksi(58)),
-        SteelGrade(name="ASTM A572 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
-        SteelGrade(name="ASTM A992", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A53 Gr. B", Fy=_ksi(35), Fu=_ksi(60)),
         SteelGrade(name="ASTM A500 Gr. B (rectangular)", Fy=_ksi(46), Fu=_ksi(58)),
         SteelGrade(name="ASTM A500 Gr. B (round)", Fy=_ksi(42), Fu=_ksi(58)),
         SteelGrade(name="ASTM A500 Gr. C (rectangular)", Fy=_ksi(50), Fu=_ksi(62)),
         SteelGrade(name="ASTM A500 Gr. C (round)", Fy=_ksi(46), Fu=_ksi(62)),
+        SteelGrade(name="ASTM A501 Gr. A", Fy=_ksi(36), Fu=_ksi(58)),
+        SteelGrade(name="ASTM A501 Gr. B", Fy=_ksi(50), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A529 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A529 Gr. 55", Fy=_ksi(55), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A572 Gr. 42", Fy=_ksi(42), Fu=_ksi(60)),
+        SteelGrade(name="ASTM A572 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A572 Gr. 55", Fy=_ksi(55), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A572 Gr. 60", Fy=_ksi(60), Fu=_ksi(75)),
+        SteelGrade(name="ASTM A572 Gr. 65", Fy=_ksi(65), Fu=_ksi(80)),
+        SteelGrade(name="ASTM A588", Fy=_ksi(50), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A709 Gr. 36", Fy=_ksi(36), Fu=_ksi(58)),
+        SteelGrade(name="ASTM A709 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A709 Gr. 50W", Fy=_ksi(50), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A847", Fy=_ksi(50), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A913 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A913 Gr. 60", Fy=_ksi(60), Fu=_ksi(75)),
+        SteelGrade(name="ASTM A913 Gr. 65", Fy=_ksi(65), Fu=_ksi(80)),
+        SteelGrade(name="ASTM A913 Gr. 70", Fy=_ksi(70), Fu=_ksi(90)),
+        SteelGrade(name="ASTM A992", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A1043 Gr. 36", Fy=_ksi(36), Fu=_ksi(58)),
+        SteelGrade(name="ASTM A1043 Gr. 50", Fy=_ksi(50), Fu=_ksi(65)),
+        SteelGrade(name="ASTM A1065 Gr. 50", Fy=_ksi(50), Fu=_ksi(60)),
+        SteelGrade(name="ASTM A1065 Gr. 50W", Fy=_ksi(50), Fu=_ksi(70)),
+        SteelGrade(name="ASTM A1085", Fy=_ksi(50), Fu=_ksi(65)),
     )
 }
 

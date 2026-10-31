@@ -1,0 +1,53 @@
+{
+  "format_version": 3,
+  "info": {
+    "name": "Ejemplo: material del proyecto",
+    "number": "OC-0006",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "materials": [
+    {
+      "name": "Acero del proyecto",
+      "Fy": "50 ksi",
+      "Fu": "65 ksi",
+      "E": "29000 ksi"
+    }
+  ],
+  "base_plate": {
+    "column": {
+      "type": "W",
+      "name": "W del proyecto 12.7×12.3",
+      "d": "12.7 in",
+      "bf": "12.3 in",
+      "tf": "0.95 in",
+      "tw": "0.55 in",
+      "k_des": "1.31 in",
+      "grade": "Acero del proyecto"
+    },
+    "N": "24 in",
+    "B": "22 in",
+    "tp": "2 in",
+    "plate_grade": "Acero del proyecto",
+    "fc": "4 ksi",
+    "A2_over_A1": 1.0,
+    "pedestal_N": "36 in",
+    "pedestal_B": "36 in",
+    "grout": "1.5 in",
+    "rod_diameter": "1 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "9.25 in",
+    "rod_spacing": "12 in",
+    "hef": "18 in"
+  },
+  "cases": [
+    {"name": "D", "type": "D", "P": "100 kip", "M": "1000 kip*in"},
+    {"name": "L", "type": "L", "P": "160 kip", "M": "1500 kip*in"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}

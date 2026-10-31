@@ -9,6 +9,7 @@ All dimensions are in internal units (mm); materials refer to the library in
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -111,15 +112,19 @@ class SteelPlate(_Part):
     length: float = Field(gt=0)
     thickness: float = Field(gt=0)
     grade: str = "ASTM A36"
+    materials: Mapping[str, SteelGrade] = Field(default_factory=dict, exclude=True, repr=False)
+    """Project material library; built-in ``STEELS`` are used as fallback."""
 
     @model_validator(mode="after")
     def _known_grade(self) -> SteelPlate:
-        if self.grade not in STEELS:
+        if self.grade not in self.materials and self.grade not in STEELS:
             raise ValueError(f"unknown steel grade: {self.grade}")
         return self
 
     @property
     def material(self) -> SteelGrade:
+        if self.grade in self.materials:
+            return self.materials[self.grade]
         return STEELS[self.grade]
 
 
@@ -156,6 +161,8 @@ class IShape(_Part):
     k_des: float = Field(default=0.0, ge=0)
     """Design distance from outer face of flange to web toe of fillet [mm]."""
     grade: str = "ASTM A992"
+    materials: Mapping[str, SteelGrade] = Field(default_factory=dict, exclude=True, repr=False)
+    """Project material library; built-in ``STEELS`` are used as fallback."""
 
     @model_validator(mode="after")
     def _consistent(self) -> IShape:
@@ -163,12 +170,14 @@ class IShape(_Part):
             raise ValueError("flanges thicker than the section depth")
         if self.tw >= self.bf:
             raise ValueError("web thicker than the flange width")
-        if self.grade not in STEELS:
+        if self.grade not in self.materials and self.grade not in STEELS:
             raise ValueError(f"unknown steel grade: {self.grade}")
         return self
 
     @property
     def material(self) -> SteelGrade:
+        if self.grade in self.materials:
+            return self.materials[self.grade]
         return STEELS[self.grade]
 
     @property
@@ -197,6 +206,8 @@ class HSSShape(_Part):
     width: float | None = Field(default=None, gt=0)
     t: float = Field(gt=0)
     grade: str = "ASTM A500 Gr. C (rectangular)"
+    materials: Mapping[str, SteelGrade] = Field(default_factory=dict, exclude=True, repr=False)
+    """Project material library; built-in ``STEELS`` are used as fallback."""
 
     @model_validator(mode="before")
     @classmethod
@@ -224,7 +235,7 @@ class HSSShape(_Part):
                 raise ValueError("a square HSS needs equal depth and width")
             if 2 * self.t >= min(self.d, self.bf):
                 raise ValueError("HSS wall thickness is too large for the section")
-        if self.grade not in STEELS:
+        if self.grade not in self.materials and self.grade not in STEELS:
             raise ValueError(f"unknown steel grade: {self.grade}")
         return self
 
@@ -247,6 +258,8 @@ class HSSShape(_Part):
 
     @property
     def material(self) -> SteelGrade:
+        if self.grade in self.materials:
+            return self.materials[self.grade]
         return STEELS[self.grade]
 
     @property

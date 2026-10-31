@@ -178,12 +178,38 @@ def test_column_input():
                                               450, 300, 9.652, 6.35))
     assert isinstance(built_up, WSectionInput) and built_up.d == "450 mm"
     assert (built_up.grade, grade) == ("ASTM A572 Gr. 50", "ASTM A572 Gr. 50")
+    built_up, grade, warning = column_input(
+        _column("COL-2", "I/Wide Flange", "X", 450, 300, 9.652, 6.35), "ASTM A36")
+    assert built_up.grade == grade == "ASTM A36"
+    assert "unknown material" in warning
     box = column_input(_column("HSS6X6X3/8", "Box/Tube", "A500GrB46", 152.4, 152.4, 8.87, 8.87))[0]
     assert isinstance(box, HSSSectionInput) and box.shape is HSSKind.SQUARE
     assert box.grade == "ASTM A500 Gr. B (rectangular)"
-    pipe = column_input(_column("P", "Pipe", "A53", 100, 0, 0, 6))[0]
-    assert pipe.shape is HSSKind.ROUND and pipe.grade is None
+    pipe, pipe_grade, pipe_warning = column_input(_column("P", "Pipe", "A53", 100, 0, 0, 6))
+    assert pipe is None and pipe_grade is None and "unknown material" in pipe_warning
+    pipe, pipe_grade, pipe_warning = column_input(
+        _column("P", "Pipe", "A53", 100, 0, 0, 6), "ASTM A500 Gr. C (round)")
+    assert pipe.shape is HSSKind.ROUND and pipe.grade == pipe_grade
+    assert pipe_grade == "ASTM A500 Gr. C (round)" and "unknown material" in pipe_warning
     assert column_input(_column("X", "Channel", "A36", 1, 1, 1, 1))[0] is None
+
+
+@pytest.mark.parametrize(("section", "shape", "material", "dims", "grade"), [
+    ("COL-1", "I/Wide Flange", "A913Gr65", (450, 300, 9.652, 6.35), "ASTM A913 Gr. 65"),
+    ("COL-2", "I/Wide Flange", "A572Gr60", (450, 300, 9.652, 6.35), "ASTM A572 Gr. 60"),
+    ("COL-3", "I/Wide Flange", "A709Gr50W", (450, 300, 9.652, 6.35), "ASTM A709 Gr. 50W"),
+    ("HSS1", "Box/Tube", "A1085", (152.4, 152.4, 8.87, 8.87), "ASTM A1085"),
+    ("HSS2", "Box/Tube", "A500GrC46", (152.4, 101.6, 8.87, 8.87),
+     "ASTM A500 Gr. C (rectangular)"),
+    ("HSS3", "Box/Tube", "A1065Gr50W", (152.4, 101.6, 8.87, 8.87), "ASTM A1065 Gr. 50W"),
+    ("P1", "Pipe", "A53GrB", (100, 0, 0, 6), "ASTM A53 Gr. B"),
+])
+def test_typical_material_mapping(section, shape, material, dims, grade):
+    result, used, warning = column_input(
+        _column(section, shape, material, *dims), "ASTM A992")
+    assert result is not None and warning is None
+    assert used == grade
+    assert result.grade == grade
 
 
 def test_projects_from_load_cases(export):

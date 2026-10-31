@@ -52,12 +52,14 @@ def test_texts_are_translated(tmp_path, project, lang, words):
 
 def test_hss_column_outline(tmp_path, project):
     project.base_plate.column = HSSSectionInput(
-        type="HSS", shape="round", d="12 in", t="0.5 in")
+        type="HSS", shape="round", d="12 in", t="0.5 in",
+        grade="ASTM A500 Gr. C (round)")
     doc = ezdxf.readfile(_write(tmp_path, project, "US", "en"))
     assert len(doc.modelspace().query('CIRCLE[layer=="BP-COLUMNA"]')) == 2
 
     project.base_plate.column = HSSSectionInput(
-        type="HSS", shape="rectangular", d="12 in", bf="8 in", t="0.5 in")
+        type="HSS", shape="rectangular", d="12 in", bf="8 in", t="0.5 in",
+        grade="ASTM A500 Gr. C (rectangular)")
     doc = ezdxf.readfile(_write(tmp_path, project, "US", "es"))
     # Two concentric outlines in plan plus the two tube walls in elevation.
     assert len(doc.modelspace().query('LWPOLYLINE[layer=="BP-COLUMNA"]')) == 4

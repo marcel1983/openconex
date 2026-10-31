@@ -8,6 +8,7 @@ import pytest
 
 from openconex.connections.base_plate.check import BasePlate, ShearLug, check_base_plate
 from openconex.core.loads import Forces, Method
+from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import BoltSpec, IShape
 from openconex.i18n import LANGUAGES, catalog
 from openconex.kernel.anchors import Edges
@@ -42,6 +43,16 @@ PLATE = BasePlate(column=W14X90, N=inch(15), B=inch(15), tp=inch(1.5),
 
 def by_id(results):
     return {r.id: r for r in results}
+
+
+def test_custom_shear_lug_material():
+    custom = SteelGrade(name="Acero X", Fy=to_internal(45, "ksi", Kind.STRESS),
+                        Fu=to_internal(60, "ksi", Kind.STRESS))
+    lug = dataclasses.replace(LUG, grade=custom.name)
+    bp = dataclasses.replace(PLATE, shear_lug=lug,
+                             materials={**STEELS, custom.name: custom})
+    r = by_id(check_base_plate(bp, Forces(V2=kip(25)), Method.LRFD))
+    assert "base_plate.lug_shear_yielding" in r
 
 
 @pytest.mark.parametrize(("method", "V", "expected"), [

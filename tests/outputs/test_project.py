@@ -9,6 +9,7 @@ from openconex.core.model import HSSKind, HSSShape, IShape
 from openconex.io.project import (
     FORMAT_VERSION,
     CustomCombinationInput,
+    MaterialInput,
     Project,
     load_project,
     save_project,
@@ -174,7 +175,8 @@ def test_generic_w_column():
     ("round", None, HSSKind.ROUND, "ASTM A500 Gr. C (round)"),
 ])
 def test_generic_hss_columns(shape, bf, kind, grade):
-    column = {"type": "HSS", "shape": shape, "d": "12 in", "t": "0.5 in"}
+    column = {"type": "HSS", "shape": shape, "d": "12 in", "t": "0.5 in",
+              "grade": grade}
     if bf is not None:
         column["bf"] = bf
     section = _project_with_column(column).column_model()
@@ -186,22 +188,32 @@ def test_generic_hss_columns(shape, bf, kind, grade):
     assert section.grade == grade
 
 
+def test_generic_section_material_is_required():
+    with pytest.raises(ValueError):
+        _project_with_column({"type": "W", "d": "20 in", "bf": "12 in", "tf": "1 in",
+                              "tw": "0.5 in"})
+    with pytest.raises(ValueError):
+        _project_with_column({"type": "HSS", "shape": "square", "d": "12 in",
+                              "t": "0.5 in"})
+
+
 def test_generic_hss_requires_width():
     with pytest.raises(ValueError, match="needs its width"):
         _project_with_column({"type": "HSS", "shape": "rectangular", "d": "12 in",
-                              "t": "0.5 in"})
+                              "t": "0.5 in", "grade": "ASTM A500 Gr. C (rectangular)"})
     with pytest.raises(ValueError, match="bf is not allowed"):
         _project_with_column({"type": "HSS", "shape": "round", "d": "12 in",
-                              "bf": "12 in", "t": "0.5 in"})
+                              "bf": "12 in", "t": "0.5 in",
+                              "grade": "ASTM A500 Gr. C (round)"})
 
 
 def test_generic_section_dimensions_are_validated():
     with pytest.raises(ValueError, match="flanges thicker"):
         _project_with_column({"type": "W", "d": "20 in", "bf": "12 in", "tf": "11 in",
-                              "tw": "0.5 in"}).column_model()
+                              "tw": "0.5 in", "grade": "ASTM A992"}).column_model()
     with pytest.raises(ValueError, match="wall thickness"):
         _project_with_column({"type": "HSS", "shape": "round", "d": "12 in",
-                              "t": "7 in"}).column_model()
+                              "t": "7 in", "grade": "ASTM A500 Gr. C (round)"}).column_model()
 
 
 @pytest.mark.parametrize(("filename", "kind"), [
@@ -212,3 +224,94 @@ def test_generic_section_dimensions_are_validated():
 def test_generic_column_examples(filename, kind):
     project = load_project(EXAMPLE.with_name(filename))
     assert isinstance(project.column_model(), kind)
+
+
+def test_custom_material_is_used_by_sections_and_plate():
+    data = json.loads(EXAMPLE.read_text())
+    data["materials"] = [
+        {"name": "Acero del proyecto", "Fy": "50 ksi", "Fu": "65 ksi"},
+    ]
+    data["base_plate"]["plate_grade"] = "Acero del proyecto"
+    data["base_plate"]["column"] = {
+        "type": "W", "name": "COL", "d": "20 in", "bf": "12 in", "tf": "1 in",
+        "tw": "0.5 in", "grade": "Acero del proyecto",
+    }
+    project = Project.model_validate(data)
+    library = project.material_library()
+    material = library["Acero del proyecto"]
+    assert material.Fy == pytest.approx(project.quantity("50 ksi", Kind.STRESS))
+    assert material.Fu == pytest.approx(project.quantity("65 ksi", Kind.STRESS))
+    model = project.base_plate_model()
+    assert model.column.material.name == material.name
+    assert model.column.material.Fy == pytest.approx(material.Fy)
+    assert model.materials[model.plate_grade].name == material.name
+    assert model.Fy == pytest.approx(material.Fy)
+
+
+def test_custom_material_for_hss_column():
+    data = json.loads(EXAMPLE.read_text())
+    data["materials"] = [{"name": "Acero del proyecto", "Fy": "50 ksi", "Fu": "65 ksi"}]
+    data["base_plate"]["column"] = {
+        "type": "HSS", "shape": "square", "d": "12 in", "t": "0.5 in",
+        "grade": "Acero del proyecto",
+    }
+    column = Project.model_validate(data).column_model()
+    assert isinstance(column, HSSShape)
+    assert column.material.name == "Acero del proyecto"
+
+
+def test_custom_material_for_catalog_column():
+    data = json.loads(EXAMPLE.read_text())
+    data["materials"] = [{"name": "Acero del proyecto", "Fy": "50 ksi", "Fu": "65 ksi"}]
+    data["base_plate"]["column_grade"] = "Acero del proyecto"
+    column = Project.model_validate(data).column_model()
+    assert column.grade == "Acero del proyecto"
+    assert column.material.name == "Acero del proyecto"
+
+
+def test_custom_material_names_must_be_unique():
+    data = json.loads(EXAMPLE.read_text())
+    data["materials"] = [{"name": "ASTM A36", "Fy": "36 ksi", "Fu": "58 ksi"}]
+    with pytest.raises(ValueError, match="already exists"):
+        Project.model_validate(data)
+    data["materials"] = [
+        {"name": "Acero X", "Fy": "50 ksi", "Fu": "65 ksi"},
+        {"name": "Acero X", "Fy": "50 ksi", "Fu": "65 ksi"},
+    ]
+    with pytest.raises(ValueError, match="already exists"):
+        Project.model_validate(data)
+
+
+def test_custom_material_values_are_validated():
+    data = json.loads(EXAMPLE.read_text())
+    data["materials"] = [{"name": "Acero X", "Fy": "50 ksi", "Fu": "40 ksi"}]
+    with pytest.raises(ValueError, match="Fu must be at least Fy"):
+        Project.model_validate(data)
+    data["materials"] = [{"name": "Acero X", "Fy": "-1 ksi", "Fu": "40 ksi"}]
+    with pytest.raises(ValueError, match="positive"):
+        Project.model_validate(data)
+    with pytest.raises(ValueError):
+        MaterialInput(name="   ", Fy="50 ksi", Fu="65 ksi")
+
+
+def test_unknown_material_is_rejected():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["plate_grade"] = "Acero inexistente"
+    with pytest.raises(ValueError, match="unknown plate material"):
+        Project.model_validate(data)
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["column_grade"] = "Acero inexistente"
+    with pytest.raises(ValueError, match="unknown column material"):
+        Project.model_validate(data)
+
+
+def test_custom_materials_round_trip(tmp_path, project):
+    project.materials = [
+        MaterialInput(name="Acero del proyecto", Fy="50 ksi", Fu="65 ksi", E="29000 ksi"),
+    ]
+    path = tmp_path / "custom_material.ocnx"
+    save_project(project, path)
+    again = load_project(path)
+    assert again.materials == project.materials
+    assert again.material_library()["Acero del proyecto"].Fy == pytest.approx(
+        project.quantity("50 ksi", Kind.STRESS))

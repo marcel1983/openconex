@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con cuatro bloques: `info`, `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con cinco bloques: `info`, `materials` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -9,6 +9,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_dg1_4_7_11.ocnx` | columna del catálogo AISC, combinaciones ASCE 7-22 (DG1 Ejemplo 4.7-11) |
 | `examples/base_plate_custom_combinations.ocnx` | combinaciones propias en lugar de las del código |
 | `examples/base_plate_generic_w.ocnx` | columna W definida por dimensiones |
+| `examples/base_plate_custom_material.ocnx` | material propio para la columna y la placa |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -26,6 +27,25 @@ Ejemplos completos en `examples/`:
 | `date` | `""` | Fecha (texto libre). |
 | `language` | `"es"` | Idioma de la memoria y los planos: `es` o `en`. |
 | `units` | `"SI_kN_m"` | Sistema de unidades de las salidas y de los números sin unidad. Puede ser `SI_kN_m`, `SI_N_mm`, `MKS` o `US`, o un objeto con la unidad de cada magnitud (ver [Unidades](07-unidades-materiales.md)). |
+
+## Materiales propios (`materials`)
+
+La librería integrada contiene los aceros típicos de AISC 360-22. Para usar un acero que no esté en ella, defínalo en `materials`; después puede referenciarlo desde `column_grade`, `plate_grade`, el `grade` de una sección genérica o `shear_lug.grade`:
+
+```json
+"materials": [
+  {"name": "Acero del proyecto", "Fy": "355 MPa", "Fu": "490 MPa", "E": "200 GPa"}
+]
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `name` | (obligatorio) | Nombre único del material; no puede coincidir con uno de la librería integrada. |
+| `Fy` | (obligatorio) | Límite de fluencia mínimo especificado. |
+| `Fu` | (obligatorio) | Resistencia última mínima especificada; debe ser mayor o igual que `Fy`. |
+| `E` | `"29000 ksi"` | Módulo de elasticidad. |
+
+Los materiales propios se usan en todo el cálculo: secciones de columna, placa base y llave de corte. Las barras de anclaje y los electrodos mantienen sus librerías propias (`rod_grade` y el electrodo de la soldadura).
 
 ## Placa base (`base_plate`)
 
@@ -81,7 +101,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
            "tf": "9.65 mm", "tw": "6.35 mm", "k_des": "20 mm", "grade": "ASTM A572 Gr. 50"}
 ```
 
-`type` (`"W"`), `name`, `d`, `bf`, `tf`, `tw`, `k_des` (por defecto 0) y `grade` (por defecto `"ASTM A992"`).
+`type` (`"W"`), `name`, `d`, `bf`, `tf`, `tw`, `k_des` (por defecto 0) y `grade` (obligatorio). El material debe ser un nombre de la librería integrada o de `materials`.
 
 ### Columna HSS genérica
 
@@ -98,7 +118,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `d` | Peralte exterior, o diámetro exterior si es `round`. |
 | `bf` | Ancho exterior; obligatorio en `rectangular`, se omite en `square` y no se admite en `round`. |
 | `t` | Espesor de pared. |
-| `grade` | Acero; por defecto ASTM A500 Gr. C del tipo de sección. |
+| `grade` | Acero; obligatorio. Nombre de la librería integrada o de `materials`. |
 
 Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensiones exteriores para HSS rectangular o cuadrada, y a 0,8 del diámetro para HSS circular (DG1 §4.3.3).
 

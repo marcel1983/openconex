@@ -53,10 +53,33 @@ class LoadSource(StrEnum):
 # CSI material name -> OpenConex steel grade (rectangular HSS / round HSS / other)
 _GRADES = (
     (r"A992", "ASTM A992"),
-    (r"A572.*50", "ASTM A572 Gr. 50"),
-    (r"A36", "ASTM A36"),
+    (r"A913.*GR\.?\s*70", "ASTM A913 Gr. 70"),
+    (r"A913.*GR\.?\s*65", "ASTM A913 Gr. 65"),
+    (r"A913.*GR\.?\s*60", "ASTM A913 Gr. 60"),
+    (r"A913.*GR\.?\s*50", "ASTM A913 Gr. 50"),
+    (r"A572.*GR\.?\s*65", "ASTM A572 Gr. 65"),
+    (r"A572.*GR\.?\s*60", "ASTM A572 Gr. 60"),
+    (r"A572.*GR\.?\s*55", "ASTM A572 Gr. 55"),
+    (r"A572.*GR\.?\s*50", "ASTM A572 Gr. 50"),
+    (r"A572.*GR\.?\s*42", "ASTM A572 Gr. 42"),
+    (r"A529.*GR\.?\s*55", "ASTM A529 Gr. 55"),
+    (r"A529.*GR\.?\s*50", "ASTM A529 Gr. 50"),
+    (r"A709.*GR\.?\s*50W", "ASTM A709 Gr. 50W"),
+    (r"A709.*GR\.?\s*50", "ASTM A709 Gr. 50"),
+    (r"A709.*GR\.?\s*36", "ASTM A709 Gr. 36"),
+    (r"A1043.*GR\.?\s*50", "ASTM A1043 Gr. 50"),
+    (r"A1043.*GR\.?\s*36", "ASTM A1043 Gr. 36"),
+    (r"A1065.*GR\.?\s*50W", "ASTM A1065 Gr. 50W"),
+    (r"A1065.*GR\.?\s*50", "ASTM A1065 Gr. 50"),
     (r"A500.*GR\.?\s*B", "ASTM A500 Gr. B"),
     (r"A500.*GR\.?\s*C", "ASTM A500 Gr. C"),
+    (r"A501.*GR\.?\s*A", "ASTM A501 Gr. A"),
+    (r"A501.*GR\.?\s*B", "ASTM A501 Gr. B"),
+    (r"A53.*GR\.?\s*B", "ASTM A53 Gr. B"),
+    (r"A1085", "ASTM A1085"),
+    (r"A847", "ASTM A847"),
+    (r"A588", "ASTM A588"),
+    (r"A36", "ASTM A36"),
 )
 
 
@@ -75,35 +98,51 @@ def _mm(value: float) -> str:
     return f"{value:.4g} mm"
 
 
-def column_input(column: ImportedColumn):
+def column_input(column: ImportedColumn, fallback_grade: str | None = None):
     """Project column (AISC label or generic section) and steel grade for a CSI section.
 
-    Returns (column, grade, warning); grade is None when the material is unknown.
+    Returns (column, grade, warning). When the CSI material is not in the
+    OpenConex library, ``fallback_grade`` is used and a warning is returned;
+    with no fallback the column is rejected.
     """
     dims, shape = column.dimensions, column.shape.lower()
+    grade = _grade(column.material, None)
+    used = grade or fallback_grade
     if shape == "i/wide flange":
+        warning = (None if grade else
+                   f"unknown material {column.material!r}, using {used}")
+        if used is None:
+            return None, None, f"unknown material {column.material!r} and no fallback"
         try:
             aisc_shapes().get(column.section)
-            return column.section, _grade(column.material, None), None
+            return column.section, used, warning
         except ShapeDatabaseError:
             pass
-        grade = _grade(column.material, None)
         section = WSectionInput(type="W", name=column.section, d=_mm(dims["t3"]),
                                 bf=_mm(dims["t2"]), tf=_mm(dims["tf"]), tw=_mm(dims["tw"]),
-                                **({"grade": grade} if grade else {}))
-        return section, grade, None
+                                grade=used)
+        return section, used, warning
     if shape == "box/tube":
         kind = HSSKind.SQUARE if math.isclose(dims["t3"], dims["t2"]) else HSSKind.RECTANGULAR
+        grade = _grade(column.material, kind)
+        used = grade or fallback_grade
+        if used is None:
+            return None, None, f"unknown material {column.material!r} and no fallback"
         section = HSSSectionInput(type="HSS", name=column.section, shape=kind,
                                   d=_mm(dims["t3"]),
                                   bf=None if kind is HSSKind.SQUARE else _mm(dims["t2"]),
-                                  t=_mm(dims["tf"]), grade=_grade(column.material, kind))
-        return section, None, None
+                                  t=_mm(dims["tf"]), grade=used)
+        return section, used, (None if grade else
+                               f"unknown material {column.material!r}, using {used}")
     if shape == "pipe":
+        grade = _grade(column.material, HSSKind.ROUND)
+        used = grade or fallback_grade
+        if used is None:
+            return None, None, f"unknown material {column.material!r} and no fallback"
         section = HSSSectionInput(type="HSS", name=column.section, shape=HSSKind.ROUND,
-                                  d=_mm(dims["t3"]), t=_mm(dims["tw"]),
-                                  grade=_grade(column.material, HSSKind.ROUND))
-        return section, None, None
+                                  d=_mm(dims["t3"]), t=_mm(dims["tw"]), grade=used)
+        return section, used, (None if grade else
+                               f"unknown material {column.material!r}, using {used}")
     return None, None, f"section {column.section!r} ({column.shape}) is not supported"
 
 
@@ -207,10 +246,13 @@ def _joint_projects(data, template, source, include, envelopes, method):
         if support.column is None:
             warnings.append(f"{tag}: no column, skipped")
             continue
-        column, grade, problem = column_input(support.column)
+        column, grade, problem = column_input(support.column,
+                                              template.base_plate.column_grade)
         if column is None:
             warnings.append(f"{tag}: {problem}, skipped")
             continue
+        if problem:
+            warnings.append(f"{tag}: {problem}")
         notes: list[str] = []
         cases, combinations, _ = _loads(support, data, template, source, include,
                                            envelopes, method, notes)
@@ -218,9 +260,6 @@ def _joint_projects(data, template, source, include, envelopes, method):
             warnings.append(f"{tag}: no load cases selected, skipped")
             continue
         warnings += [f"{tag}: {n}" for n in notes]
-        if grade is None and not isinstance(column, HSSSectionInput):
-            warnings.append(f"{tag}: unknown material {support.column.material!r}, "
-                            f"using {template.base_plate.column_grade}")
         base_plate = template.base_plate.model_copy(update={
             "column": column, "column_grade": grade or template.base_plate.column_grade})
         info = template.info.model_copy(update={
