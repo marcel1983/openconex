@@ -40,12 +40,35 @@ También puede elegirse la unidad de cada magnitud por separado:
 | Nombre | Fy | Fu |
 |---|---|---|
 | `ASTM A36` | 36 ksi | 58 ksi |
-| `ASTM A572 Gr. 50` | 50 ksi | 65 ksi |
-| `ASTM A992` | 50 ksi | 65 ksi |
+| `ASTM A53 Gr. B` | 35 ksi | 60 ksi |
 | `ASTM A500 Gr. B (rectangular)` | 46 ksi | 58 ksi |
 | `ASTM A500 Gr. B (round)` | 42 ksi | 58 ksi |
 | `ASTM A500 Gr. C (rectangular)` | 50 ksi | 62 ksi |
 | `ASTM A500 Gr. C (round)` | 46 ksi | 62 ksi |
+| `ASTM A501 Gr. A` | 36 ksi | 58 ksi |
+| `ASTM A501 Gr. B` | 50 ksi | 70 ksi |
+| `ASTM A529 Gr. 50` | 50 ksi | 65 ksi |
+| `ASTM A529 Gr. 55` | 55 ksi | 70 ksi |
+| `ASTM A572 Gr. 42` | 42 ksi | 60 ksi |
+| `ASTM A572 Gr. 50` | 50 ksi | 65 ksi |
+| `ASTM A572 Gr. 55` | 55 ksi | 70 ksi |
+| `ASTM A572 Gr. 60` | 60 ksi | 75 ksi |
+| `ASTM A572 Gr. 65` | 65 ksi | 80 ksi |
+| `ASTM A588` | 50 ksi | 70 ksi |
+| `ASTM A709 Gr. 36` | 36 ksi | 58 ksi |
+| `ASTM A709 Gr. 50` | 50 ksi | 65 ksi |
+| `ASTM A709 Gr. 50W` | 50 ksi | 70 ksi |
+| `ASTM A847` | 50 ksi | 70 ksi |
+| `ASTM A913 Gr. 50` | 50 ksi | 65 ksi |
+| `ASTM A913 Gr. 60` | 60 ksi | 75 ksi |
+| `ASTM A913 Gr. 65` | 65 ksi | 80 ksi |
+| `ASTM A913 Gr. 70` | 70 ksi | 90 ksi |
+| `ASTM A992` | 50 ksi | 65 ksi |
+| `ASTM A1043 Gr. 36` | 36 ksi | 58 ksi |
+| `ASTM A1043 Gr. 50` | 50 ksi | 65 ksi |
+| `ASTM A1065 Gr. 50` | 50 ksi | 60 ksi |
+| `ASTM A1065 Gr. 50W` | 50 ksi | 70 ksi |
+| `ASTM A1085` | 50 ksi | 65 ksi |
 
 **Barras de anclaje y pernos** (`rod_grade`):
 
