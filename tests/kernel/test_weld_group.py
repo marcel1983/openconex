@@ -10,9 +10,11 @@ from openconex.kernel.weld_group import (
     _elements,
     _residual,
     elastic_strength,
+    electrode_coefficient,
     icr_strength,
     weld_group_eccentric,
 )
+from openconex.units import Kind, to_internal
 
 W, FEXX = 0.25, 70.0  # in., ksi: results in kips
 UNIT = 0.60 * FEXX * W / math.sqrt(2)  # nominal kip/in. without directional increase
@@ -70,6 +72,26 @@ def test_strength_decreases_with_eccentricity():
 
 
 def test_check_uses_phi():
-    lines = [vertical(10)]
-    r = weld_group_eccentric(lines, W, FEXX, (3.0, 5.0), 0.0, Method.LRFD)
-    assert r.capacity == pytest.approx(0.75 * icr_strength(lines, W, FEXX, (3.0, 5.0)).Rn)
+    lines = [WeldLine(0, 0, 0, 250)]
+    fexx = to_internal(70, "ksi", Kind.STRESS)
+    r = weld_group_eccentric(lines, 6.0, fexx, (75.0, 125.0), 0.0, Method.LRFD)
+    assert r.capacity == pytest.approx(0.75 * icr_strength(lines, 6.0, fexx, (75.0, 125.0)).Rn)
+
+
+@pytest.mark.parametrize(("ksi", "c1"), [(60, 0.857), (70, 1.00), (80, 1.03), (90, 1.16),
+                                         (100, 1.21), (110, 1.34), (85, 1.095)])
+def test_electrode_coefficient_table_8_3(ksi, c1):
+    assert electrode_coefficient(to_internal(ksi, "ksi", Kind.STRESS)) == pytest.approx(c1)
+
+
+def test_electrode_coefficient_outside_table():
+    with pytest.raises(ValueError):
+        electrode_coefficient(to_internal(120, "ksi", Kind.STRESS))
+
+
+def test_check_applies_c1_for_e80():
+    lines = [WeldLine(0, 0, 0, 250)]
+    e70, e80 = (to_internal(v, "ksi", Kind.STRESS) for v in (70, 80))
+    r70 = weld_group_eccentric(lines, 6.0, e70, (75.0, 125.0), 0.0, Method.LRFD)
+    r80 = weld_group_eccentric(lines, 6.0, e80, (75.0, 125.0), 0.0, Method.LRFD)
+    assert r80.capacity == pytest.approx(1.03 * r70.capacity)
