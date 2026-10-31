@@ -52,8 +52,8 @@
 </table>
 <h3>{{ t('report.loads') }}</h3>
 <table>
-  <tr><th>ID</th><th>{{ t('report.item') }}</th><th>P</th><th>V</th><th>M</th></tr>
-  {% for row in r.cases %}<tr><td>{{ row.cells[0] }}</td><td>{{ row.cells[1] }}</td><td class="num">{{ row.cells[2] }}</td><td class="num">{{ row.cells[3] }}</td><td class="num">{{ row.cells[4] }}</td></tr>{% endfor %}
+  <tr>{% for h in r.case_headers %}<th>{{ h }}</th>{% endfor %}</tr>
+  {% for row in r.cases %}<tr><td>{{ row.cells[0] }}</td><td>{{ row.cells[1] }}</td>{% for cell in row.cells[2:] %}<td class="num">{{ cell }}</td>{% endfor %}</tr>{% endfor %}
 </table>
 
 <h2>3. {{ t('report.combinations_title') }}</h2>

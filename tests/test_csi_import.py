@@ -2,7 +2,6 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Import of supports and reactions from SAP2000 / ETABS tables exported to Excel."""
 
-import math
 from pathlib import Path
 
 import pytest
@@ -195,11 +194,11 @@ def test_projects_from_load_cases(export):
                                                     ("SX", LoadType.SEISMIC)]
     dead = p1.case_forces()["DEAD"]
     assert dead.P == pytest.approx(10 * TONF)
-    assert dead.V2 == pytest.approx(math.hypot(1, 2) * TONF)
-    assert dead.M3 == pytest.approx(-30 * TONF * CM)
+    assert (dead.V2, dead.V3) == (pytest.approx(2 * TONF), pytest.approx(-1 * TONF))
+    assert (dead.M3, dead.M2) == (pytest.approx(-30 * TONF * CM), pytest.approx(40 * TONF * CM))
     assert p1.combinations.include_code and not p1.combinations.custom
     assert p1.load_combinations()
-    assert any("joint 1" in w and "M2" in w for w in warnings)
+    assert not warnings
     assert isinstance(projects["2"].base_plate.column, HSSSectionInput)
 
 

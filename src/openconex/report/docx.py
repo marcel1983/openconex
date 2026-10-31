@@ -105,7 +105,7 @@ def write_docx(report: Report, path: str | Path) -> Path:
     doc.add_heading(f"2. {t('report.inputs')}", level=1)
     _table(doc, [t("report.item"), t("report.value")], [r.cells for r in report.inputs])
     doc.add_heading(t("report.loads"), level=2)
-    _table(doc, ["ID", t("report.item"), "P", "V", "M"], [r.cells for r in report.cases])
+    _table(doc, report.case_headers, [r.cells for r in report.cases])
 
     doc.add_heading(f"3. {t('report.combinations_title')}", level=1)
     _table(doc, ["ID", t("report.method"), t("report.factors"), t("report.source")],

@@ -22,6 +22,8 @@ moment_of_inertia = "Momento de inercia"
 dimensionless = "Adimensional"
 
 [report]
+v_weak = "V eje débil"
+m_weak = "M eje débil"
 demand = "Demanda"
 capacity = "Capacidad"
 ratio = "Relación demanda/capacidad"
@@ -163,6 +165,10 @@ friction = "Corte por fricción"
 rod_combined = "Barra de anclaje con tracción, corte y flexión"
 plate_bending_rods = "Flexión de la placa por los anclajes en tracción"
 embedded_moment = "Momento resistente de la base empotrada"
+bearing_weak = "Aplastamiento en el concreto, eje débil"
+thickness_compression_weak = "Espesor de placa en la interfaz de compresión, eje débil"
+thickness_tension_weak = "Espesor de placa en la interfaz de tracción, eje débil"
+biaxial = "Interacción de flexión biaxial"
 
 [input]
 column = "Columna"
