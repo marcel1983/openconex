@@ -8,6 +8,7 @@ All dimensions are in internal units (mm); materials refer to the library in
 
 from __future__ import annotations
 
+import math
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -16,7 +17,17 @@ from openconex.core.bolting import HoleType, bolt_area, hole_size
 from openconex.core.materials import BOLTS, ELECTRODES, STEELS, BoltGrade, SteelGrade, WeldElectrode
 from openconex.units import Kind, from_internal
 
-__all__ = ["BoltGroup", "BoltSpec", "FilletWeld", "IShape", "SteelPlate", "Threads"]
+__all__ = [
+    "BoltGroup",
+    "BoltSpec",
+    "ColumnShape",
+    "FilletWeld",
+    "HSSKind",
+    "HSSShape",
+    "IShape",
+    "SteelPlate",
+    "Threads",
+]
 
 
 class _Part(BaseModel):
@@ -164,3 +175,86 @@ class IShape(_Part):
     def area(self) -> float:
         """Area without fillets [mm²]."""
         return 2 * self.bf * self.tf + (self.d - 2 * self.tf) * self.tw
+
+
+class HSSKind(StrEnum):
+    RECTANGULAR = "rectangular"
+    SQUARE = "square"
+    ROUND = "round"
+
+
+class HSSShape(_Part):
+    """Hollow structural section by outside dimensions and wall thickness.
+
+    ``d`` is the outside depth for rectangular/square HSS or the outside
+    diameter for round HSS; ``width`` is the outside width (rectangular) and
+    is ignored for round sections. Corner radii are neglected in the area.
+    """
+
+    name: str
+    kind: HSSKind = HSSKind.RECTANGULAR
+    d: float = Field(gt=0)
+    width: float | None = Field(default=None, gt=0)
+    t: float = Field(gt=0)
+    grade: str = "ASTM A500 Gr. C (rectangular)"
+
+    @model_validator(mode="before")
+    @classmethod
+    def _default_grade(cls, data):
+        """Use the A500 Gr. C grade that matches the section shape."""
+        if isinstance(data, dict) and not data.get("grade"):
+            kind = data.get("kind", HSSKind.RECTANGULAR)
+            round_ = kind is HSSKind.ROUND or kind == HSSKind.ROUND.value
+            data = {**data, "grade": ("ASTM A500 Gr. C (round)" if round_
+                                      else "ASTM A500 Gr. C (rectangular)")}
+        return data
+
+    @model_validator(mode="after")
+    def _consistent(self) -> HSSShape:
+        if self.kind is HSSKind.ROUND:
+            if self.width is not None:
+                raise ValueError("a round HSS uses its diameter; width is not allowed")
+            if 2 * self.t >= self.d:
+                raise ValueError("HSS wall thickness is too large for the diameter")
+        else:
+            if self.kind is HSSKind.RECTANGULAR and self.width is None:
+                raise ValueError("a rectangular HSS needs its width")
+            if self.kind is HSSKind.SQUARE and self.width is not None \
+                    and abs(self.width - self.d) > 1e-9:
+                raise ValueError("a square HSS needs equal depth and width")
+            if 2 * self.t >= min(self.d, self.bf):
+                raise ValueError("HSS wall thickness is too large for the section")
+        if self.grade not in STEELS:
+            raise ValueError(f"unknown steel grade: {self.grade}")
+        return self
+
+    @property
+    def bf(self) -> float:
+        """Outside width (diameter for round HSS)."""
+        if self.kind is HSSKind.ROUND:
+            return self.d
+        return self.width if self.width is not None else self.d
+
+    @property
+    def tf(self) -> float:
+        """Wall thickness, named like an I-shape flange for shared checks."""
+        return self.t
+
+    @property
+    def tw(self) -> float:
+        """Wall thickness, named like an I-shape web for shared checks."""
+        return self.t
+
+    @property
+    def material(self) -> SteelGrade:
+        return STEELS[self.grade]
+
+    @property
+    def area(self) -> float:
+        """Area of the annular wall, neglecting corner radii [mm²]."""
+        if self.kind is HSSKind.ROUND:
+            return math.pi / 4 * (self.d**2 - (self.d - 2 * self.t) ** 2)
+        return 2 * self.t * (self.d + self.bf) - 4 * self.t**2
+
+
+ColumnShape = IShape | HSSShape
