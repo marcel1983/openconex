@@ -1,5 +1,5 @@
 {
-  "format_version": 2,
+  "format_version": 3,
   "info": {
     "name": "Plantilla para importar de SAP2000 / ETABS",
     "number": "OC-0006",

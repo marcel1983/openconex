@@ -2,11 +2,14 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Complete base plate check per load combination."""
 
+import dataclasses
+
 import pytest
 
 from openconex.connections.base_plate import plate as bpl
 from openconex.connections.base_plate.check import BasePlate, check_base_plate, check_envelope
 from openconex.core.loads import Forces, LoadCase, LoadType, Method, asce7_combinations
+from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import BoltSpec, HSSKind, IShape
 from openconex.units import Kind, to_internal
 
@@ -67,6 +70,16 @@ def test_shear_by_friction_with_compression():
 def test_too_small_plate_is_reported():
     r = by_id(check_base_plate(PLATE, Forces(P=kip(50), M3=kip_in(30000)), Method.LRFD))
     assert r["base_plate.bearing"].status == "ng"
+
+
+def test_custom_plate_material():
+    custom = SteelGrade(name="Acero X", Fy=to_internal(45, "ksi", Kind.STRESS),
+                        Fu=to_internal(60, "ksi", Kind.STRESS))
+    bp = dataclasses.replace(PLATE, plate_grade=custom.name,
+                             materials={**STEELS, custom.name: custom})
+    assert bp.Fy == pytest.approx(custom.Fy)
+    r = by_id(check_base_plate(bp, Forces(P=kip(300)), Method.LRFD))
+    assert "base_plate.thickness_compression" in r
 
 
 def test_hss_compression_cantilevers():

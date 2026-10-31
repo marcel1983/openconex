@@ -26,6 +26,7 @@ from openconex.core.loads import (
     SeismicParameters,
     asce7_combinations,
 )
+from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
 from openconex.kernel.anchors import Edges
@@ -39,6 +40,7 @@ __all__ = [
     "CustomCombinationInput",
     "HSSSectionInput",
     "LoadCaseInput",
+    "MaterialInput",
     "Project",
     "ProjectInfo",
     "WSectionInput",
@@ -46,7 +48,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 Quantity = str | float
 
 
@@ -71,6 +73,25 @@ class ProjectInfo(_Input):
 
     def unit_system(self) -> UnitSystem:
         return PRESETS[self.units] if isinstance(self.units, str) else self.units
+
+
+class MaterialInput(_Input):
+    """A structural steel added to the built-in AISC library for this project."""
+
+    name: str = Field(min_length=1)
+    Fy: Quantity
+    """Specified minimum yield stress."""
+    Fu: Quantity
+    """Specified minimum tensile strength."""
+    E: Quantity = "29000 ksi"
+    """Modulus of elasticity."""
+
+    @model_validator(mode="after")
+    def _nonblank_name(self) -> MaterialInput:
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("material name must not be blank")
+        return self
 
 
 def _dimension_text(value: Quantity) -> str:
@@ -234,6 +255,8 @@ class Project(_Input):
     format_version: int = FORMAT_VERSION
     generator: str = f"OpenConex {__version__}"
     info: ProjectInfo = Field(default_factory=ProjectInfo)
+    materials: list[MaterialInput] = Field(default_factory=list)
+    """Structural steels added to the built-in AISC library for this project."""
     base_plate: BasePlateInput
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
@@ -253,7 +276,37 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
+        library = self.material_library()
+        if self.base_plate.plate_grade not in library:
+            raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
+        if (self.base_plate.shear_lug is not None
+                and self.base_plate.shear_lug.grade not in library):
+            raise ValueError(f"unknown shear lug material: "
+                             f"{self.base_plate.shear_lug.grade!r}")
+        column = self.base_plate.column
+        if isinstance(column, str):
+            if self.base_plate.column_grade not in library:
+                raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
+        elif column.grade is not None and column.grade not in library:
+            raise ValueError(f"unknown column material: {column.grade!r}")
         return self
+
+    def material_library(self) -> dict[str, SteelGrade]:
+        """Built-in AISC steels plus the project-defined ones."""
+        library = dict(STEELS)
+        for custom in self.materials:
+            name = custom.name.strip()
+            if name in library:
+                raise ValueError(f"material name already exists: {name!r}")
+            Fy = self.quantity(custom.Fy, Kind.STRESS)
+            Fu = self.quantity(custom.Fu, Kind.STRESS)
+            E = self.quantity(custom.E, Kind.STRESS)
+            if min(Fy, Fu, E) <= 0:
+                raise ValueError(f"material {name!r} needs positive Fy, Fu and E")
+            if Fu < Fy:
+                raise ValueError(f"material {name!r}: Fu must be at least Fy")
+            library[name] = SteelGrade(name=name, Fy=Fy, Fu=Fu, E=E)
+        return library
 
     # -- conversion to the engine model ------------------------------------------------
     def quantity(self, value: Quantity, kind: Kind) -> float:
@@ -263,18 +316,21 @@ class Project(_Input):
             return parse(str(value), kind, units)
         return parse(value, kind, units)
 
-    def column_model(self) -> IShape | HSSShape:
+    def column_model(self,
+                     library: dict[str, SteelGrade] | None = None) -> IShape | HSSShape:
         """Column section of the project: catalog label or generic dimensions."""
+        library = library or self.material_library()
         section = self.base_plate.column
         L = Kind.LENGTH
         if isinstance(section, str):
-            return aisc_shapes().get(section).to_ishape(self.base_plate.column_grade)
+            return aisc_shapes().get(section).to_ishape(self.base_plate.column_grade,
+                                                        materials=library)
         if isinstance(section, WSectionInput):
             return IShape(
                 name=section.label(), d=self.quantity(section.d, L),
                 bf=self.quantity(section.bf, L), tf=self.quantity(section.tf, L),
                 tw=self.quantity(section.tw, L), k_des=self.quantity(section.k_des, L),
-                grade=section.grade)
+                grade=section.grade, materials=library)
         kind = section.shape
         width = (None if kind is HSSKind.ROUND else
                  self.quantity(section.d if section.bf is None else section.bf, L))
@@ -282,12 +338,14 @@ class Project(_Input):
             "ASTM A500 Gr. C (round)" if kind is HSSKind.ROUND
             else "ASTM A500 Gr. C (rectangular)")
         return HSSShape(name=section.label(), kind=kind, d=self.quantity(section.d, L),
-                        width=width, t=self.quantity(section.t, L), grade=grade)
+                        width=width, t=self.quantity(section.t, L), grade=grade,
+                        materials=library)
 
     def base_plate_model(self) -> BasePlate:
         bp = self.base_plate
         L, T = Kind.LENGTH, Kind.THICKNESS
-        column = self.column_model()
+        library = self.material_library()
+        column = self.column_model(library)
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
         return BasePlate(
             column=column, N=self.quantity(bp.N, L), B=self.quantity(bp.B, L),
@@ -302,7 +360,7 @@ class Project(_Input):
             grout_pad=bp.grout_pad,
             flange_weld=None if bp.flange_weld is None else self.quantity(bp.flange_weld, T),
             friction_mu=bp.friction_mu, cracked=bp.cracked, seismic=bp.seismic,
-            shear_lug=self._shear_lug(),
+            shear_lug=self._shear_lug(), materials=library,
         )
 
     def _shear_lug(self) -> ShearLug | None:

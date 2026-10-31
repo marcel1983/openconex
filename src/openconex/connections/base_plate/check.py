@@ -32,7 +32,7 @@ from dataclasses import dataclass, field
 
 from openconex.core.checks import CheckResult, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
-from openconex.core.materials import STEELS
+from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape
 from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
@@ -99,10 +99,12 @@ class BasePlate:
     cracked: bool = True
     seismic: bool = False
     shear_lug: ShearLug | None = None
+    materials: Mapping[str, SteelGrade] = field(default_factory=lambda: dict(STEELS), repr=False)
+    """Steel library used by the plate and the shear lug; defaults to the built-ins."""
 
     @property
     def Fy(self) -> float:
-        return STEELS[self.plate_grade].Fy
+        return self.materials[self.plate_grade].Fy
 
     @property
     def rods(self) -> int:
@@ -296,7 +298,7 @@ def _renamed(check: CheckResult, key: str, steps: tuple = ()) -> CheckResult:
 def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], method: Method,
                       combo: str) -> list[CheckResult]:
     lug = bp.shear_lug
-    steel = STEELS[lug.grade]
+    steel = bp.materials[lug.grade]
     out: list[CheckResult] = []
     for V in (v for v in shears if v > 0):
         c = Calc(method, combo)

@@ -49,9 +49,9 @@ def test_every_command_and_option_is_documented():
     assert not missing, f"missing in docs/usuario/04-comandos.md: {missing}"
 
 
-MODELS = [project.ProjectInfo, project.BasePlateInput, project.WSectionInput,
-          project.HSSSectionInput, project.ShearLugInput, project.LoadCaseInput,
-          project.CombinationOptions, project.CustomCombinationInput]
+MODELS = [project.ProjectInfo, project.MaterialInput, project.BasePlateInput,
+          project.WSectionInput, project.HSSSectionInput, project.ShearLugInput,
+          project.LoadCaseInput, project.CombinationOptions, project.CustomCombinationInput]
 
 
 @pytest.mark.parametrize("model", MODELS, ids=lambda m: m.__name__)

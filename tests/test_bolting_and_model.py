@@ -15,6 +15,7 @@ from openconex.core.bolting import (
     min_pretension,
     min_spacing,
 )
+from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import (
     BoltGroup,
     BoltSpec,
@@ -128,6 +129,22 @@ def test_base_plate_holes_table_14_2(d, hole, washer, t_min):
 def test_base_plate_hole_outside_table():
     with pytest.raises(ValueError, match="14-2"):
         base_plate_hole(Fr(5, 8))
+
+
+def test_custom_material_in_steel_parts():
+    custom = SteelGrade(name="Acero del proyecto", Fy=345.0, Fu=450.0)
+    materials = {**STEELS, custom.name: custom}
+    plate = SteelPlate(width=300, length=400, thickness=25, grade=custom.name,
+                       materials=materials)
+    shape = IShape(name="COL", d=400, bf=300, tf=16, tw=10, grade=custom.name,
+                   materials=materials)
+    hss = HSSShape(name="HSS", kind=HSSKind.SQUARE, d=300, t=12, grade=custom.name,
+                   materials=materials)
+    assert plate.material is custom
+    assert shape.material is custom
+    assert hss.material is custom
+    with pytest.raises(ValidationError):
+        IShape(name="COL", d=400, bf=300, tf=16, tw=10, grade=custom.name)
 
 
 def test_hss_shapes():

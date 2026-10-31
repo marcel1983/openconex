@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import cache
 from importlib import resources
 from pathlib import Path
 
+from openconex.core.materials import SteelGrade
 from openconex.core.model import IShape
 from openconex.units import ureg
 
@@ -74,12 +76,14 @@ class Section:
             raise KeyError(f"{self.label} has no property {key!r}")
         return value
 
-    def to_ishape(self, grade: str = "ASTM A992") -> IShape:
+    def to_ishape(self, grade: str = "ASTM A992",
+                  materials: Mapping[str, SteelGrade] | None = None) -> IShape:
         if self.type not in _I_SHAPES:
             raise ShapeDatabaseError(f"{self.label} ({self.type}) is not an I-shape")
         p = self.properties
         return IShape(name=self.label, d=self["d"], bf=self["bf"], tf=self["tf"],
-                      tw=self["tw"], k_des=p.get("kdes") or 0.0, grade=grade)
+                      tw=self["tw"], k_des=p.get("kdes") or 0.0, grade=grade,
+                      materials=materials or {})
 
 
 class ShapeDatabase:

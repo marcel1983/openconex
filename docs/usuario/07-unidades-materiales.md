@@ -70,6 +70,8 @@ También puede elegirse la unidad de cada magnitud por separado:
 | `ASTM A1065 Gr. 50W` | 50 ksi | 70 ksi |
 | `ASTM A1085` | 50 ksi | 65 ksi |
 
+La tabla anterior es la librería integrada. Si el proyecto usa otro acero, defínalo en el bloque `materials` (ver [El archivo de proyecto](03-proyecto.md)) y úselo en `column_grade`, `plate_grade`, `grade` de una sección genérica o `shear_lug.grade`. El nombre debe ser único y `Fu` no puede ser menor que `Fy`; `E` es opcional y vale `29000 ksi` por defecto. Las barras de anclaje y los electrodos no se definen en `materials`: tienen sus propias librerías.
+
 **Barras de anclaje y pernos** (`rod_grade`):
 
 | Nombre | Uso |
