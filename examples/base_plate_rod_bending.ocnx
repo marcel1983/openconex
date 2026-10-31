@@ -1,0 +1,44 @@
+{
+  "format_version": 5,
+  "info": {
+    "name": "Ejemplo: flexión de placa por anclajes (DG1 4.7-3)",
+    "number": "OC-0009",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W10X45",
+    "column_grade": "ASTM A992",
+    "N": "16 in",
+    "B": "16 in",
+    "tp": "1 in",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "rectangular",
+    "bearing_area_model": "plate",
+    "rod_bending_lever": "1.825 in",
+    "fc": "4 ksi",
+    "A2_over_A1": 1.0,
+    "grout": "1.5 in",
+    "rod_diameter": "0.875 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "2 in",
+    "rod_spacing": "4 in",
+    "hef": "15 in"
+  },
+  "cases": [
+    {"name": "T1", "type": "D", "P": "-70 kip", "M": "0 kip*in"},
+    {"name": "T1A", "type": "D", "P": "-45 kip", "M": "0 kip*in"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "T1-LRFD", "method": "LRFD", "factors": {"T1": 1.0}, "source": "DG1 4.7-3"},
+      {"name": "T1-ASD", "method": "ASD", "factors": {"T1A": 1.0}, "source": "DG1 4.7-3"}
+    ]
+  }
+}

@@ -284,6 +284,13 @@ def test_pressure_model_options_are_parsed():
         Project.model_validate(data)
 
 
+def test_rod_bending_lever_is_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["rod_bending_lever"] = "1.825 in"
+    project = Project.model_validate(data)
+    assert project.base_plate_model().rod_bending_lever == pytest.approx(46.355)
+
+
 def test_effective_area_requires_an_i_shape():
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["column"] = {

@@ -53,7 +53,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 4
+FORMAT_VERSION = 5
 Quantity = str | float
 
 
@@ -187,6 +187,8 @@ class BasePlateInput(_Input):
     plate_grade: str = "ASTM A572 Gr. 50"
     pressure_model: PressureModel = PressureModel.RECTANGULAR
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
+    rod_bending_lever: Quantity | None = None
+    """Anchor-to-web/flange distance for the plate bending check at the anchors."""
     fc: Quantity
     A2_over_A1: float = 1.0
     pedestal_N: Quantity | None = None
@@ -370,6 +372,8 @@ class Project(_Input):
             rod_spacing=self.quantity(bp.rod_spacing, L), hef=self.quantity(bp.hef, L),
             plate_grade=bp.plate_grade, pressure_model=bp.pressure_model,
             bearing_area_model=bp.bearing_area_model,
+            rod_bending_lever=(None if bp.rod_bending_lever is None
+                               else self.quantity(bp.rod_bending_lever, L)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
