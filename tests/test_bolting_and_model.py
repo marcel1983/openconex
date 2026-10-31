@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from openconex.core.bolting import (
     HoleType,
+    base_plate_hole,
     bolt_area,
     hole_size,
     min_edge_distance,
@@ -104,6 +105,29 @@ def test_parts_validate():
         IShape(name="bad", d=20, bf=100, tf=12, tw=5)
     with pytest.raises(ValidationError):
         SteelPlate(width=300, length=400, thickness=25, extra=1)
+
+
+@pytest.mark.parametrize(
+    ("d", "hole", "washer", "t_min"),
+    [  # AISC Manual 16th ed., Table 14-2
+        (Fr(3, 4), 21 / 16, 2.0, 1 / 4),
+        (Fr(7, 8), 25 / 16, 2.5, 5 / 16),
+        (Fr(1), 15 / 8, 3.0, 3 / 8),
+        (Fr(5, 4), 17 / 8, 3.5, 1 / 2),
+        (Fr(3, 2), 19 / 8, 4.0, 1 / 2),
+        (Fr(7, 4), 23 / 8, 4.5, 5 / 8),
+        (Fr(2), 13 / 4, 5.0, 3 / 4),
+        (Fr(5, 2), 15 / 4, 5.5, 7 / 8),
+    ],
+)
+def test_base_plate_holes_table_14_2(d, hole, washer, t_min):
+    values = [_in(v) for v in base_plate_hole(d)]
+    assert values == pytest.approx([hole, washer, t_min])
+
+
+def test_base_plate_hole_outside_table():
+    with pytest.raises(ValueError, match="14-2"):
+        base_plate_hole(Fr(5, 8))
 
 
 def test_hss_shapes():

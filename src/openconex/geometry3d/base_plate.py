@@ -17,7 +17,7 @@ from pathlib import Path
 
 from openconex.connections.base_plate.check import BasePlate
 from openconex.core.model import HSSKind, HSSShape
-from openconex.drawing.base_plate import _rod_positions, anchor_hole
+from openconex.drawing.base_plate import _rod_positions, anchor_hole, plate_washer
 
 __all__ = ["Part", "base_plate_parts", "occ_available", "write_step", "write_stl"]
 
@@ -121,9 +121,13 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         column = _fuse_all([*flanges, web])
     parts.append(Part("column", column))
     af = 1.5 * d + 3.175  # heavy hex nut, across flats = 1.5d + 1/8 in.
+    w_size, w_t = plate_washer(d, bp.washer_thickness)
     for i, (x, y) in enumerate(rods, 1):
         parts.append(Part(f"anchor_rod_{i}", _cylinder(x, y, -hef, d / 2, hef + z_top + 3 * d)))
-        parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top, af, d, d)))
+        washer = _cut_all(_box(x - w_size / 2, y - w_size / 2, z_top, w_size, w_size, w_t),
+                          [_cylinder(x, y, z_top - 1, (d + 1.5875) / 2, w_t + 2)])
+        parts.append(Part(f"washer_{i}", washer))
+        parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top + w_t, af, d, d)))
         parts.append(Part(f"nut_embedded_{i}", _hex_nut(x, y, -hef, af, d, d)))
     return parts
 

@@ -16,9 +16,10 @@ import ezdxf
 from ezdxf.enums import TextEntityAlignment
 
 from openconex.connections.base_plate.check import BasePlate
+from openconex.core.bolting import base_plate_hole
 from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
-from openconex.units import Kind, UnitSystem, format_value, from_internal, to_internal
+from openconex.units import Kind, UnitSystem, format_value, from_internal
 
 __all__ = ["LAYERS", "BasePlateDrawing", "anchor_hole", "write_base_plate_dxf"]
 
@@ -32,17 +33,18 @@ LAYERS = {  # name: (ACI color, linetype)
     "BP-CONCRETO": (9, "DASHED"),
 }
 
-# Recommended anchor rod hole diameters in base plates, AISC Manual Table 14-2 [in.].
-_HOLES_IN = {0.75: 1.3125, 0.875: 1.5625, 1.0: 1.8125, 1.25: 2.0625, 1.5: 2.3125, 1.75: 2.75,
-             2.0: 3.25, 2.5: 3.75}
 STEEL_DENSITY = 7.85e-6  # kg/mm³
 
 
 def anchor_hole(d: float) -> float:
-    """Hole diameter [mm] for an anchor rod of diameter ``d`` [mm] (Table 14-2)."""
-    d_in = round(from_internal(d, Kind.LENGTH, "in"), 4)
-    hole = _HOLES_IN.get(d_in, d_in + 1.25)
-    return to_internal(hole, "in", Kind.LENGTH)
+    """Hole diameter [mm] for an anchor rod of diameter ``d`` [mm] (Manual Table 14-2)."""
+    return base_plate_hole(from_internal(d, Kind.LENGTH, "in"))[0]
+
+
+def plate_washer(d: float, thickness: float | None = None) -> tuple[float, float]:
+    """Plate washer (size, thickness) [mm]: Table 14-2, or the designed thickness if larger."""
+    _, size, t_min = base_plate_hole(from_internal(d, Kind.LENGTH, "in"))
+    return size, max(t_min, thickness or 0.0)
 
 
 @dataclass(frozen=True)
@@ -164,7 +166,9 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
         _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
     else:
         _i_shape(s, s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw), 0, 0, "BP-COLUMNA")
+    w_size, w_t = (s.u(v) for v in plate_washer(bp.rod.diameter, bp.washer_thickness))
     for x, y in rods:
+        s.rect(x - w_size / 2, y - w_size / 2, x + w_size / 2, y + w_size / 2, "BP-ANCLAJE")
         s.msp.add_circle((x, y), hole / 2, dxfattribs={"layer": "BP-PLACA"})
         s.msp.add_circle((x, y), d_rod / 2, dxfattribs={"layer": "BP-ANCLAJE"})
     ext = max(pN, N) / 2 + 2 * h
@@ -199,7 +203,8 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     for x in sorted({x for x, _ in rods}):
         s.rect(x - d_rod / 2, y0 - hef, x + d_rod / 2, cy0 + proj, "BP-ANCLAJE")
         nut_h, nut_w = d_rod, 1.6 * d_rod
-        s.rect(x - nut_w / 2, cy0, x + nut_w / 2, cy0 + nut_h, "BP-ANCLAJE")
+        s.rect(x - w_size / 2, cy0, x + w_size / 2, cy0 + w_t, "BP-ANCLAJE")
+        s.rect(x - nut_w / 2, cy0 + w_t, x + nut_w / 2, cy0 + w_t + nut_h, "BP-ANCLAJE")
         s.rect(x - nut_w / 2, y0 - hef, x + nut_w / 2, y0 - hef + nut_h, "BP-ANCLAJE")
     s.msp.add_line((0, y0 - conc_depth - h), (0, cy0 + stub + h), dxfattribs={"layer": "BP-EJES"})
     s.hdim(-N / 2, N / 2, cy0 + stub, cy0 + stub + 3 * h)
@@ -221,9 +226,9 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
         ("3", str(2 * bp.rods), f"{t('nut')} Ø {s.label(bp.rod.diameter)}", "ASTM A563", ""),
         ("4", "—", f"{t('holes')} Ø {s.label(anchor_hole(bp.rod.diameter))}", "", ""),
     ]
-    if bp.washer_thickness:
-        rows.append(("5", str(bp.rods), f"{t('washer')} {s.label(bp.washer_thickness)}",
-                     bp.plate_grade, ""))
+    washer = plate_washer(bp.rod.diameter, bp.washer_thickness)
+    rows.append(("5", str(bp.rods), f"{t('washer')} {s.label(washer[1])} × {s.label(washer[0])}"
+                 f" × {s.label(washer[0])}", bp.plate_grade, ""))
     widths = [3, 3, 26, 14, 8]
     bx = max(pN, N) / 2 + 14 * h
     by = top

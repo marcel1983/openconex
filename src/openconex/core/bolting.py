@@ -124,3 +124,29 @@ def min_pretension(d_in: float | Fr, group: int = 120) -> float:
         raise ValueError(f"no Table J3.1 entry for a {d} in bolt")
     kips = _PRETENSION[d][{120: 0, 150: 1}[group]]
     return to_internal(kips, "kip", Kind.FORCE)
+
+
+# AISC Manual 16th ed., Table 14-2: recommended anchor rod hole and plate washer
+# sizes in base plates [in.]: diameter -> (hole, washer size, min. washer thickness).
+_BASE_PLATE_HOLES: dict[Fr, tuple[Fr, Fr, Fr]] = {
+    Fr(3, 4): (Fr(21, 16), Fr(2), Fr(1, 4)),
+    Fr(7, 8): (Fr(25, 16), Fr(5, 2), Fr(5, 16)),
+    Fr(1): (Fr(15, 8), Fr(3), Fr(3, 8)),
+    Fr(5, 4): (Fr(17, 8), Fr(7, 2), Fr(1, 2)),
+    Fr(3, 2): (Fr(19, 8), Fr(4), Fr(1, 2)),
+    Fr(7, 4): (Fr(23, 8), Fr(9, 2), Fr(5, 8)),
+    Fr(2): (Fr(13, 4), Fr(5), Fr(3, 4)),
+    Fr(5, 2): (Fr(15, 4), Fr(11, 2), Fr(7, 8)),
+}
+
+
+def base_plate_hole(d_in: float | Fr) -> tuple[float, float, float]:
+    """Recommended (hole diameter, washer size, minimum washer thickness) [mm] for an
+    anchor rod of diameter ``d_in`` [in.] in a base plate (AISC Manual Table 14-2).
+
+    Circular or square washers of the given size are acceptable.
+    """
+    d = _as_fraction(d_in)
+    if d not in _BASE_PLATE_HOLES:
+        raise ValueError(f"no AISC Manual Table 14-2 entry for a {d} in. anchor rod")
+    return tuple(_inch(v) for v in _BASE_PLATE_HOLES[d])

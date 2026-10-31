@@ -65,4 +65,4 @@ def test_hss_column_outline(tmp_path, project):
 
 def test_anchor_hole_table_14_2():
     assert from_internal(anchor_hole(to_internal(1.0, "in", Kind.LENGTH)), Kind.LENGTH, "in") == \
-        pytest.approx(1.8125)
+        pytest.approx(1.875)
