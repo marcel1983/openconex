@@ -18,6 +18,21 @@ def test_baseplate_outputs(tmp_path, capsys):
     assert "Concrete bearing under the plate" in printed
 
 
+def test_baseplate_optimize_option(tmp_path, capsys):
+    from openconex.io.project import load_project, save_project
+
+    project = load_project(EXAMPLE)
+    project.base_plate.N = "36 in"
+    project.base_plate.B = "33 in"
+    project.base_plate.tp = "4 in"
+    path = tmp_path / "oversized.ocnx"
+    save_project(project, path)
+    out = tmp_path / "optimized"
+    assert main(["baseplate", str(path), "-o", str(out), "--optimize", "--html"]) == 0
+    assert "Optimized:" in capsys.readouterr().out
+    assert out.with_suffix(".html").exists()
+
+
 def test_failing_project_exit_code(tmp_path):
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["tp"] = "1 in"

@@ -36,6 +36,7 @@ def _baseplate(args: argparse.Namespace) -> int:
     """Check a base plate project and write the requested outputs."""
     from pathlib import Path
 
+    from openconex.connections.base_plate.check import optimize_base_plate
     from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
     from openconex.io.project import load_project
     from openconex.report.builder import build_base_plate_report
@@ -45,6 +46,20 @@ def _baseplate(args: argparse.Namespace) -> int:
         project.info.language = args.lang
     if args.units:
         project.info.units = args.units
+    if args.optimize:
+        if project.base_plate.embedded_base is not None:
+            print("error: --optimize is only available for exposed base plates",
+                  file=sys.stderr)
+            return 2
+        optimized = optimize_base_plate(
+            project.base_plate_model(), project.load_combinations(), project.case_forces())
+        units = project.info.unit_system()
+        project.base_plate.N = format_value(optimized.N, Kind.LENGTH, units, precision=4)
+        project.base_plate.B = format_value(optimized.B, Kind.LENGTH, units, precision=4)
+        project.base_plate.tp = format_value(optimized.tp, Kind.THICKNESS, units,
+                                             precision=4)
+        print(f"Optimized: N={project.base_plate.N}, B={project.base_plate.B}, "
+              f"tp={project.base_plate.tp}")
     report = build_base_plate_report(project)
     out = Path(args.output or Path(args.project).with_suffix(""))
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -189,6 +204,8 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("-o", "--output", help="output path without extension")
     bp.add_argument("--lang", choices=["es", "en"], help="report language")
     bp.add_argument("--units", choices=sorted(PRESETS), help="unit system of the outputs")
+    bp.add_argument("--optimize", action="store_true",
+                    help="optimize N, B and tp before checking the exposed base plate")
     for flag, text in (("html", "HTML report"), ("docx", "Word report"),
                        ("pdf", "PDF report (needs openconex[pdf])"), ("dxf", "DXF drawing"),
                        ("step", "STEP 3D model (needs openconex[3d])"),

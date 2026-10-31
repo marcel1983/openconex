@@ -26,18 +26,19 @@ shear and flexure of the lug plate, its fillet welds, and hef ≥ 2.5 h_sl.
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
-from openconex.core.checks import CheckResult, governing
+from openconex.core.checks import CheckResult, Status, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.materials import STEELS, SteelGrade
 from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape
 from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
-from openconex.units import Kind
+from openconex.units import Kind, to_internal
 
 from . import plate as bpl
 from . import seismic, transfer
@@ -54,6 +55,7 @@ __all__ = [
     "WeakBase",
     "check_base_plate",
     "check_envelope",
+    "optimize_base_plate",
 ]
 
 DG1 = "AISC DG1 3rd ed."
@@ -749,3 +751,48 @@ def check_envelope(bp: BasePlate, combinations: Iterable[LoadCombination],
     for combo in combinations:
         results += check_base_plate(bp, combine(combo, case_forces), combo.method, combo.name)
     return results, governing(results)
+
+
+def optimize_base_plate(bp: BasePlate, combinations: Iterable[LoadCombination],
+                        case_forces: Mapping[str, Forces], step: float | None = None) -> BasePlate:
+    """Reduce N, B and tp while every combination remains satisfied.
+
+    The search is a deterministic coordinate descent from the current plate:
+    it tries one dimension step at a time and keeps the reduction only if the
+    complete envelope, including interference checks, still passes.
+    """
+    if bp.embedded_base is not None:
+        return bp
+    combos = list(combinations)
+    step = step or to_internal(1.0, "in", Kind.LENGTH)
+    tp_step = to_internal(0.25, "in", Kind.THICKNESS)
+    col = bp.column
+    min_n = max(col.d, col.bf) + 2 * step
+    min_b = max(col.d, col.bf) + 2 * step
+    min_tp = to_internal(0.25, "in", Kind.THICKNESS)
+
+    def passes(candidate: BasePlate) -> bool:
+        results, _ = check_envelope(candidate, combos, case_forces)
+        return not any(result.status is Status.NG for result in results)
+
+    if not passes(bp):
+        return bp
+    settings = {"N": (min_n, step), "B": (min_b, step), "tp": (min_tp, tp_step)}
+    best = bp
+    for order in itertools.permutations(("N", "B", "tp")):
+        candidate = bp
+        changed = True
+        while changed:
+            changed = False
+            for field_name in order:
+                limit, increment = settings[field_name]
+                while getattr(candidate, field_name) - increment >= limit:
+                    trial = replace(
+                        candidate, **{field_name: getattr(candidate, field_name) - increment})
+                    if not passes(trial):
+                        break
+                    candidate = trial
+                    changed = True
+        if candidate.N * candidate.B * candidate.tp < best.N * best.B * best.tp:
+            best = candidate
+    return best

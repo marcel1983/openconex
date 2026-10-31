@@ -48,6 +48,12 @@ def test_report_figures(project):
     assert html.count("data:image/svg+xml;base64") == len(r.figures)
 
 
+def test_hss_moment_report_declares_the_approximation():
+    project = load_project(EXAMPLES / "base_plate_hss_square.ocnx")
+    r = build_base_plate_report(project, TODAY)
+    assert any("HSS con momento" in assumption for assumption in r.assumptions)
+
+
 def test_embedded_report_uses_its_own_inputs_and_codes():
     project = load_project(EXAMPLES / "base_plate_embedded_base.ocnx")
     r = build_base_plate_report(project, TODAY)
