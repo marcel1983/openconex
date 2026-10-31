@@ -39,14 +39,14 @@ def test_concentric_transverse_line():
     assert r.Rn == pytest.approx(1.5 * UNIT * 10, rel=0.01)
 
 
-def test_concentric_mixed_group_close_to_j2_6():
-    """Longitudinal + transverse lines: deformation compatibility ~ Eq. J2-6b."""
+def test_concentric_mixed_group_uses_j2_6():
+    """Longitudinal + transverse lines: the greater of §J2.4(c) and Eq. J2-6 (Manual Table 8-8)."""
     lines = [WeldLine(0, 0, 0, 6), WeldLine(10, 0, 10, 6), WeldLine(0, 0, 10, 0)]
     centroid_y = (3 * 6 + 3 * 6) / 22  # sum(y L) / sum(L)
     r = icr_strength(lines, W, FEXX, (5.0, centroid_y), angle=0)
     rl, rt = UNIT * 12, UNIT * 10
     j2_6 = max(rl + rt, 0.85 * rl + 1.5 * rt)
-    assert r.Rn == pytest.approx(j2_6, rel=0.06)
+    assert r.Rn == pytest.approx(j2_6)
 
 
 @pytest.mark.parametrize("ex", [2.0, 4.0, 8.0, 16.0])

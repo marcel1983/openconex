@@ -15,7 +15,10 @@ Instantaneous centre of rotation (ICR), §J2.4(c):
 * Fnw,i = 0.60 FEXX (1 + 0.50 sin^1.5 θi) [p(1.9 - 0.9p)]^0.3, p = Δi/Δm
 
 θ is the angle between the element axis and its force. For a concentric load
-all elements share the deformation of the most critical one.
+all elements share the deformation of the most critical one; elements in line
+or parallel take the full strength of §J2.4(b), and groups of longitudinal and
+transverse elements take the greater of that and Eq. J2-6, §J2.4(d), as in the
+Manual tables.
 """
 
 from __future__ import annotations
@@ -97,8 +100,16 @@ def _concentric(elems, w, FEXX, u) -> float:
         return sum(_stress(FEXX, th, 1.0) * throat * L
                    for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
     delta = min(_du(w, th) for th in thetas)
-    return sum(_stress(FEXX, th, delta / _dm(w, th)) * throat * L
-               for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
+    rn = sum(_stress(FEXX, th, delta / _dm(w, th)) * throat * L
+             for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
+    if all(th < 1e-6 or th > 90 - 1e-6 for th in thetas):
+        # longitudinal and transverse elements, §J2.4(d), Eq. J2-6, without directional increase
+        rnwl = sum(0.60 * FEXX * throat * L for (*_, L, _, _), th in zip(elems, thetas, strict=True)
+                   if th < 45)
+        rnwt = sum(0.60 * FEXX * throat * L for (*_, L, _, _), th in zip(elems, thetas, strict=True)
+                   if th > 45)
+        rn = max(rn, rnwl + rnwt, 0.85 * rnwl + 1.5 * rnwt)
+    return rn
 
 
 def _residual(icr, elems, w, FEXX, load_point, u):
