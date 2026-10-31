@@ -19,6 +19,7 @@ from openconex.units import Kind
 __all__ = [
     "flange_weld_for_moment",
     "friction",
+    "lug_plate_bending",
     "lug_steel_checks",
     "lug_weld",
     "plate_bending_at_rods",
@@ -92,6 +93,22 @@ def lug_weld(width: float, lug_thickness: float, weld_size: float, FEXX: float, 
     r = c.step("r", r"\sqrt{r_v^2 + r_m^2}", math.hypot(rv, rm), Kind.FORCE_PER_LENGTH, DG1)
     check = welds.fillet_weld_per_length(weld_size, FEXX, r, method, theta=90, combo=combo)
     return check.model_copy(update={"steps": (*c.steps, *check.steps)})
+
+
+def lug_plate_bending(width: float, tp: float, Fy: float, moment: float, method: Method,
+                      combo: str = "") -> CheckResult:
+    """Local bending of the base plate at the shear lug (DG1 Example 4.7-5).
+
+    Effective width b_sl and plastic modulus Z = b_sl t_bp^2/4 (AISC 360-22 §J4.5).
+    """
+    c = Calc(method, combo)
+    z = c.step("Z_y", r"\frac{b_{sl} t_{bp}^2}{4}", width * tp**2 / 4,
+               Kind.SECTION_MODULUS, DG1)
+    check = elements.flexural_yielding(z, Fy, moment, method, combo)
+    return check.model_copy(update={
+        "id": "base_plate.lug_plate_bending",
+        "text_id": "check.base_plate.lug_plate_bending",
+        "steps": (*c.steps, *check.steps)})
 
 
 def plate_bending_at_rods(rod_force: float, a: float, tp: float, Fy: float, method: Method,

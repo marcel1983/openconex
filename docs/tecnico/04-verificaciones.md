@@ -28,6 +28,7 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.lug_flexural_yielding` | Llave de corte: fluencia por flexión | AISC 360-22 §J4.5 | ✔ |
 | `base_plate.lug_flexural_rupture` | Llave de corte: rotura por flexión | AISC 360-22 §J4.5 | ✔ |
 | `base_plate.lug_weld` | Llave de corte: soldadura a la placa | AISC 360-22 §J2.4; DG1 Ej. 4.7-5 | ✔ |
+| `base_plate.lug_plate_bending` | Llave de corte: flexión local de la placa base | AISC 360-22 §J4.5; DG1 Ej. 4.7-5 | ✔ |
 | `base_plate.lug_anchor_embedment` | Empotramiento de anclajes con llave (h_ef ≥ 2,5 h_sl) | ACI 318-19 §17.11.1 | ✔ |
 | `base_plate.plate_bending_rods` | Flexión de la placa por los anclajes en tracción | DG1 Ej. 4.7-3, 4.7-7 | — |
 | `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | ✔ con `embedded_base` |

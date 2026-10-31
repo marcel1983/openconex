@@ -85,6 +85,7 @@ Para cada componente que toma la llave (ver paso 0), con V y M_sl = V e:
   - fluencia y rotura por corte con A = b_sl t_sl;
   - fluencia y rotura por flexión con Z = b_sl t_sl²/4.
 - **Soldaduras de filete en las dos caras:** a = t_sl + 2w/3, r = √[(V/2b)² + (M/(a b))²], θ = 90° (DG1 Ejemplo 4.7-5).
+- **Flexión local de la placa base:** M_pl = máx[T f, (q_max Y)(N/2 − Y/2)], con ancho efectivo b_sl y Z = b_sl t_bp²/4 (DG1 Ejemplo 4.7-5; AISC 360-22 §J4.5).
 - **Empotramiento de los anclajes:** h_ef ≥ 2,5 h_sl.
 
 Las verificaciones de concreto son solo LRFD.
@@ -99,8 +100,10 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
 
 - **Momento por apoyo horizontal** (DG1 §5.2, Ec. 5-1 y 5-6):
   f_b = 1,54 √f'c (B_f/b_f)^0,66 ≤ 1,7 f'c;
-  M_HB = −V d_e/2 − V²/(4 b_f f_b) + β1 b_f d_e² f_b (2 − β1)/4;
-  φM_HB = 0,75 M_HB.
+  b_j = b_f si no hay placa embebida, o (b_f + B)/2 si la hay;
+  M_HB = (F_r,t − F_r,b − V)d_e/2 − (F_r,b − F_r,t + V)²/(4 b_j f_b)
+  − β1 b_j d_e² f_b(β1 − 2)/4 − F_r,t d_r,t + F_r,b d_r,b;
+  φM_HB = 0,75 M_HB, o 0,75(0,8 M_HB) si se activa `damage_limit`.
 - **Aplastamiento de las placas de cara** (DG1 §5.3, Ec. 5-7):
   A1 = (b_f − t_w)(d − 2t_f); φP_p = 0,65 (1,7 f'c) A1.
 - **Espesor de las placas de cara** (DG1 §5.3, Ec. 5-8):
@@ -108,7 +111,7 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
 - **Detalle sísmico:** t_p ≥ máx(0,75 t_w, 3/8 in) (AISC 341-22 §F3.5b.4).
 - Las placas de apoyo frontal se sitúan en la cara superior del cimiento, no en el fondo del empotramiento (DG1 Fig. 5-1 y §5.3).
 
-Solo se modela el Tipo I sin refuerzo horizontal ni placa embebida: no se incluyen los términos de refuerzo de la Ec. 5-6, la placa del fondo ni la soldadura de las placas de cara. Tampoco se aplica el factor 0,8 sobre `M_HB` para limitar el daño. Se admite únicamente en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+Se modela el Tipo I con refuerzo horizontal opcional y placa embebida opcional. La placa embebida solo interviene en `b_j` y en las figuras; no se comprueba su flexión por apoyo vertical ni la tracción. No se verifica la soldadura de las placas de apoyo frontal: se supone CJP o un detalle capaz de desarrollar la fluencia de la placa. El Tipo II no está implementado. Se admite únicamente en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
 
 ## 8. Revisor de interferencias en planta
 
@@ -123,6 +126,6 @@ Son verificaciones geométricas, no dependen de las cargas y se repiten para cad
 
 ## Lo que no hace la verificación completa
 
-- La base empotrada no comprueba el levantamiento neto ni el momento débil.
-- El modelo de base empotrada es el tipo I sin refuerzo adherido; no cubre el tipo II.
-- La llave de corte no se dibuja en el DXF ni en el modelo 3D, y no se verifica la flexión local de la placa en su soldadura.
+- La base empotrada no comprueba el levantamiento neto, el momento débil ni el Tipo II.
+- No se verifica la soldadura de las placas de apoyo frontal ni la flexión de la placa embebida por apoyo vertical.
+- La llave de corte ya se dibuja en DXF/3D y se comprueba su flexión local; no se comprueba la interacción completa placa-llave por elementos finitos.

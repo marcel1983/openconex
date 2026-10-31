@@ -163,6 +163,11 @@ def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
                    col.d - 2 * col.tf, col.tw, embedded.embedment + h)
         column = _fuse_all([*flanges, web])
     parts.append(Part("column", column))
+    if embedded.base_plate_width is not None:
+        width = embedded.base_plate_width
+        parts.append(Part("embedded_base_plate", _box(
+            -width / 2, -width / 2, z0 - embedded.base_plate_thickness, width, width,
+            embedded.base_plate_thickness)))
     tp = embedded.face_plate_thickness
     x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
     # Face bearing plates bear on the top of the foundation (DG1 §5.3).

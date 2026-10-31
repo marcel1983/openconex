@@ -46,6 +46,7 @@ __all__ = [
     "BasePlate",
     "BearingAreaModel",
     "EmbeddedBase",
+    "EmbeddedRebar",
     "PedestalRebar",
     "PressureModel",
     "Reinforcement",
@@ -122,6 +123,15 @@ class PedestalRebar:
 
 
 @dataclass(frozen=True)
+class EmbeddedRebar:
+    """Horizontal reinforcement layer of an embedded base."""
+
+    area: float
+    fy: float
+    depth: float
+
+
+@dataclass(frozen=True)
 class EmbeddedBase:
     """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
 
@@ -129,6 +139,11 @@ class EmbeddedBase:
     foundation_width: float
     face_plate_thickness: float
     beta1: float = 0.85
+    base_plate_width: float | None = None
+    base_plate_thickness: float | None = None
+    rebar_top: EmbeddedRebar | None = None
+    rebar_bottom: EmbeddedRebar | None = None
+    damage_limit: bool = False
 
 
 @dataclass(frozen=True)
@@ -454,8 +469,23 @@ def _renamed(check: CheckResult, key: str, steps: tuple = ()) -> CheckResult:
                                     "steps": (*steps, *check.steps)})
 
 
+def _local_plate_moment(bend: bpl.BendingResult | None, tension: float, N: float,
+                        f: float) -> float | None:
+    """Maximum plate moment at the lug, DG1 Example 4.7-5."""
+    if bend is None or bend.case not in ("low_moment", "large_moment"):
+        return None
+    terms = []
+    if tension > 0:
+        terms.append(tension * f)
+    if bend.Y > 0 and bend.q_max > 0:
+        terms.append(bend.q_max * bend.Y * (N / 2 - bend.Y / 2))
+    return max(terms) if terms else 0.0
+
+
 def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], method: Method,
-                      combo: str) -> list[CheckResult]:
+                      combo: str, bend: bpl.BendingResult | None = None, T: float = 0.0,
+                      bend_weak: bpl.BendingResult | None = None,
+                      T_weak: float = 0.0) -> list[CheckResult]:
     lug = bp.shear_lug
     steel = bp.materials[lug.grade]
     out: list[CheckResult] = []
@@ -475,6 +505,15 @@ def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], met
             out.append(_renamed(check, _LUG_IDS[check.id], tuple(c.steps)))
         out.append(_renamed(transfer.lug_weld(lug.width, lug.thickness, lug.weld, lug.FEXX, V, M,
                                               method, combo), "lug_weld", tuple(c.steps)))
+    local = []
+    if shears[0] > 0:
+        local.append(_local_plate_moment(bend, T, bp.N, bp.f))
+    if shears[1] > 0:
+        local.append(_local_plate_moment(bend_weak, T_weak, bp.B, bp.rod_spacing / 2))
+    moments = [m for m in local if m is not None]
+    if moments:
+        out.append(transfer.lug_plate_bending(
+            lug.width, bp.tp, bp.Fy, max(moments), method, combo))
     if bp.hef:
         c = Calc(method, combo)
         need = c.step(r"2.5 h_{sl}", "", 2.5 * lug.embedment, Kind.LENGTH,
@@ -519,9 +558,14 @@ def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: floa
         raise ValueError("embedded base does not support net uplift yet")
     embedded = bp.embedded_base
     col = bp.column
+    bj = (col.bf + embedded.base_plate_width) / 2 if embedded.base_plate_width else None
+    fields = {}
+    for name, layer in (("top", embedded.rebar_top), ("bottom", embedded.rebar_bottom)):
+        fields[f"F_rebar_{name}"] = layer.area * layer.fy if layer else 0.0
+        fields[f"d_rebar_{name}"] = layer.depth if layer else 0.0
     results = [seismic.embedded_base_moment(
         V, embedded.embedment, col.bf, embedded.foundation_width, bp.fc, M,
-        embedded.beta1, combo)]
+        embedded.beta1, combo, bj=bj, damage_limit=embedded.damage_limit, **fields)]
     face = seismic.face_plate_design(P_, col.d, col.bf, col.tf, col.tw, bp.fc, bp.Fy)
     if P_ > 0:
         c = Calc(method, combo)
@@ -687,7 +731,9 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if M2 and bend_weak is not None:
         results.append(_biaxial_interaction(bp, P_, M, M2, method, combo))
     if bp.shear_lug and any(lug_shear):
-        results += _shear_lug_checks(bp, P_, lug_shear, method, combo)
+        results += _shear_lug_checks(
+            bp, P_, lug_shear, method, combo, bend=bend, T=T,
+            bend_weak=bend_weak, T_weak=T_weak)
 
     # --- welds ---------------------------------------------------------------
     if M > 0 and bp.flange_weld:

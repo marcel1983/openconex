@@ -201,7 +201,12 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
   "embedment": "22 in",
   "foundation_width": "60 in",
   "face_plate_thickness": "1 in",
-  "beta1": 0.85
+  "beta1": 0.85,
+  "base_plate_width": "30 in",
+  "base_plate_thickness": "1 in",
+  "rebar_top": {"area": "1.0 in**2", "fy": "60 ksi", "depth": "5 in"},
+  "rebar_bottom": {"area": "0.8 in**2", "fy": "60 ksi", "depth": "18 in"},
+  "damage_limit": false
 }
 ```
 
@@ -209,18 +214,32 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
 |---|---|---|
 | `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto. |
 | `foundation_width` | (obligatorio) | Ancho del cimiento en la dirección del momento. |
-| `face_plate_thickness` | (obligatorio) | Espesor de las placas de cara. |
+| `face_plate_thickness` | (obligatorio) | Espesor de las placas de apoyo frontal. |
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
+| `base_plate_width` | ninguno | Ancho B de la placa embebida del fondo. Si se define, `b_j = (b_f + B)/2`. |
+| `base_plate_thickness` | ninguno | Espesor de la placa embebida; obligatorio junto con `base_plate_width`. |
+| `rebar_top` | ninguno | Refuerzo horizontal superior: `area`, `fy` y `depth`. |
+| `rebar_bottom` | ninguno | Refuerzo horizontal inferior: `area`, `fy` y `depth`. |
+| `damage_limit` | `false` | Aplica el factor adicional 0,8 sobre `M_HB` para limitar el daño. |
+
+Cada capa de refuerzo horizontal se define con:
+
+| Campo | Significado |
+|---|---|
+| `area` | Área total de la capa. |
+| `fy` | Fluencia del refuerzo. |
+| `depth` | Profundidad bajo la cara superior del cimiento. |
 
 Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta.
 
 Alcance implementado:
 
-- Tipo I, sin refuerzo horizontal ni placa embebida: no se incluyen los términos de refuerzo de la Ec. 5-6, la placa del fondo ni la soldadura de las placas de cara.
+- Tipo I con o sin placa embebida y con refuerzo horizontal superior e inferior opcional.
 - Solo LRFD, perfiles I y eje fuerte.
 - No admite levantamiento neto, momento débil, llave de corte, base débil ni combinaciones ASD.
 - El espesor sísmico mínimo de las placas de cara es `máx(0,75 t_w, 3/8 in)`.
-- No se aplica el factor adicional 0,8 sobre `M_HB` para limitar el daño.
+- La soldadura de las placas de apoyo frontal no se verifica; se supone CJP o un detalle capaz de desarrollar la fluencia de la placa.
+- El Tipo II no está implementado.
 
 ### Barras del pedestal (`pedestal_rebars`)
 

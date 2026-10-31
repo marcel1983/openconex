@@ -18,6 +18,10 @@ def _plan(s: _Sheet, bp: BasePlate, fw: float, fl: float, h: float, lang: str) -
     col = bp.column
     d, bf, tf, tw = s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw)
     s.rect(-fw / 2, -fl / 2, fw / 2, fl / 2, "BP-CONCRETO")
+    embedded = bp.embedded_base
+    if embedded.base_plate_width is not None:
+        width = s.u(embedded.base_plate_width)
+        s.rect(-width / 2, -width / 2, width / 2, width / 2, "BP-PLACA")
     _i_shape(s, d, bf, tf, tw, 0, 0, "BP-COLUMNA")
     x0, x1 = -d / 2 + tf, d / 2 - tf
     s.rect(x0, tw / 2, x1, bf / 2, "BP-PLACA")
@@ -38,11 +42,21 @@ def _elevation(s: _Sheet, bp: BasePlate, fw: float, emb: float, depth: float, h:
     stub = s.u(col.d) * 1.2
     tp = s.u(bp.embedded_base.face_plate_thickness)
     top = y0
+    embedded = bp.embedded_base
     s.rect(-fw / 2, top - depth, fw / 2, top, "BP-CONCRETO")
     s.rect(-d / 2, top - emb, d / 2, top + stub, "BP-COLUMNA")
     # The face bearing plates sit on the top of the foundation, not at the
     # bottom of the embedment (DG1 Figure 5-1 and Section 5.3).
     s.rect(-d / 2 + tf, top, d / 2 - tf, top + tp, "BP-PLACA")
+    if embedded.base_plate_width is not None:
+        width = s.u(embedded.base_plate_width)
+        bp_t = s.u(embedded.base_plate_thickness)
+        s.rect(-width / 2, top - emb - bp_t, width / 2, top - emb, "BP-PLACA")
+    for layer in (embedded.rebar_top, embedded.rebar_bottom):
+        if layer is not None:
+            y = top - s.u(layer.depth)
+            s.msp.add_line((-fw / 2, y), (fw / 2, y),
+                           dxfattribs={"layer": "BP-ANCLAJE"})
     s.msp.add_line((-fw / 2, top), (fw / 2, top),
                    dxfattribs={"layer": "BP-CONCRETO"})
     s.hdim(-fw / 2, fw / 2, top - depth, top - depth - 5 * h)

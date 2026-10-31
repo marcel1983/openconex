@@ -149,6 +149,22 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
                  q(embedded.face_plate_thickness, T)]),
             Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]),
         ]
+        if embedded.base_plate_width is not None:
+            inputs += [
+                Row([tr("input.base_plate_width", lang),
+                     q(embedded.base_plate_width, L)]),
+                Row([tr("input.base_plate_thickness", lang),
+                     q(embedded.base_plate_thickness, T)]),
+            ]
+        for key, layer in (("rebar_top", embedded.rebar_top),
+                           ("rebar_bottom", embedded.rebar_bottom)):
+            if layer is not None:
+                inputs.append(Row([tr(f"input.{key}", lang),
+                                   f"{q(layer.area, Kind.AREA)} · "
+                                   f"{q(layer.fy, Kind.STRESS)} · "
+                                   f"d {q(layer.depth, L)}"]))
+        if embedded.damage_limit:
+            inputs.append(Row([tr("input.damage_limit", lang), "0.8 M_HB"]))
     else:
         inputs = [
             Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
@@ -211,8 +227,14 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         assumptions = [tr("report.assumption_embedded_lrfd", lang),
                        tr("report.assumption_embedded_base", lang),
                        tr("report.assumption_embedded_scope", lang),
-                       tr("report.assumption_embedded_limits", lang),
-                       tr("report.assumption_embedded_damage", lang)]
+                       tr("report.assumption_embedded_limits", lang)]
+        if embedded.base_plate_width is None:
+            assumptions.append(tr("report.assumption_embedded_no_plate", lang))
+        if embedded.rebar_top is None and embedded.rebar_bottom is None:
+            assumptions.append(tr("report.assumption_embedded_no_rebar", lang))
+        assumptions.append(tr(
+            "report.assumption_embedded_damage_applied" if embedded.damage_limit
+            else "report.assumption_embedded_damage", lang))
     else:
         assumptions = [tr("report.assumption_rigid", lang),
                        tr("report.assumption_aci_lrfd", lang)]

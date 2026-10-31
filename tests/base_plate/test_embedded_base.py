@@ -11,7 +11,7 @@ from openconex.connections.base_plate.check import (
     EmbeddedBase,
     check_base_plate,
 )
-from openconex.connections.base_plate.seismic import face_plate_design
+from openconex.connections.base_plate.seismic import embedded_base_moment, face_plate_design
 from openconex.core.loads import Forces, Method
 from openconex.core.model import BoltSpec, HSSKind, HSSShape
 from openconex.core.shapes import aisc_shapes
@@ -63,6 +63,29 @@ def test_dg1_5_3_1_embedded_base():
     assert from_internal(r["base_plate.face_plate_seismic"].demand,
                          Kind.THICKNESS, "in") == pytest.approx(0.623, rel=0.01)
     assert all(result.status.value == "ok" for result in results)
+
+
+def test_embedded_base_horizontal_rebar_and_plate_increase_moment():
+    kwargs = dict(demand=kip_ft(8400), bj=inch(22.85),
+                  F_rebar_top=kip(30), d_rebar_top=inch(5),
+                  F_rebar_bottom=kip(20), d_rebar_bottom=inch(18))
+    base = embedded_base_moment(kip(96), inch(22), inch(15.7), inch(60),
+                                to_internal(4, "ksi", Kind.STRESS), kip_ft(8400))
+    with_rebar = embedded_base_moment(
+        kip(96), inch(22), inch(15.7), inch(60),
+        to_internal(4, "ksi", Kind.STRESS), **kwargs)
+    assert from_internal(with_rebar.capacity, Kind.MOMENT, "kip*ft") == \
+        pytest.approx(1101.9, rel=0.01)
+    assert with_rebar.capacity > base.capacity
+
+
+def test_embedded_base_damage_limit_factor():
+    base = embedded_base_moment(kip(96), inch(22), inch(15.7), inch(60),
+                                to_internal(4, "ksi", Kind.STRESS), kip_ft(8400))
+    limited = embedded_base_moment(
+        kip(96), inch(22), inch(15.7), inch(60),
+        to_internal(4, "ksi", Kind.STRESS), kip_ft(8400), damage_limit=True)
+    assert limited.capacity == pytest.approx(0.8 * base.capacity)
 
 
 def test_face_plate_seismic_thickness_has_a_three_eighths_minimum():

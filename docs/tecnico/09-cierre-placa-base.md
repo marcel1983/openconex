@@ -9,7 +9,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Área efectiva: integrada para compresión concéntrica de perfiles I (`bearing_area_model = "effective"`).
 - Refuerzo de anclaje: integrado con capacidad, desarrollo y empotramiento (`reinforcement`).
 - Base sísmica débil: integrada con anclajes dúctiles y diseño por capacidad (`weak_base`).
-- Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con entradas, revisión y figuras específicas.
+- Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con refuerzo horizontal y placa embebida opcionales, entradas, revisión y figuras específicas.
 - El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
 
 ## Matriz de cierre
@@ -21,9 +21,9 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
-| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo de conexión, memoria y figuras propias |
-| Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
-| Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
+| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I con refuerzo horizontal y placa embebida opcionales |
+| Llave de corte en DXF/3D | - | 4.7-5 | Integrada en DXF y 3D |
+| Flexión local de placa por llave | `transfer.lug_plate_bending` | 4.7-5 | Integrada con ancho efectivo b_sl |
 | HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |
 | Optimización N/B/tp | `plate.optimize_plan` | — | Pendiente de flujo y CLI |
 | Figuras de memoria | `report/figures.py`, `drawing`, `geometry3d` | — | Planta, elevación e isométrico integrados |
@@ -35,7 +35,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - `pressure_model = "triangular"` solo se aplica al eje fuerte y a combinaciones con `P > 0`. Las combinaciones con levantamiento usan el modelo rectangular.
 - El modelo triangular no admite `M_weak` en esta fase; el proyecto lo rechaza con un mensaje claro.
 - `bearing_area_model = "effective"` solo se aplica a compresión concéntrica de perfiles I. No se admite en HSS ni junto con el modelo triangular.
-- La base empotrada es LRFD, solo para perfiles I, sin momento débil, levantamiento neto, llave de corte ni base débil.
+- La base empotrada es LRFD, solo para perfiles I, sin momento débil, levantamiento neto, llave de corte ni base débil. No se verifica la soldadura de las placas de apoyo frontal ni el Tipo II.
 - La memoria muestra una hipótesis específica cuando se usa cualquiera de los dos modelos.
 
 ## Orden de implementación
