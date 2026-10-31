@@ -24,7 +24,7 @@ import math
 from dataclasses import dataclass
 
 from openconex.core.checks import CheckResult
-from openconex.kernel.bolt_group import _cross, _direction
+from openconex.kernel.bolt_group import _cross, _direction, solve_icr
 from openconex.kernel.design import SPEC, WELD, Calc, Method
 from openconex.units import Kind
 
@@ -142,27 +142,9 @@ def icr_strength(lines: list[WeldLine], w: float, FEXX: float, load_point: tuple
     r0 = ip / (total * e)
     guess = [cx - r0 * u[1], cy + r0 * u[0]]
     scale = 0.60 * FEXX * w * total
-    h = 1e-7 * span
-    for it in range(1, max_iter + 1):
-        f1, f2, p = _residual(guess, elems, w, FEXX, load_point, u)
-        if math.hypot(f1, f2) < tol * scale:
-            return WeldGroupResult(p, (guess[0], guess[1]), it)
-        j = []
-        for k in range(2):
-            trial = guess.copy()
-            trial[k] += h
-            g1, g2, _ = _residual(trial, elems, w, FEXX, load_point, u)
-            j.append(((g1 - f1) / h, (g2 - f2) / h))
-        det = j[0][0] * j[1][1] - j[1][0] * j[0][1]
-        if det == 0:
-            break
-        dx = (-f1 * j[1][1] + f2 * j[1][0]) / det
-        dy = (-f2 * j[0][0] + f1 * j[0][1]) / det
-        step = math.hypot(dx, dy)
-        if step > span:
-            dx, dy = dx * span / step, dy * span / step
-        guess = [guess[0] + dx, guess[1] + dy]
-    raise ArithmeticError("weld group ICR iteration did not converge")
+    icr, it, p = solve_icr(lambda g: _residual(g, elems, w, FEXX, load_point, u), guess, span,
+                           tol * scale, max_iter, direction=(-r0 * u[1], r0 * u[0]))
+    return WeldGroupResult(p, icr, it)
 
 
 def elastic_strength(lines: list[WeldLine], w: float, FEXX: float,

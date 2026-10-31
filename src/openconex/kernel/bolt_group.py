@@ -117,27 +117,69 @@ def icr_coefficient(bolts: list[tuple[float, float]], load_point: tuple[float, f
     r0 = ip / (n * e) if ip else span
     px, py = u[1], -u[0]
     guess = [cx - r0 * px, cy - r0 * py]
+    res = solve_icr(lambda g: _residual(g, bolts, load_point, u), guess, span, tol * n, max_iter,
+                    direction=(-r0 * px, -r0 * py))
+    return IcrResult(res[2], res[0], res[1])
+
+
+def solve_icr(residual, guess: list[float], span: float, tol: float, max_iter: int = 200,
+              direction: tuple[float, float] | None = None):
+    """Damped Newton iteration on the ICR position with backtracking line search.
+
+    ``residual(icr)`` returns (Fx, Fy, P): force residuals and the load that
+    balances the moment about the trial ICR. The residual also tends to zero
+    as the ICR goes to infinity (pure translation), so iterations that run away
+    are abandoned and the search restarts from other points along the line
+    through ``guess`` in ``direction`` (perpendicular to the load).
+    Returns ((x, y), iterations, P).
+    """
+    starts = [guess]
+    if direction is not None:
+        cx, cy = guess
+        for k in (0.5, 0.25, 0.75, 1.5, 0.1, 2.0, 3.0):
+            starts.append([cx + (k - 1) * direction[0], cy + (k - 1) * direction[1]])
+    total = 0
+    for start in starts:
+        result = _newton(residual, start, span, tol, max_iter)
+        total += result[1]
+        if result[0] is not None:
+            return result[0], total, result[2]
+    raise ArithmeticError("ICR iteration did not converge")
+
+
+def _newton(residual, guess, span, tol, max_iter):
     h = 1e-7 * span
+    origin = guess
+    f1, f2, p = residual(guess)
+    norm = math.hypot(f1, f2)
     for it in range(1, max_iter + 1):
-        f1, f2, p = _residual(guess, bolts, load_point, u)
-        if math.hypot(f1, f2) < tol * n:
-            return IcrResult(p, (guess[0], guess[1]), it)
+        if norm < tol:
+            return (guess[0], guess[1]), it, p
+        if math.hypot(guess[0] - origin[0], guess[1] - origin[1]) > 200 * span:
+            return None, it, p  # running away to a pure translation
         j = []
         for k in range(2):
             trial = guess.copy()
             trial[k] += h
-            g1, g2, _ = _residual(trial, bolts, load_point, u)
+            g1, g2, _ = residual(trial)
             j.append(((g1 - f1) / h, (g2 - f2) / h))
         det = j[0][0] * j[1][1] - j[1][0] * j[0][1]
         if det == 0:
-            break
+            return None, it, p
         dx = (-f1 * j[1][1] + f2 * j[1][0]) / det
         dy = (-f2 * j[0][0] + f1 * j[0][1]) / det
         step = math.hypot(dx, dy)
         if step > span:  # damp large jumps
             dx, dy = dx * span / step, dy * span / step
-        guess = [guess[0] + dx, guess[1] + dy]
-    raise ArithmeticError("ICR iteration did not converge")
+        alpha = 1.0
+        while alpha > 1e-4:  # backtrack until the residual decreases
+            trial = [guess[0] + alpha * dx, guess[1] + alpha * dy]
+            t1, t2, tp = residual(trial)
+            if math.hypot(t1, t2) < norm:
+                break
+            alpha /= 2
+        guess, f1, f2, p, norm = trial, t1, t2, tp, math.hypot(t1, t2)
+    return None, max_iter, p
 
 
 def bolt_group_eccentric(bolts: list[tuple[float, float]], load_point: tuple[float, float],

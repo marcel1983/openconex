@@ -239,7 +239,7 @@ Python 3.12+, PySide6 (Qt 6), pydantic, pint, shapely, numpy/scipy, OCP/build123
 
 ## 9. Hoja de ruta
 
-**Estado (2026-10-30):** F0 terminada. F1 (núcleo de verificaciones) implementada en `src/openconex/kernel/`: pernos (§J3), soldaduras (§J2), elementos (§J4), efecto palanca (Manual Parte 9), grupos de pernos y de soldaduras por los métodos elástico y del centro instantáneo, y fuerzas concentradas (§J10). Pendiente de F1: validar los coeficientes de grupos excéntricos contra las Tablas 7-6 a 7-14 y 8-4 a 8-11 del Manual.
+**Estado (2026-10-30):** F0 terminada. F1 (núcleo de verificaciones) implementada en `src/openconex/kernel/`: pernos (§J3), soldaduras (§J2), elementos (§J4), efecto palanca (Manual Parte 9), grupos de pernos y de soldaduras por los métodos elástico y del centro instantáneo, y fuerzas concentradas (§J10). Grupos de pernos excéntricos validados contra la Tabla 7-6 del Manual (ángulos 0° a 60°, s = 3 y 6 in, n = 2 a 12, y C'). Pendiente: grupos de soldaduras contra las Tablas 8-4 a 8-11.
 
 **F2 (placas base)** implementada en `src/openconex/connections/base_plate/` y `src/openconex/kernel/anchors.py` (ACI 318-19 Cap. 17): compresión, flexión rectangular y triangular, levantamiento, flexión biaxial, corte (fricción, llave de corte, anclajes con flexión), tracción, soldaduras, base débil sísmica y base empotrada, con verificación completa por combinación. Los 20 ejemplos de la DG1 son pruebas de aceptación (369 valores publicados comparados).
 
