@@ -17,6 +17,8 @@ La llave toma la componente del corte de su orientación: |V2| con `strong`, |V3
 - HSS rectangular: m = (N − 0,95d)/2 y n = (B − 0,95b)/2.
 - HSS circular: m = n = (N − 0,8D)/2.
 
+Por defecto se usa la distribución rectangular (`plate.rectangular_bending`). La opción `pressure_model = "triangular"` usa `plate.triangular_bending` (DG1 Apéndice B.2) en el eje fuerte; en esta versión no se aplica al eje débil ni a levantamiento. La opción `bearing_area_model = "effective"` usa `plate.effective_area` (DG1 Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica de perfiles I.
+
 Según la excentricidad e = M/P se clasifica el caso (`plate.rectangular_bending`):
 
 | Caso | Condición | Modelo |

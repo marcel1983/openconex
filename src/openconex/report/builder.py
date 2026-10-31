@@ -12,7 +12,11 @@ import datetime as dt
 from dataclasses import dataclass, field
 
 from openconex import __version__
-from openconex.connections.base_plate.check import check_envelope
+from openconex.connections.base_plate.check import (
+    BearingAreaModel,
+    PressureModel,
+    check_envelope,
+)
 from openconex.core.checks import CheckResult, Status
 from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
@@ -168,6 +172,10 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         key = ("report.assumption_hss_round"
                if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
         assumptions.append(tr(key, lang))
+    if bp.pressure_model is PressureModel.TRIANGULAR:
+        assumptions.append(tr("report.assumption_triangular", lang))
+    if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
+        assumptions.append(tr("report.assumption_effective_area", lang))
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),

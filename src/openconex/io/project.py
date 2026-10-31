@@ -16,7 +16,12 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from openconex import __version__
-from openconex.connections.base_plate.check import BasePlate, ShearLug
+from openconex.connections.base_plate.check import (
+    BasePlate,
+    BearingAreaModel,
+    PressureModel,
+    ShearLug,
+)
 from openconex.core.loads import (
     Forces,
     LoadCase,
@@ -48,7 +53,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 3
+FORMAT_VERSION = 4
 Quantity = str | float
 
 
@@ -180,6 +185,8 @@ class BasePlateInput(_Input):
     B: Quantity
     tp: Quantity
     plate_grade: str = "ASTM A572 Gr. 50"
+    pressure_model: PressureModel = PressureModel.RECTANGULAR
+    bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
     fc: Quantity
     A2_over_A1: float = 1.0
     pedestal_N: Quantity | None = None
@@ -290,6 +297,15 @@ class Project(_Input):
                 raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
         elif column.grade not in library:
             raise ValueError(f"unknown column material: {column.grade!r}")
+        if self.base_plate.bearing_area_model is BearingAreaModel.EFFECTIVE:
+            if isinstance(column, HSSSectionInput):
+                raise ValueError("effective bearing area is only defined for I-shapes")
+            if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
+                raise ValueError("effective bearing area needs the rectangular pressure model")
+        if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
+            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
+                raise ValueError(
+                    "triangular pressure model does not support weak-axis moment yet")
         return self
 
     def material_library(self) -> dict[str, SteelGrade]:
@@ -352,7 +368,9 @@ class Project(_Input):
             rod=BoltSpec(diameter=self.quantity(bp.rod_diameter, L), grade=bp.rod_grade),
             f=self.quantity(bp.f, L), rods_per_side=bp.rods_per_side,
             rod_spacing=self.quantity(bp.rod_spacing, L), hef=self.quantity(bp.hef, L),
-            plate_grade=bp.plate_grade, A2_over_A1=bp.A2_over_A1, edges=edges,
+            plate_grade=bp.plate_grade, pressure_model=bp.pressure_model,
+            bearing_area_model=bp.bearing_area_model,
+            A2_over_A1=bp.A2_over_A1, edges=edges,
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
             grout_pad=bp.grout_pad,

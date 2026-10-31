@@ -10,6 +10,8 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_custom_combinations.ocnx` | combinaciones propias en lugar de las del código |
 | `examples/base_plate_generic_w.ocnx` | columna W definida por dimensiones |
 | `examples/base_plate_custom_material.ocnx` | material propio para la columna y la placa |
+| `examples/base_plate_triangular.ocnx` | distribución triangular de presiones (DG1 B.2-1) |
+| `examples/base_plate_effective_area.ocnx` | área efectiva en compresión (DG1 B.3-1) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -71,6 +73,8 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `B` | (obligatorio) | Ancho de la placa. |
 | `tp` | (obligatorio) | Espesor de la placa. |
 | `plate_grade` | `"ASTM A572 Gr. 50"` | Acero de la placa. |
+| `pressure_model` | `"rectangular"` | Distribución de presiones: `rectangular` (DG1 §4.3) o `triangular` (DG1 Apéndice B.2). |
+| `bearing_area_model` | `"plate"` | Área para el aplastamiento: `plate` (B × N) o `effective` (área efectiva bajo la columna, DG1 Apéndice B.3). |
 | `fc` | (obligatorio) | Resistencia del concreto f'c. |
 | `A2_over_A1` | `1.0` | Relación entre el área de apoyo del concreto y el área de la placa, A2/A1 (1 a 4). Aumenta la resistencia al aplastamiento según √(A2/A1) ≤ 2. |
 | `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal; solo se usan en los planos y el modelo 3D. |
@@ -89,6 +93,12 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `cracked` | `true` | Concreto fisurado (ACI 318-19 §17.6.2.5). |
 | `seismic` | `false` | Opción sísmica: factor 0,75 en las resistencias del concreto en tracción (ACI 318-19 §17.10.5.4). |
 | `shear_lug` | ninguna | Llave de corte (ver más abajo). |
+
+### Modelos de presión y área efectiva
+
+- `pressure_model: "triangular"` usa la distribución lineal de presiones del Apéndice B.2 de la DG1. En esta versión solo se aplica al eje fuerte y a combinaciones con compresión (`P > 0`); las combinaciones con levantamiento siguen usando el modelo rectangular, y el momento débil requiere el modelo rectangular.
+- `bearing_area_model: "effective"` usa el área efectiva bajo el perfil I (Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica. No se admite en HSS ni junto con el modelo triangular.
+- Los valores por defecto son `rectangular` y `plate`, por lo que los proyectos existentes no cambian.
 
 ### Columna del catálogo
 

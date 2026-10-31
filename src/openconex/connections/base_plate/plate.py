@@ -29,6 +29,7 @@ __all__ = [
     "effective_area",
     "optimize_plan",
     "plate_thickness_compression",
+    "plate_thickness_from_moment",
     "plate_thickness_tension",
     "rectangular_bending",
     "required_area",
@@ -146,6 +147,14 @@ class BendingResult:
     """Bearing force per unit length actually used (= q_max when anchors are in tension)."""
     T: float
     """Total anchor tension."""
+    M_plate: float | None = None
+    """Governing plate moment per unit width from the triangular model."""
+    M_plate_tension: float | None = None
+    """Plate moment per unit width at the tension interface (triangular model)."""
+    bearing_stress: float | None = None
+    """Peak bearing stress (triangular model; replaces q / q_max)."""
+    bearing_capacity: float | None = None
+    """Available bearing stress (triangular model)."""
 
 
 def rectangular_bending(P: float, M: float, N: float, B: float, f: float, fc: float,
@@ -207,6 +216,11 @@ def plate_thickness_tension(T: float, x: float, B: float, Fy: float, method: Met
     return _coef(method) * math.sqrt(max(T, 0.0) * max(x, 0.0) / (B * Fy))
 
 
+def plate_thickness_from_moment(moment: float, Fy: float, method: Method) -> float:
+    """Required thickness from a moment per unit width, √(4 M /(φ Fy))."""
+    return _coef(method) * math.sqrt(max(moment, 0.0) / Fy) if moment > 0 else 0.0
+
+
 @dataclass(frozen=True)
 class TriangularResult:
     case: str
@@ -222,11 +236,13 @@ class TriangularResult:
     T: float
     M_plate: float
     """Governing moment per unit width of plate at the compression interface."""
+    M_plate_tension: float = 0.0
+    """Plate moment per unit width at the tension interface (large moment)."""
 
 
 def triangular_bending(P: float, M: float, N: float, B: float, m: float, n: float,
                        fc: float, A2_over_A1: float, method: Method,
-                       rod_edge: float = 0.0) -> TriangularResult:
+                       rod_edge: float = 0.0, rods_in_tension: int = 2) -> TriangularResult:
     """Linear (triangular) bearing stress model (DG1 App. B.2).
 
     e ≤ N/6: fp = P/(BN) ± 6M/(BN²) (Eq. B-10 to B-14). Otherwise the bearing
@@ -246,12 +262,17 @@ def triangular_bending(P: float, M: float, N: float, B: float, m: float, n: floa
         return TriangularResult("low_moment", e, e_kern, fa, fb, fmax, fmin, fp_av, fm, N, 0.0,
                                 max(m_m, m_n))
     n_p, a_p = N - rod_edge, N / 2 - rod_edge
-    A = (3 * n_p - math.sqrt((3 * n_p) ** 2 - 24 * (P * a_p + M) / (fp_av * B))) / 2
+    disc = (3 * n_p) ** 2 - 24 * (P * a_p + M) / (fp_av * B)
+    if disc < 0:
+        return TriangularResult("not_possible", e, e_kern, 0.0, 0.0, fp_av, 0.0, fp_av, 0.0,
+                                0.0, 0.0, 0.0, 0.0)
+    A = (3 * n_p - math.sqrt(disc)) / 2
     T = fp_av * A * B / 2 - P
     fm = fp_av * (A - m) / A if A > m else 0.0
     m_m = fm * m * m / 2 + (fp_av - fm) * m * m / 3 if A > m else fp_av * A / 2 * (m - A / 3)
+    m_t = T / (2 * rods_in_tension) if T > 0 else 0.0
     return TriangularResult("large_moment", e, e_kern, 0.0, 0.0, fp_av, 0.0, fp_av, fm, A, T,
-                            m_m)
+                            m_m, m_t)
 
 
 def biaxial_capacity(P: float, N: float, B: float, f: float, fc: float, A2_over_A1: float,
