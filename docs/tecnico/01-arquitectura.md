@@ -18,9 +18,9 @@ cli.py ─────────────► io/ (proyecto, importación) �
 | `kernel/` | Verificaciones reutilizables por cualquier conexión: `bolts` (§J3), `welds` (§J2), `elements` (§J4), `prying` (Manual Parte 9), `bolt_group` y `weld_group` (método elástico y centro instantáneo), `local` (§J10), `anchors` (ACI 318-19 Cap. 17), `design` (`Calc`, φ/Ω). |
 | `connections/base_plate/` | Placa base: `plate` (modelos de presiones de la DG1), `transfer` (corte, llave, soldaduras), `seismic` (DG1 Cap. 5 y 6), `check` (verificación completa por combinación). |
 | `io/` | `project` (archivo `.ocnx` con pydantic), `csi` (tablas de SAP2000/ETABS), `csi_projects` (proyectos a partir de la importación). |
-| `report/` | `builder` (estructura de la memoria), `html` (Jinja2 + MathML), `docx` (python-docx), `pdf` (Qt WebEngine). |
-| `drawing/` | Plano DXF (ezdxf). |
-| `geometry3d/` | Sólidos OpenCASCADE y exportación STEP/STL. |
+| `report/` | `builder` (estructura de la memoria), `figures` (planta/elevación desde DXF e isométrico desde 3D), `html` (Jinja2 + MathML), `docx` (python-docx), `pdf` (Qt WebEngine). La memoria consume `Report.figures`; cada futuro tipo de conexión debe aportar sus figuras desde su propio dibujo/modelo. |
+| `drawing/` | Plano DXF (ezdxf) y vistas independientes para las figuras de la memoria. |
+| `geometry3d/` | Sólidos OpenCASCADE, exportación STEP/STL y vista isométrica con líneas ocultas. |
 | `i18n/` | Textos en `es.toml` y `en.toml`. |
 | `cli.py` | Comando `openconex`. |
 | `data/shapes/` | `aisc_v16.sql`, base de datos de perfiles en SQL (no GPL; ver `NOTICE.md`). |

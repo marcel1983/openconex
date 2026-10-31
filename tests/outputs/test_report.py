@@ -1,11 +1,13 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
 import datetime as dt
+import re
 
 import pytest
 from docx import Document
 
 from openconex.connections.base_plate.check import PressureModel
+from openconex.geometry3d.base_plate import occ_available
 from openconex.io.project import CustomCombinationInput, HSSSectionInput
 from openconex.report.builder import build_base_plate_report, factor_expression
 from openconex.report.docx import latex_to_text, write_docx
@@ -25,6 +27,18 @@ def test_report_content(project):
     assert worst.ratio == pytest.approx(0.976, abs=0.001)
 
 
+def test_report_figures(project):
+    r = build_base_plate_report(project, TODAY)
+    keys = [figure.key for figure in r.figures]
+    assert keys[:2] == ["plan", "elevation"]
+    assert ("isometric" in keys) is occ_available()
+    assert all(figure.svg.startswith("<?xml") or figure.svg.startswith("<svg")
+               for figure in r.figures)
+    html = render_html(r)
+    assert html.count("<figure>") == len(r.figures)
+    assert html.count("data:image/svg+xml;base64") == len(r.figures)
+
+
 @pytest.mark.parametrize(("lang", "title", "status"), [("es", "Memoria de cálculo", "Cumple"),
                                                        ("en", "Design calculation report", "OK")])
 def test_html_language(project, lang, title, status):
@@ -39,6 +53,7 @@ def test_html_language(project, lang, title, status):
 def test_units_follow_project(project):
     project.info.units = "SI_kN_m"
     html = render_html(build_base_plate_report(project, TODAY))
+    html = re.sub(r"data:image/svg\+xml;base64,[A-Za-z0-9+/=]+", "", html)
     assert "kN" in html and "kip" not in html
 
 
@@ -93,11 +108,17 @@ def test_latex_helpers():
 
 
 def test_docx(tmp_path, project):
-    path = write_docx(build_base_plate_report(project, TODAY), tmp_path / "r.docx")
+    report = build_base_plate_report(project, TODAY)
+    path = write_docx(report, tmp_path / "r.docx")
     doc = Document(str(path))
     headings = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
     assert any(h.startswith("5. Verificaciones") for h in headings)
     assert len(doc.tables) >= 5 + 7
+    with_png = [figure for figure in report.figures if figure.png]
+    if with_png:
+        assert len(doc.inline_shapes) == len(with_png)
+    else:
+        assert any("requieren" in p.text for p in doc.paragraphs)
 
 
 @pytest.mark.skipif(not pdf_available(), reason="Qt WebEngine not installed (openconex[pdf])")
