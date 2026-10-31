@@ -139,6 +139,12 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     ]
     if bp.flange_weld:
         inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+    if bp.shear_lug:
+        lug = bp.shear_lug
+        inputs.append(Row([tr("input.shear_lug", lang),
+                           f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
+                           f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
+                           + tr(f"input.lug_direction_{lug.direction}", lang)]))
     forces = project.case_forces()
     biaxial = any(f.V3 or f.M2 for f in forces.values())
     case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]

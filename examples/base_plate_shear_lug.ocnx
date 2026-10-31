@@ -1,0 +1,43 @@
+{
+  "format_version": 2,
+  "info": {
+    "name": "Ejemplo: llave de corte (DG1 Ejemplo 4.7-5)",
+    "number": "OC-0007",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W14X90",
+    "N": "15 in",
+    "B": "15 in",
+    "tp": "1.5 in",
+    "fc": "4 ksi",
+    "A2_over_A1": 4.0,
+    "grout": "2 in",
+    "rod_diameter": "3/4 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "4.25 in",
+    "rod_spacing": "8.5 in",
+    "hef": "12 in",
+    "edges": {"bottom": "10.8 in"},
+    "shear_lug": {
+      "width": "8 in",
+      "embedment": "2 in",
+      "thickness": "1 in",
+      "weld": "5/16 in",
+      "direction": "strong",
+      "ca1": "14.5 in"
+    }
+  },
+  "cases": [
+    {"name": "W", "type": "W", "V": "25 kip"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "LRFD W", "method": "LRFD", "factors": {"W": 1.0}, "source": "DG1 Ejemplo 4.7-5"},
+      {"name": "ASD W", "method": "ASD", "factors": {"W": 0.64}, "source": "DG1 Ejemplo 4.7-5"}
+    ]
+  }
+}
