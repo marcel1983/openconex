@@ -40,7 +40,9 @@ def _elevation(s: _Sheet, bp: BasePlate, fw: float, emb: float, depth: float, h:
     top = y0
     s.rect(-fw / 2, top - depth, fw / 2, top, "BP-CONCRETO")
     s.rect(-d / 2, top - emb, d / 2, top + stub, "BP-COLUMNA")
-    s.rect(-d / 2 + tf, top - emb - tp, d / 2 - tf, top - emb, "BP-PLACA")
+    # The face bearing plates sit on the top of the foundation, not at the
+    # bottom of the embedment (DG1 Figure 5-1 and Section 5.3).
+    s.rect(-d / 2 + tf, top, d / 2 - tf, top + tp, "BP-PLACA")
     s.msp.add_line((-fw / 2, top), (fw / 2, top),
                    dxfattribs={"layer": "BP-CONCRETO"})
     s.hdim(-fw / 2, fw / 2, top - depth, top - depth - 5 * h)

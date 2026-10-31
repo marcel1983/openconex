@@ -210,7 +210,9 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     if embedded is not None:
         assumptions = [tr("report.assumption_embedded_lrfd", lang),
                        tr("report.assumption_embedded_base", lang),
-                       tr("report.assumption_embedded_limits", lang)]
+                       tr("report.assumption_embedded_scope", lang),
+                       tr("report.assumption_embedded_limits", lang),
+                       tr("report.assumption_embedded_damage", lang)]
     else:
         assumptions = [tr("report.assumption_rigid", lang),
                        tr("report.assumption_aci_lrfd", lang)]

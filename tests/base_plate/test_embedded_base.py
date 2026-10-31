@@ -11,6 +11,7 @@ from openconex.connections.base_plate.check import (
     EmbeddedBase,
     check_base_plate,
 )
+from openconex.connections.base_plate.seismic import face_plate_design
 from openconex.core.loads import Forces, Method
 from openconex.core.model import BoltSpec, HSSKind, HSSShape
 from openconex.core.shapes import aisc_shapes
@@ -62,6 +63,13 @@ def test_dg1_5_3_1_embedded_base():
     assert from_internal(r["base_plate.face_plate_seismic"].demand,
                          Kind.THICKNESS, "in") == pytest.approx(0.623, rel=0.01)
     assert all(result.status.value == "ok" for result in results)
+
+
+def test_face_plate_seismic_thickness_has_a_three_eighths_minimum():
+    face = face_plate_design(
+        kip(250), inch(15.2), inch(15.7), inch(1.31), inch(0.2),
+        to_internal(4, "ksi", Kind.STRESS), to_internal(50, "ksi", Kind.STRESS))
+    assert from_internal(face["tp_min_seismic"], Kind.THICKNESS, "in") == pytest.approx(0.375)
 
 
 def test_embedded_base_requires_lrfd():

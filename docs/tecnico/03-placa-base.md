@@ -105,9 +105,10 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
   A1 = (b_f − t_w)(d − 2t_f); φP_p = 0,65 (1,7 f'c) A1.
 - **Espesor de las placas de cara** (DG1 §5.3, Ec. 5-8):
   l = √(d b_f)/4; t_p,min = l √[2P/(0,9 F_y A1)].
-- **Detalle sísmico:** t_p ≥ 0,75 t_w (AISC 341-22 §F3.5b.4).
+- **Detalle sísmico:** t_p ≥ máx(0,75 t_w, 3/8 in) (AISC 341-22 §F3.5b.4).
+- Las placas de apoyo frontal se sitúan en la cara superior del cimiento, no en el fondo del empotramiento (DG1 Fig. 5-1 y §5.3).
 
-Solo se admite en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+Solo se modela el Tipo I sin refuerzo horizontal ni placa embebida: no se incluyen los términos de refuerzo de la Ec. 5-6, la placa del fondo ni la soldadura de las placas de cara. Tampoco se aplica el factor 0,8 sobre `M_HB` para limitar el daño. Se admite únicamente en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
 
 ## 8. Revisor de interferencias en planta
 

@@ -165,10 +165,11 @@ def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
     parts.append(Part("column", column))
     tp = embedded.face_plate_thickness
     x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
+    # Face bearing plates bear on the top of the foundation (DG1 §5.3).
     parts.append(Part("face_plate_front", _box(
-        x0, col.tw / 2, z0 - tp, x1 - x0, (col.bf - col.tw) / 2, tp)))
+        x0, col.tw / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
     parts.append(Part("face_plate_back", _box(
-        x0, -col.bf / 2, z0 - tp, x1 - x0, (col.bf - col.tw) / 2, tp)))
+        x0, -col.bf / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
     return parts
 
 

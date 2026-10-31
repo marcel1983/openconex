@@ -54,6 +54,7 @@ def test_embedded_report_uses_its_own_inputs_and_codes():
     assert "Largo N" not in labels and "Barras de anclaje" not in labels
     assert any("341-22" in code for code in r.codes)
     assert not any("Placa rígida" in assumption for assumption in r.assumptions)
+    assert any("Tipo I" in assumption for assumption in r.assumptions)
     assert [figure.key for figure in r.figures] == (
         ["plan", "elevation", "isometric"] if occ_available() else ["plan", "elevation"])
 

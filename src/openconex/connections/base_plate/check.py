@@ -538,8 +538,8 @@ def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: floa
                                 face["tp_min"], embedded.face_plate_thickness,
                                 Kind.THICKNESS))
     c = Calc(method, combo)
-    c.step("t_{p,min,seismic}", "0.75 t_w", face["tp_min_seismic"], Kind.THICKNESS,
-           "AISC 341-22 §F3.5b.4")
+    c.step("t_{p,min,seismic}", r"\max(0.75t_w,\ 3/8\ in)", face["tp_min_seismic"],
+           Kind.THICKNESS, "AISC 341-22 §F3.5b.4")
     results.append(c.result("base_plate.face_plate_seismic",
                             "AISC 341-22 §F3.5b.4", face["tp_min_seismic"],
                             embedded.face_plate_thickness, Kind.THICKNESS))

@@ -75,6 +75,8 @@ assumption_weak_base = "Base sísmica débil: los estados no dúctiles se diseñ
 assumption_embedded_base = "Base empotrada tipo I: momento por apoyo horizontal del concreto y placas de cara en compresión (AISC DG1 3ª ed., §5.2 y §5.3)."
 assumption_embedded_lrfd = "La base empotrada se verifica solo con combinaciones LRFD."
 assumption_embedded_limits = "No se admite levantamiento neto, momento débil, llave de corte, base débil ni columnas HSS."
+assumption_embedded_scope = "Se modela una conexión Tipo I sin refuerzo horizontal ni placa embebida: los términos de refuerzo de la Ec. 5-6, la placa embebida y la soldadura de las placas de cara no se incluyen."
+assumption_embedded_damage = "No se aplica el factor adicional 0.8 sobre M_HB para limitar el daño; la capacidad mostrada es la resistencia de diseño φM_HB."
 
 [load]
 D = "Carga muerta"

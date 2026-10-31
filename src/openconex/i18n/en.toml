@@ -75,6 +75,8 @@ assumption_weak_base = "Weak seismic base: nonductile limit states are designed 
 assumption_embedded_base = "Type I embedded base: moment by horizontal concrete bearing and face plates in compression (AISC DG1 3rd ed., §5.2 and §5.3)."
 assumption_embedded_lrfd = "The embedded base is verified with LRFD combinations only."
 assumption_embedded_limits = "Net uplift, weak-axis moment, shear lug, weak base and HSS columns are not supported."
+assumption_embedded_scope = "A Type I connection without horizontal reinforcement or embedded base plate is modeled: the Eq. 5-6 reinforcement terms, the embedded plate and the face-plate welds are not included."
+assumption_embedded_damage = "The additional 0.8 factor on M_HB for damage limitation is not applied; the reported capacity is the design strength φM_HB."
 
 [load]
 D = "Dead load"

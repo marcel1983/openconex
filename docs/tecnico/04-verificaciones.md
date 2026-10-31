@@ -33,7 +33,7 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | ✔ con `embedded_base` |
 | `base_plate.face_plate_bearing` | Aplastamiento del concreto en las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
 | `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
-| `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
+| `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara, máx(0,75 t_w, 3/8 in) | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 

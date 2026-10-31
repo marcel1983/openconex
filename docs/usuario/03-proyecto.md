@@ -193,7 +193,7 @@ La verificación es LRFD, requiere el modelo de presión rectangular, no admite 
 
 ### Base empotrada (`embedded_base`)
 
-Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal, con placas de cara soldadas para la compresión axial (ejemplo 5.3-1):
+Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal. Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1):
 
 ```json
 "connection_type": "embedded",
@@ -212,7 +212,15 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
 | `face_plate_thickness` | (obligatorio) | Espesor de las placas de cara. |
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
 
-Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta. Es LRFD, solo para perfiles I y no admite momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta.
+
+Alcance implementado:
+
+- Tipo I, sin refuerzo horizontal ni placa embebida: no se incluyen los términos de refuerzo de la Ec. 5-6, la placa del fondo ni la soldadura de las placas de cara.
+- Solo LRFD, perfiles I y eje fuerte.
+- No admite levantamiento neto, momento débil, llave de corte, base débil ni combinaciones ASD.
+- El espesor sísmico mínimo de las placas de cara es `máx(0,75 t_w, 3/8 in)`.
+- No se aplica el factor adicional 0,8 sobre `M_HB` para limitar el daño.
 
 ### Barras del pedestal (`pedestal_rebars`)
 
