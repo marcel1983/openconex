@@ -1,0 +1,181 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+"""Base plate projects for the supports imported from SAP2000 / ETABS.
+
+A template project gives what the analysis model does not have: plate, concrete,
+anchor rods and options. Each support gets a copy with its column and loads:
+
+* ``cases``: the unfactored load cases with a known type (D, L, Lr, S, W, E);
+  OpenConex generates the ASCE 7-22 combinations of the template.
+* ``combinations``: the combinations of the analysis program, already factored,
+  each one entered as a case with a custom combination of factor 1.0.
+
+The project holds P, V and the strong-axis moment M per case. V is the resultant
+of V2 and V3 (conservative when cases are combined) and M is M3; the weak-axis
+moment M2 is not checked yet and is reported in the warnings.
+"""
+
+from __future__ import annotations
+
+import math
+import re
+from enum import StrEnum
+
+from openconex.core.loads import LoadType, Method
+from openconex.core.model import HSSKind
+from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
+from openconex.io.csi import CaseKind, CsiImport, ImportedColumn, Support
+from openconex.io.project import (
+    CustomCombinationInput,
+    HSSSectionInput,
+    LoadCaseInput,
+    Project,
+    WSectionInput,
+)
+
+__all__ = ["LoadSource", "base_plate_projects", "column_input"]
+
+M2_WARNING_RATIO = 0.10
+"""Weak-axis moments above this fraction of the strong-axis moment are reported."""
+
+
+class LoadSource(StrEnum):
+    CASES = "cases"
+    COMBINATIONS = "combinations"
+
+
+# CSI material name -> OpenConex steel grade (rectangular HSS / round HSS / other)
+_GRADES = (
+    (r"A992", "ASTM A992"),
+    (r"A572.*50", "ASTM A572 Gr. 50"),
+    (r"A36", "ASTM A36"),
+    (r"A500.*GR\.?\s*B", "ASTM A500 Gr. B"),
+    (r"A500.*GR\.?\s*C", "ASTM A500 Gr. C"),
+)
+
+
+def _grade(material: str, hss: HSSKind | None) -> str | None:
+    for pattern, grade in _GRADES:
+        if re.search(pattern, material, re.IGNORECASE):
+            if grade.startswith("ASTM A500"):
+                if hss is None:
+                    return None
+                return f"{grade} ({'round' if hss is HSSKind.ROUND else 'rectangular'})"
+            return grade
+    return None
+
+
+def _mm(value: float) -> str:
+    return f"{value:.4g} mm"
+
+
+def column_input(column: ImportedColumn):
+    """Project column (AISC label or generic section) and steel grade for a CSI section.
+
+    Returns (column, grade, warning); grade is None when the material is unknown.
+    """
+    dims, shape = column.dimensions, column.shape.lower()
+    if shape == "i/wide flange":
+        try:
+            aisc_shapes().get(column.section)
+            return column.section, _grade(column.material, None), None
+        except ShapeDatabaseError:
+            pass
+        grade = _grade(column.material, None)
+        section = WSectionInput(type="W", name=column.section, d=_mm(dims["t3"]),
+                                bf=_mm(dims["t2"]), tf=_mm(dims["tf"]), tw=_mm(dims["tw"]),
+                                **({"grade": grade} if grade else {}))
+        return section, grade, None
+    if shape == "box/tube":
+        kind = HSSKind.SQUARE if math.isclose(dims["t3"], dims["t2"]) else HSSKind.RECTANGULAR
+        section = HSSSectionInput(type="HSS", name=column.section, shape=kind,
+                                  d=_mm(dims["t3"]),
+                                  bf=None if kind is HSSKind.SQUARE else _mm(dims["t2"]),
+                                  t=_mm(dims["tf"]), grade=_grade(column.material, kind))
+        return section, None, None
+    if shape == "pipe":
+        section = HSSSectionInput(type="HSS", name=column.section, shape=HSSKind.ROUND,
+                                  d=_mm(dims["t3"]), t=_mm(dims["tw"]),
+                                  grade=_grade(column.material, HSSKind.ROUND))
+        return section, None, None
+    return None, None, f"section {column.section!r} ({column.shape}) is not supported"
+
+
+def _case(name: str, load_type: LoadType, forces) -> LoadCaseInput:
+    return LoadCaseInput(name=name, type=load_type, P=f"{forces.P:.10g} N",
+                         V=f"{math.hypot(forces.V2, forces.V3):.10g} N",
+                         M=f"{forces.M3:.10g} N*mm")
+
+
+def _loads(support: Support, data: CsiImport, template: Project, source: LoadSource,
+           include: str | None, envelopes: bool, method: Method | None, warnings: list[str]):
+    pattern = re.compile(include) if include else None
+    if source is LoadSource.CASES:
+        names = [c.name for c in data.cases.values() if c.kind is CaseKind.LOAD_CASE
+                 and (pattern is None or pattern.search(c.name))]
+        untyped = [n for n in names if data.cases[n].load_type is None]
+        if untyped:
+            warnings.append(f"load cases without a design type, not used: {', '.join(untyped)}")
+        cases = [_case(n, data.cases[n].load_type, support.forces[n])
+                 for n in names if data.cases[n].load_type is not None and n in support.forces]
+        combinations = template.combinations.model_copy(update={"include_code": True,
+                                                                "custom": []})
+        return cases, combinations, [n for n in names if n in support.forces]
+    kinds = {CaseKind.COMBINATION} | ({CaseKind.ENVELOPE} if envelopes else set())
+    names = [c.name for c in data.cases.values() if c.kind in kinds
+             and (pattern is None or pattern.search(c.name)) and c.name in support.forces]
+    method = method or (template.combinations.methods or [Method.LRFD])[0]
+    cases = [_case(n, LoadType.DEAD, support.forces[n]) for n in names]
+    custom = [CustomCombinationInput(
+        name=n, method=method, factors={n: 1.0}, seismic=data.cases[n].seismic,
+        source=f"{data.cases[n].case_type} {data.cases[n].output_case}") for n in names]
+    combinations = template.combinations.model_copy(update={"include_code": False,
+                                                            "custom": custom})
+    return cases, combinations, names
+
+
+def base_plate_projects(data: CsiImport, template: Project,
+                        source: LoadSource = LoadSource.CASES, include: str | None = None,
+                        envelopes: bool = False, method: Method | None = None,
+                        ) -> tuple[dict[str, Project], list[str]]:
+    """One project per support with a column, from ``template``.
+
+    ``include`` is a regular expression on the case or combination names;
+    ``envelopes`` adds the Max/Min envelopes in ``combinations`` mode, and
+    ``method`` sets the method of those combinations (template's first by default).
+    Returns ({joint: project}, warnings).
+    """
+    projects: dict[str, Project] = {}
+    warnings: list[str] = []
+    for support in data.supports:
+        tag = f"joint {support.joint}"
+        if support.column is None:
+            warnings.append(f"{tag}: no column, skipped")
+            continue
+        column, grade, problem = column_input(support.column)
+        if column is None:
+            warnings.append(f"{tag}: {problem}, skipped")
+            continue
+        notes: list[str] = []
+        cases, combinations, used = _loads(support, data, template, source, include,
+                                           envelopes, method, notes)
+        if not cases:
+            warnings.append(f"{tag}: no load cases selected, skipped")
+            continue
+        warnings += [f"{tag}: {n}" for n in notes]
+        if grade is None and not isinstance(column, HSSSectionInput):
+            warnings.append(f"{tag}: unknown material {support.column.material!r}, "
+                            f"using {template.base_plate.column_grade}")
+        m2 = max(abs(support.forces[n].M2) for n in used)
+        m3 = max(abs(support.forces[n].M3) for n in used)
+        if m2 > M2_WARNING_RATIO * max(m3, 1e-9):
+            warnings.append(f"{tag}: weak-axis moment M2 up to {m2 / 1e6:.3g} kN·m "
+                            f"({m2 / max(m3, 1e-9):.0%} of M3) is not checked yet")
+        base_plate = template.base_plate.model_copy(update={
+            "column": column, "column_grade": grade or template.base_plate.column_grade})
+        info = template.info.model_copy(update={
+            "name": f"{template.info.name} - {tag} ({support.column.section})".strip(" -")})
+        project = template.model_copy(update={"info": info, "base_plate": base_plate,
+                                              "cases": cases, "combinations": combinations})
+        projects[support.joint] = Project.model_validate(project.model_dump())
+    return projects, warnings
