@@ -14,11 +14,12 @@ from dataclasses import dataclass, field
 from openconex import __version__
 from openconex.connections.base_plate.check import check_envelope
 from openconex.core.checks import CheckResult, Status
+from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
 from openconex.io.project import Project
 from openconex.units import Kind, UnitSystem, format_value
 
-__all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "fmt"]
+__all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "factor_expression", "fmt"]
 
 CODES = [
     "ANSI/AISC 360-22, Specification for Structural Steel Buildings",
@@ -32,6 +33,18 @@ def fmt(value: float, kind: Kind, units: UnitSystem, precision: int = 4) -> str:
     if kind is Kind.DIMENSIONLESS:
         return f"{value:.{precision}g}"
     return format_value(value, kind, units, precision)
+
+
+def factor_expression(factors: dict[str, float]) -> str:
+    """Combination factors with explicit signs, e.g. ``1.2·D - 0.6·W``."""
+    terms: list[str] = []
+    for name, value in factors.items():
+        term = f"{abs(value):g}·{name}"
+        if not terms:
+            terms.append(f"-{term}" if value < 0 else term)
+        else:
+            terms.append(f"{'-' if value < 0 else '+'} {term}")
+    return " ".join(terms)
 
 
 @dataclass
@@ -94,7 +107,6 @@ def _block(result: CheckResult, lang: str, units: UnitSystem) -> CheckBlock:
 def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:
     info = project.info
     lang, units = info.language, info.unit_system()
-    bp_in = project.base_plate
     bp = project.base_plate_model()
     combos = project.load_combinations()
     results, _ = check_envelope(bp, combos, project.case_forces())
@@ -111,7 +123,7 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
 
     L, T = Kind.LENGTH, Kind.THICKNESS
     inputs = [
-        Row([tr("input.column", lang), f"{bp_in.column} ({bp_in.column_grade})"]),
+        Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
         Row([tr("input.N", lang), q(bp.N, L)]),
         Row([tr("input.B", lang), q(bp.B, L)]),
         Row([tr("input.tp", lang), q(bp.tp, T)]),
@@ -129,8 +141,8 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),
                   q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)])
              for c, f in zip(project.cases, project.case_forces().values(), strict=True)]
-    combinations = [Row([c.name, c.method.value,
-                         " + ".join(f"{v:g}·{k}" for k, v in c.factors.items()), c.source])
+    combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
+                         tr("report.custom_source", lang) if c.source == "custom" else c.source])
                     for c in combos]
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
@@ -139,6 +151,10 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         assumptions.append(tr("report.assumption_cracked", lang))
     if bp.seismic:
         assumptions.append(tr("report.assumption_seismic", lang))
+    if isinstance(bp.column, HSSShape):
+        key = ("report.assumption_hss_round"
+               if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
+        assumptions.append(tr(key, lang))
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),

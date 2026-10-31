@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from openconex.connections.base_plate.check import BasePlate
+from openconex.core.model import HSSKind, HSSShape
 from openconex.drawing.base_plate import _rod_positions, anchor_hole
 
 __all__ = ["Part", "base_plate_parts", "occ_available", "write_step", "write_stl"]
@@ -104,10 +105,21 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
                                      for x, y in rods])),
     ]
     h = column_height or 1.5 * col.d
-    flanges = [_box(sx * col.d / 2 - (col.tf if sx > 0 else 0), -col.bf / 2, z_top, col.tf,
-                    col.bf, h) for sx in (-1, 1)]
-    web = _box(-col.d / 2 + col.tf, -col.tw / 2, z_top, col.d - 2 * col.tf, col.tw, h)
-    parts.append(Part("column", _fuse_all([*flanges, web])))
+    if isinstance(col, HSSShape):
+        if col.kind is HSSKind.ROUND:
+            outer = _cylinder(0, 0, z_top, col.d / 2, h)
+            inner = _cylinder(0, 0, z_top - 1, col.d / 2 - col.t, h + 2)
+        else:
+            outer = _box(-col.d / 2, -col.bf / 2, z_top, col.d, col.bf, h)
+            inner = _box(-col.d / 2 + col.t, -col.bf / 2 + col.t, z_top - 1,
+                         col.d - 2 * col.t, col.bf - 2 * col.t, h + 2)
+        column = _cut_all(outer, [inner])
+    else:
+        flanges = [_box(sx * col.d / 2 - (col.tf if sx > 0 else 0), -col.bf / 2, z_top,
+                        col.tf, col.bf, h) for sx in (-1, 1)]
+        web = _box(-col.d / 2 + col.tf, -col.tw / 2, z_top, col.d - 2 * col.tf, col.tw, h)
+        column = _fuse_all([*flanges, web])
+    parts.append(Part("column", column))
     af = 1.5 * d + 3.175  # heavy hex nut, across flats = 1.5d + 1/8 in.
     for i, (x, y) in enumerate(rods, 1):
         parts.append(Part(f"anchor_rod_{i}", _cylinder(x, y, -hef, d / 2, hef + z_top + 3 * d)))

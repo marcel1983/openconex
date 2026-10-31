@@ -4,6 +4,7 @@ import ezdxf
 import pytest
 
 from openconex.drawing.base_plate import LAYERS, BasePlateDrawing, anchor_hole, write_base_plate_dxf
+from openconex.io.project import HSSSectionInput
 from openconex.units import PRESETS, Kind, from_internal, to_internal
 
 
@@ -47,6 +48,19 @@ def test_texts_are_translated(tmp_path, project, lang, words):
     texts = " ".join(t.dxf.text for t in doc.modelspace().query("TEXT"))
     for word in words:
         assert word in texts
+
+
+def test_hss_column_outline(tmp_path, project):
+    project.base_plate.column = HSSSectionInput(
+        type="HSS", shape="round", d="12 in", t="0.5 in")
+    doc = ezdxf.readfile(_write(tmp_path, project, "US", "en"))
+    assert len(doc.modelspace().query('CIRCLE[layer=="BP-COLUMNA"]')) == 2
+
+    project.base_plate.column = HSSSectionInput(
+        type="HSS", shape="rectangular", d="12 in", bf="8 in", t="0.5 in")
+    doc = ezdxf.readfile(_write(tmp_path, project, "US", "es"))
+    # Two concentric outlines in plan plus the two tube walls in elevation.
+    assert len(doc.modelspace().query('LWPOLYLINE[layer=="BP-COLUMNA"]')) == 4
 
 
 def test_anchor_hole_table_14_2():

@@ -16,6 +16,7 @@ import ezdxf
 from ezdxf.enums import TextEntityAlignment
 
 from openconex.connections.base_plate.check import BasePlate
+from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
 from openconex.units import Kind, UnitSystem, format_value, from_internal, to_internal
 
@@ -127,6 +128,16 @@ def _i_shape(sheet: _Sheet, d, bf, tf, tw, cx, cy, layer):
                              dxfattribs={"layer": layer})
 
 
+def _hss_shape(sheet: _Sheet, kind: HSSKind, d, bf, t, cx, cy, layer):
+    """Outline of a rectangular/square or round HSS seen in plan."""
+    if kind is HSSKind.ROUND:
+        sheet.msp.add_circle((cx, cy), d / 2, dxfattribs={"layer": layer})
+        sheet.msp.add_circle((cx, cy), d / 2 - t, dxfattribs={"layer": layer})
+    else:
+        sheet.rect(cx - d / 2, cy - bf / 2, cx + d / 2, cy + bf / 2, layer)
+        sheet.rect(cx - d / 2 + t, cy - bf / 2 + t, cx + d / 2 - t, cy + bf / 2 - t, layer)
+
+
 def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lang: str = "es",
                          options: BasePlateDrawing | None = None) -> Path:
     opt = options or BasePlateDrawing()
@@ -149,7 +160,10 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     # ---------------------------------------------------------------- plan view
     s.rect(-pN / 2, -pB / 2, pN / 2, pB / 2, "BP-CONCRETO")
     s.rect(-N / 2, -B / 2, N / 2, B / 2, "BP-PLACA")
-    _i_shape(s, s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw), 0, 0, "BP-COLUMNA")
+    if isinstance(col, HSSShape):
+        _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
+    else:
+        _i_shape(s, s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw), 0, 0, "BP-COLUMNA")
     for x, y in rods:
         s.msp.add_circle((x, y), hole / 2, dxfattribs={"layer": "BP-PLACA"})
         s.msp.add_circle((x, y), d_rod / 2, dxfattribs={"layer": "BP-ANCLAJE"})
