@@ -5,7 +5,8 @@ import datetime as dt
 import pytest
 from docx import Document
 
-from openconex.report.builder import build_base_plate_report
+from openconex.io.project import CustomCombinationInput, HSSSectionInput
+from openconex.report.builder import build_base_plate_report, factor_expression
 from openconex.report.docx import latex_to_text, write_docx
 from openconex.report.html import latex_to_mathml, render_html
 from openconex.report.pdf import pdf_available, write_pdf
@@ -45,6 +46,32 @@ def test_report_flags_failures(project):
     r = build_base_plate_report(project, TODAY)
     assert not r.ok
     assert any(row.status == "ng" for row in r.summary)
+
+
+def test_custom_combinations_in_report(project):
+    project.combinations.include_code = False
+    project.combinations.custom = [
+        CustomCombinationInput(name="C-1", factors={"D": 1.2, "L": 1.6}),
+    ]
+    r = build_base_plate_report(project, TODAY)
+    assert [row.cells[0] for row in r.combinations] == ["C-1"]
+    assert r.combinations[0].cells[3] == "Personalizada"
+    assert {block.combo for block in r.checks} == {"C-1"}
+
+
+def test_factor_expression():
+    assert factor_expression({"D": 1.2, "L": 1.6}) == "1.2·D + 1.6·L"
+    assert factor_expression({"D": 0.6, "W": -0.6}) == "0.6·D - 0.6·W"
+    assert factor_expression({"W": -1.0}) == "-1·W"
+
+
+@pytest.mark.parametrize(("shape", "text"), [("square", "0.95"), ("round", "0.8")])
+def test_hss_column_report(project, shape, text):
+    project.base_plate.column = HSSSectionInput(
+        type="HSS", shape=shape, d="12 in", t="0.5 in")
+    r = build_base_plate_report(project, TODAY)
+    assert r.inputs[0].cells[1].startswith("HSS ")
+    assert any("HSS" in assumption and text in assumption for assumption in r.assumptions)
 
 
 def test_latex_helpers():

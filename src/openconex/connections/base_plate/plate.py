@@ -14,6 +14,7 @@ import math
 from dataclasses import dataclass
 
 from openconex.core.loads import Method
+from openconex.core.model import HSSKind
 from openconex.kernel.design import Resistance, available
 
 __all__ = [
@@ -51,9 +52,15 @@ def required_area(P: float, fc: float, A2_over_A1: float, method: Method) -> flo
     return P / bearing_stress(fc, A2_over_A1, method)
 
 
-def optimize_plan(A1_req: float, d: float, bf: float, step: float = 25.4) -> tuple[float, float]:
+def optimize_plan(A1_req: float, d: float, bf: float, step: float = 25.4,
+                  hss: HSSKind | None = None) -> tuple[float, float]:
     """Plate N × B with m ≈ n (DG1 Eq. 4-16 to 4-18), rounded up to ``step``."""
-    delta = (0.95 * d - 0.8 * bf) / 2
+    if hss is HSSKind.ROUND:
+        delta = 0.0
+    elif hss is not None:
+        delta = 0.95 * (d - bf) / 2
+    else:
+        delta = (0.95 * d - 0.8 * bf) / 2
     N = math.ceil((math.sqrt(A1_req) + delta) / step - 1e-9) * step
     B = math.ceil(A1_req / N / step - 1e-9) * step
     return N, B
@@ -69,20 +76,37 @@ class CompressionDesign:
     X: float
     lam: float
     l_crit: float
-    """Critical cantilever l = max(m, n, λn')."""
+    """Critical cantilever: max(m, n, λn') for I-shapes, max(m, n) for HSS."""
     tp_req: float
 
 
 def compression_design(P: float, d: float, bf: float, N: float, B: float, Fy: float, fc: float,
-                       A2_over_A1: float, method: Method) -> CompressionDesign:
-    """Concentric axial compression (DG1 §4.3.1, Eq. 4-10 to 4-15)."""
+                       A2_over_A1: float, method: Method,
+                       hss: HSSKind | None = None) -> CompressionDesign:
+    """Concentric axial compression (DG1 §4.3.1, Eq. 4-10 to 4-15).
+
+    For HSS columns the yield lines use 0.95 of both outside dimensions
+    (rectangular/square) or 0.8 of the diameter (round), and λn' does not
+    apply (DG1 §4.3.3).
+    """
     fp = bearing_stress(fc, A2_over_A1, method)
     pp = fp * B * N
-    m = (N - 0.95 * d) / 2
-    n = (B - 0.8 * bf) / 2
-    n_prime = math.sqrt(d * bf) / 4
-    X = 4 * d * bf / (d + bf) ** 2 * P / pp
-    lam = 1.0 if X >= 1 else min(1.0, 2 * math.sqrt(X) / (1 + math.sqrt(1 - X)))
+    if hss is HSSKind.ROUND:
+        m = (N - 0.8 * d) / 2
+        n = (B - 0.8 * d) / 2
+        n_prime = X = 0.0
+        lam = 1.0
+    elif hss is not None:
+        m = (N - 0.95 * d) / 2
+        n = (B - 0.95 * bf) / 2
+        n_prime = X = 0.0
+        lam = 1.0
+    else:
+        m = (N - 0.95 * d) / 2
+        n = (B - 0.8 * bf) / 2
+        n_prime = math.sqrt(d * bf) / 4
+        X = 4 * d * bf / (d + bf) ** 2 * P / pp
+        lam = 1.0 if X >= 1 else min(1.0, 2 * math.sqrt(X) / (1 + math.sqrt(1 - X)))
     l_crit = max(m, n, lam * n_prime)
     if method is Method.LRFD:
         tp = l_crit * math.sqrt(2 * P / (PLATE_FLEXURE.phi * Fy * B * N))

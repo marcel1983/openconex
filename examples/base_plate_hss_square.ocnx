@@ -1,0 +1,41 @@
+{
+  "format_version": 2,
+  "info": {
+    "name": "Ejemplo: columna HSS cuadrada",
+    "number": "OC-0004",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": {
+      "type": "HSS",
+      "shape": "square",
+      "d": "12 in",
+      "t": "0.5 in",
+      "grade": "ASTM A500 Gr. C (rectangular)"
+    },
+    "N": "24 in",
+    "B": "22 in",
+    "tp": "2 in",
+    "fc": "4 ksi",
+    "A2_over_A1": 1.0,
+    "pedestal_N": "36 in",
+    "pedestal_B": "36 in",
+    "grout": "1.5 in",
+    "rod_diameter": "1 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "9.25 in",
+    "rod_spacing": "12 in",
+    "hef": "18 in"
+  },
+  "cases": [
+    {"name": "D", "type": "D", "P": "100 kip", "M": "1000 kip*in"},
+    {"name": "L", "type": "L", "P": "160 kip", "M": "1500 kip*in"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}

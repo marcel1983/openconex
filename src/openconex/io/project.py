@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from openconex import __version__
 from openconex.connections.base_plate.check import BasePlate
@@ -25,7 +26,7 @@ from openconex.core.loads import (
     SeismicParameters,
     asce7_combinations,
 )
-from openconex.core.model import BoltSpec
+from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
 from openconex.kernel.anchors import Edges
 from openconex.units import PRESETS, Kind, UnitSystem, parse
@@ -33,15 +34,25 @@ from openconex.units import PRESETS, Kind, UnitSystem, parse
 __all__ = [
     "FORMAT_VERSION",
     "BasePlateInput",
+    "ColumnSectionInput",
+    "CombinationOptions",
+    "CustomCombinationInput",
+    "HSSSectionInput",
     "LoadCaseInput",
     "Project",
     "ProjectInfo",
+    "WSectionInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 Quantity = str | float
+
+
+def _repeated(names: list[str]) -> list[str]:
+    """Names that appear more than once, sorted."""
+    return sorted({name for name in names if names.count(name) > 1})
 
 
 class _Input(BaseModel):
@@ -62,10 +73,68 @@ class ProjectInfo(_Input):
         return PRESETS[self.units] if isinstance(self.units, str) else self.units
 
 
+def _dimension_text(value: Quantity) -> str:
+    """Dimension as typed, for generated section labels."""
+    return f"{value:g}" if isinstance(value, (int, float)) else str(value).strip()
+
+
+class WSectionInput(_Input):
+    """A generic doubly symmetric I-shape (W, M, S, HP or built-up) by dimensions."""
+
+    type: Literal["W"]
+    name: str = ""
+    d: Quantity
+    bf: Quantity
+    tf: Quantity
+    tw: Quantity
+    k_des: Quantity = 0.0
+    grade: str = "ASTM A992"
+
+    def label(self) -> str:
+        return self.name or "W " + "×".join(
+            _dimension_text(value) for value in (self.d, self.bf, self.tf, self.tw))
+
+
+class HSSSectionInput(_Input):
+    """A generic rectangular, square or round hollow structural section."""
+
+    type: Literal["HSS"]
+    name: str = ""
+    shape: HSSKind = HSSKind.RECTANGULAR
+    d: Quantity
+    """Outside depth (rectangular/square) or outside diameter (round)."""
+    bf: Quantity | None = None
+    """Outside width (rectangular/square); omitted for square or round sections."""
+    t: Quantity
+    grade: str | None = None
+    """Steel grade; defaults to ASTM A500 Gr. C for the section shape."""
+
+    @model_validator(mode="after")
+    def _width_required(self) -> HSSSectionInput:
+        if self.shape is HSSKind.RECTANGULAR and self.bf is None:
+            raise ValueError("a rectangular HSS needs its width bf")
+        if self.shape is HSSKind.ROUND and self.bf is not None:
+            raise ValueError("a round HSS uses its diameter; bf is not allowed")
+        return self
+
+    def label(self) -> str:
+        if self.name:
+            return self.name
+        if self.shape is HSSKind.ROUND:
+            return f"HSS Ø{_dimension_text(self.d)}×{_dimension_text(self.t)}"
+        width = self.d if self.bf is None else self.bf
+        return f"HSS {_dimension_text(self.d)}×{_dimension_text(width)}×" \
+               f"{_dimension_text(self.t)}"
+
+
+ColumnSectionInput = WSectionInput | HSSSectionInput
+
+
 class BasePlateInput(_Input):
-    column: str
-    """Shape label in the AISC catalog, e.g. ``W12X96``."""
+    column: str | ColumnSectionInput
+    """AISC label (e.g. ``W12X96``) or a generic section object."""
     column_grade: str = "ASTM A992"
+    """Grade of the catalog shape; generic sections carry their own ``grade``."""
     N: Quantity
     B: Quantity
     tp: Quantity
@@ -101,12 +170,38 @@ class LoadCaseInput(_Input):
     M: Quantity = 0.0
 
 
+class CustomCombinationInput(_Input):
+    """A load combination defined by the user, by case name."""
+
+    model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
+
+    name: str = Field(min_length=1)
+    method: Method = Method.LRFD
+    factors: dict[str, float] = Field(min_length=1)
+    """Factor applied to each load case; negative values reverse the case sign."""
+    seismic: bool = False
+    overstrength: bool = False
+    allowable_increase: float = Field(default=1.0, ge=1.0)
+    """Factor permitted on ASD allowable strengths (e.g. 1.2 for E_m)."""
+    source: str = ""
+
+    @model_validator(mode="after")
+    def _nonzero_factors(self) -> CustomCombinationInput:
+        if not any(value != 0.0 for value in self.factors.values()):
+            raise ValueError("a custom combination needs at least one non-zero factor")
+        return self
+
+
 class CombinationOptions(_Input):
     methods: list[Method] = Field(default_factory=lambda: [Method.LRFD])
     live_factor: float = 1.0
     SDS: float | None = None
     rho: float = 1.0
     omega0: float | None = None
+    include_code: bool = True
+    """Also generate the ASCE 7-22 combinations for ``methods``."""
+    custom: list[CustomCombinationInput] = Field(default_factory=list)
+    """User-defined combinations, added after the generated ones."""
 
 
 class Project(_Input):
@@ -117,6 +212,23 @@ class Project(_Input):
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
+    @model_validator(mode="after")
+    def _consistent_loads(self) -> Project:
+        case_names = [case.name for case in self.cases]
+        repeated = _repeated(case_names)
+        if repeated:
+            raise ValueError(f"duplicate load case names: {repeated}")
+        custom = self.combinations.custom
+        repeated = _repeated([combination.name for combination in custom])
+        if repeated:
+            raise ValueError(f"duplicate custom combination names: {repeated}")
+        unknown = {name for combination in custom for name in combination.factors} - set(case_names)
+        if unknown:
+            raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
+        if not custom and not (self.combinations.include_code and self.combinations.methods):
+            raise ValueError("no load combinations: enable include_code or define custom ones")
+        return self
+
     # -- conversion to the engine model ------------------------------------------------
     def quantity(self, value: Quantity, kind: Kind) -> float:
         """Value typed in the project (text with unit, or number in project units), internal."""
@@ -125,10 +237,31 @@ class Project(_Input):
             return parse(str(value), kind, units)
         return parse(value, kind, units)
 
+    def column_model(self) -> IShape | HSSShape:
+        """Column section of the project: catalog label or generic dimensions."""
+        section = self.base_plate.column
+        L = Kind.LENGTH
+        if isinstance(section, str):
+            return aisc_shapes().get(section).to_ishape(self.base_plate.column_grade)
+        if isinstance(section, WSectionInput):
+            return IShape(
+                name=section.label(), d=self.quantity(section.d, L),
+                bf=self.quantity(section.bf, L), tf=self.quantity(section.tf, L),
+                tw=self.quantity(section.tw, L), k_des=self.quantity(section.k_des, L),
+                grade=section.grade)
+        kind = section.shape
+        width = (None if kind is HSSKind.ROUND else
+                 self.quantity(section.d if section.bf is None else section.bf, L))
+        grade = section.grade or (
+            "ASTM A500 Gr. C (round)" if kind is HSSKind.ROUND
+            else "ASTM A500 Gr. C (rectangular)")
+        return HSSShape(name=section.label(), kind=kind, d=self.quantity(section.d, L),
+                        width=width, t=self.quantity(section.t, L), grade=grade)
+
     def base_plate_model(self) -> BasePlate:
         bp = self.base_plate
         L, T = Kind.LENGTH, Kind.THICKNESS
-        column = aisc_shapes().get(bp.column).to_ishape(bp.column_grade)
+        column = self.column_model()
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
         return BasePlate(
             column=column, N=self.quantity(bp.N, L), B=self.quantity(bp.B, L),
@@ -151,12 +284,35 @@ class Project(_Input):
 
     def load_combinations(self) -> list[LoadCombination]:
         opts = self.combinations
+        case_names = {case.name for case in self.cases}
+        repeated = _repeated([case.name for case in self.cases])
+        if repeated:
+            raise ValueError(f"duplicate load case names: {repeated}")
         cases = [LoadCase(name=c.name, type=c.type) for c in self.cases]
         seismic = (SeismicParameters(SDS=opts.SDS, rho=opts.rho, omega0=opts.omega0)
                    if opts.SDS is not None else None)
         out: list[LoadCombination] = []
-        for method in opts.methods:
-            out += asce7_combinations(cases, method, seismic, opts.live_factor)
+        if opts.include_code:
+            for method in opts.methods:
+                out += asce7_combinations(cases, method, seismic, opts.live_factor)
+        for custom in opts.custom:
+            unknown = set(custom.factors) - case_names
+            if unknown:
+                raise ValueError(f"custom combination {custom.name!r} uses undefined load cases: "
+                                 f"{sorted(unknown)}")
+            factors = {name: value for name, value in custom.factors.items() if value != 0.0}
+            if not factors:
+                raise ValueError(f"custom combination {custom.name!r} has no non-zero factors")
+            out.append(LoadCombination(
+                name=custom.name, method=custom.method, factors=factors,
+                seismic=custom.seismic, overstrength=custom.overstrength,
+                allowable_increase=custom.allowable_increase,
+                source=custom.source or "custom"))
+        repeated = _repeated([combination.name for combination in out])
+        if repeated:
+            raise ValueError(f"duplicate load combination names: {repeated}")
+        if not out:
+            raise ValueError("no load combinations: enable include_code or define custom ones")
         return out
 
 
@@ -170,5 +326,7 @@ def load_project(path: str | Path) -> Project:
 
 
 def save_project(project: Project, path: str | Path) -> None:
-    Path(path).write_text(project.model_dump_json(indent=2, exclude_defaults=False) + "\n",
+    """Write ``project`` in the current format version."""
+    current = project.model_copy(update={"format_version": FORMAT_VERSION})
+    Path(path).write_text(current.model_dump_json(indent=2, exclude_defaults=False) + "\n",
                           encoding="utf-8", newline="\n")

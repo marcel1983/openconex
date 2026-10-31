@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from openconex.core.checks import CheckResult, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.materials import STEELS
-from openconex.core.model import BoltSpec, FilletWeld, IShape
+from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape
 from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
 from openconex.units import Kind
@@ -33,7 +33,7 @@ DG1 = "AISC DG1 3rd ed."
 
 @dataclass(frozen=True)
 class BasePlate:
-    column: IShape
+    column: IShape | HSSShape
     N: float
     B: float
     tp: float
@@ -95,14 +95,21 @@ def _tp_expression(method: Method, moment: str) -> str:
     return k + moment
 
 
+def _cantilevers(column: IShape | HSSShape, N: float, B: float) -> tuple[float, float]:
+    """Critical plate projections m and n (DG1 Eq. 4-10, 4-11 and §4.3.3)."""
+    if isinstance(column, HSSShape):
+        coefficient = 0.8 if column.kind is HSSKind.ROUND else 0.95
+        return (N - coefficient * column.d) / 2, (B - coefficient * column.bf) / 2
+    return (N - 0.95 * column.d) / 2, (B - 0.8 * column.bf) / 2
+
+
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P = forces.P, V = V2, M = M3)."""
     col = bp.column
     P_, V, M = forces.P, abs(forces.V2), abs(forces.M3)
     results: list[CheckResult] = []
-    m = (bp.N - 0.95 * col.d) / 2
-    n = (bp.B - 0.8 * col.bf) / 2
+    m, n = _cantilevers(col, bp.N, bp.B)
 
     # --- bearing and plate thickness ---------------------------------------
     bend = bpl.rectangular_bending(P_, M, bp.N, bp.B, bp.f, bp.fc, bp.A2_over_A1, method)
@@ -115,7 +122,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         return results
     if bend.case == "compression_only":
         comp = bpl.compression_design(P_, col.d, col.bf, bp.N, bp.B, bp.Fy, bp.fc,
-                                    bp.A2_over_A1, method)
+                                    bp.A2_over_A1, method,
+                                    col.kind if isinstance(col, HSSShape) else None)
         c = Calc(method, combo)
         c.step("f_{p(max)}", r"\phi_c 0.85 f'_c \sqrt{A_2/A_1}", comp.fp_max, Kind.STRESS,
                "AISC 360-22 §J8")
