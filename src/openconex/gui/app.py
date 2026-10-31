@@ -7,13 +7,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QPixmap
+from PySide6.QtCore import QSignalBlocker, Qt
+from PySide6.QtGui import QAction, QActionGroup, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -34,19 +35,79 @@ from PySide6.QtWidgets import (
 )
 
 from openconex.connections.base_plate.check import optimize_base_plate
+from openconex.core.materials import BOLTS, STEELS
+from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
 from openconex.drawing.embedded_base import write_embedded_base_dxf
-from openconex.io.project import LoadCaseInput, Project, load_project, save_project
+from openconex.gui.library import (
+    SECTION_TYPES,
+    MaterialLibraryDialog,
+    SectionLibraryDialog,
+)
+from openconex.gui.quantity import (
+    convert_project,
+    convert_section,
+    convert_text,
+    format_quantity,
+    unit_label,
+)
+from openconex.io.project import (
+    HSSSectionInput,
+    LoadCaseInput,
+    MaterialInput,
+    Project,
+    WSectionInput,
+    load_project,
+    save_project,
+)
 from openconex.report.builder import Report, build_base_plate_report
 from openconex.report.docx import write_docx
 from openconex.report.html import write_html
 from openconex.report.pdf import write_pdf
-from openconex.units import Kind, format_value
+from openconex.units import PRESETS, Kind, UnitSystem, parse
 
 __all__ = ["MainWindow", "main"]
 
 APP_NAME = "OpenConex"
-OPTIONAL_FIELDS = ("N", "B", "tp", "rod_diameter", "f")
+OPTIONAL_FIELDS = ("pedestal_N", "pedestal_B")
+REQUIRED_QUANTITY_FIELDS = ("N", "B", "tp", "fc", "grout", "rod_diameter",
+                           "f", "rod_spacing", "hef")
+QUANTITY_KINDS: dict[str, Kind] = {
+    "N": Kind.LENGTH,
+    "B": Kind.LENGTH,
+    "tp": Kind.THICKNESS,
+    "fc": Kind.STRESS,
+    "grout": Kind.LENGTH,
+    "pedestal_N": Kind.LENGTH,
+    "pedestal_B": Kind.LENGTH,
+    "rod_diameter": Kind.LENGTH,
+    "f": Kind.LENGTH,
+    "rod_spacing": Kind.LENGTH,
+    "hef": Kind.LENGTH,
+}
+CASE_FIELDS = (
+    ("P", 2, Kind.FORCE),
+    ("V", 3, Kind.FORCE),
+    ("M", 4, Kind.MOMENT),
+    ("V_weak", 5, Kind.FORCE),
+    ("M_weak", 6, Kind.MOMENT),
+)
+UNIT_PRESET_LABELS = {
+    "SI_kN_m": "SI (kN, m)",
+    "SI_N_mm": "SI (N, mm)",
+    "MKS": "MKS (tf, m)",
+    "US": "US (kip, in)",
+}
+SectionInput = WSectionInput | HSSSectionInput
+
+
+def _quantity_row(edit: QLineEdit, unit: QLabel) -> QWidget:
+    widget = QWidget()
+    layout = QHBoxLayout(widget)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.addWidget(edit, 1)
+    layout.addWidget(unit)
+    return widget
 
 
 class MainWindow(QMainWindow):
@@ -57,16 +118,22 @@ class MainWindow(QMainWindow):
         self.project: Project | None = None
         self.report: Report | None = None
         self.path: Path | None = None
-        self._column_label = ""
+        self._units: UnitSystem = PRESETS["US"]
         self._info_edits: dict[str, QLineEdit] = {}
-        self._plate_edits: dict[str, QLineEdit] = {}
+        self._quantity_fields: dict[str, tuple[QLineEdit, QLabel, Kind]] = {}
+        self._plain_edits: dict[str, QLineEdit] = {}
         self._plate_boxes: dict[str, QCheckBox] = {}
+        self._material_combos: dict[str, QComboBox] = {}
+        self._custom_sections: dict[str, SectionInput] = {}
+        self._section_labels: list[str] | None = None
+        self._unit_actions: dict[str, QAction] = {}
         self._export_actions: list[QAction] = []
         self._build_ui()
 
+    # -- construction -----------------------------------------------------------
     def _build_ui(self) -> None:
         self.setWindowTitle(APP_NAME)
-        self.resize(1280, 820)
+        self.resize(1280, 860)
         self._build_menu()
         self._build_body()
         self.statusBar().showMessage("Abra un proyecto .ocnx o cree uno desde la plantilla.")
@@ -88,6 +155,27 @@ class MainWindow(QMainWindow):
         exit_action = QAction("Salir", self)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        library_menu = self.menuBar().addMenu("&Bibliotecas")
+        sections_action = QAction("Secciones…", self)
+        sections_action.triggered.connect(self.open_section_library)
+        library_menu.addAction(sections_action)
+        materials_action = QAction("Materiales…", self)
+        materials_action.triggered.connect(self.open_material_library)
+        library_menu.addAction(materials_action)
+
+        units_menu = self.menuBar().addMenu("&Unidades")
+        self._unit_group = QActionGroup(self)
+        self._unit_group.setExclusive(True)
+        for name in ("SI_kN_m", "SI_N_mm", "MKS", "US"):
+            action = QAction(UNIT_PRESET_LABELS[name], self)
+            action.setCheckable(True)
+            action.triggered.connect(
+                lambda _checked=False, preset=name: self.set_unit_system(preset))
+            self._unit_group.addAction(action)
+            units_menu.addAction(action)
+            self._unit_actions[name] = action
+        self._check_unit_action(self._units.name)
 
         calc_menu = self.menuBar().addMenu("&Cálculo")
         self.calc_action = QAction("Calcular", self)
@@ -142,7 +230,7 @@ class MainWindow(QMainWindow):
         figure_scroll.setWidget(self.figure_container)
         self.tabs.addTab(figure_scroll, "Figuras")
         splitter.addWidget(self.tabs)
-        splitter.setSizes([430, 850])
+        splitter.setSizes([460, 820])
         self.setCentralWidget(splitter)
 
     def _build_info_group(self) -> QGroupBox:
@@ -157,35 +245,68 @@ class MainWindow(QMainWindow):
         self.language = QComboBox()
         self.language.addItems(["es", "en"])
         layout.addRow("Idioma", self.language)
-        self.units = QComboBox()
-        from openconex.units import PRESETS
-        self.units.addItems(sorted(PRESETS))
-        layout.addRow("Unidades", self.units)
         return group
+
+    def _material_combo(self, key: str, names: list[str]) -> QComboBox:
+        combo = QComboBox()
+        combo.addItems(names)
+        self._material_combos[key] = combo
+        return combo
+
+    def _add_quantity(self, layout: QFormLayout, key: str, label: str,
+                      kind: Kind) -> None:
+        edit = QLineEdit()
+        unit = QLabel(unit_label(self._units, kind))
+        unit.setMinimumWidth(42)
+        layout.addRow(label, _quantity_row(edit, unit))
+        self._quantity_fields[key] = (edit, unit, kind)
 
     def _build_plate_group(self) -> QGroupBox:
         group = QGroupBox("Placa base")
         layout = QFormLayout(group)
-        fields = (
-            ("column", "Columna"),
-            ("N", "Largo N"),
-            ("B", "Ancho B"),
-            ("tp", "Espesor tp"),
-            ("plate_grade", "Acero de la placa"),
-            ("fc", "f'c"),
-            ("A2_over_A1", "A2/A1"),
-            ("grout", "Mortero"),
-            ("rod_diameter", "Diámetro de anclaje"),
-            ("rod_grade", "Grado de anclaje"),
-            ("rods_per_side", "Barras por lado"),
-            ("f", "Distancia f"),
-            ("rod_spacing", "Separación de barras"),
-            ("hef", "Empotramiento hef"),
-        )
-        for key, label in fields:
-            edit = QLineEdit()
-            self._plate_edits[key] = edit
-            layout.addRow(label, edit)
+
+        section_row = QWidget()
+        section_layout = QHBoxLayout(section_row)
+        section_layout.setContentsMargins(0, 0, 0, 0)
+        self._section_combo = QComboBox()
+        self._section_combo.setEditable(True)
+        self._section_combo.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        completer = self._section_combo.completer()
+        if completer is not None:
+            completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            completer.setFilterMode(Qt.MatchFlag.MatchContains)
+        section_layout.addWidget(self._section_combo, 1)
+        self._section_combo.currentTextChanged.connect(self._on_section_changed)
+        library = QPushButton("…")
+        library.setFixedWidth(30)
+        library.setToolTip("Abrir la biblioteca de secciones")
+        library.clicked.connect(self.open_section_library)
+        section_layout.addWidget(library)
+        layout.addRow("Columna", section_row)
+        layout.addRow("Grado de columna",
+                      self._material_combo("column_grade", sorted(STEELS)))
+
+        self._add_quantity(layout, "N", "Largo N", Kind.LENGTH)
+        self._add_quantity(layout, "B", "Ancho B", Kind.LENGTH)
+        self._add_quantity(layout, "tp", "Espesor tp", Kind.THICKNESS)
+        layout.addRow("Acero de la placa",
+                      self._material_combo("plate_grade", sorted(STEELS)))
+        self._add_quantity(layout, "fc", "f'c", Kind.STRESS)
+        a2 = QLineEdit()
+        self._plain_edits["A2_over_A1"] = a2
+        layout.addRow("A2/A1", a2)
+        self._add_quantity(layout, "pedestal_N", "Pedestal N", Kind.LENGTH)
+        self._add_quantity(layout, "pedestal_B", "Pedestal B", Kind.LENGTH)
+        self._add_quantity(layout, "grout", "Mortero", Kind.LENGTH)
+        self._add_quantity(layout, "rod_diameter", "Diámetro de anclaje", Kind.LENGTH)
+        layout.addRow("Grado de anclaje",
+                      self._material_combo("rod_grade", sorted(BOLTS)))
+        rods = QLineEdit()
+        self._plain_edits["rods_per_side"] = rods
+        layout.addRow("Barras por lado", rods)
+        self._add_quantity(layout, "f", "Distancia f", Kind.LENGTH)
+        self._add_quantity(layout, "rod_spacing", "Separación de barras", Kind.LENGTH)
+        self._add_quantity(layout, "hef", "Empotramiento hef", Kind.LENGTH)
         for key, label in (("grout_pad", "Con mortero"),
                            ("cracked", "Concreto fisurado"),
                            ("seismic", "Opción sísmica")):
@@ -198,8 +319,7 @@ class MainWindow(QMainWindow):
         group = QGroupBox("Casos de carga")
         layout = QVBoxLayout(group)
         self.cases = QTableWidget(0, 7)
-        self.cases.setHorizontalHeaderLabels(
-            ["Nombre", "Tipo", "P", "V", "M", "V débil", "M débil"])
+        self.cases.setHorizontalHeaderLabels(self._case_headers())
         self.cases.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.cases)
         buttons = QHBoxLayout()
@@ -225,6 +345,210 @@ class MainWindow(QMainWindow):
         layout.addStretch(1)
         return widget
 
+    # -- units ------------------------------------------------------------------
+    def _case_headers(self) -> list[str]:
+        force = unit_label(self._units, Kind.FORCE)
+        moment = unit_label(self._units, Kind.MOMENT)
+        return ["Nombre", "Tipo", f"P ({force})", f"V ({force})", f"M ({moment})",
+                f"V débil ({force})", f"M débil ({moment})"]
+
+    def _update_unit_labels(self) -> None:
+        for _key, (_edit, label, kind) in self._quantity_fields.items():
+            label.setText(unit_label(self._units, kind))
+        self.cases.setHorizontalHeaderLabels(self._case_headers())
+
+    def _check_unit_action(self, name: str) -> None:
+        action = self._unit_actions.get(name)
+        if action is not None:
+            action.setChecked(True)
+            return
+        self._unit_group.setExclusive(False)
+        for item in self._unit_actions.values():
+            item.setChecked(False)
+        self._unit_group.setExclusive(True)
+
+    def set_unit_system(self, name: str) -> None:
+        """Change the display units and convert the form and the project."""
+        if name not in PRESETS:
+            return
+        new = PRESETS[name]
+        if new == self._units:
+            self._check_unit_action(name)
+            return
+        old = self._units
+        project = self.project
+        if project is not None:
+            try:
+                project = convert_project(project, old, new)
+            except Exception as exc:
+                QMessageBox.critical(self, "No se pudieron cambiar las unidades", str(exc))
+                self._check_unit_action(old.name)
+                return
+        errors = self._convert_form_quantities(old, new)
+        self._units = new
+        self.project = project
+        self._update_unit_labels()
+        self._check_unit_action(name)
+        if project is not None:
+            project.info.units = name
+            self.report = None
+            self._set_export_enabled(False)
+        if errors:
+            QMessageBox.warning(
+                self, "Unidades",
+                "No se pudieron convertir estos valores; revíselos:\n" + "\n".join(errors))
+        self.statusBar().showMessage(f"Unidades del formulario: {UNIT_PRESET_LABELS[name]}")
+
+    def _convert_form_quantities(self, old: UnitSystem, new: UnitSystem) -> list[str]:
+        errors: list[str] = []
+        for key, (edit, _label, kind) in self._quantity_fields.items():
+            text = edit.text().strip()
+            if not text:
+                continue
+            try:
+                edit.setText(convert_text(text, kind, old, new))
+            except Exception:
+                errors.append(key)
+        for row in range(self.cases.rowCount()):
+            for attr, col, kind in CASE_FIELDS:
+                item = self.cases.item(row, col)
+                if item is None or not item.text().strip():
+                    continue
+                try:
+                    item.setText(convert_text(item.text(), kind, old, new))
+                except Exception:
+                    errors.append(f"caso {row + 1} ({attr})")
+        for label, section in list(self._custom_sections.items()):
+            try:
+                self._custom_sections[label] = convert_section(section, old, new)
+            except Exception:
+                errors.append(label)
+        return errors
+
+    # -- sections and materials -------------------------------------------------
+    def _catalog_labels(self) -> list[str]:
+        if self._section_labels is None:
+            database = aisc_shapes()
+            self._section_labels = [label for kind in SECTION_TYPES
+                                    for label in database.labels(kind)]
+        return self._section_labels
+
+    def _steel_names(self) -> list[str]:
+        names = set(STEELS)
+        if self.project is not None:
+            names.update(material.name for material in self.project.materials)
+        names.update(section.grade for section in self._custom_sections.values())
+        return sorted(names)
+
+    @staticmethod
+    def _fill_combo(combo: QComboBox, names: list[str], current: str | None) -> None:
+        with QSignalBlocker(combo):
+            combo.clear()
+            combo.addItems(names)
+            if current:
+                index = combo.findText(current)
+                if index >= 0:
+                    combo.setCurrentIndex(index)
+                else:
+                    combo.addItem(current)
+                    combo.setCurrentIndex(combo.count() - 1)
+
+    def _refresh_material_combos(self,
+                                 current: dict[str, str] | None = None) -> None:
+        values = current or {key: combo.currentText()
+                             for key, combo in self._material_combos.items()}
+        steels = self._steel_names()
+        if "column_grade" in self._material_combos:
+            self._fill_combo(self._material_combos["column_grade"], steels,
+                             values.get("column_grade"))
+        if "plate_grade" in self._material_combos:
+            self._fill_combo(self._material_combos["plate_grade"], steels,
+                             values.get("plate_grade"))
+        if "rod_grade" in self._material_combos:
+            self._fill_combo(self._material_combos["rod_grade"], sorted(BOLTS),
+                             values.get("rod_grade"))
+
+    def _refresh_section_combo(self, select: str | None = None) -> None:
+        current = select or self._section_combo.currentText()
+        labels = list(self._catalog_labels())
+        labels.extend(label for label in self._custom_sections if label not in labels)
+        with QSignalBlocker(self._section_combo):
+            self._section_combo.clear()
+            self._section_combo.addItems(labels)
+            if current:
+                index = self._section_combo.findText(current)
+                if index >= 0:
+                    self._section_combo.setCurrentIndex(index)
+                else:
+                    self._section_combo.setEditText(current)
+
+    def _register_custom_section(self, section: SectionInput) -> SectionInput:
+        section = section.model_copy(deep=True)
+        if not section.name.strip():
+            section = section.model_copy(update={"name": section.label()})
+        self._custom_sections[section.label()] = section
+        return section
+
+    def add_custom_section(self, section: SectionInput) -> str:
+        """Add a section to the project library and select it."""
+        if self.project is None:
+            raise ValueError("abra un proyecto .ocnx antes de crear secciones")
+        section = section.model_copy(deep=True)
+        name = section.name.strip()
+        if not name:
+            name = section.label()
+            section = section.model_copy(update={"name": name})
+        label = section.label()
+        if label in self._custom_sections:
+            raise ValueError(f"Ya existe una sección {label!r} en el proyecto.")
+        try:
+            aisc_shapes().get(label)
+        except ShapeDatabaseError:
+            pass
+        else:
+            raise ValueError(f"La sección {label!r} ya existe en el catálogo AISC.")
+        self._custom_sections[label] = section
+        self._refresh_material_combos()
+        self._refresh_section_combo(select=label)
+        self._on_section_changed(label)
+        if self.project is not None:
+            self.project.sections = [item.model_copy(deep=True)
+                                     for item in self._custom_sections.values()]
+        return label
+
+    def add_custom_material(self, material: MaterialInput) -> None:
+        """Add a custom steel to the project and to the material combos."""
+        if self.project is None:
+            raise ValueError("abra un proyecto .ocnx antes de crear materiales")
+        name = material.name.strip()
+        existing = {*STEELS, *(item.name for item in self.project.materials),
+                    *(section.grade for section in self._custom_sections.values())}
+        if name in existing:
+            raise ValueError(f"Ya existe un material llamado {name!r}.")
+        self.project.materials.append(material.model_copy(update={"name": name}))
+        self._refresh_material_combos()
+
+    def _on_section_changed(self, label: str) -> None:
+        section = self._custom_sections.get(label)
+        if section is not None and "column_grade" in self._material_combos:
+            self._fill_combo(self._material_combos["column_grade"],
+                             self._steel_names(), section.grade)
+
+    def open_section_library(self) -> None:
+        callback = self.add_custom_section if self.project is not None else None
+        dialog = SectionLibraryDialog(self, self._units, self._custom_sections,
+                                      callback, self._steel_names())
+        if dialog.exec() == QDialog.DialogCode.Accepted and dialog.selected_label:
+            self._section_combo.setCurrentText(dialog.selected_label)
+            self._on_section_changed(dialog.selected_label)
+
+    def open_material_library(self) -> None:
+        materials = [] if self.project is None else self.project.materials
+        callback = self.add_custom_material if self.project is not None else None
+        dialog = MaterialLibraryDialog(self, self._units, materials, callback)
+        dialog.exec()
+
+    # -- project form -----------------------------------------------------------
     def _add_case(self) -> None:
         row = self.cases.rowCount()
         self.cases.insertRow(row)
@@ -258,28 +582,56 @@ class MainWindow(QMainWindow):
         info = project.info
         for key, edit in self._info_edits.items():
             edit.setText(str(getattr(info, key) or ""))
-        self.language.setCurrentText(info.language)
-        units = info.units if isinstance(info.units, str) else "US"
-        self.units.setCurrentText(units)
-        bp = project.base_plate
-        self._column_label = (bp.column if isinstance(bp.column, str)
-                              else getattr(bp.column, "name", str(bp.column)))
-        self._plate_edits["column"].setText(self._column_label)
-        for key, edit in self._plate_edits.items():
-            if key == "column":
+        self.language.setCurrentText(info.language if info.language in ("es", "en") else "es")
+        self._units = project.info.unit_system()
+        self._check_unit_action(self._units.name)
+
+        self._custom_sections.clear()
+        for section in project.sections:
+            self._register_custom_section(section)
+        column = project.base_plate.column
+        if isinstance(column, str):
+            column_label = column
+            column_grade = project.base_plate.column_grade
+        else:
+            section = self._register_custom_section(column)
+            column_label = section.label()
+            column_grade = section.grade
+        self._refresh_section_combo(select=column_label)
+        self._refresh_material_combos({
+            "column_grade": column_grade,
+            "plate_grade": project.base_plate.plate_grade,
+            "rod_grade": project.base_plate.rod_grade,
+        })
+        self._section_combo.setCurrentText(column_label)
+        self._on_section_changed(column_label)
+
+        for key, (edit, _label, kind) in self._quantity_fields.items():
+            raw = getattr(project.base_plate, key, None)
+            if raw is None:
+                edit.setText("")
                 continue
-            value = getattr(bp, key, "")
-            edit.setText("" if value is None else str(value))
+            try:
+                edit.setText(format_quantity(project.quantity(raw, kind), kind, self._units))
+            except Exception:
+                edit.setText(str(raw))
+        for key, edit in self._plain_edits.items():
+            raw = getattr(project.base_plate, key, None)
+            edit.setText("" if raw is None else str(raw))
         for key, box in self._plate_boxes.items():
-            box.setChecked(bool(getattr(bp, key, False)))
+            box.setChecked(bool(getattr(project.base_plate, key, False)))
+
         self.cases.setRowCount(0)
         for case in project.cases:
             row = self.cases.rowCount()
             self.cases.insertRow(row)
-            values = (case.name, case.type.value, case.P, case.V, case.M,
-                      case.V_weak, case.M_weak)
+            values = [case.name, case.type.value]
+            for _attr, _col, kind in CASE_FIELDS:
+                values.append(format_quantity(project.quantity(getattr(case, _attr), kind),
+                                              kind, self._units))
             for col, value in enumerate(values):
                 self.cases.setItem(row, col, QTableWidgetItem(str(value)))
+        self._update_unit_labels()
         self._update_title()
 
     def _update_title(self) -> None:
@@ -295,39 +647,94 @@ class MainWindow(QMainWindow):
         for key, edit in self._info_edits.items():
             setattr(info, key, edit.text().strip())
         info.language = self.language.currentText()
-        info.units = self.units.currentText()
+        info.units = self._units.name if self._units.name in PRESETS else self._units
         bp = data.base_plate
-        column = self._plate_edits["column"].text().strip()
-        if column and column != self._column_label:
-            bp.column = column
-        for key, edit in self._plate_edits.items():
-            if key == "column":
-                continue
+
+        column_text = self._section_combo.currentText().strip()
+        if not column_text:
+            QMessageBox.warning(self, "Datos incompletos", "Seleccione una sección de columna.")
+            return None
+        grade = self._material_combos["column_grade"].currentText()
+        custom = self._custom_sections.get(column_text)
+        if custom is not None:
+            custom = custom.model_copy(update={"grade": grade})
+            self._custom_sections[column_text] = custom
+            bp.column = custom
+        else:
+            try:
+                bp.column = aisc_shapes().get(column_text).label
+            except ShapeDatabaseError:
+                QMessageBox.critical(self, "Sección desconocida",
+                                     f"No se encontró la sección {column_text!r}.")
+                return None
+            bp.column_grade = grade
+
+        errors: list[str] = []
+        for key, (edit, label, kind) in self._quantity_fields.items():
             text = edit.text().strip()
-            if key in OPTIONAL_FIELDS and not text:
-                setattr(bp, key, None)
-            elif text and key == "A2_over_A1":
-                bp.A2_over_A1 = float(text)
-            elif text and key == "rods_per_side":
-                bp.rods_per_side = int(text)
-            elif text:
+            if not text:
+                if key in OPTIONAL_FIELDS:
+                    setattr(bp, key, None)
+                elif key in REQUIRED_QUANTITY_FIELDS:
+                    errors.append(f"{label}: falta el valor")
+                continue
+            try:
+                parse(text, kind, self._units)
+            except Exception as exc:
+                errors.append(f"{label}: {exc}")
+            else:
                 setattr(bp, key, text)
+        try:
+            a2 = self._plain_edits["A2_over_A1"].text().strip()
+            bp.A2_over_A1 = float(a2) if a2 else bp.A2_over_A1
+            rods = self._plain_edits["rods_per_side"].text().strip()
+            bp.rods_per_side = int(rods) if rods else bp.rods_per_side
+            if bp.A2_over_A1 <= 0 or bp.rods_per_side < 1:
+                raise ValueError("A2/A1 y el número de barras deben ser positivos")
+        except ValueError as exc:
+            errors.append(f"A2/A1 o barras por lado: {exc}")
+        if errors:
+            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
+            return None
+
+        bp.plate_grade = self._material_combos["plate_grade"].currentText()
+        bp.rod_grade = self._material_combos["rod_grade"].currentText()
         for key, box in self._plate_boxes.items():
             setattr(bp, key, box.isChecked())
-        cases = []
+
+        cases: list[LoadCaseInput] = []
         for row in range(self.cases.rowCount()):
             values = [self.cases.item(row, col).text().strip() if self.cases.item(row, col)
                       else "" for col in range(7)]
-            cases.append(LoadCaseInput(name=values[0], type=values[1] or "D", P=values[2] or 0,
-                                       V=values[3] or 0, M=values[4] or 0,
-                                       V_weak=values[5] or 0, M_weak=values[6] or 0))
+            name = values[0]
+            if not name:
+                errors.append(f"caso {row + 1}: falta el nombre")
+                continue
+            quantities = []
+            for (attr, col, kind) in CASE_FIELDS:
+                text = values[col] or "0"
+                try:
+                    parse(text, kind, self._units)
+                except Exception as exc:
+                    errors.append(f"{name} ({attr}): {exc}")
+                quantities.append(text)
+            cases.append(LoadCaseInput(
+                name=name, type=values[1] or "D", P=quantities[0], V=quantities[1],
+                M=quantities[2], V_weak=quantities[3], M_weak=quantities[4]))
+        if errors:
+            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
+            return None
+
         data.cases = cases
+        data.sections = [section.model_copy(deep=True)
+                         for section in self._custom_sections.values()]
         try:
             return Project.model_validate(data.model_dump())
         except Exception as exc:
             QMessageBox.critical(self, "Datos incompletos", str(exc))
             return None
 
+    # -- calculation and report -------------------------------------------------
     def calculate(self) -> None:
         project = self._project_from_form()
         if project is None:
@@ -350,10 +757,9 @@ class MainWindow(QMainWindow):
         try:
             bp = optimize_base_plate(project.base_plate_model(),
                                      project.load_combinations(), project.case_forces())
-            units = project.info.unit_system()
-            project.base_plate.N = format_value(bp.N, Kind.LENGTH, units, precision=4)
-            project.base_plate.B = format_value(bp.B, Kind.LENGTH, units, precision=4)
-            project.base_plate.tp = format_value(bp.tp, Kind.THICKNESS, units, precision=4)
+            project.base_plate.N = format_quantity(bp.N, Kind.LENGTH, self._units)
+            project.base_plate.B = format_quantity(bp.B, Kind.LENGTH, self._units)
+            project.base_plate.tp = format_quantity(bp.tp, Kind.THICKNESS, self._units)
             self.project = project
             self._fill_form(project)
             self.calculate()

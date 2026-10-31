@@ -14,7 +14,7 @@ OpenConex calcula conexiones metálicas según AISC 360-22, la Guía de Diseño 
 6. [Resultados](06-resultados.md): memoria, planos y modelo 3D.
 7. [Unidades y materiales](07-unidades-materiales.md)
 8. [Alcance y limitaciones](08-limitaciones.md)
-9. [Interfaz gráfica](09-interfaz.md): abrir, calcular, revisar y exportar desde el escritorio.
+9. [Interfaz gráfica](09-interfaz.md): secciones, materiales, unidades, cálculo y exportación desde el escritorio.
 
 ## Flujo de trabajo
 
