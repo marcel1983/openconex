@@ -18,9 +18,10 @@ En español o inglés según `--lang`, y en las unidades de `--units`:
 - **Encabezado:** datos del proyecto (`info`).
 1. **Normas e hipótesis:** normas de referencia e hipótesis (placa rígida, concreto fisurado, opción sísmica, tipo de columna).
 2. **Datos:** geometría, materiales, anclajes, soldaduras y llave de corte; casos de carga (P, V, M y, si hay, los del eje débil).
-3. **Combinaciones:** factores y origen de cada una.
-4. **Resumen:** una fila por verificación con demanda, capacidad, relación y estado.
-5. **Verificaciones:** para la combinación que gobierna cada verificación, todas las ecuaciones con sus valores y la cláusula de la norma (AISC 360-22, DG1, ACI 318-19).
+3. **Figuras:** planta, elevación e isométrico del modelo 3D. Son SVG vectoriales en HTML/PDF. En DOCX se rasterizan a PNG con PySide6 (extra `pdf`); sin ese extra se omite con un aviso.
+4. **Combinaciones:** factores y origen de cada una.
+5. **Resumen:** una fila por verificación con demanda, capacidad, relación y estado.
+6. **Verificaciones:** para la combinación que gobierna cada verificación, todas las ecuaciones con sus valores y la cláusula de la norma (AISC 360-22, DG1, ACI 318-19).
 
 El HTML se abre en cualquier navegador y se imprime a PDF desde él. El DOCX se edita en Word o LibreOffice. El PDF directo requiere el extra `pdf`.
 
