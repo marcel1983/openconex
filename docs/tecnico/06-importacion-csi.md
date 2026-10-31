@@ -12,7 +12,17 @@ SAP2000 exporta una tabla por hoja de Excel:
 
 `read_tables` usa el título de la fila 1 y no el nombre de la hoja, porque Excel limita los nombres de hoja a 31 caracteres y SAP2000 los abrevia.
 
-Para ETABS se normalizan las variantes de nombres de tabla y columna: `Joint Restraints`, `Joint Reaction Forces`, `Point Coordinates`, `Load Cases`, `Load Patterns`, `Frame Connectivity`, `Frame Local Axes`, espacios en `Output Case`, `Design Type`, `Joint I/J`, etc. La lista está en `_TABLE_ALIASES` y `_COLUMN_ALIASES`.
+Para ETABS se leen las tablas de objetos y se unen por `UniqueName`:
+- `Point Object Connectivity` para coordenadas;
+- `Joint Assignments - Restraints` para apoyos;
+- `Joint Reactions` para FX/FY/FZ/MX/MY/MZ;
+- `Column Object Connectivity` para la columna que nace en el apoyo;
+- `Frame Assignments - Section Properties`, `- Summary` y `- Local Axes` para sección y giro;
+- `Frame Section Property Definitions - Summary`, `- Steel I/Wide Flange` y `- Steel Tube` para material y dimensiones;
+- `Load Pattern Definitions` y `Load Case Definitions - Linear/Nonlinear/Response Spectrum/Summary` para tipos y patrones;
+- `Load Combination Definitions` para las combinaciones.
+
+También se normalizan variantes de nombres de tabla y columna mediante `_TABLE_ALIASES` y `_COLUMN_ALIASES`. Para ETABS, `Step By Step` usa la primera fila de cada apoyo y caso; `Mode` se descarta.
 
 Las unidades de cada columna (`Kgf`, `Tonf`, `KN`, `Kip`, `m`, `cm`, `in`, `Kgf-m`, …) se convierten a N y mm. Una unidad desconocida da error.
 

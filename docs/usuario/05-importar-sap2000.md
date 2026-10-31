@@ -2,7 +2,7 @@
 
 OpenConex lee las tablas de base de datos que SAP2000 exporta a Excel. Con ellas encuentra los apoyos, la columna que nace en cada uno y sus reacciones, y crea los proyectos de placa base.
 
-> Probado con SAP2000 v27. Para ETABS se aceptan las variantes habituales de nombres de tabla y columna (`Joint Restraints`, `Joint Reaction Forces`, `Load Cases`, `Frame Connectivity`, etc.). Falta validar con una exportación real de ETABS antes de considerarlo probado.
+> Probado con SAP2000 v27 y con una exportación real de ETABS 23.2. También se aceptan variantes de nombres de tabla y columna (`Joint Restraints`, `Joint Reaction Forces`, `Load Cases`, `Frame Connectivity`, etc.).
 
 ## 1. Exportar desde SAP2000
 
@@ -26,7 +26,7 @@ OpenConex lee las tablas de base de datos que SAP2000 exporta a Excel. Con ellas
 
 Sin las tablas de barras, los apoyos se importan sin columna y no se pueden crear proyectos. Sin la tabla de ejes locales, se toma un giro de 0°.
 
-ETABS comparte el esquema de base de datos CSI. OpenConex normaliza las variantes de nombre más comunes; si una versión usa otro nombre, exporte la tabla con el nombre estándar o añada el alias en `io/csi.py`.
+ETABS comparte el esquema de base de datos CSI, pero usa tablas de objetos (`Point Object Connectivity`, `Column Object Connectivity`, `Frame Assignments - ...`) y separa los casos en `Load Case Definitions - Linear Static`, `- Nonlinear Static` y `- Response Spectrum`. OpenConex une esas tablas por `UniqueName` y normaliza las variantes de nombre más comunes. Si una versión usa otro nombre, exporte la tabla con el nombre estándar o añada el alias en `io/csi.py`.
 
 ## 2. Revisar lo importado
 

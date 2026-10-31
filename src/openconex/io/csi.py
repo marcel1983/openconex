@@ -82,6 +82,7 @@ _TABLE_ALIASES = {
 }
 
 _COLUMN_ALIASES = {
+    "UniqueName": ("UniqueName", "Unique Name"),
     "Joint": ("Joint", "Point"),
     "GlobalX": ("GlobalX", "Global X", "X"),
     "Y": ("Y",),
@@ -116,6 +117,7 @@ _DESIGN_TYPES = {
     "dead": LoadType.DEAD, "super dead": LoadType.DEAD, "live": LoadType.LIVE,
     "reducible live": LoadType.LIVE, "roof live": LoadType.ROOF_LIVE, "snow": LoadType.SNOW,
     "rain": LoadType.RAIN, "wind": LoadType.WIND, "quake": LoadType.SEISMIC,
+    "seismic": LoadType.SEISMIC,
 }
 
 
@@ -337,14 +339,340 @@ def _plate_forces(f1, f2, f3, m1, m2, m3, angle: float) -> Forces:
                   M2=m1 * c + m2 * s, M3=-m1 * s + m2 * c, T=m3)
 
 
+def _column(table: Table, *names: str) -> str | None:
+    keys = {_normalized(name): name for name in table.columns}
+    for name in names:
+        if name in table.columns:
+            return name
+        found = keys.get(_normalized(name))
+        if found:
+            return found
+    return None
+
+
+def _cell(row: dict[str, Any], *names: str) -> Any:
+    keys = {_normalized(name): name for name in row}
+    for name in names:
+        if name in row:
+            return row[name]
+        found = keys.get(_normalized(name))
+        if found:
+            return row[found]
+    return None
+
+
+def _first_table(tables: dict[str, Table], *names: str) -> Table | None:
+    for name in names:
+        if name in tables:
+            return tables[name]
+    keys = {_normalized(name): table for name, table in tables.items()}
+    for name in names:
+        found = keys.get(_normalized(name))
+        if found is not None:
+            return found
+    return None
+
+
+def _is_etabs(tables: dict[str, Table]) -> bool:
+    return any(name in tables for name in (
+        "Point Object Connectivity", "Joint Assignments - Restraints",
+        "Column Object Connectivity"))
+
+
+def _etabs_section_dims(tables: dict[str, Table]) -> dict[str, dict[str, float]]:
+    tables_defs = (
+        (_first_table(tables, "Frame Section Property Definitions - Steel I/Wide Flange",
+                      "Frame Sec Def - Steel I"),
+         {"t3": ("Total Depth",), "t2": ("Top Flange Width",),
+          "tf": ("Top Flange Thickness",), "tw": ("Web Thickness",)}),
+        (_first_table(tables, "Frame Section Property Definitions - Steel Tube",
+                      "Frame Sec Def - Steel Tube"),
+         {"t3": ("Total Depth",), "t2": ("Total Width",),
+          "tf": ("Flange Thickness",), "tw": ("Web Thickness",)}),
+        (_first_table(tables, "Frame Section Property Definitions - Concrete Rectangular",
+                      "Frame Sec Def - Conc Rect"),
+         {"t3": ("Depth",), "t2": ("Width",)}),
+    )
+    result: dict[str, dict[str, float]] = {}
+    for table, fields in tables_defs:
+        if table is None:
+            continue
+        for row in table.rows:
+            name = str(_cell(row, "Name") or "")
+            if not name:
+                continue
+            dims = {}
+            for key, aliases in fields.items():
+                col = _column(table, *aliases)
+                if col is not None and _cell(row, col) is not None:
+                    dims[key] = _converter(table, col, Kind.LENGTH)(_cell(row, col))
+            result[name] = dims
+    return result
+
+
+def _etabs_column_info(tables: dict[str, Table]) -> dict[str, dict[str, Any]]:
+    """Section, material, shape, angle and dimensions keyed by frame UniqueName."""
+    info: dict[str, dict[str, Any]] = {}
+    sect = _first_table(tables, "Frame Assignments - Section Properties",
+                        "Frame Assigns - Sect Prop")
+    if sect is not None:
+        for row in sect.rows:
+            uid = str(_cell(row, "UniqueName") or "")
+            if uid:
+                info.setdefault(uid, {}).update(
+                    section=str(_cell(row, "Section Property") or ""),
+                    shape=str(_cell(row, "Shape") or ""))
+    summary = _first_table(tables, "Frame Assignments - Summary", "Frame Assigns - Summary")
+    if summary is not None:
+        for row in summary.rows:
+            uid = str(_cell(row, "UniqueName") or "")
+            if uid:
+                entry = info.setdefault(uid, {})
+                entry.setdefault(
+                    "section",
+                    str(_cell(row, "Design Section", "Analysis Section",
+                              "DesignSect", "AnalSect") or ""))
+                angle = _cell(row, "Axis Angle")
+                if angle is not None:
+                    entry["angle"] = float(angle)
+    axes = _first_table(tables, "Frame Assignments - Local Axes", "Frame Assigns - Local Axes")
+    if axes is not None:
+        for row in axes.rows:
+            uid = str(_cell(row, "UniqueName") or "")
+            if uid:
+                entry = info.setdefault(uid, {})
+                angle = _cell(row, "Angle")
+                if angle is not None:
+                    entry["angle"] = float(angle)
+    props = _first_table(tables, "Frame Section Property Definitions - Summary",
+                         "Frame Prop - Summary")
+    prop_info: dict[str, tuple[str, str]] = {}
+    if props is not None:
+        for row in props.rows:
+            name = str(_cell(row, "Name") or "")
+            if name:
+                prop_info[name] = (str(_cell(row, "Material") or ""),
+                                   str(_cell(row, "Shape") or ""))
+    dims = _etabs_section_dims(tables)
+    for entry in info.values():
+        section = entry.get("section", "")
+        material, shape = prop_info.get(section, ("", ""))
+        entry["material"] = material
+        entry["shape"] = entry.get("shape") or shape
+        entry["dimensions"] = dims.get(section, {})
+    return info
+
+
+def _etabs_patterns(tables: dict[str, Table]) -> tuple[dict[str, tuple[str, LoadType | None]],
+                                                      set[str]]:
+    table = tables.get("Load Pattern Definitions")
+    if table is None:
+        return {}, set()
+    patterns: dict[str, tuple[str, LoadType | None]] = {}
+    seismic: set[str] = set()
+    for row in table.rows:
+        name = str(_cell(row, "Name") or "")
+        design = str(_cell(row, "Type") or "")
+        if not name:
+            continue
+        load_type = _DESIGN_TYPES.get(design.lower())
+        patterns[name] = (design, load_type)
+        if load_type is LoadType.SEISMIC:
+            seismic.add(name)
+    return patterns, seismic
+
+
+def _etabs_cases(tables: dict[str, Table]) -> tuple[dict[str, tuple[str, LoadType | None]],
+                                                    dict[str, set[str]], set[str]]:
+    patterns, seismic_patterns = _etabs_patterns(tables)
+    case_info = dict(patterns)
+    case_loads: dict[str, set[str]] = {}
+    case_kind: dict[str, str] = {}
+    for table_name in ("Load Case Definitions - Linear Static",
+                       "Load Case Definitions - Nonlinear Static",
+                       "Load Case Definitions - Response Spectrum",
+                       "Load Case Definitions - Summary",
+                       "Load Cases - Linear Static", "Load Cases - Nonlinear Static",
+                       "Load Cases - Response Spectrum", "Load Cases - Summary"):
+        table = _first_table(tables, table_name)
+        if table is None:
+            continue
+        for row in table.rows:
+            name = str(_cell(row, "Name") or "")
+            if not name:
+                continue
+            load = _cell(row, "Load Name")
+            if load:
+                case_loads.setdefault(name, set()).add(str(load))
+            design = str(_cell(row, "Design Type") or "")
+            if design and design.lower() != "program determined":
+                load_type = _DESIGN_TYPES.get(design.lower())
+                if load_type is not None:
+                    case_info[name] = (design, load_type)
+            kind = str(_cell(row, "Type") or "")
+            if kind:
+                case_kind[name] = kind
+    for name, loads in case_loads.items():
+        if name in case_info and case_info[name][1] is not None:
+            continue
+        for load in loads:
+            if load in patterns and patterns[load][1] is not None:
+                case_info[name] = patterns[load]
+                break
+    seismic_cases = {name for name, loads in case_loads.items()
+                     if loads & seismic_patterns}
+    seismic_cases |= {name for name, kind in case_kind.items()
+                      if "response spectrum" in kind.lower()}
+    children: dict[str, set[str]] = {}
+    combos = tables.get("Load Combination Definitions")
+    if combos is not None:
+        for row in combos.rows:
+            name = str(_cell(row, "Name") or "")
+            load = str(_cell(row, "Load Name") or "")
+            if name and load:
+                children.setdefault(name, set()).add(load)
+    found: dict[str, bool] = {}
+
+    def seismic(name: str) -> bool:
+        if name not in found:
+            found[name] = False
+            found[name] = name in seismic_cases or any(
+                seismic(child) for child in children.get(name, ()))
+        return found[name]
+
+    seismic_names = {name for name in seismic_cases | set(children) if seismic(name)}
+    return case_info, case_loads, seismic_names
+
+
+def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
+    coords_table = tables.get("Point Object Connectivity")
+    restraints_table = tables.get("Joint Assignments - Restraints")
+    reactions_table = tables.get("Joint Reactions")
+    if coords_table is None or restraints_table is None or reactions_table is None:
+        missing = [name for name, table in (
+            ("Point Object Connectivity", coords_table),
+            ("Joint Assignments - Restraints", restraints_table),
+            ("Joint Reactions", reactions_table)) if table is None]
+        raise ValueError("missing tables: " + ", ".join(missing))
+
+    coord_uid = _column(coords_table, "UniqueName")
+    coord_x = _column(coords_table, "X", "GlobalX")
+    coord_y = _column(coords_table, "Y")
+    coord_z = _column(coords_table, "Z")
+    if None in (coord_uid, coord_x, coord_y, coord_z):
+        raise ValueError("Point Object Connectivity needs UniqueName, X, Y and Z")
+    coord_conv = [_converter(coords_table, col, Kind.LENGTH)
+                  for col in (coord_x, coord_y, coord_z)]
+    coords = {str(_cell(row, coord_uid)): tuple(
+        conv(_cell(row, col)) for conv, col in zip(coord_conv, (coord_x, coord_y, coord_z),
+                                                   strict=True))
+        for row in coords_table.rows}
+
+    rest_uid = _column(restraints_table, "UniqueName")
+    if rest_uid is None:
+        raise ValueError("Joint Assigns - Restraints needs UniqueName")
+    keys = ("UX", "UY", "UZ", "RX", "RY", "RZ")
+    restraints = {str(_cell(row, rest_uid)): tuple(
+        str(_cell(row, key) or "").lower() == "yes" for key in keys)
+        for row in restraints_table.rows}
+    support_ids = {uid for uid, values in restraints.items() if any(values)}
+    all_coords = dict(coords)
+    coords = {uid: xyz for uid, xyz in coords.items() if uid in support_ids}
+
+    columns = _etabs_column_info(tables)
+    conn = tables.get("Column Object Connectivity")
+    found_columns: dict[str, ImportedColumn] = {}
+    if conn is not None:
+        frame_col = _column(conn, "UniqueName")
+        i_col = _column(conn, "UniquePtI")
+        j_col = _column(conn, "UniquePtJ")
+        for row in conn.rows:
+            if frame_col is None or i_col is None or j_col is None:
+                break
+            frame = str(_cell(row, frame_col))
+            for end, other in ((i_col, j_col), (j_col, i_col)):
+                uid = str(_cell(row, end))
+                other_id = str(_cell(row, other))
+                if uid not in coords or other_id not in all_coords:
+                    continue
+                support_z = coords[uid][2]
+                if all_coords[other_id][2] <= support_z:
+                    continue
+                info = columns.get(frame, {})
+                if uid in found_columns:
+                    warnings.append(
+                        f"joint {uid}: several columns, using frame {found_columns[uid].frame}")
+                    continue
+                found_columns[uid] = ImportedColumn(
+                    frame, info.get("section", ""), info.get("shape", ""),
+                    info.get("angle", 0.0), info.get("material", ""),
+                    info.get("dimensions", {}))
+    if conn is None:
+        warnings.append("no 'Column Object Connectivity' data: supports imported without column")
+
+    case_info, _, seismic_names = _etabs_cases(tables)
+    reactions_uid = _column(reactions_table, "UniqueName")
+    output_col = _column(reactions_table, "OutputCase")
+    case_type_col = _column(reactions_table, "CaseType")
+    step_col = _column(reactions_table, "StepType")
+    force_cols = [_column(reactions_table, name) for name in ("FX", "FY", "FZ")]
+    moment_cols = [_column(reactions_table, name) for name in ("MX", "MY", "MZ")]
+    if None in (reactions_uid, output_col) or None in force_cols or None in moment_cols:
+        raise ValueError("Joint Reactions needs UniqueName, OutputCase, FX/FY/FZ and MX/MY/MZ")
+    force = [_converter(reactions_table, col, Kind.FORCE) for col in force_cols]
+    moment = [_converter(reactions_table, col, Kind.MOMENT) for col in moment_cols]
+    cases: dict[str, ImportedCase] = {}
+    forces: dict[str, dict[str, Forces]] = {uid: {} for uid in coords}
+    skipped: set[str] = set()
+    step_cases: set[str] = set()
+    for row in reactions_table.rows:
+        uid = str(_cell(row, reactions_uid))
+        output = str(_cell(row, output_col) or "")
+        if uid not in forces:
+            continue
+        step = str(_cell(row, step_col) or "")
+        if step == "Mode" or step not in ("", "Max", "Min", "Step By Step"):
+            skipped.add(f"{output} ({step})")
+            continue
+        label = f"{output} ({step})" if step in ("Max", "Min") else output
+        if step == "Step By Step":
+            if label in forces[uid]:
+                step_cases.add(output)
+                continue
+        if label not in cases:
+            case_type = str(_cell(row, case_type_col) or "")
+            design, load_type = case_info.get(output, ("", None))
+            kind = (CaseKind.ENVELOPE if step in ("Max", "Min") else
+                    CaseKind.COMBINATION if case_type == "Combination" else
+                    CaseKind.LOAD_CASE)
+            cases[label] = ImportedCase(label, output, case_type, kind, load_type, design,
+                                        output in seismic_names)
+        angle = found_columns[uid].angle if uid in found_columns else 0.0
+        forces[uid][label] = _plate_forces(
+            *(conv(_cell(row, col)) for conv, col in zip(force, force_cols, strict=True)),
+            *(conv(_cell(row, col)) for conv, col in zip(moment, moment_cols, strict=True)),
+            angle)
+    if skipped:
+        warnings.append("output cases skipped (not a single set of forces): "
+                        + ", ".join(sorted(skipped)))
+    if step_cases:
+        warnings.append("Step By Step cases use the first output step: "
+                        + ", ".join(sorted(step_cases)))
+    supports = [Support(uid, *coords[uid], restraints[uid], found_columns.get(uid),
+                        forces[uid]) for uid in sorted(coords, key=_natural)]
+    return CsiImport(supports, cases, warnings)
+
+
 def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
     """Supports, their column and reactions from exported SAP2000 / ETABS tables."""
     tables = ({t.name: t for t in (_normalize_table(table) for table in source.values())}
               if isinstance(source, dict) else read_tables(source))
+    warnings: list[str] = []
+    if _is_etabs(tables):
+        return _import_etabs(tables, warnings)
     missing = [t for t in REQUIRED if t not in tables]
     if missing:
         raise ValueError("missing tables: " + ", ".join(missing))
-    warnings: list[str] = []
     coords = _coordinates(tables["Joint Coordinates"])
     restraints = {j: r for j, r in _restraints(tables["Joint Restraint Assignments"]).items()
                   if any(r)}
