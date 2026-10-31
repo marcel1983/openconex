@@ -162,8 +162,10 @@ def isometric_svg(parts: list[Part], width: float = 210, height: float = 150) ->
     algo = HLRBRep_Algo()
     for part in parts:
         algo.Add(part.shape)
+    # Keep the world Z axis (the column) vertical on the sheet: the projection
+    # plane X axis must be horizontal.
     projector = HLRAlgo_Projector(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(1, 1, 1),
-                                         gp_Dir(0, 0, 1)))
+                                         gp_Dir(-1, 1, 0)))
     algo.Projector(projector)
     algo.Update()
     algo.Hide()

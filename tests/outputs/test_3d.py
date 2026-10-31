@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
 import math
+import re
 
 import pytest
 
@@ -28,6 +29,22 @@ def test_parts_and_exports(tmp_path, project):
     step = write_step(parts, tmp_path / "bp.step")
     assert step.read_text()[:14] == "ISO-10303-21;\n"[:14]
     assert write_stl(parts, tmp_path / "bp.stl").stat().st_size > 10_000
+
+
+def test_isometric_keeps_the_column_vertical():
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
+    from OCP.gp import gp_Pnt
+
+    from openconex.geometry3d.base_plate import Part, isometric_svg
+
+    column = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 10, 10, 100).Shape()
+    svg = isometric_svg([Part("column", column)])
+    points = [tuple(map(float, point.split(",")))
+              for group in re.findall(r'points="([^"]+)"', svg)
+              for point in group.split()]
+    xs = [x for x, _ in points]
+    ys = [y for _, y in points]
+    assert max(ys) - min(ys) > 2 * (max(xs) - min(xs))
 
 
 def test_hss_column_volume(project):
