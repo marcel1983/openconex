@@ -92,8 +92,11 @@ def _stress(FEXX: float, theta: float, p: float) -> float:
 
 def _concentric(elems, w, FEXX, u) -> float:
     thetas = [_theta(tx, ty, *u) for *_, tx, ty in elems]
-    delta = min(_du(w, th) for th in thetas)
     throat = w / math.sqrt(2)
+    if max(thetas) - min(thetas) < 1e-6:  # elements in line or parallel, §J2.4(b)
+        return sum(_stress(FEXX, th, 1.0) * throat * L
+                   for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
+    delta = min(_du(w, th) for th in thetas)
     return sum(_stress(FEXX, th, delta / _dm(w, th)) * throat * L
                for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
 
