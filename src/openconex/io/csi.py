@@ -36,6 +36,7 @@ them about the column axis. For I shapes the strong axis is the local axis 3.
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
@@ -56,6 +57,53 @@ __all__ = [
 ]
 
 REQUIRED = ("Joint Coordinates", "Joint Restraint Assignments", "Joint Reactions")
+
+# ETABS and SAP2000 share most of the CSI database schema, but some versions
+# use shorter or spaced table and column names. Normalize the common aliases
+# when reading the workbook.
+_TABLE_ALIASES = {
+    "Joint Coordinates": ("Joint Coordinates", "Point Coordinates",
+                          "Joint Object Coordinates", "Point Object Coordinates"),
+    "Joint Restraint Assignments": ("Joint Restraint Assignments", "Joint Restraints",
+                                    "Point Restraint Assignments", "Point Restraints"),
+    "Joint Reactions": ("Joint Reactions", "Joint Reaction Forces", "Point Reactions"),
+    "Load Case Definitions": ("Load Case Definitions", "Load Cases"),
+    "Load Pattern Definitions": ("Load Pattern Definitions", "Load Patterns"),
+    "Case - Static 1 - Load Assignments": (
+        "Case - Static 1 - Load Assignments", "Static 1 - Load Assignments"),
+    "Combination Definitions": ("Combination Definitions", "Load Combinations"),
+    "Connectivity - Frame": ("Connectivity - Frame", "Frame Connectivity"),
+    "Frame Section Assignments": ("Frame Section Assignments", "Frame Section Assignment"),
+    "Frame Section Properties 01 - General": (
+        "Frame Section Properties 01 - General", "Frame Section Properties"),
+    "Frame Local Axes Assignments 1 - Typical": (
+        "Frame Local Axes Assignments 1 - Typical", "Frame Local Axes",
+        "Frame Local Axes Assignments"),
+}
+
+_COLUMN_ALIASES = {
+    "Joint": ("Joint", "Point"),
+    "GlobalX": ("GlobalX", "Global X", "X"),
+    "Y": ("Y",),
+    "Z": ("Z",),
+    "XorR": ("XorR", "X or R", "X"),
+    "DesignType": ("DesignType", "Design Type"),
+    "OutputCase": ("OutputCase", "Output Case"),
+    "CaseType": ("CaseType", "Case Type"),
+    "StepType": ("StepType", "Step Type"),
+    "JointI": ("JointI", "Joint I"),
+    "JointJ": ("JointJ", "Joint J"),
+    "CentroidX": ("CentroidX", "Centroid X"),
+    "CentroidY": ("CentroidY", "Centroid Y"),
+    "CentroidZ": ("CentroidZ", "Centroid Z"),
+    "AnalSect": ("AnalSect", "Analysis Section"),
+    "DesignSect": ("DesignSect", "Design Section"),
+    "SectionName": ("SectionName", "Section Name"),
+    "ComboName": ("ComboName", "Combo Name"),
+    "CaseName": ("CaseName", "Case Name"),
+    "LoadPat": ("LoadPat", "Load Pattern"),
+    "LoadName": ("LoadName", "Load Name"),
+}
 
 # CSI unit names -> pint
 _UNITS = {
@@ -82,6 +130,25 @@ class Table:
         return self.units[self.columns.index(column)]
 
 
+def _normalized(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+def _canonical(name: str, aliases: dict[str, tuple[str, ...]]) -> str:
+    key = _normalized(name)
+    for canonical, options in aliases.items():
+        if key in {_normalized(option) for option in options}:
+            return canonical
+    return name
+
+
+def _normalize_table(table: Table) -> Table:
+    columns = [_canonical(c, _COLUMN_ALIASES) for c in table.columns]
+    return Table(_canonical(table.name, _TABLE_ALIASES), columns, table.units, [
+        {columns[i]: value for i, value in enumerate(row.values()) if i < len(columns)}
+        for row in table.rows])
+
+
 def read_tables(path: str | Path) -> dict[str, Table]:
     """All database tables of an Excel file exported by SAP2000 or ETABS."""
     from openpyxl import load_workbook
@@ -98,7 +165,8 @@ def read_tables(path: str | Path) -> dict[str, Table]:
             units = [str(c) if c is not None else "" for c in rows[2]]
             data = [dict(zip(columns, r, strict=False)) for r in rows[3:]
                     if any(v is not None for v in r)]
-            tables[name] = Table(name, columns, units, data)
+            table = _normalize_table(Table(name, columns, units, data))
+            tables[table.name] = table
     finally:
         workbook.close()
     return tables
@@ -271,7 +339,8 @@ def _plate_forces(f1, f2, f3, m1, m2, m3, angle: float) -> Forces:
 
 def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
     """Supports, their column and reactions from exported SAP2000 / ETABS tables."""
-    tables = source if isinstance(source, dict) else read_tables(source)
+    tables = ({t.name: t for t in (_normalize_table(table) for table in source.values())}
+              if isinstance(source, dict) else read_tables(source))
     missing = [t for t in REQUIRED if t not in tables]
     if missing:
         raise ValueError("missing tables: " + ", ".join(missing))

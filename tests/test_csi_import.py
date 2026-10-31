@@ -11,7 +11,7 @@ from openpyxl import Workbook
 from openconex.cli import main
 from openconex.core.loads import LoadType, Method
 from openconex.core.model import HSSKind
-from openconex.io.csi import CaseKind, ImportedColumn, import_supports, read_tables
+from openconex.io.csi import CaseKind, ImportedColumn, Table, import_supports, read_tables
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects, column_input
 from openconex.io.project import HSSSectionInput, WSectionInput, load_project
 
@@ -99,6 +99,36 @@ def test_read_tables_uses_table_titles(export):
     assert "Frame Section Properties 01 - General" in tables
     assert tables["Joint Reactions"].unit("M2") == "Tonf-cm"
     assert len(tables["Joint Reactions"].rows) == 9
+
+
+def test_etabs_table_and_column_aliases(export):
+    tables = read_tables(export)
+    table_aliases = {
+        "Joint Restraint Assignments": "Joint Restraints",
+        "Joint Reactions": "Joint Reaction Forces",
+        "Load Case Definitions": "Load Cases",
+        "Connectivity - Frame": "Frame Connectivity",
+        "Frame Local Axes Assignments 1 - Typical": "Frame Local Axes",
+        "Frame Section Properties 01 - General": "Frame Section Properties",
+    }
+    column_aliases = {
+        "DesignType": "Design Type", "OutputCase": "Output Case",
+        "CaseType": "Case Type", "StepType": "Step Type",
+        "JointI": "Joint I", "JointJ": "Joint J",
+        "CentroidX": "Centroid X", "CentroidY": "Centroid Y",
+        "CentroidZ": "Centroid Z", "SectionName": "Section Name",
+    }
+    aliased = {}
+    for table in tables.values():
+        name = table_aliases.get(table.name, table.name)
+        columns = [column_aliases.get(c, c) for c in table.columns]
+        rows = [dict(zip(columns, [row.get(c) for c in table.columns], strict=True))
+                for row in table.rows]
+        aliased[name] = Table(name, columns, table.units, rows)
+    data = import_supports(aliased)
+    assert [s.joint for s in data.supports] == ["1", "2"]
+    assert data.supports[0].column.section == "W14X90"
+    assert data.cases["U1"].kind is CaseKind.COMBINATION
 
 
 def test_supports_columns_and_sections(export):
