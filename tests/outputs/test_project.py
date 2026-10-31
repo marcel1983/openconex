@@ -291,6 +291,19 @@ def test_rod_bending_lever_is_parsed():
     assert project.base_plate_model().rod_bending_lever == pytest.approx(46.355)
 
 
+def test_weak_base_input_is_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["weak_base"] = {
+        "reduced_diameter": "0.75 in", "stretch_length": "8 in", "Rt": 1.2,
+    }
+    data["base_plate"]["bearing_area"] = "3.21 in**2"
+    weak = Project.model_validate(data).base_plate_model().weak_base
+    assert weak is not None
+    assert weak.reduced_diameter == pytest.approx(to_internal(0.75, "in", Kind.LENGTH))
+    assert weak.stretch_length == pytest.approx(to_internal(8, "in", Kind.LENGTH))
+    assert weak.Rt == pytest.approx(1.2)
+
+
 def test_reinforcement_input_is_parsed():
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["reinforcement"] = {

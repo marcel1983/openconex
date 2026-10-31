@@ -15,6 +15,8 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.thickness_compression_weak` | Espesor en compresión, eje débil | DG1 Ec. 4-47 a 4-52 | ✔ |
 | `base_plate.thickness_tension_weak` | Espesor en tracción, eje débil | DG1 Ec. 4-62 | ✔ |
 | `base_plate.biaxial` | Interacción de flexión biaxial (M/M_cap)² + (M2/M2_cap)² ≤ 1 | DG1 §4.3.7, Ec. 4-69 | ✔ |
+| `base_plate.weak_base_area` | Sección reducida de la barra dúctil | DG1 §6.4.2 | ✔ |
+| `base_plate.weak_base_stretch` | Longitud de estiramiento de la barra dúctil | DG1 §6.4.2 | ✔ |
 | `base_plate.friction` | Corte por fricción | DG1 §4.3.5, Ec. 4-30 | ✔ |
 | `base_plate.rod_combined` | Barra con tracción, corte y flexión (arandelas soldadas) | AISC 360-22 §J3.8; DG1 Ej. 4.7-6 | ✔ |
 | `base_plate.lug_shear_yielding` | Llave de corte: fluencia por corte | AISC 360-22 §J4.2(a) | ✔ |
