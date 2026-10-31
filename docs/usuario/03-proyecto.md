@@ -94,6 +94,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
 | `embedded_base` | ninguno | Base empotrada tipo I con placas de cara (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
+| `pedestal_rebars` | `[]` | Barras longitudinales del pedestal para el revisor de interferencias (ver más abajo). |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
 | `flange_weld` | ninguno | Tamaño de la soldadura de filete en las alas de la columna; si se da, se verifica para el momento. |
@@ -210,6 +211,25 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
 
 Cuando se define `embedded_base`, la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta. Es LRFD, solo para perfiles I y no admite momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+
+### Barras del pedestal (`pedestal_rebars`)
+
+Posiciones en planta de las barras longitudinales del pedestal, respecto al eje de la columna. `x` va en la dirección de `N` y `y` en la de `B`:
+
+```json
+"pedestal_rebars": [
+  {"x": "-7 in", "y": "7 in", "diameter": "0.75 in"},
+  {"x": "7 in", "y": "-7 in", "diameter": "0.75 in"}
+]
+```
+
+| Campo | Significado |
+|---|---|
+| `x` | Posición en la dirección de `N`. |
+| `y` | Posición en la dirección de `B`. |
+| `diameter` | Diámetro de la barra. |
+
+El revisor comprueba que las barras de anclaje no choquen con estas barras. Si la lista está vacía, no se ejecuta esa comprobación.
 
 ### Llave de corte (`shear_lug`)
 

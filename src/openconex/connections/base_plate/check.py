@@ -46,6 +46,7 @@ __all__ = [
     "BasePlate",
     "BearingAreaModel",
     "EmbeddedBase",
+    "PedestalRebar",
     "PressureModel",
     "Reinforcement",
     "ShearLug",
@@ -112,6 +113,15 @@ class Reinforcement:
 
 
 @dataclass(frozen=True)
+class PedestalRebar:
+    """Longitudinal pedestal bar at a plan position, relative to the column axis."""
+
+    x: float
+    y: float
+    diameter: float
+
+
+@dataclass(frozen=True)
 class EmbeddedBase:
     """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
 
@@ -165,6 +175,7 @@ class BasePlate:
     rod_bending_lever: float | None = None
     """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
     reinforcement: Reinforcement | None = None
+    pedestal_rebars: tuple[PedestalRebar, ...] = ()
     weak_base: WeakBase | None = None
     embedded_base: EmbeddedBase | None = None
 
@@ -578,6 +589,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side,
         tension_demand=tension_demand)
     results += axis
+    from . import interference
+    results += interference.anchor_interference(bp, method, combo)
     if ductile is not None and weak is not None:
         c = Calc(method, combo)
         c.step(r"T_{red}", r"\frac{\pi d_r^2}{4}F_u", ductile.T_reduced, Kind.FORCE,

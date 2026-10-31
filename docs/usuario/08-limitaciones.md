@@ -17,6 +17,7 @@
 - **Área efectiva:** el área efectiva bajo el perfil I (DG1 Apéndice B.3) está disponible para la capacidad de aplastamiento en compresión concéntrica; no se aplica a HSS ni a combinaciones con momento.
 - **Flexión biaxial:** cada eje se verifica por separado y se combina con la interacción de la DG1 Ec. 4-69. No es un análisis de presiones biaxial completo.
 - **Llave de corte:** no se dibuja en el DXF ni en el modelo 3D. Tampoco se verifica la flexión local de la placa base en la soldadura de la llave.
+- **Interferencias:** el revisor usa una huella cuadrada conservadora para la arandela y el rectángulo envolvente de la columna. No comprueba la trayectoria tridimensional de la barra de anclaje, el gancho ni el resto de la armadura del pedestal que no se declare en `pedestal_rebars`.
 - **Refuerzo de anclaje:** se comprueba la capacidad, el desarrollo del gancho y el empotramiento requerido. No se comprueba la longitud de desarrollo recta ni el detalle completo de la armadura del pedestal.
 - **Bases sísmicas especiales:** la base débil con anclajes dúctiles (`weak_base`, DG1 §6.4) y la base empotrada tipo I (`embedded_base`, DG1 Capítulo 5) están integradas en el proyecto. La base débil exige LRFD, presión rectangular y un grado con `Fy`; la base empotrada exige LRFD, perfiles I y no admite momento débil, levantamiento neto, llave de corte ni base débil.
 - **Importación:** solo SAP2000 (ETABS usa otros nombres de tabla); solo columnas verticales que nacen en el apoyo.

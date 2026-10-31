@@ -355,6 +355,18 @@ def test_embedded_base_rejects_weak_axis_and_shear_lug():
         Project.model_validate(data)
 
 
+def test_pedestal_rebars_are_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["pedestal_rebars"] = [
+        {"x": "-7 in", "y": "7 in", "diameter": "0.75 in"},
+        {"x": "7 in", "y": "-7 in", "diameter": "0.75 in"},
+    ]
+    bars = Project.model_validate(data).base_plate_model().pedestal_rebars
+    assert len(bars) == 2
+    assert bars[0].x == pytest.approx(to_internal(-7, "in", Kind.LENGTH))
+    assert bars[1].diameter == pytest.approx(to_internal(0.75, "in", Kind.LENGTH))
+
+
 def test_reinforcement_input_is_parsed():
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["reinforcement"] = {

@@ -22,10 +22,10 @@
     "fc": "4 ksi",
     "A2_over_A1": 4.0,
     "grout": "1.5 in",
-    "rod_diameter": "1 in",
+    "rod_diameter": "3/4 in",
     "rod_grade": "ASTM F1554 Gr. 36",
     "rods_per_side": 2,
-    "f": "9 in",
+    "f": "7.5 in",
     "rod_spacing": "0 in",
     "hef": "0 in"
   },

@@ -20,6 +20,7 @@ from openconex.connections.base_plate.check import (
     BasePlate,
     BearingAreaModel,
     EmbeddedBase,
+    PedestalRebar,
     PressureModel,
     Reinforcement,
     ShearLug,
@@ -50,6 +51,7 @@ __all__ = [
     "HSSSectionInput",
     "LoadCaseInput",
     "MaterialInput",
+    "PedestalRebarInput",
     "Project",
     "ProjectInfo",
     "ReinforcementInput",
@@ -198,6 +200,14 @@ class ReinforcementInput(_Input):
     """Available development length."""
 
 
+class PedestalRebarInput(_Input):
+    """Longitudinal pedestal bar in plan, relative to the column axis."""
+
+    x: Quantity
+    y: Quantity
+    diameter: Quantity
+
+
 class EmbeddedBaseInput(_Input):
     """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
 
@@ -245,6 +255,7 @@ class BasePlateInput(_Input):
     """Column axis to each anchor row."""
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
+    pedestal_rebars: list[PedestalRebarInput] = Field(default_factory=list)
     reinforcement: ReinforcementInput | None = None
     weak_base: WeakBaseInput | None = None
     embedded_base: EmbeddedBaseInput | None = None
@@ -389,6 +400,9 @@ class Project(_Input):
                     raise ValueError("embedded base dimensions must be positive")
             if embedded.beta1 <= 0:
                 raise ValueError("embedded base beta1 must be positive")
+        for bar in self.base_plate.pedestal_rebars:
+            if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
+                raise ValueError("pedestal rebar diameter must be positive")
         reinforcement = self.base_plate.reinforcement
         if reinforcement is not None:
             for value, kind in ((reinforcement.area, Kind.AREA),
@@ -466,6 +480,10 @@ class Project(_Input):
             rod_bending_lever=(None if bp.rod_bending_lever is None
                                else self.quantity(bp.rod_bending_lever, L)),
             reinforcement=self._reinforcement(), weak_base=self._weak_base(),
+            pedestal_rebars=tuple(
+                PedestalRebar(x=self.quantity(bar.x, L), y=self.quantity(bar.y, L),
+                              diameter=self.quantity(bar.diameter, L))
+                for bar in bp.pedestal_rebars),
             embedded_base=self._embedded_base(),
             bearing_area=(None if bp.bearing_area is None
                           else self.quantity(bp.bearing_area, Kind.AREA)),

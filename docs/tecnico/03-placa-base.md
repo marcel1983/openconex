@@ -109,6 +109,17 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
 
 Solo se admite en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
 
+## 8. Revisor de interferencias en planta
+
+Para la placa base expuesta se comprueba la huella cuadrada de la arandela de placa (Manual AISC Tabla 14-2) frente a:
+
+- el contorno de la columna; en perfiles I se usa el rectángulo envolvente y en HSS circular el diámetro exterior;
+- los bordes de la placa: la distancia del eje al borde debe ser al menos la mayor entre la Tabla J3.4 de AISC 360-22 y media arandela, de modo que la arandela quede dentro de la placa;
+- la planta de la llave de corte, según su dirección (`strong`, `weak` o `both`);
+- las barras longitudinales del pedestal definidas en `pedestal_rebars`, con separación libre entre el eje del anclaje y el de la barra.
+
+Son verificaciones geométricas, no dependen de las cargas y se repiten para cada combinación para que aparezcan en la memoria.
+
 ## Lo que no hace la verificación completa
 
 - La base empotrada no comprueba el levantamiento neto ni el momento débil.

@@ -153,6 +153,10 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
                            f"{reinforcement.bars or '—'} · "
                            f"{q(reinforcement.area, Kind.AREA)} · "
                            f"{q(reinforcement.fy, Kind.STRESS)}"]))
+    if bp.pedestal_rebars:
+        inputs.append(Row([tr("input.pedestal_rebars", lang),
+                           f"{len(bp.pedestal_rebars)} × Ø "
+                           f"{q(bp.pedestal_rebars[0].diameter, L)}"]))
     if bp.bearing_area is not None:
         inputs.append(Row([tr("input.bearing_area", lang), q(bp.bearing_area, Kind.AREA)]))
     if bp.weak_base is not None:

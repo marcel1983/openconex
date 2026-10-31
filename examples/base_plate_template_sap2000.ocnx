@@ -8,8 +8,8 @@
   },
   "base_plate": {
     "column": "W12X96",
-    "N": "350 mm",
-    "B": "350 mm",
+    "N": "500 mm",
+    "B": "500 mm",
     "tp": "25 mm",
     "fc": "21 MPa",
     "A2_over_A1": 1.0,
@@ -19,7 +19,7 @@
     "rod_diameter": "3/4 in",
     "rod_grade": "ASTM F1554 Gr. 36",
     "rods_per_side": 2,
-    "f": "125 mm",
+    "f": "200 mm",
     "rod_spacing": "250 mm",
     "hef": "300 mm",
     "seismic": true

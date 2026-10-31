@@ -27,6 +27,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |
 | Optimización N/B/tp | `plate.optimize_plan` | — | Pendiente de flujo y CLI |
 | Figuras de memoria | `report/figures.py`, `drawing`, `geometry3d` | — | Planta, elevación e isométrico integrados |
+| Revisor de interferencias | `connections/base_plate/interference.py` | — | Columna, borde, llave y barras del pedestal |
 
 ## Decisiones de la fase 1
 
