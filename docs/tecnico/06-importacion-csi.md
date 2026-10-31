@@ -12,6 +12,8 @@ SAP2000 exporta una tabla por hoja de Excel:
 
 `read_tables` usa el título de la fila 1 y no el nombre de la hoja, porque Excel limita los nombres de hoja a 31 caracteres y SAP2000 los abrevia.
 
+Para ETABS se normalizan las variantes de nombres de tabla y columna: `Joint Restraints`, `Joint Reaction Forces`, `Point Coordinates`, `Load Cases`, `Load Patterns`, `Frame Connectivity`, `Frame Local Axes`, espacios en `Output Case`, `Design Type`, `Joint I/J`, etc. La lista está en `_TABLE_ALIASES` y `_COLUMN_ALIASES`.
+
 Las unidades de cada columna (`Kgf`, `Tonf`, `KN`, `Kip`, `m`, `cm`, `in`, `Kgf-m`, …) se convierten a N y mm. Una unidad desconocida da error.
 
 ## Apoyos y columnas
