@@ -2,6 +2,7 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Biaxial bending of base plates (AISC DG1 3rd ed. §4.3.7, Example 4.7-14)."""
 
+import dataclasses
 import math
 
 import pytest
@@ -65,6 +66,17 @@ def test_weak_axis_alone_matches_rotated_plate():
     strong = by_id(check_base_plate(EX_4_7_14, Forces(P=kip(90), M3=kip_in(450)), Method.LRFD))
     assert weak["base_plate.bearing_weak"].ratio == pytest.approx(
         strong["base_plate.bearing"].ratio)
+
+
+def test_weak_axis_uses_cantilevers_of_the_rotated_plate():
+    """With M2, m is measured against bf and n against d (DG1 §4.3.7)."""
+    bp = dataclasses.replace(EX_4_7_14, N=inch(28), B=inch(12), f=inch(12),
+                             rod_spacing=inch(6))
+    r = by_id(check_base_plate(bp, Forces(P=kip(90), M2=kip_in(450)), Method.LRFD))
+    step = next(s for s in r["base_plate.thickness_compression_weak"].steps
+                if s.symbol == "l")
+    expected = max(inch((12 - 0.95 * 8.11) / 2), inch((28 - 0.8 * 8.50) / 2))
+    assert step.value == pytest.approx(expected)
 
 
 def test_interaction_fails_when_moments_grow():
