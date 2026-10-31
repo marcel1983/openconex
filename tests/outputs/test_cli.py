@@ -24,3 +24,11 @@ def test_failing_project_exit_code(tmp_path):
     path = tmp_path / "thin.ocnx"
     path.write_text(json.dumps(data))
     assert main(["baseplate", str(path), "-o", str(tmp_path / "thin")]) == 1
+
+
+def test_hss_example_outputs(tmp_path):
+    path = EXAMPLE.with_name("base_plate_hss_round.ocnx")
+    out = tmp_path / "hss"
+    assert main(["baseplate", str(path), "-o", str(out), "--html", "--dxf"]) == 0
+    assert out.with_suffix(".html").exists()
+    assert out.with_suffix(".dxf").exists()

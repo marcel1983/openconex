@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
+import math
 from fractions import Fraction as Fr
 
 import pytest
@@ -13,7 +14,16 @@ from openconex.core.bolting import (
     min_pretension,
     min_spacing,
 )
-from openconex.core.model import BoltGroup, BoltSpec, FilletWeld, IShape, SteelPlate, Threads
+from openconex.core.model import (
+    BoltGroup,
+    BoltSpec,
+    FilletWeld,
+    HSSKind,
+    HSSShape,
+    IShape,
+    SteelPlate,
+    Threads,
+)
 from openconex.units import Kind, from_internal, to_internal
 
 
@@ -94,3 +104,28 @@ def test_parts_validate():
         IShape(name="bad", d=20, bf=100, tf=12, tw=5)
     with pytest.raises(ValidationError):
         SteelPlate(width=300, length=400, thickness=25, extra=1)
+
+
+def test_hss_shapes():
+    rect = HSSShape(name="HSS 12x8x1/2", d=304.8, width=203.2, t=12.7)
+    assert rect.kind is HSSKind.RECTANGULAR
+    assert rect.bf == pytest.approx(203.2)
+    assert rect.tf == rect.tw == pytest.approx(12.7)
+    assert rect.area == pytest.approx(2 * 12.7 * (304.8 + 203.2) - 4 * 12.7**2)
+    assert rect.grade == "ASTM A500 Gr. C (rectangular)"
+    square = HSSShape(name="HSS 12x12x1/2", kind=HSSKind.SQUARE, d=304.8, t=12.7)
+    assert square.bf == pytest.approx(304.8)
+    round_ = HSSShape(name="HSS 12x1/2", kind=HSSKind.ROUND, d=304.8, t=12.7)
+    assert round_.bf == pytest.approx(304.8)
+    assert round_.grade == "ASTM A500 Gr. C (round)"
+    assert round_.area == pytest.approx(math.pi / 4 * (304.8**2 - (304.8 - 25.4) ** 2))
+    with pytest.raises(ValidationError):
+        HSSShape(name="bad", kind=HSSKind.ROUND, d=300, width=200, t=10)
+    with pytest.raises(ValidationError):
+        HSSShape(name="bad", d=300, t=10)  # rectangular needs width
+    with pytest.raises(ValidationError):
+        HSSShape(name="bad", kind=HSSKind.SQUARE, d=300, width=200, t=10)
+    with pytest.raises(ValidationError):
+        HSSShape(name="bad", kind=HSSKind.ROUND, d=300, t=160)
+    with pytest.raises(ValidationError):
+        HSSShape(name="bad", d=300, width=200, t=10, grade="ASTM X999")
