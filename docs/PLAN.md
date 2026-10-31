@@ -239,6 +239,8 @@ Python 3.12+, PySide6 (Qt 6), pydantic, pint, shapely, numpy/scipy, OCP/build123
 
 ---
 
+**Documentación (2026-10-31):** manual de usuario en `docs/usuario/` y documentación técnica en `docs/tecnico/`. Se actualizan en el mismo pull request que cada cambio; `tests/test_docs.py` comprueba que verificaciones, comandos, campos del proyecto, ejemplos y materiales estén documentados.
+
 ## 9. Hoja de ruta
 
 **Estado (2026-10-30):** F0 terminada. F1 (núcleo de verificaciones) implementada en `src/openconex/kernel/`: pernos (§J3), soldaduras (§J2), elementos (§J4), efecto palanca (Manual Parte 9), grupos de pernos y de soldaduras por los métodos elástico y del centro instantáneo, y fuerzas concentradas (§J10). Grupos de pernos excéntricos validados contra la Tabla 7-6 del Manual (ángulos 0° a 60°, s = 3 y 6 in, n = 2 a 12, y C'); y contra las Tablas 7-7 y 7-8 (dos filas verticales con gramil de 3 y 5½ in; ángulos 0°, 30° y 60°; s = 3 y 6 in; n = 1 a 12; ex = 2 a 36 in; y C'): 1 776 valores dentro del 1 %, sin cambios en el cálculo. Grupos de soldaduras validados contra las Tablas 8-4 (ángulos 0°, 45° y 75°) y 8-5 (0° y 60°), k = 0 a 2,0 y a = 0 a 3,0: 496 valores dentro del 0,6 %; y contra las Tablas 8-7 (caja; 0° y 60°), 8-8 (C con la carga hacia el lado abierto; 0° y 60°) y 8-9 (C con la carga del lado del alma; 60°), a = 0 a 3,0: otros 1 760 valores dentro del 0,6 %. Y contra las Tablas 8-6 (caja; 15° y 60°), 8-10 (L con la carga del lado del ala; 0° y 60°) y 8-11 (L con la carga del lado del alma; 60°): otros 1 760 valores dentro del 1 %. En total, 4 016 valores de las Tablas 8-4 a 8-11. El método ICR aplica el coeficiente C1 de la Tabla 8-3 para electrodos distintos de E70.

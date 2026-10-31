@@ -153,7 +153,8 @@ def _create_projects(args: argparse.Namespace, data) -> int:
     return 0 if projects else 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Command-line parser; also read by the documentation tests."""
     parser = argparse.ArgumentParser(prog="openconex", description=__doc__)
     parser.add_argument("--version", action="version", version=f"OpenConex {__version__}")
     sub = parser.add_subparsers(dest="command")
@@ -203,6 +204,11 @@ def main(argv: list[str] | None = None) -> int:
                      help="method of the imported combinations (default: template's)")
     sup.set_defaults(func=_supports)
 
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):
         parser.print_help()
