@@ -4,15 +4,17 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import dataclass
 
 from openconex.connections.base_plate.check import BasePlate
 from openconex.drawing.base_plate import BasePlateDrawing, base_plate_dxf
+from openconex.geometry3d.base_plate import base_plate_parts, isometric_svg, occ_available
 from openconex.i18n import tr
 from openconex.io.project import Project
 from openconex.units import Kind, UnitSystem
 
-__all__ = ["Figure", "base_plate_figures", "dxf_to_svg"]
+__all__ = ["Figure", "base_plate_figures", "dxf_to_svg", "svg_to_png"]
 
 
 @dataclass(frozen=True)
@@ -21,6 +23,11 @@ class Figure:
     caption: str
     svg: str
     png: bytes | None = None
+
+    @property
+    def data_uri(self) -> str:
+        encoded = base64.b64encode(self.svg.encode("utf-8")).decode("ascii")
+        return f"data:image/svg+xml;base64,{encoded}"
 
 
 def dxf_to_svg(doc, width: float = 210, height: float = 150) -> str:
@@ -32,6 +39,30 @@ def dxf_to_svg(doc, width: float = 210, height: float = 150) -> str:
     backend = SVGBackend()
     Frontend(RenderContext(doc), backend).draw_layout(doc.modelspace())
     return backend.get_string(Page(width, height))
+
+
+def svg_to_png(svg: str, width: int = 1600) -> bytes | None:
+    """Rasterize an SVG to PNG for DOCX; returns None if QtSvg is unavailable."""
+    try:
+        from PySide6.QtCore import QBuffer, QByteArray, QIODevice
+        from PySide6.QtGui import QColor, QImage, QPainter
+        from PySide6.QtSvg import QSvgRenderer
+    except ImportError:
+        return None
+    renderer = QSvgRenderer(QByteArray(svg.encode("utf-8")))
+    if not renderer.isValid():
+        return None
+    size = renderer.defaultSize()
+    height = max(1, round(width * size.height() / max(size.width(), 1)))
+    image = QImage(width, height, QImage.Format_ARGB32)
+    image.fill(QColor("white"))
+    painter = QPainter(image)
+    renderer.render(painter)
+    painter.end()
+    buffer = QBuffer()
+    buffer.open(QIODevice.WriteOnly)
+    image.save(buffer, "PNG")
+    return bytes(buffer.data())
 
 
 def _options(project: Project) -> BasePlateDrawing:
@@ -54,8 +85,15 @@ def base_plate_figures(project: Project, bp: BasePlate, lang: str,
     figures = []
     for key, view in (("plan", "plan"), ("elevation", "elevation")):
         doc = base_plate_dxf(bp, units, lang, options, view=view)
+        svg = dxf_to_svg(doc)
         figures.append(Figure(
             key=key,
             caption=tr(f"report.figure_{key}", lang),
-            svg=dxf_to_svg(doc)))
+            svg=svg, png=svg_to_png(svg)))
+    if occ_available():
+        parts = base_plate_parts(bp, options.grout, options.pedestal_N, options.pedestal_B)
+        svg = isometric_svg(parts)
+        if svg:
+            figures.append(Figure("isometric", tr("report.figure_isometric", lang), svg,
+                                  png=svg_to_png(svg)))
     return figures

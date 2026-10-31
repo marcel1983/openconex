@@ -26,6 +26,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Flexión local en soldadura de llave | — | 4.7-5 | Pendiente de método validado |
 | HSS con momento | `plate.rectangular_bending` (aproximación) | — | Pendiente de validación o limitación explícita |
 | Optimización N/B/tp | `plate.optimize_plan` | — | Pendiente de flujo y CLI |
+| Figuras de memoria | `report/figures.py`, `drawing`, `geometry3d` | — | Planta, elevación e isométrico integrados |
 
 ## Decisiones de la fase 1
 

@@ -19,7 +19,8 @@ from openconex.connections.base_plate.check import BasePlate
 from openconex.core.model import HSSKind, HSSShape
 from openconex.drawing.base_plate import _rod_positions, anchor_hole, plate_washer
 
-__all__ = ["Part", "base_plate_parts", "occ_available", "write_step", "write_stl"]
+__all__ = ["Part", "base_plate_parts", "isometric_svg", "occ_available", "write_step",
+           "write_stl"]
 
 
 def occ_available() -> bool:
@@ -130,6 +131,78 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top + w_t, af, d, d)))
         parts.append(Part(f"nut_embedded_{i}", _hex_nut(x, y, -hef, af, d, d)))
     return parts
+
+
+def _projected_edges(shape) -> list[list[tuple[float, float]]]:
+    from OCP.BRepAdaptor import BRepAdaptor_Curve
+    from OCP.GCPnts import GCPnts_QuasiUniformDeflection
+    from OCP.TopAbs import TopAbs_EDGE
+    from OCP.TopExp import TopExp_Explorer
+    from OCP.TopoDS import TopoDS
+
+    lines = []
+    explorer = TopExp_Explorer(shape, TopAbs_EDGE)
+    while explorer.More():
+        curve = BRepAdaptor_Curve(TopoDS.Edge(explorer.Current()))
+        discretizer = GCPnts_QuasiUniformDeflection(curve, 0.8)
+        if discretizer.IsDone() and discretizer.NbPoints() >= 2:
+            lines.append([(discretizer.Value(i).X(), discretizer.Value(i).Y())
+                          for i in range(1, discretizer.NbPoints() + 1)])
+        explorer.Next()
+    return lines
+
+
+def isometric_svg(parts: list[Part], width: float = 210, height: float = 150) -> str:
+    """Vector isometric view of the 3D parts with hidden-line removal."""
+    _require()
+    from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+    from OCP.HLRAlgo import HLRAlgo_Projector
+    from OCP.HLRBRep import HLRBRep_Algo, HLRBRep_HLRToShape
+
+    algo = HLRBRep_Algo()
+    for part in parts:
+        algo.Add(part.shape)
+    projector = HLRAlgo_Projector(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(1, 1, 1),
+                                         gp_Dir(0, 0, 1)))
+    algo.Projector(projector)
+    algo.Update()
+    algo.Hide()
+    hlr = HLRBRep_HLRToShape(algo)
+    groups = (
+        (False, (hlr.VCompound(), hlr.OutLineVCompound(), hlr.Rg1LineVCompound())),
+        (True, (hlr.HCompound(), hlr.OutLineHCompound(), hlr.Rg1LineHCompound())),
+    )
+    lines: list[tuple[bool, list[tuple[float, float]]]] = []
+    for hidden, shapes in groups:
+        for shape in shapes:
+            if shape is not None:
+                lines += [(hidden, line) for line in _projected_edges(shape)]
+    if not lines:
+        return ""
+    points = [point for _, line in lines for point in line]
+    min_x = min(point[0] for point in points)
+    max_x = max(point[0] for point in points)
+    min_y = min(point[1] for point in points)
+    max_y = max(point[1] for point in points)
+    pad = 6.0
+    scale = min((width - 2 * pad) / max(max_x - min_x, 1e-9),
+                (height - 2 * pad) / max(max_y - min_y, 1e-9))
+    x0 = pad + ((width - 2 * pad) - (max_x - min_x) * scale) / 2
+    y0 = pad + ((height - 2 * pad) - (max_y - min_y) * scale) / 2
+
+    def point(xy: tuple[float, float]) -> str:
+        x, y = xy
+        return f"{x0 + (x - min_x) * scale:.2f},{height - y0 - (y - min_y) * scale:.2f}"
+
+    body = []
+    for hidden, line in lines:
+        style = ' class="hidden"' if hidden else ' class="visible"'
+        body.append(f'<polyline{style} points="{" ".join(point(p) for p in line)}"/>')
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}mm" '
+            f'height="{height}mm" viewBox="0 0 {width} {height}">'
+            '<style>.visible{fill:none;stroke:#1b1f24;stroke-width:0.35}'
+            '.hidden{fill:none;stroke:#9aa3ad;stroke-width:0.18;'
+            'stroke-dasharray:1.2 1.2}</style>' + "".join(body) + "</svg>")
 
 
 @contextlib.contextmanager

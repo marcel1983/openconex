@@ -28,7 +28,7 @@
   math { font-size: 105%; }
   .figures { display: flex; flex-wrap: wrap; gap: 4mm; margin: 2mm 0 4mm; }
   .figures figure { flex: 1 1 45%; margin: 0; page-break-inside: avoid; }
-  .figures svg { width: 100%; height: auto; border: 1px solid var(--line); background: #fff; }
+  .figures img { width: 100%; height: auto; border: 1px solid var(--line); background: #fff; }
   figcaption { color: var(--muted); font-size: 9pt; text-align: center; margin-top: 1mm; }
   footer { margin-top: 10mm; color: var(--muted); font-size: 8.5pt; border-top: 1px solid var(--line); padding-top: 2mm; }
 </style>
@@ -64,7 +64,7 @@
 <h3>{{ t('report.figures') }}</h3>
 <div class="figures">
   {% for figure in r.figures %}
-  <figure>{{ figure.svg | safe }}<figcaption>{{ figure.caption }}</figcaption></figure>
+  <figure><img src="{{ figure.data_uri }}" alt="{{ figure.caption }}"><figcaption>{{ figure.caption }}</figcaption></figure>
   {% endfor %}
 </div>
 {% endif %}
