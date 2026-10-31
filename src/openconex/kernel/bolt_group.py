@@ -130,13 +130,15 @@ def solve_icr(residual, guess: list[float], span: float, tol: float, max_iter: i
     balances the moment about the trial ICR. The residual also tends to zero
     as the ICR goes to infinity (pure translation), so iterations that run away
     are abandoned and the search restarts from other points along the line
-    through ``guess`` in ``direction`` (perpendicular to the load).
+    through ``guess`` in ``direction`` (perpendicular to the load), including
+    points on the opposite side, where the ICR lies when the load passes close
+    to the centroid of strength of an unsymmetric weld group.
     Returns ((x, y), iterations, P).
     """
     starts = [guess]
     if direction is not None:
         cx, cy = guess
-        for k in (0.5, 0.25, 0.75, 1.5, 0.1, 2.0, 3.0):
+        for k in (0.5, 0.25, 0.75, 1.5, 0.1, 2.0, 3.0, -1.0, -3.0, -10.0, -30.0):
             starts.append([cx + (k - 1) * direction[0], cy + (k - 1) * direction[1]])
     total = 0
     for start in starts:
