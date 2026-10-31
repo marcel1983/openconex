@@ -636,9 +636,9 @@ def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
             continue
         label = f"{output} ({step})" if step in ("Max", "Min") else output
         if step == "Step By Step":
-            if label in forces[uid]:
-                step_cases.add(output)
-                continue
+            # Use the last exported step, which is the final (and normally
+            # largest) set of forces for the case.
+            step_cases.add(output)
         if label not in cases:
             case_type = str(_cell(row, case_type_col) or "")
             design, load_type = case_info.get(output, ("", None))
@@ -656,7 +656,7 @@ def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
         warnings.append("output cases skipped (not a single set of forces): "
                         + ", ".join(sorted(skipped)))
     if step_cases:
-        warnings.append("Step By Step cases use the first output step: "
+        warnings.append("Step By Step cases use the last output step: "
                         + ", ".join(sorted(step_cases)))
     supports = [Support(uid, *coords[uid], restraints[uid], found_columns.get(uid),
                         forces[uid]) for uid in sorted(coords, key=_natural)]

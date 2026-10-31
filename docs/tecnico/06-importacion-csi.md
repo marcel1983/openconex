@@ -22,7 +22,7 @@ Para ETABS se leen las tablas de objetos y se unen por `UniqueName`:
 - `Load Pattern Definitions` y `Load Case Definitions - Linear/Nonlinear/Response Spectrum/Summary` para tipos y patrones;
 - `Load Combination Definitions` para las combinaciones.
 
-También se normalizan variantes de nombres de tabla y columna mediante `_TABLE_ALIASES` y `_COLUMN_ALIASES`. Para ETABS, `Step By Step` usa la primera fila de cada apoyo y caso; `Mode` se descarta.
+También se normalizan variantes de nombres de tabla y columna mediante `_TABLE_ALIASES` y `_COLUMN_ALIASES`. Para ETABS, `Step By Step` usa la última fila de cada apoyo y caso, que corresponde al estado final; `Mode` se descarta.
 
 Las unidades de cada columna (`Kgf`, `Tonf`, `KN`, `Kip`, `m`, `cm`, `in`, `Kgf-m`, …) se convierten a N y mm. Una unidad desconocida da error.
 

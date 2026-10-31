@@ -17,7 +17,7 @@ from openconex.io.project import HSSSectionInput, WSectionInput, load_project
 
 TEMPLATE = Path(__file__).parents[1] / "examples" / "base_plate_generic_w.ocnx"
 
-TONF, CM = 9806.65, 10.0  # N, mm
+TONF, CM, M = 9806.65, 10.0, 1000.0  # N, mm
 
 
 def _sheet(wb, sheet, title, columns, units, rows):
@@ -54,7 +54,7 @@ def etabs_export():
              "FX", "FY", "FZ", "MX", "MY", "MZ"],
             ["", "", "", "", "", "tonf", "tonf", "tonf", "tonf-m", "tonf-m", "tonf-m"],
             [["1", "Dead", "LinStatic", None, None, 1, 2, 10, 30, 40, 5],
-             ["1", "SXE", "LinStatic", "Step By Step", 1, 3, 0, -2, 0, 100, 0],
+             ["1", "SXE", "LinStatic", "Step By Step", 1, 3, 0, -1, 0, 50, 0],
              ["1", "SXE", "LinStatic", "Step By Step", 2, 3, 0, -2, 0, 100, 0],
              ["1", "U1", "Combination", None, None, 4, 2, 8, 30, 140, 5],
              ["1", "Modal", "LinModEigen", "Mode", 1, 1, 1, 1, 1, 1, 1],
@@ -220,10 +220,11 @@ def test_etabs_object_tables_and_split_cases(etabs_export):
     assert s2.column is None
     assert set(s1.forces) == {"Dead", "SXE", "U1"}
     assert s1.forces["SXE"].P == pytest.approx(-2 * TONF)
+    assert s1.forces["SXE"].M2 == pytest.approx(100 * TONF * M)
     assert data.cases["SXE"].seismic
     assert data.cases["U1"].seismic
     assert "Modal" not in data.cases
-    assert any("Step By Step" in warning for warning in data.warnings)
+    assert any("last output step" in warning for warning in data.warnings)
     projects, warnings = base_plate_projects(data, load_project(TEMPLATE))
     assert set(projects) == {"1"}
     assert projects["1"].base_plate.column == "W14X90"
