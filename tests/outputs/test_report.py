@@ -9,7 +9,12 @@ from docx import Document
 
 from openconex.connections.base_plate.check import PressureModel
 from openconex.geometry3d.base_plate import occ_available
-from openconex.io.project import CustomCombinationInput, HSSSectionInput, load_project
+from openconex.io.project import (
+    CustomCombinationInput,
+    EmbeddedRebarInput,
+    HSSSectionInput,
+    load_project,
+)
 from openconex.report.builder import build_base_plate_report, factor_expression
 from openconex.report.docx import latex_to_text, write_docx
 from openconex.report.html import latex_to_mathml, render_html
@@ -57,6 +62,24 @@ def test_embedded_report_uses_its_own_inputs_and_codes():
     assert any("Tipo I" in assumption for assumption in r.assumptions)
     assert [figure.key for figure in r.figures] == (
         ["plan", "elevation", "isometric"] if occ_available() else ["plan", "elevation"])
+
+
+def test_embedded_report_shows_optional_plate_and_rebar():
+    project = load_project(EXAMPLES / "base_plate_embedded_base.ocnx")
+    embedded = project.base_plate.embedded_base
+    embedded.base_plate_width = "30 in"
+    embedded.base_plate_thickness = "1 in"
+    embedded.rebar_top = EmbeddedRebarInput(area="1.0 in**2", fy="60 ksi", depth="5 in")
+    embedded.rebar_bottom = EmbeddedRebarInput(
+        area="0.8 in**2", fy="60 ksi", depth="18 in")
+    embedded.damage_limit = True
+    r = build_base_plate_report(project, TODAY)
+    labels = [row.cells[0] for row in r.inputs]
+    assert "Ancho de la placa embebida B" in labels
+    assert "Refuerzo horizontal superior" in labels
+    assert "Refuerzo horizontal inferior" in labels
+    assert "Límite de daño (0,8 M_HB)" in labels
+    assert any("0.8" in assumption for assumption in r.assumptions)
 
 
 @pytest.mark.parametrize(("lang", "title", "status"), [("es", "Memoria de cálculo", "Cumple"),

@@ -310,6 +310,10 @@ def test_embedded_base_input_is_parsed():
     data["base_plate"]["embedded_base"] = {
         "embedment": "22 in", "foundation_width": "60 in",
         "face_plate_thickness": "1 in", "beta1": 0.85,
+        "base_plate_width": "30 in", "base_plate_thickness": "1 in",
+        "rebar_top": {"area": "1.0 in**2", "fy": "60 ksi", "depth": "5 in"},
+        "rebar_bottom": {"area": "0.8 in**2", "fy": "60 ksi", "depth": "18 in"},
+        "damage_limit": True,
     }
     embedded = Project.model_validate(data).base_plate_model().embedded_base
     assert embedded is not None
@@ -318,6 +322,11 @@ def test_embedded_base_input_is_parsed():
     assert embedded.face_plate_thickness == pytest.approx(
         to_internal(1, "in", Kind.THICKNESS))
     assert embedded.beta1 == pytest.approx(0.85)
+    assert embedded.base_plate_width == pytest.approx(to_internal(30, "in", Kind.LENGTH))
+    assert embedded.rebar_top is not None
+    assert embedded.rebar_top.depth == pytest.approx(to_internal(5, "in", Kind.LENGTH))
+    assert embedded.rebar_bottom is not None
+    assert embedded.damage_limit is True
 
 
 def test_embedded_base_does_not_need_exposed_plate_fields():

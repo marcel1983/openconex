@@ -85,6 +85,20 @@ def test_dg1_4_7_5_lug_moment_on_the_plate():
     assert rods.demand == pytest.approx(kip(6.41 / 2), rel=0.06)  # DG1 rounds Y
 
 
+@pytest.mark.parametrize(("method", "V", "moment"), [
+    (Method.LRFD, 25.0, 47.8),
+    (Method.ASD, 16.0, 30.6),
+])
+def test_dg1_4_7_5_local_plate_bending(method, V, moment):
+    bp = dataclasses.replace(PLATE, tp=inch(1))  # DG1 uses a 1 in. plate here
+    r = by_id(check_base_plate(bp, Forces(V2=kip(V)), method, "W"))
+    check = r["base_plate.lug_plate_bending"]
+    assert check.demand == pytest.approx(kip_in(moment), rel=0.01)
+    assert check.capacity == pytest.approx(kip_in(90.0 if method is Method.LRFD else 59.9),
+                                           rel=0.01)
+    assert check.status.value == "ok"
+
+
 def test_psi_brg_from_axial_load():
     comp = by_id(check_base_plate(PLATE, Forces(P=kip(100), V2=kip(25)), Method.LRFD))
     plain = by_id(check_base_plate(PLATE, Forces(V2=kip(25)), Method.LRFD))

@@ -20,6 +20,7 @@ from openconex.connections.base_plate.check import (
     BasePlate,
     BearingAreaModel,
     EmbeddedBase,
+    EmbeddedRebar,
     PedestalRebar,
     PressureModel,
     Reinforcement,
@@ -48,6 +49,7 @@ __all__ = [
     "CombinationOptions",
     "CustomCombinationInput",
     "EmbeddedBaseInput",
+    "EmbeddedRebarInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "MaterialInput",
@@ -208,6 +210,15 @@ class PedestalRebarInput(_Input):
     diameter: Quantity
 
 
+class EmbeddedRebarInput(_Input):
+    """Horizontal reinforcement layer of an embedded base."""
+
+    area: Quantity
+    fy: Quantity
+    depth: Quantity
+    """Depth below the top of the foundation."""
+
+
 class EmbeddedBaseInput(_Input):
     """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
 
@@ -218,6 +229,14 @@ class EmbeddedBaseInput(_Input):
     face_plate_thickness: Quantity
     beta1: float = Field(default=0.85, gt=0.0, le=1.0)
     """Concrete stress-block factor used in the horizontal bearing equation."""
+    base_plate_width: Quantity | None = None
+    """Width B of the embedded base plate at the bottom of the column."""
+    base_plate_thickness: Quantity | None = None
+    """Thickness of the embedded base plate."""
+    rebar_top: EmbeddedRebarInput | None = None
+    rebar_bottom: EmbeddedRebarInput | None = None
+    damage_limit: bool = False
+    """Apply the additional 0.8 factor on M_HB recommended to limit damage."""
 
 
 class WeakBaseInput(_Input):
@@ -415,6 +434,21 @@ class Project(_Input):
                     raise ValueError("embedded base dimensions must be positive")
             if embedded.beta1 <= 0:
                 raise ValueError("embedded base beta1 must be positive")
+            plate = (embedded.base_plate_width, embedded.base_plate_thickness)
+            if (plate[0] is None) != (plate[1] is None):
+                raise ValueError("embedded base plate needs both width and thickness")
+            if plate[0] is not None:
+                if self.quantity(plate[0], Kind.LENGTH) <= 0:
+                    raise ValueError("embedded base plate width must be positive")
+                if self.quantity(plate[1], Kind.THICKNESS) <= 0:
+                    raise ValueError("embedded base plate thickness must be positive")
+            for layer in (embedded.rebar_top, embedded.rebar_bottom):
+                if layer is None:
+                    continue
+                for value, kind in ((layer.area, Kind.AREA), (layer.fy, Kind.STRESS),
+                                    (layer.depth, Kind.LENGTH)):
+                    if self.quantity(value, kind) <= 0:
+                        raise ValueError("embedded rebar area, fy and depth must be positive")
         for bar in self.base_plate.pedestal_rebars:
             if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
                 raise ValueError("pedestal rebar diameter must be positive")
@@ -540,12 +574,28 @@ class Project(_Input):
         embedded = self.base_plate.embedded_base
         if embedded is None:
             return None
+
+        def layer(value: EmbeddedRebarInput | None) -> EmbeddedRebar | None:
+            if value is None:
+                return None
+            return EmbeddedRebar(area=self.quantity(value.area, Kind.AREA),
+                                 fy=self.quantity(value.fy, Kind.STRESS),
+                                 depth=self.quantity(value.depth, Kind.LENGTH))
+
         return EmbeddedBase(
             embedment=self.quantity(embedded.embedment, Kind.LENGTH),
             foundation_width=self.quantity(embedded.foundation_width, Kind.LENGTH),
             face_plate_thickness=self.quantity(embedded.face_plate_thickness,
                                                Kind.THICKNESS),
-            beta1=embedded.beta1)
+            beta1=embedded.beta1,
+            base_plate_width=(None if embedded.base_plate_width is None else
+                              self.quantity(embedded.base_plate_width, Kind.LENGTH)),
+            base_plate_thickness=(None if embedded.base_plate_thickness is None else
+                                  self.quantity(embedded.base_plate_thickness,
+                                                Kind.THICKNESS)),
+            rebar_top=layer(embedded.rebar_top),
+            rebar_bottom=layer(embedded.rebar_bottom),
+            damage_limit=embedded.damage_limit)
 
     def _shear_lug(self) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH
