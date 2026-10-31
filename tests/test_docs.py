@@ -51,7 +51,9 @@ def test_every_command_and_option_is_documented():
 
 MODELS = [project.ProjectInfo, project.MaterialInput, project.BasePlateInput,
           project.WSectionInput, project.HSSSectionInput, project.ShearLugInput,
-          project.ReinforcementInput, project.WeakBaseInput, project.LoadCaseInput,
+          project.ReinforcementInput, project.PedestalRebarInput,
+          project.WeakBaseInput, project.EmbeddedBaseInput,
+          project.EmbeddedRebarInput, project.LoadCaseInput,
           project.CombinationOptions, project.CustomCombinationInput]
 
 

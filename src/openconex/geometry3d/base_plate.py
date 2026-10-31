@@ -19,8 +19,8 @@ from openconex.connections.base_plate.check import BasePlate
 from openconex.core.model import HSSKind, HSSShape
 from openconex.drawing.base_plate import _rod_positions, anchor_hole, plate_washer
 
-__all__ = ["Part", "base_plate_parts", "isometric_svg", "occ_available", "write_step",
-           "write_stl"]
+__all__ = ["Part", "base_plate_parts", "embedded_base_parts", "isometric_svg",
+           "occ_available", "write_step", "write_stl"]
 
 
 def occ_available() -> bool:
@@ -144,6 +144,51 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
     return parts
 
 
+def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
+                        foundation_depth: float | None = None,
+                        column_height: float | None = None) -> list[Part]:
+    """Solids of a Type I embedded base: foundation, column and face plates."""
+    _require()
+    embedded = bp.embedded_base
+    col = bp.column
+    fw = embedded.foundation_width
+    fl = foundation_length or fw
+    depth = foundation_depth or embedded.embedment + 304.8
+    h = column_height or 1.5 * col.d
+    z0 = -embedded.embedment
+    parts = [Part("foundation", _box(-fw / 2, -fl / 2, -depth, fw, fl, depth))]
+    if isinstance(col, HSSShape):
+        if col.kind is HSSKind.ROUND:
+            outer = _cylinder(0, 0, z0, col.d / 2, embedded.embedment + h)
+            inner = _cylinder(0, 0, z0 - 1, col.d / 2 - col.t, embedded.embedment + h + 2)
+        else:
+            outer = _box(-col.d / 2, -col.bf / 2, z0, col.d, col.bf, embedded.embedment + h)
+            inner = _box(-col.d / 2 + col.t, -col.bf / 2 + col.t, z0 - 1,
+                         col.d - 2 * col.t, col.bf - 2 * col.t,
+                         embedded.embedment + h + 2)
+        column = _cut_all(outer, [inner])
+    else:
+        flanges = [_box(sx * col.d / 2 - (col.tf if sx > 0 else 0), -col.bf / 2, z0,
+                        col.tf, col.bf, embedded.embedment + h) for sx in (-1, 1)]
+        web = _box(-col.d / 2 + col.tf, -col.tw / 2, z0,
+                   col.d - 2 * col.tf, col.tw, embedded.embedment + h)
+        column = _fuse_all([*flanges, web])
+    parts.append(Part("column", column))
+    if embedded.base_plate_width is not None:
+        width = embedded.base_plate_width
+        parts.append(Part("embedded_base_plate", _box(
+            -width / 2, -width / 2, z0 - embedded.base_plate_thickness, width, width,
+            embedded.base_plate_thickness)))
+    tp = embedded.face_plate_thickness
+    x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
+    # Face bearing plates bear on the top of the foundation (DG1 §5.3).
+    parts.append(Part("face_plate_front", _box(
+        x0, col.tw / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
+    parts.append(Part("face_plate_back", _box(
+        x0, -col.bf / 2, 0.0, x1 - x0, (col.bf - col.tw) / 2, tp)))
+    return parts
+
+
 def _projected_edges(shape) -> list[list[tuple[float, float]]]:
     from OCP.BRepAdaptor import BRepAdaptor_Curve
     from OCP.GCPnts import GCPnts_QuasiUniformDeflection
@@ -173,8 +218,10 @@ def isometric_svg(parts: list[Part], width: float = 210, height: float = 150) ->
     algo = HLRBRep_Algo()
     for part in parts:
         algo.Add(part.shape)
+    # Keep the world Z axis (the column) vertical on the sheet: the projection
+    # plane X axis must be horizontal.
     projector = HLRAlgo_Projector(gp_Ax2(gp_Pnt(0, 0, 0), gp_Dir(1, 1, 1),
-                                         gp_Dir(0, 0, 1)))
+                                         gp_Dir(-1, 1, 0)))
     algo.Projector(projector)
     algo.Update()
     algo.Hide()

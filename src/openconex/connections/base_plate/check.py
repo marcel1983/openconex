@@ -45,6 +45,9 @@ from . import seismic, transfer
 __all__ = [
     "BasePlate",
     "BearingAreaModel",
+    "EmbeddedBase",
+    "EmbeddedRebar",
+    "PedestalRebar",
     "PressureModel",
     "Reinforcement",
     "ShearLug",
@@ -111,6 +114,39 @@ class Reinforcement:
 
 
 @dataclass(frozen=True)
+class PedestalRebar:
+    """Longitudinal pedestal bar at a plan position, relative to the column axis."""
+
+    x: float
+    y: float
+    diameter: float
+
+
+@dataclass(frozen=True)
+class EmbeddedRebar:
+    """Horizontal reinforcement layer of an embedded base."""
+
+    area: float
+    fy: float
+    depth: float
+
+
+@dataclass(frozen=True)
+class EmbeddedBase:
+    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+
+    embedment: float
+    foundation_width: float
+    face_plate_thickness: float
+    beta1: float = 0.85
+    base_plate_width: float | None = None
+    base_plate_thickness: float | None = None
+    rebar_top: EmbeddedRebar | None = None
+    rebar_bottom: EmbeddedRebar | None = None
+    damage_limit: bool = False
+
+
+@dataclass(frozen=True)
 class WeakBase:
     """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
 
@@ -154,7 +190,9 @@ class BasePlate:
     rod_bending_lever: float | None = None
     """Distance from the anchor to the supporting web/flange for plate bending at the rods."""
     reinforcement: Reinforcement | None = None
+    pedestal_rebars: tuple[PedestalRebar, ...] = ()
     weak_base: WeakBase | None = None
+    embedded_base: EmbeddedBase | None = None
 
     @property
     def Fy(self) -> float:
@@ -431,8 +469,23 @@ def _renamed(check: CheckResult, key: str, steps: tuple = ()) -> CheckResult:
                                     "steps": (*steps, *check.steps)})
 
 
+def _local_plate_moment(bend: bpl.BendingResult | None, tension: float, N: float,
+                        f: float) -> float | None:
+    """Maximum plate moment at the lug, DG1 Example 4.7-5."""
+    if bend is None or bend.case not in ("low_moment", "large_moment"):
+        return None
+    terms = []
+    if tension > 0:
+        terms.append(tension * f)
+    if bend.Y > 0 and bend.q_max > 0:
+        terms.append(bend.q_max * bend.Y * (N / 2 - bend.Y / 2))
+    return max(terms) if terms else 0.0
+
+
 def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], method: Method,
-                      combo: str) -> list[CheckResult]:
+                      combo: str, bend: bpl.BendingResult | None = None, T: float = 0.0,
+                      bend_weak: bpl.BendingResult | None = None,
+                      T_weak: float = 0.0) -> list[CheckResult]:
     lug = bp.shear_lug
     steel = bp.materials[lug.grade]
     out: list[CheckResult] = []
@@ -452,6 +505,15 @@ def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], met
             out.append(_renamed(check, _LUG_IDS[check.id], tuple(c.steps)))
         out.append(_renamed(transfer.lug_weld(lug.width, lug.thickness, lug.weld, lug.FEXX, V, M,
                                               method, combo), "lug_weld", tuple(c.steps)))
+    local = []
+    if shears[0] > 0:
+        local.append(_local_plate_moment(bend, T, bp.N, bp.f))
+    if shears[1] > 0:
+        local.append(_local_plate_moment(bend_weak, T_weak, bp.B, bp.rod_spacing / 2))
+    moments = [m for m in local if m is not None]
+    if moments:
+        out.append(transfer.lug_plate_bending(
+            lug.width, bp.tp, bp.Fy, max(moments), method, combo))
     if bp.hef:
         c = Calc(method, combo)
         need = c.step(r"2.5 h_{sl}", "", 2.5 * lug.embedment, Kind.LENGTH,
@@ -479,12 +541,63 @@ def _lug_bearing(bp: BasePlate, P_: float, V: float, method: Method,
     return check.model_copy(update={"steps": (*c.steps, *check.steps)})
 
 
+def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: float,
+                          method: Method, combo: str) -> list[CheckResult]:
+    """Checks of a Type I embedded base (DG1 §5.2 and §5.3)."""
+    if method is not Method.LRFD:
+        raise ValueError("embedded base requires LRFD")
+    if isinstance(bp.column, HSSShape):
+        raise ValueError("embedded base is only defined for I-shapes")
+    if M2:
+        raise ValueError("embedded base does not support weak-axis moment yet")
+    if bp.weak_base is not None:
+        raise ValueError("embedded base and weak base cannot be combined")
+    if bp.shear_lug is not None:
+        raise ValueError("embedded base does not support a shear lug yet")
+    if P_ < 0:
+        raise ValueError("embedded base does not support net uplift yet")
+    embedded = bp.embedded_base
+    col = bp.column
+    bj = (col.bf + embedded.base_plate_width) / 2 if embedded.base_plate_width else None
+    fields = {}
+    for name, layer in (("top", embedded.rebar_top), ("bottom", embedded.rebar_bottom)):
+        fields[f"F_rebar_{name}"] = layer.area * layer.fy if layer else 0.0
+        fields[f"d_rebar_{name}"] = layer.depth if layer else 0.0
+    results = [seismic.embedded_base_moment(
+        V, embedded.embedment, col.bf, embedded.foundation_width, bp.fc, M,
+        embedded.beta1, combo, bj=bj, damage_limit=embedded.damage_limit, **fields)]
+    face = seismic.face_plate_design(P_, col.d, col.bf, col.tf, col.tw, bp.fc, bp.Fy)
+    if P_ > 0:
+        c = Calc(method, combo)
+        c.step("A_1", r"(b_f - t_w)(d - 2t_f)", face["A1"], Kind.AREA, f"{DG1} §5.3")
+        c.step(r"\phi P_p", "0.65 (1.7 f'_c) A_1", face["phiPp"], Kind.FORCE,
+               f"{DG1} §5.3")
+        results.append(c.result("base_plate.face_plate_bearing", f"{DG1} §5.3",
+                                P_, face["phiPp"], Kind.FORCE))
+        c = Calc(method, combo)
+        c.step("l", r"\frac{\sqrt{db_f}}{4}", face["l"], Kind.LENGTH, f"{DG1} §5.3")
+        c.step("t_{p,min}", r"l\sqrt{\frac{2P}{0.9F_y A_1}}", face["tp_min"],
+               Kind.THICKNESS, f"{DG1} §5.3")
+        results.append(c.result("base_plate.face_plate_thickness", f"{DG1} §5.3",
+                                face["tp_min"], embedded.face_plate_thickness,
+                                Kind.THICKNESS))
+    c = Calc(method, combo)
+    c.step("t_{p,min,seismic}", r"\max(0.75t_w,\ 3/8\ in)", face["tp_min_seismic"],
+           Kind.THICKNESS, "AISC 341-22 §F3.5b.4")
+    results.append(c.result("base_plate.face_plate_seismic",
+                            "AISC 341-22 §F3.5b.4", face["tp_min_seismic"],
+                            embedded.face_plate_thickness, Kind.THICKNESS))
+    return results
+
+
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
     col = bp.column
     P_, V = forces.P, math.hypot(forces.V2, forces.V3)
     M, M2 = abs(forces.M3), abs(forces.M2)
+    if bp.embedded_base is not None:
+        return _embedded_base_checks(bp, P_, V, M, M2, method, combo)
     lug_shear = (0.0, 0.0)
     if bp.shear_lug:
         lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)
@@ -520,6 +633,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side,
         tension_demand=tension_demand)
     results += axis
+    from . import interference
+    results += interference.anchor_interference(bp, method, combo)
     if ductile is not None and weak is not None:
         c = Calc(method, combo)
         c.step(r"T_{red}", r"\frac{\pi d_r^2}{4}F_u", ductile.T_reduced, Kind.FORCE,
@@ -616,7 +731,9 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if M2 and bend_weak is not None:
         results.append(_biaxial_interaction(bp, P_, M, M2, method, combo))
     if bp.shear_lug and any(lug_shear):
-        results += _shear_lug_checks(bp, P_, lug_shear, method, combo)
+        results += _shear_lug_checks(
+            bp, P_, lug_shear, method, combo, bend=bend, T=T,
+            bend_weak=bend_weak, T_weak=T_weak)
 
     # --- welds ---------------------------------------------------------------
     if M > 0 and bp.flange_weld:

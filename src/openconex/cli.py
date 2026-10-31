@@ -67,11 +67,24 @@ def _baseplate(args: argparse.Namespace) -> int:
         options = BasePlateDrawing(
             pedestal_N=q(data.pedestal_N), pedestal_B=q(data.pedestal_B), grout=q(data.grout),
             title=info.name, number=info.number, revision=info.revision, date=info.date)
-        written.append(write_base_plate_dxf(bp, out.with_suffix(".dxf"), info.unit_system(),
-                                            info.language, options))
+        if bp.embedded_base is not None:
+            from openconex.drawing.embedded_base import write_embedded_base_dxf
+            written.append(write_embedded_base_dxf(
+                bp, out.with_suffix(".dxf"), info.unit_system(), info.language, options))
+        else:
+            written.append(write_base_plate_dxf(bp, out.with_suffix(".dxf"),
+                                                info.unit_system(), info.language,
+                                                options))
     if args.step or args.stl:
-        from openconex.geometry3d.base_plate import base_plate_parts, write_step, write_stl
-        parts = base_plate_parts(bp, q(data.grout), q(data.pedestal_N), q(data.pedestal_B))
+        from openconex.geometry3d.base_plate import (
+            base_plate_parts,
+            embedded_base_parts,
+            write_step,
+            write_stl,
+        )
+        parts = (embedded_base_parts(bp, q(data.pedestal_B))
+                 if bp.embedded_base is not None else
+                 base_plate_parts(bp, q(data.grout), q(data.pedestal_N), q(data.pedestal_B)))
         if args.step:
             written.append(write_step(parts, out.with_suffix(".step")))
         if args.stl:

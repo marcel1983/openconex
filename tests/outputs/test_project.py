@@ -304,6 +304,115 @@ def test_weak_base_input_is_parsed():
     assert weak.Rt == pytest.approx(1.2)
 
 
+def test_embedded_base_input_is_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["combinations"]["methods"] = ["LRFD"]
+    data["base_plate"]["embedded_base"] = {
+        "embedment": "22 in", "foundation_width": "60 in",
+        "face_plate_thickness": "1 in", "beta1": 0.85,
+        "base_plate_width": "30 in", "base_plate_thickness": "1 in",
+        "rebar_top": {"area": "1.0 in**2", "fy": "60 ksi", "depth": "5 in"},
+        "rebar_bottom": {"area": "0.8 in**2", "fy": "60 ksi", "depth": "18 in"},
+        "damage_limit": True,
+    }
+    embedded = Project.model_validate(data).base_plate_model().embedded_base
+    assert embedded is not None
+    assert embedded.embedment == pytest.approx(to_internal(22, "in", Kind.LENGTH))
+    assert embedded.foundation_width == pytest.approx(to_internal(60, "in", Kind.LENGTH))
+    assert embedded.face_plate_thickness == pytest.approx(
+        to_internal(1, "in", Kind.THICKNESS))
+    assert embedded.beta1 == pytest.approx(0.85)
+    assert embedded.base_plate_width == pytest.approx(to_internal(30, "in", Kind.LENGTH))
+    assert embedded.rebar_top is not None
+    assert embedded.rebar_top.depth == pytest.approx(to_internal(5, "in", Kind.LENGTH))
+    assert embedded.rebar_bottom is not None
+    assert embedded.damage_limit is True
+
+
+def test_embedded_base_does_not_need_exposed_plate_fields():
+    data = json.loads(EXAMPLE.read_text())
+    data["combinations"]["methods"] = ["LRFD"]
+    bp = data["base_plate"]
+    bp["connection_type"] = "embedded"
+    bp["embedded_base"] = {
+        "embedment": "22 in", "foundation_width": "60 in",
+        "face_plate_thickness": "1 in",
+    }
+    for field in ("N", "B", "tp", "rod_diameter", "f"):
+        bp.pop(field)
+    model = Project.model_validate(data).base_plate_model()
+    assert model.embedded_base is not None
+    assert model.embedded_base.embedment == pytest.approx(to_internal(22, "in", Kind.LENGTH))
+
+
+def test_connection_type_must_match_the_input_block():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["connection_type"] = "embedded"
+    with pytest.raises(ValueError, match="requires embedded_base"):
+        Project.model_validate(data)
+    data["base_plate"]["connection_type"] = "exposed"
+    data["base_plate"]["embedded_base"] = {
+        "embedment": "22 in", "foundation_width": "60 in",
+        "face_plate_thickness": "1 in",
+    }
+    with pytest.raises(ValueError, match="requires connection_type"):
+        Project.model_validate(data)
+
+
+def test_exposed_base_plate_needs_its_plate_and_rod_fields():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"].pop("N")
+    with pytest.raises(ValueError, match="exposed base plate needs N"):
+        Project.model_validate(data)
+
+
+def test_embedded_base_requires_lrfd_and_an_i_shape():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["embedded_base"] = {
+        "embedment": "22 in", "foundation_width": "60 in",
+        "face_plate_thickness": "1 in",
+    }
+    with pytest.raises(ValueError, match="LRFD"):
+        Project.model_validate(data)
+    data["combinations"]["methods"] = ["LRFD"]
+    data["base_plate"]["column"] = {
+        "type": "HSS", "shape": "square", "d": "12 in", "t": "0.5 in",
+        "grade": "ASTM A500 Gr. C (rectangular)",
+    }
+    with pytest.raises(ValueError, match="I-shapes"):
+        Project.model_validate(data)
+
+
+def test_embedded_base_rejects_weak_axis_and_shear_lug():
+    data = json.loads(EXAMPLE.read_text())
+    data["combinations"]["methods"] = ["LRFD"]
+    data["base_plate"]["embedded_base"] = {
+        "embedment": "22 in", "foundation_width": "60 in",
+        "face_plate_thickness": "1 in",
+    }
+    data["cases"][0]["M_weak"] = "10 kip*in"
+    with pytest.raises(ValueError, match="weak-axis"):
+        Project.model_validate(data)
+    data["cases"][0]["M_weak"] = 0
+    data["base_plate"]["shear_lug"] = {
+        "width": "8 in", "embedment": "6 in", "thickness": "1 in", "weld": "0.25 in",
+    }
+    with pytest.raises(ValueError, match="shear lug"):
+        Project.model_validate(data)
+
+
+def test_pedestal_rebars_are_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["pedestal_rebars"] = [
+        {"x": "-7 in", "y": "7 in", "diameter": "0.75 in"},
+        {"x": "7 in", "y": "-7 in", "diameter": "0.75 in"},
+    ]
+    bars = Project.model_validate(data).base_plate_model().pedestal_rebars
+    assert len(bars) == 2
+    assert bars[0].x == pytest.approx(to_internal(-7, "in", Kind.LENGTH))
+    assert bars[1].diameter == pytest.approx(to_internal(0.75, "in", Kind.LENGTH))
+
+
 def test_reinforcement_input_is_parsed():
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["reinforcement"] = {

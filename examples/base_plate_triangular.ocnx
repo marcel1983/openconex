@@ -1,5 +1,5 @@
 {
-  "format_version": 7,
+  "format_version": 8,
   "info": {
     "name": "Ejemplo: presión triangular (DG1 B.2-1)",
     "number": "OC-0007",
@@ -22,10 +22,10 @@
     "fc": "4 ksi",
     "A2_over_A1": 1.0,
     "grout": "1.5 in",
-    "rod_diameter": "1 in",
+    "rod_diameter": "3/4 in",
     "rod_grade": "ASTM F1554 Gr. 36",
     "rods_per_side": 2,
-    "f": "9.5 in",
+    "f": "8.5 in",
     "rod_spacing": "0 in",
     "hef": "0 in"
   },

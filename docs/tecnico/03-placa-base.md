@@ -4,6 +4,8 @@ Código: `connections/base_plate/check.py` (`check_base_plate`) con los modelos 
 
 Para cada combinación se calculan las fuerzas P, V = √(V2² + V3²), M = |M3| y M2 = |M2|, y se siguen estos pasos.
 
+Si el proyecto define `connection_type = "embedded"`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta.
+
 ## 0. Llave de corte (si la hay)
 
 La llave toma la componente del corte de su orientación: |V2| con `strong`, |V3| con `weak`, ambas con `both`. Su momento V·e, con e = espesor del mortero + h_sl/2, se suma al momento de la placa en el mismo eje, como en DG1 Ejemplo 4.7-5. El corte que queda (√ de las componentes no tomadas) pasa a fricción o a los anclajes.
@@ -83,6 +85,7 @@ Para cada componente que toma la llave (ver paso 0), con V y M_sl = V e:
   - fluencia y rotura por corte con A = b_sl t_sl;
   - fluencia y rotura por flexión con Z = b_sl t_sl²/4.
 - **Soldaduras de filete en las dos caras:** a = t_sl + 2w/3, r = √[(V/2b)² + (M/(a b))²], θ = 90° (DG1 Ejemplo 4.7-5).
+- **Flexión local de la placa base:** M_pl = máx[T f, (q_max Y)(N/2 − Y/2)], con ancho efectivo b_sl y Z = b_sl t_bp²/4 (DG1 Ejemplo 4.7-5; AISC 360-22 §J4.5).
 - **Empotramiento de los anclajes:** h_ef ≥ 2,5 h_sl.
 
 Las verificaciones de concreto son solo LRFD.
@@ -91,8 +94,38 @@ Las verificaciones de concreto son solo LRFD.
 
 Cada ala transmite la fuerza R = M/d como carga transversal (θ = 90°) sobre una soldadura de filete de largo b_f (DG1 Ejemplo 4.7-9; AISC 360-22 §J2.4).
 
+## 7. Base empotrada (si `connection_type = "embedded"`)
+
+La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seismic.face_plate_design`:
+
+- **Momento por apoyo horizontal** (DG1 §5.2, Ec. 5-1 y 5-6):
+  f_b = 1,54 √f'c (B_f/b_f)^0,66 ≤ 1,7 f'c;
+  b_j = b_f si no hay placa embebida, o (b_f + B)/2 si la hay;
+  M_HB = (F_r,t − F_r,b − V)d_e/2 − (F_r,b − F_r,t + V)²/(4 b_j f_b)
+  − β1 b_j d_e² f_b(β1 − 2)/4 − F_r,t d_r,t + F_r,b d_r,b;
+  φM_HB = 0,75 M_HB, o 0,75(0,8 M_HB) si se activa `damage_limit`.
+- **Aplastamiento de las placas de cara** (DG1 §5.3, Ec. 5-7):
+  A1 = (b_f − t_w)(d − 2t_f); φP_p = 0,65 (1,7 f'c) A1.
+- **Espesor de las placas de cara** (DG1 §5.3, Ec. 5-8):
+  l = √(d b_f)/4; t_p,min = l √[2P/(0,9 F_y A1)].
+- **Detalle sísmico:** t_p ≥ máx(0,75 t_w, 3/8 in) (AISC 341-22 §F3.5b.4).
+- Las placas de apoyo frontal se sitúan en la cara superior del cimiento, no en el fondo del empotramiento (DG1 Fig. 5-1 y §5.3).
+
+Se modela el Tipo I con refuerzo horizontal opcional y placa embebida opcional. La placa embebida solo interviene en `b_j` y en las figuras; no se comprueba su flexión por apoyo vertical ni la tracción. No se verifica la soldadura de las placas de apoyo frontal: se supone CJP o un detalle capaz de desarrollar la fluencia de la placa. El Tipo II no está implementado. Se admite únicamente en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+
+## 8. Revisor de interferencias en planta
+
+Para la placa base expuesta se comprueba la huella cuadrada de la arandela de placa (Manual AISC Tabla 14-2) frente a:
+
+- el contorno de la columna; en perfiles I se usa el rectángulo envolvente y en HSS circular el diámetro exterior;
+- los bordes de la placa: la distancia del eje al borde debe ser al menos la mayor entre la Tabla J3.4 de AISC 360-22 y media arandela, de modo que la arandela quede dentro de la placa;
+- la planta de la llave de corte, según su dirección (`strong`, `weak` o `both`);
+- las barras longitudinales del pedestal definidas en `pedestal_rebars`, con separación libre entre el eje del anclaje y el de la barra.
+
+Son verificaciones geométricas, no dependen de las cargas y se repiten para cada combinación para que aparezcan en la memoria.
+
 ## Lo que no hace la verificación completa
 
-Las siguientes funciones existen en la biblioteca y están validadas con la DG1, pero `check_base_plate` todavía no las usa:
-- bases sísmicas: base débil con anclajes dúctiles y base empotrada (`seismic.py`, DG1 Cap. 5 y 6);
-- refuerzo de anclaje (`anchors.anchor_reinforcement`).
+- La base empotrada no comprueba el levantamiento neto, el momento débil ni el Tipo II.
+- No se verifica la soldadura de las placas de apoyo frontal ni la flexión de la placa embebida por apoyo vertical.
+- La llave de corte ya se dibuja en DXF/3D y se comprueba su flexión local; no se comprueba la interacción completa placa-llave por elementos finitos.

@@ -53,7 +53,9 @@ def test_dg1_4_7_9_ratios():
 
 def test_axial_compression_only():
     r = by_id(check_base_plate(PLATE, Forces(P=kip(300)), Method.LRFD))
-    assert set(r) == {"base_plate.bearing", "base_plate.thickness_compression"}
+    assert set(r) == {"base_plate.bearing", "base_plate.thickness_compression",
+                      "base_plate.anchor_column_clearance",
+                      "base_plate.anchor_plate_edge"}
 
 
 def test_asd_uses_aisc_rod_checks():

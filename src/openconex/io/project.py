@@ -19,6 +19,9 @@ from openconex import __version__
 from openconex.connections.base_plate.check import (
     BasePlate,
     BearingAreaModel,
+    EmbeddedBase,
+    EmbeddedRebar,
+    PedestalRebar,
     PressureModel,
     Reinforcement,
     ShearLug,
@@ -45,9 +48,12 @@ __all__ = [
     "ColumnSectionInput",
     "CombinationOptions",
     "CustomCombinationInput",
+    "EmbeddedBaseInput",
+    "EmbeddedRebarInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "MaterialInput",
+    "PedestalRebarInput",
     "Project",
     "ProjectInfo",
     "ReinforcementInput",
@@ -57,7 +63,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 7
+FORMAT_VERSION = 8
 Quantity = str | float
 
 
@@ -196,6 +202,43 @@ class ReinforcementInput(_Input):
     """Available development length."""
 
 
+class PedestalRebarInput(_Input):
+    """Longitudinal pedestal bar in plan, relative to the column axis."""
+
+    x: Quantity
+    y: Quantity
+    diameter: Quantity
+
+
+class EmbeddedRebarInput(_Input):
+    """Horizontal reinforcement layer of an embedded base."""
+
+    area: Quantity
+    fy: Quantity
+    depth: Quantity
+    """Depth below the top of the foundation."""
+
+
+class EmbeddedBaseInput(_Input):
+    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+
+    embedment: Quantity
+    """Depth of the column embedded in the concrete below the base plate."""
+    foundation_width: Quantity
+    """Width of the concrete foundation in the direction of bending."""
+    face_plate_thickness: Quantity
+    beta1: float = Field(default=0.85, gt=0.0, le=1.0)
+    """Concrete stress-block factor used in the horizontal bearing equation."""
+    base_plate_width: Quantity | None = None
+    """Width B of the embedded base plate at the bottom of the column."""
+    base_plate_thickness: Quantity | None = None
+    """Thickness of the embedded base plate."""
+    rebar_top: EmbeddedRebarInput | None = None
+    rebar_bottom: EmbeddedRebarInput | None = None
+    damage_limit: bool = False
+    """Apply the additional 0.8 factor on M_HB recommended to limit damage."""
+
+
 class WeakBaseInput(_Input):
     """Weak base with ductile (upset-thread) anchor rods, DG1 §6.4."""
 
@@ -205,13 +248,15 @@ class WeakBaseInput(_Input):
 
 
 class BasePlateInput(_Input):
+    connection_type: Literal["exposed", "embedded"] | None = None
+    """``exposed`` (default) or ``embedded``. Omitted: inferred from ``embedded_base``."""
     column: str | ColumnSectionInput
     """AISC label (e.g. ``W12X96``) or a generic section object."""
     column_grade: str = "ASTM A992"
     """Grade of the catalog shape; generic sections carry their own ``grade``."""
-    N: Quantity
-    B: Quantity
-    tp: Quantity
+    N: Quantity | None = None
+    B: Quantity | None = None
+    tp: Quantity | None = None
     plate_grade: str = "ASTM A572 Gr. 50"
     pressure_model: PressureModel = PressureModel.RECTANGULAR
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
@@ -224,15 +269,17 @@ class BasePlateInput(_Input):
     pedestal_N: Quantity | None = None
     pedestal_B: Quantity | None = None
     grout: Quantity = "1.5 in"
-    rod_diameter: Quantity
+    rod_diameter: Quantity | None = None
     rod_grade: str = "ASTM F1554 Gr. 36"
     rods_per_side: int = 2
-    f: Quantity
+    f: Quantity | None = None
     """Column axis to each anchor row."""
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
+    pedestal_rebars: list[PedestalRebarInput] = Field(default_factory=list)
     reinforcement: ReinforcementInput | None = None
     weak_base: WeakBaseInput | None = None
+    embedded_base: EmbeddedBaseInput | None = None
     edges: dict[str, Quantity] = Field(default_factory=dict)
     """Distances from the outer anchors to concrete edges: left, right, bottom, top."""
     washer_thickness: Quantity | None = None
@@ -331,6 +378,20 @@ class Project(_Input):
                 raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
         elif column.grade not in library:
             raise ValueError(f"unknown column material: {column.grade!r}")
+        embedded = self.base_plate.embedded_base
+        connection = self.base_plate.connection_type or (
+            "embedded" if embedded is not None else "exposed")
+        if connection == "embedded" and embedded is None:
+            raise ValueError("connection_type 'embedded' requires embedded_base")
+        if connection == "exposed" and embedded is not None:
+            raise ValueError("embedded_base requires connection_type 'embedded'")
+        if connection == "exposed":
+            missing = [name for name, value in (
+                ("N", self.base_plate.N), ("B", self.base_plate.B),
+                ("tp", self.base_plate.tp), ("rod_diameter", self.base_plate.rod_diameter),
+                ("f", self.base_plate.f)) if value is None]
+            if missing:
+                raise ValueError(f"exposed base plate needs {', '.join(missing)}")
         if self.base_plate.bearing_area_model is BearingAreaModel.EFFECTIVE:
             if isinstance(column, HSSSectionInput):
                 raise ValueError("effective bearing area is only defined for I-shapes")
@@ -353,6 +414,44 @@ class Project(_Input):
         if (self.base_plate.bearing_area is not None
                 and self.quantity(self.base_plate.bearing_area, Kind.AREA) <= 0):
             raise ValueError("bearing_area must be positive")
+        if embedded is not None:
+            if weak is not None:
+                raise ValueError("embedded base and weak base cannot be combined")
+            if self.base_plate.shear_lug is not None:
+                raise ValueError("embedded base does not support a shear lug yet")
+            if isinstance(column, HSSSectionInput):
+                raise ValueError("embedded base is only defined for I-shapes")
+            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
+                raise ValueError("embedded base does not support weak-axis moment yet")
+            if ((self.combinations.include_code
+                 and Method.ASD in self.combinations.methods)
+                    or any(c.method is Method.ASD for c in self.combinations.custom)):
+                raise ValueError("embedded base requires LRFD combinations")
+            for value, kind in ((embedded.embedment, Kind.LENGTH),
+                                (embedded.foundation_width, Kind.LENGTH),
+                                (embedded.face_plate_thickness, Kind.THICKNESS)):
+                if self.quantity(value, kind) <= 0:
+                    raise ValueError("embedded base dimensions must be positive")
+            if embedded.beta1 <= 0:
+                raise ValueError("embedded base beta1 must be positive")
+            plate = (embedded.base_plate_width, embedded.base_plate_thickness)
+            if (plate[0] is None) != (plate[1] is None):
+                raise ValueError("embedded base plate needs both width and thickness")
+            if plate[0] is not None:
+                if self.quantity(plate[0], Kind.LENGTH) <= 0:
+                    raise ValueError("embedded base plate width must be positive")
+                if self.quantity(plate[1], Kind.THICKNESS) <= 0:
+                    raise ValueError("embedded base plate thickness must be positive")
+            for layer in (embedded.rebar_top, embedded.rebar_bottom):
+                if layer is None:
+                    continue
+                for value, kind in ((layer.area, Kind.AREA), (layer.fy, Kind.STRESS),
+                                    (layer.depth, Kind.LENGTH)):
+                    if self.quantity(value, kind) <= 0:
+                        raise ValueError("embedded rebar area, fy and depth must be positive")
+        for bar in self.base_plate.pedestal_rebars:
+            if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
+                raise ValueError("pedestal rebar diameter must be positive")
         reinforcement = self.base_plate.reinforcement
         if reinforcement is not None:
             for value, kind in ((reinforcement.area, Kind.AREA),
@@ -418,18 +517,27 @@ class Project(_Input):
         library = self.material_library()
         column = self.column_model(library)
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
+
+        def dim(value, kind, default=0.0):
+            return default if value is None else self.quantity(value, kind)
+
         return BasePlate(
-            column=column, N=self.quantity(bp.N, L), B=self.quantity(bp.B, L),
-            tp=self.quantity(bp.tp, T),
+            column=column, N=dim(bp.N, L), B=dim(bp.B, L), tp=dim(bp.tp, T),
             fc=self.quantity(bp.fc, Kind.STRESS),
-            rod=BoltSpec(diameter=self.quantity(bp.rod_diameter, L), grade=bp.rod_grade),
-            f=self.quantity(bp.f, L), rods_per_side=bp.rods_per_side,
+            rod=BoltSpec(diameter=dim(bp.rod_diameter, L, self.quantity("1 in", L)),
+                         grade=bp.rod_grade),
+            f=dim(bp.f, L), rods_per_side=bp.rods_per_side,
             rod_spacing=self.quantity(bp.rod_spacing, L), hef=self.quantity(bp.hef, L),
             plate_grade=bp.plate_grade, pressure_model=bp.pressure_model,
             bearing_area_model=bp.bearing_area_model,
             rod_bending_lever=(None if bp.rod_bending_lever is None
                                else self.quantity(bp.rod_bending_lever, L)),
             reinforcement=self._reinforcement(), weak_base=self._weak_base(),
+            pedestal_rebars=tuple(
+                PedestalRebar(x=self.quantity(bar.x, L), y=self.quantity(bar.y, L),
+                              diameter=self.quantity(bar.diameter, L))
+                for bar in bp.pedestal_rebars),
+            embedded_base=self._embedded_base(),
             bearing_area=(None if bp.bearing_area is None
                           else self.quantity(bp.bearing_area, Kind.AREA)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
@@ -461,6 +569,33 @@ class Project(_Input):
         return WeakBase(reduced_diameter=self.quantity(weak.reduced_diameter, L),
                         stretch_length=self.quantity(weak.stretch_length, L),
                         Rt=weak.Rt)
+
+    def _embedded_base(self) -> EmbeddedBase | None:
+        embedded = self.base_plate.embedded_base
+        if embedded is None:
+            return None
+
+        def layer(value: EmbeddedRebarInput | None) -> EmbeddedRebar | None:
+            if value is None:
+                return None
+            return EmbeddedRebar(area=self.quantity(value.area, Kind.AREA),
+                                 fy=self.quantity(value.fy, Kind.STRESS),
+                                 depth=self.quantity(value.depth, Kind.LENGTH))
+
+        return EmbeddedBase(
+            embedment=self.quantity(embedded.embedment, Kind.LENGTH),
+            foundation_width=self.quantity(embedded.foundation_width, Kind.LENGTH),
+            face_plate_thickness=self.quantity(embedded.face_plate_thickness,
+                                               Kind.THICKNESS),
+            beta1=embedded.beta1,
+            base_plate_width=(None if embedded.base_plate_width is None else
+                              self.quantity(embedded.base_plate_width, Kind.LENGTH)),
+            base_plate_thickness=(None if embedded.base_plate_thickness is None else
+                                  self.quantity(embedded.base_plate_thickness,
+                                                Kind.THICKNESS)),
+            rebar_top=layer(embedded.rebar_top),
+            rebar_bottom=layer(embedded.rebar_bottom),
+            damage_limit=embedded.damage_limit)
 
     def _shear_lug(self) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH
