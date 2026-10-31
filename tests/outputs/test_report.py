@@ -25,6 +25,15 @@ def test_report_content(project):
     assert worst.ratio == pytest.approx(0.976, abs=0.001)
 
 
+def test_report_figures(project):
+    r = build_base_plate_report(project, TODAY)
+    assert [figure.key for figure in r.figures] == ["plan", "elevation"]
+    assert all(figure.svg.startswith("<?xml") for figure in r.figures)
+    html = render_html(r)
+    assert html.count("<figure>") == 2
+    assert html.count("<svg") >= 2
+
+
 @pytest.mark.parametrize(("lang", "title", "status"), [("es", "Memoria de cálculo", "Cumple"),
                                                        ("en", "Design calculation report", "OK")])
 def test_html_language(project, lang, title, status):
