@@ -21,6 +21,7 @@ from openconex.core.checks import CheckResult, Status
 from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
 from openconex.io.project import Project
+from openconex.report.figures import Figure, base_plate_figures
 from openconex.units import Kind, UnitSystem, format_value
 
 __all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "factor_expression", "fmt"]
@@ -97,6 +98,7 @@ class Report:
     footer: str
     disclaimer: str
     results: list[CheckResult] = field(default_factory=list)
+    figures: list[Figure] = field(default_factory=list)
 
 
 def _block(result: CheckResult, lang: str, units: UnitSystem) -> CheckBlock:
@@ -202,6 +204,7 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         assumptions.append(tr("report.assumption_weak_base", lang))
     if bp.embedded_base is not None:
         assumptions.append(tr("report.assumption_embedded_base", lang))
+    figures = base_plate_figures(project, bp, lang, units)
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),
@@ -214,4 +217,4 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",
                   date=today.isoformat()),
-        disclaimer=tr("report.disclaimer", lang), results=results)
+        disclaimer=tr("report.disclaimer", lang), results=results, figures=figures)

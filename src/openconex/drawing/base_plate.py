@@ -21,7 +21,8 @@ from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
 from openconex.units import Kind, UnitSystem, format_value, from_internal
 
-__all__ = ["LAYERS", "BasePlateDrawing", "anchor_hole", "write_base_plate_dxf"]
+__all__ = ["LAYERS", "BasePlateDrawing", "anchor_hole", "base_plate_dxf",
+           "write_base_plate_dxf"]
 
 LAYERS = {  # name: (ACI color, linetype)
     "BP-PLACA": (1, "Continuous"),
@@ -140,33 +141,17 @@ def _hss_shape(sheet: _Sheet, kind: HSSKind, d, bf, t, cx, cy, layer):
         sheet.rect(cx - d / 2 + t, cy - bf / 2 + t, cx + d / 2 - t, cy + bf / 2 - t, layer)
 
 
-def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lang: str = "es",
-                         options: BasePlateDrawing | None = None) -> Path:
-    opt = options or BasePlateDrawing()
-    s = _Sheet(units, lang)
-
+def _draw_plan(s: _Sheet, bp: BasePlate, col, N, B, pN, pB, rods, d_rod, hole,
+               w_size, w_t, h, top, lang):
     def t(key, **kw):
         return tr(f"drawing.{key}", lang, **kw)
 
-    col = bp.column
-    N, B, tp = s.u(bp.N), s.u(bp.B), s.u(bp.tp)
-    s.setup_dims(max(N, B) / 40)
-    h = s.text_h
-    pN = s.u(opt.pedestal_N) if opt.pedestal_N else N + 8 * h
-    pB = s.u(opt.pedestal_B) if opt.pedestal_B else B + 8 * h
-    grout = s.u(opt.grout)
-    rods = [(s.u(x), s.u(y)) for x, y in _rod_positions(bp)]
-    d_rod = s.u(bp.rod.diameter)
-    hole = s.u(anchor_hole(bp.rod.diameter))
-
-    # ---------------------------------------------------------------- plan view
     s.rect(-pN / 2, -pB / 2, pN / 2, pB / 2, "BP-CONCRETO")
     s.rect(-N / 2, -B / 2, N / 2, B / 2, "BP-PLACA")
     if isinstance(col, HSSShape):
         _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
     else:
         _i_shape(s, s.u(col.d), s.u(col.bf), s.u(col.tf), s.u(col.tw), 0, 0, "BP-COLUMNA")
-    w_size, w_t = (s.u(v) for v in plate_washer(bp.rod.diameter, bp.washer_thickness))
     for x, y in rods:
         s.rect(x - w_size / 2, y - w_size / 2, x + w_size / 2, y + w_size / 2, "BP-ANCLAJE")
         s.msp.add_circle((x, y), hole / 2, dxfattribs={"layer": "BP-PLACA"})
@@ -175,7 +160,6 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     s.msp.add_line((-ext, 0), (ext, 0), dxfattribs={"layer": "BP-EJES"})
     s.msp.add_line((0, -max(pB, B) / 2 - 2 * h), (0, max(pB, B) / 2 + 2 * h),
                    dxfattribs={"layer": "BP-EJES"})
-    top = max(pB, B) / 2
     s.hdim(-N / 2, N / 2, B / 2, top + 6 * h)
     s.hdim(rods[0][0], rods[-1][0], rods[-1][1], top + 3 * h)
     s.vdim(-B / 2, B / 2, N / 2, max(pN, N) / 2 + 6 * h)
@@ -185,16 +169,21 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     s.text(f"{t('plan')}", -N / 2, -top - 4 * h, 1.4 * h)
     s.text(f"{col.name} — {t('column')}", -N / 2, -top - 6 * h)
 
-    # ------------------------------------------------------------ elevation view
+
+def _draw_elevation(s: _Sheet, bp: BasePlate, opt: BasePlateDrawing, col, N, pN, pB,
+                    grout, rods, d_rod, w_size, w_t, h, top, lang):
+    def t(key, **kw):
+        return tr(f"drawing.{key}", lang, **kw)
+
     y0 = -top - 14 * h - max(s.u(bp.hef), pB / 2)
     hef = s.u(bp.hef) if bp.hef else 12 * d_rod
     stub = s.u(opt.column_stub) if opt.column_stub else 1.2 * s.u(col.d)
     conc_depth = hef + 4 * h
     s.rect(-pN / 2, y0 - conc_depth, pN / 2, y0, "BP-CONCRETO")
     s.rect(-N / 2, y0, N / 2, y0 + grout, "BP-CONCRETO")
-    s.rect(-N / 2, y0 + grout, N / 2, y0 + grout + tp, "BP-PLACA")
+    s.rect(-N / 2, y0 + grout, N / 2, y0 + grout + s.u(bp.tp), "BP-PLACA")
     d, tf = s.u(col.d), s.u(col.tf)
-    cy0 = y0 + grout + tp
+    cy0 = y0 + grout + s.u(bp.tp)
     s.rect(-d / 2, cy0, -d / 2 + tf, cy0 + stub, "BP-COLUMNA")
     s.rect(d / 2 - tf, cy0, d / 2, cy0 + stub, "BP-COLUMNA")
     s.msp.add_line((-d / 2 + tf, cy0 + stub), (d / 2 - tf, cy0 + stub),
@@ -214,7 +203,11 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     s.vdim(y0 - hef, y0, xr + d_rod, max(pN, N) / 2 + 4 * h)
     s.text(t("elevation"), -N / 2, y0 - conc_depth - 3 * h, 1.4 * h)
 
-    # ----------------------------------------------------- bill of materials + notes
+
+def _draw_bom(s: _Sheet, bp: BasePlate, opt: BasePlateDrawing, col, N, pN, h, top, lang):
+    def t(key, **kw):
+        return tr(f"drawing.{key}", lang, **kw)
+
     plate_mass = bp.N * bp.B * bp.tp * STEEL_DENSITY
     rod_len = (bp.hef or 12 * bp.rod.diameter) + opt.grout + bp.tp + 3 * bp.rod.diameter
     rows = [
@@ -247,7 +240,6 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     for i, note in enumerate(notes, 1):
         s.text(f"{i}. {note}", bx, ny - i * 1.6 * h, 0.8 * h)
 
-    # ------------------------------------------------------------- title block
     tb_y = ny - (len(notes) + 3) * 1.6 * h
     tb_w = sum(widths) * h
     s.rect(bx, tb_y - 8 * h, bx + tb_w, tb_y, "BP-TEXTO")
@@ -257,7 +249,40 @@ def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lan
     s.text("OpenConex", bx + tb_w - h, tb_y - 6 * h, 0.8 * h,
            align=TextEntityAlignment.RIGHT)
 
+
+def base_plate_dxf(bp: BasePlate, units: UnitSystem, lang: str = "es",
+                   options: BasePlateDrawing | None = None, view: str = "all"):
+    """Build the DXF. ``view`` is ``all``, ``plan`` or ``elevation``."""
+    opt = options or BasePlateDrawing()
+    s = _Sheet(units, lang)
+    if bp.shear_lug:
+        s.doc.layers.add("BP-LLAVE", color=2, linetype="DASHED")
+    col = bp.column
+    N, B = s.u(bp.N), s.u(bp.B)
+    s.setup_dims(max(N, B) / 40)
+    h = s.text_h
+    pN = s.u(opt.pedestal_N) if opt.pedestal_N else N + 8 * h
+    pB = s.u(opt.pedestal_B) if opt.pedestal_B else B + 8 * h
+    grout = s.u(opt.grout)
+    rods = [(s.u(x), s.u(y)) for x, y in _rod_positions(bp)]
+    d_rod = s.u(bp.rod.diameter)
+    hole = s.u(anchor_hole(bp.rod.diameter))
+    w_size, w_t = (s.u(v) for v in plate_washer(bp.rod.diameter, bp.washer_thickness))
+    top = max(pB, B) / 2
+    if view in ("all", "plan"):
+        _draw_plan(s, bp, col, N, B, pN, pB, rods, d_rod, hole, w_size, w_t, h, top, lang)
+    if view in ("all", "elevation"):
+        _draw_elevation(s, bp, opt, col, N, pN, pB, grout, rods, d_rod, w_size, w_t,
+                        h, top, lang)
+    if view == "all":
+        _draw_bom(s, bp, opt, col, N, pN, h, top, lang)
+    return s.doc
+
+
+def write_base_plate_dxf(bp: BasePlate, path: str | Path, units: UnitSystem, lang: str = "es",
+                         options: BasePlateDrawing | None = None, view: str = "all") -> Path:
+    doc = base_plate_dxf(bp, units, lang, options, view)
     path = Path(path)
-    s.doc.saveas(path)
+    doc.saveas(path)
     return path
 
