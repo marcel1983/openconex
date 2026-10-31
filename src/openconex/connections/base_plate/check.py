@@ -14,6 +14,14 @@ with N and B swapped and the outer rods of each row at ±rod_spacing/2), and
 the moment strengths with the anchor rods of the tension face at their
 available steel strength are combined with Eq. 4-69,
 (Mx/Mx,cap)² + (My/My,cap)² ≤ 1.0. The shear is the resultant of V2 and V3.
+
+Shear lug (DG1 §4.5, Example 4.7-5; ACI 318-19 §17.11): the lug takes the
+shear component across its width (V2 for a lug along B, V3 for a lug along N,
+both for a cruciform lug); the rest goes to friction or to the rods. Its
+moment V e, with e = grout + h_sl/2, is added to the plate moment about the
+same axis and resisted by bearing and the rods. Checks: concrete bearing
+(ψbrg,sl from the axial load) and breakout toward an edge (when ca1 is given),
+shear and flexure of the lug plate, its fillet welds, and hef ≥ 2.5 h_sl.
 """
 
 from __future__ import annotations
@@ -33,9 +41,34 @@ from openconex.units import Kind
 from . import plate as bpl
 from . import transfer
 
-__all__ = ["BasePlate", "check_base_plate", "check_envelope"]
+__all__ = ["BasePlate", "ShearLug", "check_base_plate", "check_envelope"]
 
 DG1 = "AISC DG1 3rd ed."
+
+
+@dataclass(frozen=True)
+class ShearLug:
+    width: float
+    """b_sl, across the shear."""
+    embedment: float
+    """h_sl, depth bearing on the concrete (below the grout)."""
+    thickness: float
+    weld: float
+    """Fillet weld size on both faces of the lug."""
+    direction: str = "strong"
+    """"strong": resists V2 (lug along B); "weak": V3 (along N); "both": cruciform."""
+    grade: str = "ASTM A572 Gr. 50"
+    FEXX: float = 482.633  # E70XX
+    grout: float = 0.0
+    ca1: float | None = None
+    """Edge distance in the shear direction for concrete breakout (None: not checked)."""
+    ca2: tuple[float | None, float | None] = (None, None)
+    """Edge distances at both sides of the lug (None: far)."""
+
+    def resisted(self, V2: float, V3: float) -> tuple[float, float]:
+        """Shear components (strong, weak) taken by the lug."""
+        return (abs(V2) if self.direction in ("strong", "both") else 0.0,
+                abs(V3) if self.direction in ("weak", "both") else 0.0)
 
 
 @dataclass(frozen=True)
@@ -65,6 +98,7 @@ class BasePlate:
     friction_mu: float = 0.4
     cracked: bool = True
     seismic: bool = False
+    shear_lug: ShearLug | None = None
 
     @property
     def Fy(self) -> float:
@@ -247,12 +281,78 @@ def _biaxial_interaction(bp: BasePlate, P_: float, M: float, M2: float, method: 
     return c.result("base_plate.biaxial", f"{DG1} Eq. 4-69", ratio, 1.0, Kind.DIMENSIONLESS)
 
 
+_LUG_IDS = {"element.shear_yielding": "lug_shear_yielding",
+            "element.shear_rupture": "lug_shear_rupture",
+            "element.flexural_yielding": "lug_flexural_yielding",
+            "element.flexural_rupture": "lug_flexural_rupture"}
+
+
+def _renamed(check: CheckResult, key: str, steps: tuple = ()) -> CheckResult:
+    return check.model_copy(update={"id": f"base_plate.{key}",
+                                    "text_id": f"check.base_plate.{key}",
+                                    "steps": (*steps, *check.steps)})
+
+
+def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], method: Method,
+                      combo: str) -> list[CheckResult]:
+    lug = bp.shear_lug
+    steel = STEELS[lug.grade]
+    out: list[CheckResult] = []
+    for V in (v for v in shears if v > 0):
+        c = Calc(method, combo)
+        e = c.step("e", r"g + \frac{h_{sl}}{2}", lug.grout + lug.embedment / 2, Kind.LENGTH,
+                   f"{DG1} Example 4.7-5", g=(lug.grout, Kind.LENGTH),
+                   h_sl=(lug.embedment, Kind.LENGTH))
+        M = c.step("M_{sl}", "V e", V * e, Kind.MOMENT, f"{DG1} Example 4.7-5")
+        if method is Method.LRFD:
+            out.append(_lug_bearing(bp, P_, V, method, combo))
+            if lug.ca1:
+                out.append(anchors.shear_lug_breakout(lug.width, lug.embedment, lug.ca1, bp.fc,
+                                                      V, method, ca2=lug.ca2, combo=combo))
+        for check in transfer.lug_steel_checks(lug.width, lug.thickness, steel.Fy, steel.Fu, V,
+                                               M, method, combo):
+            out.append(_renamed(check, _LUG_IDS[check.id], tuple(c.steps)))
+        out.append(_renamed(transfer.lug_weld(lug.width, lug.thickness, lug.weld, lug.FEXX, V, M,
+                                              method, combo), "lug_weld", tuple(c.steps)))
+    if bp.hef:
+        c = Calc(method, combo)
+        need = c.step(r"2.5 h_{sl}", "", 2.5 * lug.embedment, Kind.LENGTH,
+                      "ACI 318-19 §17.11.1")
+        out.append(c.result("base_plate.lug_anchor_embedment", "ACI 318-19 §17.11.1", need,
+                            bp.hef, Kind.LENGTH))
+    return out
+
+
+def _lug_bearing(bp: BasePlate, P_: float, V: float, method: Method,
+                 combo: str) -> CheckResult:
+    """Bearing of the lug with ψbrg,sl from the axial load (ACI 318-19 §17.11.2.2)."""
+    lug = bp.shear_lug
+    c = Calc(method, combo)
+    if P_ < 0:
+        Fu = bp.rod.material.Fu  # 1.9 Fy never governs for F1554 / F3125 rods
+        nsa = anchors.tensile_stress_area(bp.rod.diameter) * anchors.futa(Fu, Fu)
+        psi = c.step(r"\psi_{brg,sl}", r"1 + \frac{P_u}{n N_{sa}} \le 1",
+                     max(min(1 + P_ / (bp.rods * nsa), 1.0), 0.0), clause="ACI 318-19 §17.11.2.2")
+    else:
+        psi = c.step(r"\psi_{brg,sl}", r"1 + \frac{4 P_u}{A_{bp} f'_c} \le 2",
+                     min(1 + 4 * P_ / (bp.N * bp.B * bp.fc), 2.0),
+                     clause="ACI 318-19 §17.11.2.2")
+    check = anchors.shear_lug_bearing(lug.width, lug.embedment, bp.fc, V, method, psi, combo)
+    return check.model_copy(update={"steps": (*c.steps, *check.steps)})
+
+
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
     col = bp.column
     P_, V = forces.P, math.hypot(forces.V2, forces.V3)
     M, M2 = abs(forces.M3), abs(forces.M2)
+    lug_shear = (0.0, 0.0)
+    if bp.shear_lug:
+        lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)
+        e = bp.shear_lug.grout + bp.shear_lug.embedment / 2
+        M, M2 = M + lug_shear[0] * e, M2 + lug_shear[1] * e
+        V = math.hypot(abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
     results: list[CheckResult] = []
     m, n = _cantilevers(col, bp.N, bp.B)
 
@@ -322,6 +422,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
 
     if M2 and bend_weak is not None:
         results.append(_biaxial_interaction(bp, P_, M, M2, method, combo))
+    if bp.shear_lug and any(lug_shear):
+        results += _shear_lug_checks(bp, P_, lug_shear, method, combo)
 
     # --- welds ---------------------------------------------------------------
     if M > 0 and bp.flange_weld:

@@ -16,7 +16,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from openconex import __version__
-from openconex.connections.base_plate.check import BasePlate
+from openconex.connections.base_plate.check import BasePlate, ShearLug
 from openconex.core.loads import (
     Forces,
     LoadCase,
@@ -130,6 +130,25 @@ class HSSSectionInput(_Input):
 ColumnSectionInput = WSectionInput | HSSSectionInput
 
 
+class ShearLugInput(_Input):
+    """Shear lug welded under the plate (DG1 §4.5)."""
+
+    width: Quantity
+    """b_sl, across the shear."""
+    embedment: Quantity
+    """h_sl, depth bearing on the concrete below the grout."""
+    thickness: Quantity
+    weld: Quantity
+    """Fillet weld size on both faces."""
+    direction: Literal["strong", "weak", "both"] = "strong"
+    """strong: resists the shear along N (lug along B); weak: along B; both: cruciform."""
+    grade: str = "ASTM A572 Gr. 50"
+    ca1: Quantity | None = None
+    """Edge distance in the shear direction for concrete breakout (omit: not checked)."""
+    ca2: list[Quantity | None] = Field(default_factory=lambda: [None, None])
+    """Edge distances at both sides of the lug (null: far)."""
+
+
 class BasePlateInput(_Input):
     column: str | ColumnSectionInput
     """AISC label (e.g. ``W12X96``) or a generic section object."""
@@ -159,6 +178,7 @@ class BasePlateInput(_Input):
     friction_mu: float = 0.4
     cracked: bool = True
     seismic: bool = False
+    shear_lug: ShearLugInput | None = None
 
 
 class LoadCaseInput(_Input):
@@ -282,7 +302,21 @@ class Project(_Input):
             grout_pad=bp.grout_pad,
             flange_weld=None if bp.flange_weld is None else self.quantity(bp.flange_weld, T),
             friction_mu=bp.friction_mu, cracked=bp.cracked, seismic=bp.seismic,
+            shear_lug=self._shear_lug(),
         )
+
+    def _shear_lug(self) -> ShearLug | None:
+        lug, L = self.base_plate.shear_lug, Kind.LENGTH
+        if lug is None:
+            return None
+        sides = [None if v is None else self.quantity(v, L) for v in lug.ca2[:2]]
+        return ShearLug(width=self.quantity(lug.width, L),
+                        embedment=self.quantity(lug.embedment, L),
+                        thickness=self.quantity(lug.thickness, Kind.THICKNESS),
+                        weld=self.quantity(lug.weld, Kind.THICKNESS), direction=lug.direction,
+                        grade=lug.grade, grout=self.quantity(self.base_plate.grout, L),
+                        ca1=None if lug.ca1 is None else self.quantity(lug.ca1, L),
+                        ca2=tuple([*sides, None, None][:2]))
 
     def case_forces(self) -> dict[str, Forces]:
         F, M = Kind.FORCE, Kind.MOMENT

@@ -169,6 +169,12 @@ bearing_weak = "Aplastamiento en el concreto, eje débil"
 thickness_compression_weak = "Espesor de placa en la interfaz de compresión, eje débil"
 thickness_tension_weak = "Espesor de placa en la interfaz de tracción, eje débil"
 biaxial = "Interacción de flexión biaxial"
+lug_shear_yielding = "Llave de corte: fluencia por corte"
+lug_shear_rupture = "Llave de corte: rotura por corte"
+lug_flexural_yielding = "Llave de corte: fluencia por flexión"
+lug_flexural_rupture = "Llave de corte: rotura por flexión"
+lug_weld = "Llave de corte: soldadura a la placa"
+lug_anchor_embedment = "Empotramiento de anclajes con llave de corte (h_ef ≥ 2,5 h_sl)"
 
 [input]
 column = "Columna"
@@ -186,6 +192,10 @@ f = "Distancia del eje a la fila de anclajes f"
 rod_spacing = "Separación entre barras extremas de una fila"
 hef = "Empotramiento efectivo h_ef"
 flange_weld = "Soldadura de alas"
+shear_lug = "Llave de corte"
+lug_direction_strong = "resiste V en la dirección de N"
+lug_direction_weak = "resiste V en la dirección de B"
+lug_direction_both = "en cruz, resiste V en ambas direcciones"
 
 [drawing]
 plan = "PLANTA"

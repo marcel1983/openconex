@@ -169,6 +169,12 @@ bearing_weak = "Concrete bearing, weak axis"
 thickness_compression_weak = "Plate thickness at the bearing interface, weak axis"
 thickness_tension_weak = "Plate thickness at the tension interface, weak axis"
 biaxial = "Biaxial bending interaction"
+lug_shear_yielding = "Shear lug: shear yielding"
+lug_shear_rupture = "Shear lug: shear rupture"
+lug_flexural_yielding = "Shear lug: flexural yielding"
+lug_flexural_rupture = "Shear lug: flexural rupture"
+lug_weld = "Shear lug: weld to the plate"
+lug_anchor_embedment = "Anchor embedment with a shear lug (h_ef ≥ 2.5 h_sl)"
 
 [input]
 column = "Column"
@@ -186,6 +192,10 @@ f = "Column axis to anchor row f"
 rod_spacing = "Spacing of outer rods in a row"
 hef = "Effective embedment h_ef"
 flange_weld = "Flange weld"
+shear_lug = "Shear lug"
+lug_direction_strong = "resists V along N"
+lug_direction_weak = "resists V along B"
+lug_direction_both = "cruciform, resists V in both directions"
 
 [drawing]
 plan = "PLAN"
