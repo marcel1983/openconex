@@ -29,6 +29,83 @@ def _sheet(wb, sheet, title, columns, units, rows):
         ws.append(row)
 
 
+def _table(name, columns, units, rows):
+    return Table(name, columns, units,
+                 [dict(zip(columns, row, strict=True)) for row in rows])
+
+
+@pytest.fixture
+def etabs_export():
+    """Minimal ETABS v23 export with object tables and split load case sheets."""
+    return {
+        "Point Object Connectivity": _table(
+            "Point Object Connectivity", ["UniqueName", "X", "Y", "Z"],
+            ["", "m", "m", "m"],
+            [["1", 0, 0, 0], ["2", 6, 0, 0], ["3", 0, 0, 3]]),
+        "Joint Assignments - Restraints": _table(
+            "Joint Assignments - Restraints",
+            ["UniqueName", "UX", "UY", "UZ", "RX", "RY", "RZ"],
+            [""] * 7,
+            [["1", "Yes", "Yes", "Yes", "No", "No", "No"],
+             ["2", "Yes", "Yes", "Yes", "No", "No", "No"]]),
+        "Joint Reactions": _table(
+            "Joint Reactions",
+            ["Unique Name", "Output Case", "Case Type", "Step Type", "Step Number",
+             "FX", "FY", "FZ", "MX", "MY", "MZ"],
+            ["", "", "", "", "", "tonf", "tonf", "tonf", "tonf-m", "tonf-m", "tonf-m"],
+            [["1", "Dead", "LinStatic", None, None, 1, 2, 10, 30, 40, 5],
+             ["1", "SXE", "LinStatic", "Step By Step", 1, 3, 0, -2, 0, 100, 0],
+             ["1", "SXE", "LinStatic", "Step By Step", 2, 3, 0, -2, 0, 100, 0],
+             ["1", "U1", "Combination", None, None, 4, 2, 8, 30, 140, 5],
+             ["1", "Modal", "LinModEigen", "Mode", 1, 1, 1, 1, 1, 1, 1],
+             ["2", "Dead", "LinStatic", None, None, 0, 0, 20, 0, 0, 0]]),
+        "Column Object Connectivity": _table(
+            "Column Object Connectivity",
+            ["Unique Name", "UniquePtI", "UniquePtJ", "Length"],
+            ["", "", "", "m"],
+            [["10", "1", "3", 3]]),
+        "Frame Assignments - Section Properties": _table(
+            "Frame Assignments - Section Properties",
+            ["UniqueName", "Shape", "Section Property"],
+            ["", "", ""],
+            [["10", "Steel I/Wide Flange", "W14X90"]]),
+        "Frame Assignments - Summary": _table(
+            "Frame Assignments - Summary",
+            ["UniqueName", "Design Type", "Analysis Section", "Design Section", "Axis Angle"],
+            ["", "", "", "", "deg"],
+            [["10", "Column", "W14X90", "W14X90", 90]]),
+        "Frame Assignments - Local Axes": _table(
+            "Frame Assignments - Local Axes", ["UniqueName", "Angle"], ["", "deg"],
+            [["10", 90]]),
+        "Frame Section Property Definitions - Summary": _table(
+            "Frame Section Property Definitions - Summary",
+            ["Name", "Material", "Shape"], ["", "", ""],
+            [["W14X90", "A992Fy50", "Steel I/Wide Flange"]]),
+        "Frame Section Property Definitions - Steel I/Wide Flange": _table(
+            "Frame Section Property Definitions - Steel I/Wide Flange",
+            ["Name", "Total Depth", "Top Flange Width", "Top Flange Thickness",
+             "Web Thickness"],
+            ["", "m", "m", "m", "m"],
+            [["W14X90", 0.356, 0.369, 0.018, 0.011]]),
+        "Load Pattern Definitions": _table(
+            "Load Pattern Definitions", ["Name", "Type"], ["", ""],
+            [["Dead", "Dead"], ["SXE", "Seismic"]]),
+        "Load Case Definitions - Linear Static": _table(
+            "Load Case Definitions - Linear Static",
+            ["Name", "Load Name", "Design Type"], ["", "", ""],
+            [["Dead", "Dead", "Program Determined"],
+             ["SXE", "SXE", "Program Determined"]]),
+        "Load Case Definitions - Summary": _table(
+            "Load Case Definitions - Summary", ["Name", "Type"], ["", ""],
+            [["Dead", "Linear Static"], ["SXE", "Linear Static"],
+             ["Modal", "Modal - Eigen"]]),
+        "Load Combination Definitions": _table(
+            "Load Combination Definitions", ["Name", "Load Name", "SF"],
+            ["", "", ""],
+            [["U1", "Dead", 1.2], ["U1", "SXE", 1.0]]),
+    }
+
+
 @pytest.fixture
 def export(tmp_path):
     """Two supports: joint 1 with a W column rotated 90°, joint 2 with a box column."""
@@ -129,6 +206,28 @@ def test_etabs_table_and_column_aliases(export):
     assert [s.joint for s in data.supports] == ["1", "2"]
     assert data.supports[0].column.section == "W14X90"
     assert data.cases["U1"].kind is CaseKind.COMBINATION
+
+
+def test_etabs_object_tables_and_split_cases(etabs_export):
+    data = import_supports(etabs_export)
+    assert [s.joint for s in data.supports] == ["1", "2"]
+    s1, s2 = data.supports
+    assert s1.column is not None
+    assert (s1.column.frame, s1.column.section, s1.column.shape) == \
+        ("10", "W14X90", "Steel I/Wide Flange")
+    assert s1.column.angle == pytest.approx(90)
+    assert s1.column.dimensions["t3"] == pytest.approx(356.0)
+    assert s2.column is None
+    assert set(s1.forces) == {"Dead", "SXE", "U1"}
+    assert s1.forces["SXE"].P == pytest.approx(-2 * TONF)
+    assert data.cases["SXE"].seismic
+    assert data.cases["U1"].seismic
+    assert "Modal" not in data.cases
+    assert any("Step By Step" in warning for warning in data.warnings)
+    projects, warnings = base_plate_projects(data, load_project(TEMPLATE))
+    assert set(projects) == {"1"}
+    assert projects["1"].base_plate.column == "W14X90"
+    assert any("no column" in warning for warning in warnings)
 
 
 def test_supports_columns_and_sections(export):

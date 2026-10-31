@@ -21,7 +21,7 @@
 - **Interferencias:** el revisor usa una huella cuadrada conservadora para la arandela y el rectángulo envolvente de la columna. No comprueba la trayectoria tridimensional de la barra de anclaje, el gancho ni el resto de la armadura del pedestal que no se declare en `pedestal_rebars`.
 - **Refuerzo de anclaje:** se comprueba la capacidad, el desarrollo del gancho y el empotramiento requerido. No se comprueba la longitud de desarrollo recta ni el detalle completo de la armadura del pedestal.
 - **Bases sísmicas especiales:** la base débil con anclajes dúctiles (`weak_base`, DG1 §6.4) y la base empotrada tipo I (`embedded_base`, DG1 Capítulo 5) están integradas en el proyecto. La base débil exige LRFD, presión rectangular y un grado con `Fy`; la base empotrada exige LRFD, perfiles I y no admite momento débil, levantamiento neto, llave de corte ni base débil. La base empotrada admite refuerzo horizontal y placa embebida, pero no verifica la soldadura de las placas de apoyo frontal, la flexión de la placa embebida por apoyo vertical ni la tracción. El Tipo II no está implementado.
-- **Importación:** SAP2000 está probado; ETABS se acepta mediante alias de tablas y columnas, pero falta validarlo con una exportación real. Solo columnas verticales que nacen en el apoyo.
+- **Importación:** SAP2000 v27 y ETABS 23.2 están probados. Solo se importan columnas verticales que nacen en el apoyo; las secciones de hormigón, Section Designer y otras formas no incluidas en el catálogo se avisan y se omiten.
 - **Otras conexiones:** viga–columna, viga–viga y empalmes están en desarrollo; el núcleo de verificaciones (pernos, soldaduras, grupos, elementos, fuerzas concentradas) ya existe.
 - **Sin interfaz gráfica** por ahora.
 

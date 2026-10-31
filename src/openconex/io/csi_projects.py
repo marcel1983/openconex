@@ -108,7 +108,7 @@ def column_input(column: ImportedColumn, fallback_grade: str | None = None):
     dims, shape = column.dimensions, column.shape.lower()
     grade = _grade(column.material, None)
     used = grade or fallback_grade
-    if shape == "i/wide flange":
+    if shape in ("i/wide flange", "steel i/wide flange") or "wide flange" in shape:
         warning = (None if grade else
                    f"unknown material {column.material!r}, using {used}")
         if used is None:
@@ -122,7 +122,7 @@ def column_input(column: ImportedColumn, fallback_grade: str | None = None):
                                 bf=_mm(dims["t2"]), tf=_mm(dims["tf"]), tw=_mm(dims["tw"]),
                                 grade=used)
         return section, used, warning
-    if shape == "box/tube":
+    if shape in ("box/tube", "steel tube") or "tube" in shape:
         kind = HSSKind.SQUARE if math.isclose(dims["t3"], dims["t2"]) else HSSKind.RECTANGULAR
         grade = _grade(column.material, kind)
         used = grade or fallback_grade
@@ -134,7 +134,7 @@ def column_input(column: ImportedColumn, fallback_grade: str | None = None):
                                   t=_mm(dims["tf"]), grade=used)
         return section, used, (None if grade else
                                f"unknown material {column.material!r}, using {used}")
-    if shape == "pipe":
+    if shape in ("pipe", "steel pipe"):
         grade = _grade(column.material, HSSKind.ROUND)
         used = grade or fallback_grade
         if used is None:
