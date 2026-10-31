@@ -167,7 +167,13 @@ class LoadCaseInput(_Input):
     P: Quantity = 0.0
     """Axial force, compression positive."""
     V: Quantity = 0.0
+    """Shear along the strong axis direction (N)."""
     M: Quantity = 0.0
+    """Strong-axis moment."""
+    V_weak: Quantity = 0.0
+    """Shear along the weak axis direction (B)."""
+    M_weak: Quantity = 0.0
+    """Weak-axis moment; with a non-zero value the plate is checked for biaxial bending."""
 
 
 class CustomCombinationInput(_Input):
@@ -279,8 +285,10 @@ class Project(_Input):
         )
 
     def case_forces(self) -> dict[str, Forces]:
-        return {c.name: Forces(P=self.quantity(c.P, Kind.FORCE), V2=self.quantity(c.V, Kind.FORCE),
-                               M3=self.quantity(c.M, Kind.MOMENT)) for c in self.cases}
+        F, M = Kind.FORCE, Kind.MOMENT
+        return {c.name: Forces(P=self.quantity(c.P, F), V2=self.quantity(c.V, F),
+                               M3=self.quantity(c.M, M), V3=self.quantity(c.V_weak, F),
+                               M2=self.quantity(c.M_weak, M)) for c in self.cases}
 
     def load_combinations(self) -> list[LoadCombination]:
         opts = self.combinations

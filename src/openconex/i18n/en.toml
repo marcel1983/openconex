@@ -22,6 +22,8 @@ moment_of_inertia = "Moment of inertia"
 dimensionless = "Dimensionless"
 
 [report]
+v_weak = "V weak axis"
+m_weak = "M weak axis"
 demand = "Demand"
 capacity = "Capacity"
 ratio = "Demand/capacity ratio"
@@ -163,6 +165,10 @@ friction = "Shear by friction"
 rod_combined = "Anchor rod in tension, shear and bending"
 plate_bending_rods = "Plate bending from anchor rods in tension"
 embedded_moment = "Moment strength of embedded base"
+bearing_weak = "Concrete bearing, weak axis"
+thickness_compression_weak = "Plate thickness at the bearing interface, weak axis"
+thickness_tension_weak = "Plate thickness at the tension interface, weak axis"
+biaxial = "Biaxial bending interaction"
 
 [input]
 column = "Column"

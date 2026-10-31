@@ -10,9 +10,8 @@ anchor rods and options. Each support gets a copy with its column and loads:
 * ``combinations``: the combinations of the analysis program, already factored,
   each one entered as a case with a custom combination of factor 1.0.
 
-The project holds P, V and the strong-axis moment M per case. V is the resultant
-of V2 and V3 (conservative when cases are combined) and M is M3; the weak-axis
-moment M2 is not checked yet and is reported in the warnings.
+Each case keeps the column-axis components: P, V = V2 and M = M3 (strong axis),
+V_weak = V3 and M_weak = M2 (weak axis, checked for biaxial bending).
 """
 
 from __future__ import annotations
@@ -34,10 +33,6 @@ from openconex.io.project import (
 )
 
 __all__ = ["LoadSource", "base_plate_projects", "column_input"]
-
-M2_WARNING_RATIO = 0.10
-"""Weak-axis moments above this fraction of the strong-axis moment are reported."""
-
 
 class LoadSource(StrEnum):
     CASES = "cases"
@@ -103,8 +98,8 @@ def column_input(column: ImportedColumn):
 
 def _case(name: str, load_type: LoadType, forces) -> LoadCaseInput:
     return LoadCaseInput(name=name, type=load_type, P=f"{forces.P:.10g} N",
-                         V=f"{math.hypot(forces.V2, forces.V3):.10g} N",
-                         M=f"{forces.M3:.10g} N*mm")
+                         V=f"{forces.V2:.10g} N", M=f"{forces.M3:.10g} N*mm",
+                         V_weak=f"{forces.V3:.10g} N", M_weak=f"{forces.M2:.10g} N*mm")
 
 
 def _loads(support: Support, data: CsiImport, template: Project, source: LoadSource,
@@ -157,7 +152,7 @@ def base_plate_projects(data: CsiImport, template: Project,
             warnings.append(f"{tag}: {problem}, skipped")
             continue
         notes: list[str] = []
-        cases, combinations, used = _loads(support, data, template, source, include,
+        cases, combinations, _ = _loads(support, data, template, source, include,
                                            envelopes, method, notes)
         if not cases:
             warnings.append(f"{tag}: no load cases selected, skipped")
@@ -166,11 +161,6 @@ def base_plate_projects(data: CsiImport, template: Project,
         if grade is None and not isinstance(column, HSSSectionInput):
             warnings.append(f"{tag}: unknown material {support.column.material!r}, "
                             f"using {template.base_plate.column_grade}")
-        m2 = max(abs(support.forces[n].M2) for n in used)
-        m3 = max(abs(support.forces[n].M3) for n in used)
-        if m2 > M2_WARNING_RATIO * max(m3, 1e-9):
-            warnings.append(f"{tag}: weak-axis moment M2 up to {m2 / 1e6:.3g} kN·m "
-                            f"({m2 / max(m3, 1e-9):.0%} of M3) is not checked yet")
         base_plate = template.base_plate.model_copy(update={
             "column": column, "column_grade": grade or template.base_plate.column_grade})
         info = template.info.model_copy(update={

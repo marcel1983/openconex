@@ -85,6 +85,7 @@ class Report:
     assumptions: list[str]
     inputs: list[Row]
     cases: list[Row]
+    case_headers: list[str]
     combinations: list[Row]
     summary: list[Row]
     checks: list[CheckBlock]
@@ -138,9 +139,15 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     ]
     if bp.flange_weld:
         inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+    forces = project.case_forces()
+    biaxial = any(f.V3 or f.M2 for f in forces.values())
+    case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]
+    if biaxial:
+        case_headers += [tr("report.v_weak", lang), tr("report.m_weak", lang)]
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),
-                  q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)])
-             for c, f in zip(project.cases, project.case_forces().values(), strict=True)]
+                  q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)]
+                 + ([q(f.V3, Kind.FORCE), q(f.M2, Kind.MOMENT)] if biaxial else []))
+             for c, f in zip(project.cases, forces.values(), strict=True)]
     combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
                          tr("report.custom_source", lang) if c.source == "custom" else c.source])
                     for c in combos]
@@ -162,7 +169,7 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         info=[(tr("report.project", lang), info.name or "—")] + [
             (tr(f"report.{k}", lang), getattr(info, k) or "—")
             for k in ("number", "client", "engineer", "revision", "date")],
-        codes=CODES, assumptions=assumptions, inputs=inputs, cases=cases,
+        codes=CODES, assumptions=assumptions, inputs=inputs, cases=cases, case_headers=case_headers,
         combinations=combinations, summary=summary,
         checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",
