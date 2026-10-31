@@ -24,11 +24,14 @@ from openconex.units import Kind, from_internal, to_internal
 __all__ = [
     "SEISMIC_FACTOR",
     "Edges",
+    "HookedBarDevelopment",
     "anchor_reinforcement",
+    "anchor_reinforcement_design",
     "breakout_shear",
     "breakout_tension",
     "futa",
     "heavy_hex_bearing_area",
+    "hooked_bar_ldh",
     "projected_area_tension",
     "pryout",
     "pullout",
@@ -382,12 +385,74 @@ def shear_lug_breakout(width: float, embedment: float, ca1: float, fc: float, de
     return c.result("anchor.shear_lug_breakout", clause, demand, cap, Kind.FORCE)
 
 
+@dataclass(frozen=True)
+class HookedBarDevelopment:
+    ldh: float
+    """Required hooked-bar development length [mm]."""
+    ldh_min: float
+    """Minimum hooked-bar development length, max(8 db, 6 in) [mm]."""
+    psi_c: float
+    """Concrete strength factor of ACI 318-19 §25.4.3.2."""
+
+
+def hooked_bar_ldh(fy: float, fc: float, db: float) -> HookedBarDevelopment:
+    """Hooked-bar development length, ACI 318-19 Eq. 25.4.3.1a.
+
+    Assumes normal-weight concrete and no epoxy, confining-reinforcement or
+    location factors (ψ_e = ψ_r = ψ_o = λ = 1).
+    """
+    fy_psi = from_internal(fy, Kind.STRESS, "psi")
+    fc_psi = from_internal(fc, Kind.STRESS, "psi")
+    db_in = from_internal(db, Kind.LENGTH, "in")
+    psi_c = min(fc_psi / 15000.0 + 0.6, 1.0) if fc_psi < 6000.0 else 1.0
+    ldh_in = fy_psi * psi_c / (55.0 * math.sqrt(fc_psi)) * db_in**1.5
+    ldh_min_in = max(8.0 * db_in, 6.0)
+    ldh_in = max(ldh_in, ldh_min_in)
+    return HookedBarDevelopment(to_internal(ldh_in, "in", Kind.LENGTH),
+                                to_internal(ldh_min_in, "in", Kind.LENGTH), psi_c)
+
+
 def anchor_reinforcement(demand: float, fy: float, area: float, method: Method,
                          combo: str = "") -> CheckResult:
     """Anchor reinforcement developed on both sides of the breakout: φ As fy (§17.5.2.1), φ=0.75."""
     clause = f"{ACI} §17.5.2.1"
     _require_lrfd(method)
     c = Calc(method, combo)
+    c.step("A_s", "", area, Kind.AREA, clause)
+    c.step("A_{s,req}", r"\frac{N_u}{\phi f_y}",
+           max(demand, 0.0) / (ANCHOR_REINFORCEMENT.phi * fy), Kind.AREA, clause)
     rn = c.step("N_n", "A_s f_y", area * fy, Kind.FORCE, clause, A_s=(area, Kind.AREA))
     cap = c.available(rn, ANCHOR_REINFORCEMENT, Kind.FORCE, clause, "N_n")
     return c.result("anchor.reinforcement", clause, demand, cap, Kind.FORCE)
+
+
+def anchor_reinforcement_design(demand: float, fy: float, area: float, db: float,
+                                clear_cover: float, anchor_to_bar: float, fc: float,
+                                hef: float, le: float, method: Method,
+                                combo: str = "") -> list[CheckResult]:
+    """Capacity, hooked development and embedment of anchor reinforcement.
+
+    The embedment follows DG1 Example 4.7-15:
+    ``h_ef,req = l_dh + g/1.5 + c_c``.
+    """
+    _require_lrfd(method)
+    capacity = anchor_reinforcement(demand, fy, area, method, combo)
+    hooked = hooked_bar_ldh(fy, fc, db)
+
+    c = Calc(method, combo)
+    c.step(r"\psi_c", r"\frac{f'_c}{15000} + 0.6 \le 1",
+           hooked.psi_c, clause=f"{ACI} §25.4.3.2")
+    ldh = c.step("l_{dh}", r"\frac{f_y \psi_c}{55\sqrt{f'_c}} d_b^{1.5}",
+                 hooked.ldh, Kind.LENGTH, f"{ACI} Eq. 25.4.3.1a")
+    c.step("l_{dh,min}", r"\max(8d_b,\ 6\ in)", hooked.ldh_min, Kind.LENGTH,
+           f"{ACI} §25.4.3.1")
+    development = c.result("anchor.reinforcement_development",
+                           f"{ACI} §25.4.3.1", ldh, le, Kind.LENGTH)
+
+    c = Calc(method, combo)
+    hef_req = c.step("h_{ef,req}", r"l_{dh} + \frac{g}{1.5} + c_c",
+                     hooked.ldh + anchor_to_bar / 1.5 + clear_cover, Kind.LENGTH,
+                     f"{ACI} §17.5.2.1")
+    embedment = c.result("anchor.reinforcement_embedment",
+                         f"{ACI} §17.5.2.1", hef_req, hef, Kind.LENGTH)
+    return [capacity, development, embedment]

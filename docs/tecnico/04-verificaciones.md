@@ -40,7 +40,9 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `anchor.interaction` | Interacción tracción–corte | §17.8 | — |
 | `anchor.shear_lug_bearing` | Aplastamiento del concreto en la llave de corte | §17.11.2 | ✔ con llave |
 | `anchor.shear_lug_breakout` | Arrancamiento del concreto por la llave | §17.11.3 | ✔ con llave y `ca1` |
-| `anchor.reinforcement` | Refuerzo de anclaje en tracción | §17.5.2.1 | — |
+| `anchor.reinforcement` | Refuerzo de anclaje en tracción | §17.5.2.1 | con refuerzo LRFD |
+| `anchor.reinforcement_development` | Desarrollo del refuerzo de anclaje | §25.4.3.1 | con refuerzo LRFD |
+| `anchor.reinforcement_embedment` | Empotramiento requerido para el refuerzo | §17.5.2.1 | con refuerzo LRFD |
 | `concrete.bearing` | Aplastamiento en el concreto (título reservado; la placa base usa `base_plate.bearing`) | AISC 360-22 §J8 | — |
 
 ## Pernos (`kernel/bolts.py`, AISC 360-22 §J3)

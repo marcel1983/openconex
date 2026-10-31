@@ -1,0 +1,50 @@
+{
+  "format_version": 6,
+  "info": {
+    "name": "Ejemplo: refuerzo de anclaje (DG1 4.7-15)",
+    "number": "OC-0010",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-10-30",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "column": "W10X45",
+    "column_grade": "ASTM A992",
+    "N": "20 in",
+    "B": "20 in",
+    "tp": "1.5 in",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "pressure_model": "rectangular",
+    "bearing_area_model": "plate",
+    "fc": "4 ksi",
+    "A2_over_A1": 1.0,
+    "grout": "1.5 in",
+    "rod_diameter": "0.875 in",
+    "rod_grade": "ASTM F1554 Gr. 36",
+    "rods_per_side": 2,
+    "f": "2 in",
+    "rod_spacing": "4 in",
+    "hef": "14 in",
+    "reinforcement": {
+      "bars": "4 #6",
+      "area": "1.76 in**2",
+      "fy": "60 ksi",
+      "db": "0.75 in",
+      "clear_cover": "2 in",
+      "anchor_to_bar": "2.83 in",
+      "le": "15.2 in"
+    }
+  },
+  "cases": [
+    {"name": "T1", "type": "D", "P": "-70 kip", "M": "0 kip*in"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "T1-LRFD", "method": "LRFD", "factors": {"T1": 1.0}, "source": "DG1 4.7-15"}
+    ]
+  }
+}

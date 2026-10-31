@@ -7,6 +7,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Modelo rectangular: implementado y usado por defecto.
 - Modelo triangular: integrado en el eje fuerte (`pressure_model = "triangular"`).
 - Área efectiva: integrada para compresión concéntrica de perfiles I (`bearing_area_model = "effective"`).
+- Refuerzo de anclaje: integrado con capacidad, desarrollo y empotramiento (`reinforcement`).
 - El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
 
 ## Matriz de cierre
@@ -16,7 +17,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Presión triangular | `plate.triangular_bending` | B.2-1, B.2-2 | Integrada en eje fuerte |
 | Área efectiva | `plate.effective_area` | B.3-1 | Integrada en compresión concéntrica de perfiles I |
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
-| Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Pendiente de entrada y check |
+| Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Pendiente de flujo y capacidad |
 | Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Pendiente de entrada y checks |
 | Llave de corte en DXF/3D | — | 4.7-5 | Pendiente de geometría |
@@ -36,7 +37,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 
 1. **Fase 1 (hecha):** presión triangular y área efectiva en el eje fuerte.
 2. **Fase 2:** flexión de placa por anclajes; decidir si `a` se deriva o se pide explícitamente.
-3. **Fase 3:** refuerzo de anclaje; definir área, `fy` y longitud de desarrollo.
+3. **Fase 3 (hecha):** refuerzo de anclaje; capacidad, desarrollo y empotramiento.
 4. **Fase 4:** llave de corte en DXF/3D y flexión local si hay método validado.
 5. **Fase 5:** bases sísmicas débiles y empotradas, en dos PRs separados.
 6. **Fase 6:** HSS con momento; validar o declarar la limitación.

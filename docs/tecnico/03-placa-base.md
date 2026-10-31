@@ -61,6 +61,8 @@ Y se exige (M/M_x,cap)² + (M2/M_y,cap)² ≤ 1,0.
 
 **ASD:** tracción en la barra como perno (AISC 360-22 §J3.6).
 
+**Refuerzo de anclaje.** Si el proyecto define `reinforcement`, el arrancamiento del concreto en tracción se sustituye por: capacidad `φ A_s f_y`, desarrollo del gancho `l_dh` (ACI 318-19 §25.4.3.1) y empotramiento requerido `h_ef,req = l_dh + g/1.5 + c_c` (DG1 4.7-15). La longitud disponible es `le`.
+
 **Flexión de placa por los anclajes.** Si el proyecto define `rod_bending_lever`, cada barra en tracción se comprueba con `transfer.plate_bending_at_rods` (DG1 Ejemplos 4.7-3 y 4.7-7): `M_r = r a`, ancho efectivo `b_eff = 2a` y flexión de la placa. Si no se define, la verificación no se ejecuta.
 
 ## 4. Corte

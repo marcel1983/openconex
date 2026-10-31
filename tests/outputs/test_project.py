@@ -15,7 +15,7 @@ from openconex.io.project import (
     load_project,
     save_project,
 )
-from openconex.units import Kind
+from openconex.units import Kind, to_internal
 
 from .conftest import EXAMPLE
 
@@ -289,6 +289,20 @@ def test_rod_bending_lever_is_parsed():
     data["base_plate"]["rod_bending_lever"] = "1.825 in"
     project = Project.model_validate(data)
     assert project.base_plate_model().rod_bending_lever == pytest.approx(46.355)
+
+
+def test_reinforcement_input_is_parsed():
+    data = json.loads(EXAMPLE.read_text())
+    data["base_plate"]["reinforcement"] = {
+        "bars": "4 #6", "area": "1.76 in**2", "fy": "60 ksi", "db": "0.75 in",
+        "clear_cover": "2 in", "anchor_to_bar": "2.83 in", "le": "15.2 in",
+    }
+    project = Project.model_validate(data)
+    reinforcement = project.base_plate_model().reinforcement
+    assert reinforcement is not None
+    assert reinforcement.bars == "4 #6"
+    assert reinforcement.area == pytest.approx(1.76 * 25.4**2)
+    assert reinforcement.le == pytest.approx(to_internal(15.2, "in", Kind.LENGTH))
 
 
 def test_effective_area_requires_an_i_shape():
