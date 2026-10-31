@@ -4,9 +4,10 @@
 
 import pytest
 
+from openconex.connections.base_plate import plate as bpl
 from openconex.connections.base_plate.check import BasePlate, check_base_plate, check_envelope
 from openconex.core.loads import Forces, LoadCase, LoadType, Method, asce7_combinations
-from openconex.core.model import BoltSpec, IShape
+from openconex.core.model import BoltSpec, HSSKind, IShape
 from openconex.units import Kind, to_internal
 
 
@@ -66,6 +67,20 @@ def test_shear_by_friction_with_compression():
 def test_too_small_plate_is_reported():
     r = by_id(check_base_plate(PLATE, Forces(P=kip(50), M3=kip_in(30000)), Method.LRFD))
     assert r["base_plate.bearing"].status == "ng"
+
+
+def test_hss_compression_cantilevers():
+    args = (kip(300), inch(12), inch(10), inch(24), inch(22), to_internal(50, "ksi", Kind.STRESS),
+            to_internal(4, "ksi", Kind.STRESS), 1.0, Method.LRFD)
+    rect = bpl.compression_design(*args, hss=HSSKind.RECTANGULAR)
+    assert rect.m == pytest.approx(inch((24 - 0.95 * 12) / 2))
+    assert rect.n == pytest.approx(inch((22 - 0.95 * 10) / 2))
+    assert rect.l_crit == pytest.approx(max(rect.m, rect.n))
+    assert rect.lambda_n_prime == 0.0
+    round_ = bpl.compression_design(*args, hss=HSSKind.ROUND)
+    assert round_.m == pytest.approx(inch((24 - 0.8 * 12) / 2))
+    assert round_.n == pytest.approx(inch((22 - 0.8 * 12) / 2))
+    assert round_.l_crit == pytest.approx(max(round_.m, round_.n))
 
 
 def test_envelope_over_asce7_combinations():
