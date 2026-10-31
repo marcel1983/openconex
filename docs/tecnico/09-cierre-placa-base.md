@@ -15,7 +15,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 |---|---|---|---|
 | Presión triangular | `plate.triangular_bending` | B.2-1, B.2-2 | Integrada en eje fuerte |
 | Área efectiva | `plate.effective_area` | B.3-1 | Integrada en compresión concéntrica de perfiles I |
-| Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Pendiente de entrada y check |
+| Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Pendiente de entrada y check |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Pendiente de flujo y capacidad |
 | Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Pendiente de entrada y checks |

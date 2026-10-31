@@ -61,6 +61,8 @@ Y se exige (M/M_x,cap)² + (M2/M_y,cap)² ≤ 1,0.
 
 **ASD:** tracción en la barra como perno (AISC 360-22 §J3.6).
 
+**Flexión de placa por los anclajes.** Si el proyecto define `rod_bending_lever`, cada barra en tracción se comprueba con `transfer.plate_bending_at_rods` (DG1 Ejemplos 4.7-3 y 4.7-7): `M_r = r a`, ancho efectivo `b_eff = 2a` y flexión de la placa. Si no se define, la verificación no se ejecuta.
+
 ## 4. Corte
 
 Con el corte que no tomó la llave:
@@ -88,8 +90,5 @@ Cada ala transmite la fuerza R = M/d como carga transversal (θ = 90°) sobre un
 ## Lo que no hace la verificación completa
 
 Las siguientes funciones existen en la biblioteca y están validadas con la DG1, pero `check_base_plate` todavía no las usa:
-- distribución triangular de presiones (`plate.triangular_bending`, DG1 Apéndice B);
-- área efectiva bajo el perfil (`plate.effective_area`);
-- flexión de la placa por los anclajes (`transfer.plate_bending_at_rods`);
 - bases sísmicas: base débil con anclajes dúctiles y base empotrada (`seismic.py`, DG1 Cap. 5 y 6);
 - refuerzo de anclaje (`anchors.anchor_reinforcement`).

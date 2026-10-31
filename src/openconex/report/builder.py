@@ -143,6 +143,8 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     ]
     if bp.flange_weld:
         inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+    if bp.rod_bending_lever is not None:
+        inputs.append(Row([tr("input.rod_bending_lever", lang), q(bp.rod_bending_lever, L)]))
     if bp.shear_lug:
         lug = bp.shear_lug
         inputs.append(Row([tr("input.shear_lug", lang),
