@@ -29,13 +29,13 @@ El HTML se abre en cualquier navegador y se imprime a PDF desde él. El DOCX se 
 
 DXF R2013, a escala 1:1 en la unidad de longitud del proyecto (mm o in), legible en AutoCAD, BricsCAD, LibreCAD o QCAD:
 
-- **Planta:** placa, columna, anclajes con agujeros y arandelas, y cotas.
-- **Elevación:** placa, mortero, pedestal, anclajes con su empotramiento.
-- **Lista de materiales:** placa, barras de anclaje, tuercas hexagonales pesadas y arandelas de placa (Manual AISC Tabla 14-2).
+- **Planta:** placa, columna, anclajes con agujeros y arandelas, llave de corte en línea oculta y cotas.
+- **Elevación:** placa, mortero, pedestal, anclajes con su empotramiento y llave de corte con su profundidad embebida.
+- **Lista de materiales:** placa, barras de anclaje, tuercas hexagonales pesadas, arandelas de placa y llave de corte.
 - **Notas y cajetín** con los datos de `info`.
 
-Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-COTAS`, `BP-TEXTO`, `BP-EJES` y `BP-CONCRETO`. La llave de corte todavía no se dibuja.
+Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `BP-COTAS`, `BP-TEXTO`, `BP-EJES` y `BP-CONCRETO`.
 
 ## Modelo 3D (`--step`, `--stl`)
 
-Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero y pedestal, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización. La llave de corte todavía no se modela.
+Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.

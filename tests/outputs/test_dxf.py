@@ -4,8 +4,10 @@ import ezdxf
 import pytest
 
 from openconex.drawing.base_plate import LAYERS, BasePlateDrawing, anchor_hole, write_base_plate_dxf
-from openconex.io.project import HSSSectionInput
+from openconex.io.project import HSSSectionInput, load_project
 from openconex.units import PRESETS, Kind, from_internal, to_internal
+
+from .conftest import EXAMPLE
 
 
 def _write(tmp_path, project, units, lang):
@@ -48,6 +50,15 @@ def test_texts_are_translated(tmp_path, project, lang, words):
     texts = " ".join(t.dxf.text for t in doc.modelspace().query("TEXT"))
     for word in words:
         assert word in texts
+
+
+def test_shear_lug_is_drawn(tmp_path):
+    project = load_project(EXAMPLE.with_name("base_plate_shear_lug.ocnx"))
+    doc = ezdxf.readfile(_write(tmp_path, project, "US", "es"))
+    assert "BP-LLAVE" in {layer.dxf.name for layer in doc.layers}
+    assert len(doc.modelspace().query('*[layer=="BP-LLAVE"]')) == 2
+    texts = " ".join(t.dxf.text for t in doc.modelspace().query("TEXT"))
+    assert "Llave de corte" in texts
 
 
 def test_hss_column_outline(tmp_path, project):

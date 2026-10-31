@@ -121,6 +121,17 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         web = _box(-col.d / 2 + col.tf, -col.tw / 2, z_top, col.d - 2 * col.tf, col.tw, h)
         column = _fuse_all([*flanges, web])
     parts.append(Part("column", column))
+    if bp.shear_lug:
+        lug = bp.shear_lug
+        h_lug = grout + lug.embedment
+        boxes = []
+        if lug.direction in ("strong", "both"):
+            boxes.append(_box(-lug.thickness / 2, -lug.width / 2, z_plate - h_lug,
+                              lug.thickness, lug.width, h_lug))
+        if lug.direction in ("weak", "both"):
+            boxes.append(_box(-lug.width / 2, -lug.thickness / 2, z_plate - h_lug,
+                              lug.width, lug.thickness, h_lug))
+        parts.append(Part("shear_lug", _fuse_all(boxes)))
     af = 1.5 * d + 3.175  # heavy hex nut, across flats = 1.5d + 1/8 in.
     w_size, w_t = plate_washer(d, bp.washer_thickness)
     for i, (x, y) in enumerate(rods, 1):

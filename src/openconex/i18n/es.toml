@@ -266,3 +266,5 @@ note_holes = "Agujeros agrandados para barras de anclaje según AISC Manual, Tab
 note_length = "Longitud de barra = h_ef + mortero + t_p + 3d (proyección)."
 note_weld = "Soldadura de alas: filete de {size} a ambos lados."
 embedment = "Empotramiento h_ef"
+shear_lug = "Llave de corte"
+note_lug = "Llave de corte: filete de {size} en ambas caras; profundidad embebida h_sl."

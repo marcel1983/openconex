@@ -220,7 +220,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _configure_console() -> None:
+    """Avoid UnicodeEncodeError on legacy Windows code pages."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="replace")
+        except (OSError, ValueError):
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _configure_console()
     parser = build_parser()
     args = parser.parse_args(argv)
     if not hasattr(args, "func"):
