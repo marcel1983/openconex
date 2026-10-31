@@ -15,12 +15,15 @@ Calcula todas las combinaciones del proyecto, imprime la verificación que gobie
 | `-o`, `--output RUTA` | Ruta de las salidas, sin extensión (por defecto, la del proyecto). |
 | `--lang es\|en` | Idioma de la memoria y los planos (por defecto, `info.language`). |
 | `--units SISTEMA` | Sistema de unidades de las salidas: `SI_kN_m`, `SI_N_mm`, `MKS` o `US` (por defecto, `info.units`). |
+| `--optimize` | Optimiza N, B y tp de la placa expuesta antes de comprobar y generar las salidas. |
 | `--html` | Memoria HTML. |
 | `--docx` | Memoria Word. |
 | `--pdf` | Memoria PDF (requiere el extra `pdf`). |
 | `--dxf` | Plano DXF. |
 | `--step` | Modelo 3D STEP (requiere el extra `3d`). |
 | `--stl` | Modelo 3D STL (requiere el extra `3d`). |
+
+`--optimize` reduce N, B y tp desde la placa actual en pasos de 1 in y 0,25 in respectivamente, manteniendo todas las combinaciones y el revisor de interferencias en cumplimiento. Es una optimización local determinista, no una búsqueda global.
 
 ## `openconex supports`: apoyos de SAP2000 / ETABS
 

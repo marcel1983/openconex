@@ -246,6 +246,8 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
             key = ("report.assumption_hss_round"
                    if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
             assumptions.append(tr(key, lang))
+            if any(force.M3 or force.M2 for force in forces.values()):
+                assumptions.append(tr("report.assumption_hss_moment", lang))
         if bp.pressure_model is PressureModel.TRIANGULAR:
             assumptions.append(tr("report.assumption_triangular", lang))
         if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:

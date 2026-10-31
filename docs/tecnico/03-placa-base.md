@@ -16,8 +16,9 @@ La llave toma la componente del corte de su orientación: |V2| con `strong`, |V3
 
 **Voladizos** (DG1 Ec. 4-10 y 4-11):
 - Perfil I: m = (N − 0,95d)/2 y n = (B − 0,8b_f)/2.
-- HSS rectangular: m = (N − 0,95d)/2 y n = (B − 0,95b)/2.
-- HSS circular: m = n = (N − 0,8D)/2.
+- HSS rectangular: m = (N - 0,95d)/2 y n = (B - 0,95b)/2.
+- HSS circular: m = n = (N - 0,8D)/2.
+- En HSS con momento, estos cantilevers y el modelo rectangular son una aproximación: no hay un ejemplo publicado que valide el conjunto.
 
 Por defecto se usa la distribución rectangular (`plate.rectangular_bending`). La opción `pressure_model = "triangular"` usa `plate.triangular_bending` (DG1 Apéndice B.2) en el eje fuerte; en esta versión no se aplica al eje débil ni a levantamiento. La opción `bearing_area_model = "effective"` usa `plate.effective_area` (DG1 Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica de perfiles I.
 
