@@ -96,7 +96,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `fc` | (obligatorio) | Resistencia del concreto f'c. |
 | `A2_over_A1` | `1.0` | Relación entre el área de apoyo del concreto y el área de la placa, A2/A1 (1 a 4). Aumenta la resistencia al aplastamiento según √(A2/A1) ≤ 2. |
 | `bearing_area` | ninguno | Área de apoyo de la tuerca o placa embebida para la extracción del anclaje; si se omite, se usa la tuerca hexagonal pesada. |
-| `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal; solo se usan en los planos y el modelo 3D. |
+| `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal. Se usan en los planos y el modelo 3D y, si no se da `edges`, para deducir las distancias de los anclajes a los bordes (arrancamiento en tracción y corte, desprendimiento lateral). También limitan `A2_over_A1`: la verificación avisa si supera el valor que permite el pedestal. Sin pedestal ni `edges`, el concreto se toma ilimitado, como en una zapata. |
 | `grout` | `"1.5 in"` | Espesor del mortero de nivelación. Se usa en los planos y en el brazo de la llave de corte. |
 | `rod_diameter` | (obligatorio en `exposed`) | Diámetro de las barras de anclaje. |
 | `rod_grade` | `"ASTM F1554 Gr. 36"` | Material de las barras. |
@@ -109,7 +109,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `embedded_base` | ninguno | Base empotrada tipo I con placas de cara (ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
 | `pedestal_rebars` | `[]` | Barras longitudinales del pedestal para el revisor de interferencias (ver más abajo). |
-| `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right`, `bottom`, `top`. Si se omite una, se toma ese borde como lejano. |
+| `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right` (en la dirección de B), `bottom` (desde la fila traccionada, en la dirección de N) y `top`. Si se da alguna, se usan estas y no las del pedestal; las omitidas se toman como lejanas. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
 | `flange_weld` | ninguno | Tamaño de la soldadura de filete en las alas de la columna; si se da, se verifica para el momento. |
 | `grout_pad` | `true` | Hay mortero bajo la placa; reduce la resistencia a corte del acero del anclaje (ACI 318-19 §17.7.1.2.1). |

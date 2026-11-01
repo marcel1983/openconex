@@ -178,6 +178,7 @@ web_compression_buckling = "Web compression buckling"
 panel_zone = "Web panel-zone shear"
 
 [check.base_plate]
+a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"
 thickness_compression = "Plate thickness at the bearing interface"
 thickness_tension = "Plate thickness at the tension interface"

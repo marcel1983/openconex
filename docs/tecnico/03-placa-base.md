@@ -59,8 +59,13 @@ Y se exige (M/M_x,cap)² + (M2/M_y,cap)² ≤ 1,0.
 
 **LRFD** (ACI 318-19):
 - acero del anclaje (§17.6.1);
-- arrancamiento del concreto del grupo, si se da `hef` (§17.6.2), con bordes (`edges`), concreto fisurado y factor sísmico 0,75 (§17.10.5.4);
-- extracción con tuerca hexagonal pesada (§17.6.3).
+- arrancamiento del concreto del grupo, si se da `hef` (§17.6.2), con concreto fisurado y factor sísmico 0,75 (§17.10.5.4). El grupo es la fila traccionada (`rod_spacing` de ancho); con levantamiento sin aplastamiento son las dos filas (2f de alto);
+- extracción con tuerca hexagonal pesada (§17.6.3);
+- desprendimiento lateral (§17.6.4) de la barra más cercana a un borde, solo si h_ef > 2,5 c_a1.
+
+**Bordes del concreto.** Si el proyecto da `edges`, se usan tal cual. Si no, y hay `pedestal_N` y `pedestal_B`, se deducen del pedestal (`concrete_edges`): a los lados, (B_ped − rod_spacing)/2; hacia el borde de la fila traccionada, N_ped/2 − f; hacia el borde opuesto, N_ped/2 + f (N_ped/2 − f si traccionan las dos filas). Sin `edges` ni pedestal, el concreto se toma ilimitado (zapata).
+
+**A2/A1.** Con pedestal, `base_plate.a2_over_a1` comprueba que el A2/A1 del proyecto no supere el del mayor rectángulo semejante y concéntrico que cabe en el pedestal: mín[(N_ped/N)², (B_ped/B)², 4] (AISC 360-22 §J8).
 
 **ASD:** tracción en la barra como perno (AISC 360-22 §J3.6).
 
@@ -75,6 +80,10 @@ Y se exige (M/M_x,cap)² + (M2/M_y,cap)² ≤ 1,0.
 Con el corte que no tomó la llave:
 - **Fricción** (LRFD, P > 0 y sin arandelas soldadas): φV_n = mín[0,65 μ P, 0,75·0,2 f'c A_c, 0,75·0,8 ksi A_c] (DG1 Ec. 4-30). Es el caso usual.
 - **Corte en los anclajes:** si no hay compresión, o en ASD. Con mortero, V_sa se multiplica por 0,8 (ACI §17.7.1.2.1). El corte se reparte entre las barras de una fila, o entre todas si hay arandelas soldadas.
+- **Concreto con corte en los anclajes** (LRFD, cuando el corte va a las barras):
+  - arrancamiento hacia el borde (§17.7.2) para cada componente del corte, con la fila más cercana al borde tomando todo el corte (ACI Fig. R17.7.2.1b, caso 3; DG1 Ejemplo 4.7-4). Para V2, c_a1 es el borde `bottom` y la fila mide `rod_spacing`; para V3, c_a1 es `left` y la fila mide 2f. El pedestal se toma profundo (h_a ≥ 1,5 c_a1);
+  - desprendimiento por palanca (§17.7.3) del grupo completo, si se da `hef`;
+  - interacción tracción–corte (§17.8) con la relación más alta de cada uno.
 - **Arandelas soldadas (`washer_thickness`):** se verifica la barra con tracción, corte y flexión (DG1 Ejemplo 4.7-6). El brazo es l = (t_p + t_w/2)/2, M_r = (V/n) l y Z = d³/6; f_t = N/(n A_b) + M_r/Z se compara con F′_nt de AISC 360-22 §J3.8.
 
 ## 5. Llave de corte

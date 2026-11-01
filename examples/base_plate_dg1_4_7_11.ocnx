@@ -17,8 +17,6 @@
     "tp": "2 in",
     "fc": "4 ksi",
     "A2_over_A1": 1.0,
-    "pedestal_N": "36 in",
-    "pedestal_B": "36 in",
     "grout": "1.5 in",
     "rod_diameter": "1 in",
     "rod_grade": "ASTM F1554 Gr. 36",

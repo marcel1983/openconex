@@ -178,6 +178,7 @@ web_compression_buckling = "Pandeo del alma por compresión"
 panel_zone = "Corte en la zona de panel"
 
 [check.base_plate]
+a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"
 thickness_compression = "Espesor de placa en la interfaz de compresión"
 thickness_tension = "Espesor de placa en la interfaz de tracción"

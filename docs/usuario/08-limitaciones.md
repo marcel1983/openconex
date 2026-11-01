@@ -12,6 +12,7 @@
 ## Limitaciones conocidas
 
 - **Concreto solo en LRFD:** las verificaciones de ACI 318 (aplastamiento de la llave, arrancamiento, extracción, corte en el anclaje) se hacen solo con combinaciones LRFD. En ASD se verifican los anclajes como pernos según AISC 360-22 §J3.
+- **Pedestal:** las distancias a borde se deducen de un pedestal rectangular centrado en la columna. El pedestal se toma profundo (h_a ≥ 1,5 c_a1) en el arrancamiento por corte, y el corte hacia el borde lo toma la fila más cercana. No se verifica la armadura del pedestal como columna ni el corte del pedestal como elemento.
 - **Modelo de presiones:** por defecto, distribución rectangular con placa rígida (DG1 §4.3). La distribución triangular (DG1 Apéndice B.2) está disponible como opción, pero solo para el eje fuerte y combinaciones con compresión; el eje débil sigue usando el modelo rectangular.
 - **Área efectiva:** el área efectiva bajo el perfil I (DG1 Apéndice B.3) está disponible para la capacidad de aplastamiento en compresión concéntrica; no se aplica a HSS ni a combinaciones con momento.
 - **HSS con momento:** se usa el modelo rectangular con las líneas de fluencia 0,95/0,8 de la DG1 §4.3.3. Es una aproximación no validada contra un ejemplo publicado; la memoria lo advierte y debe revisarse como tal.
