@@ -2,6 +2,8 @@
 
 OpenConex lee las tablas de base de datos que SAP2000 exporta a Excel. Con ellas encuentra los apoyos, la columna que nace en cada uno y sus reacciones, y crea los proyectos de placa base.
 
+La misma importación está disponible en la interfaz gráfica con **Archivo > Importar SAP2000 / ETABS…**; el proyecto abierto se usa como plantilla y se elige la carpeta de salida, la agrupación y el origen de las cargas. El resto de esta página describe la línea de comandos y el detalle de las tablas.
+
 > Probado con SAP2000 v27 y con una exportación real de ETABS 23.2. También se aceptan variantes de nombres de tabla y columna (`Joint Restraints`, `Joint Reaction Forces`, `Load Cases`, `Frame Connectivity`, etc.).
 
 ## 1. Exportar desde SAP2000

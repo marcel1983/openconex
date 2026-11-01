@@ -10,10 +10,12 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog
 
+from openconex.core.loads import Method
 from openconex.core.model import HSSKind
 from openconex.gui.app import MainWindow
+from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import MaterialLibraryDialog, SectionLibraryDialog
 from openconex.io.project import (
     HSSSectionInput,
@@ -145,6 +147,186 @@ def test_gui_custom_hss_section(qapp):
     assert window._section_combo.currentText() == "HSS-GUI"
     window.calculate()
     assert window.report is not None
+    window.close()
+
+
+def test_gui_edits_shear_lug(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_shear_lug.ocnx"))
+    assert window.advanced._shear_group.isChecked()
+    assert window.advanced._fields["shear_lug.width"].edit.text() == "8"
+    window.advanced._fields["shear_lug.width"].edit.setText("9")
+    target = tmp_path / "lug.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.shear_lug.width == "9"
+    assert again.base_plate.shear_lug.ca1 == "14.5"
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_edits_reinforcement(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_anchor_reinforcement.ocnx"))
+    assert window.advanced._reinforcement_group.isChecked()
+    assert window.advanced._bars.text() == "4 #6"
+    window.advanced._fields["reinforcement.area"].edit.setText("2.0")
+    target = tmp_path / "reinforcement.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.reinforcement.area == "2.0"
+    assert again.base_plate.reinforcement.bars == "4 #6"
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_edits_weak_base(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_weak_base.ocnx"))
+    assert window.advanced._weak_group.isChecked()
+    assert window.advanced._rt.text() == "1.2"
+    window.advanced._rt.setText("1.3")
+    target = tmp_path / "weak.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.weak_base.Rt == pytest.approx(1.3)
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_edits_embedded_base(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_embedded_base.ocnx"))
+    assert window._connection_combo.currentData() == "embedded"
+    assert not window.advanced._embedded_group.isHidden()
+    assert window._plate_group.isHidden()
+    assert window.advanced._fields["embedded_base.embedment"].edit.text() == "22"
+    window.advanced._fields["embedded_base.embedment"].edit.setText("24")
+    target = tmp_path / "embedded.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.connection_type == "embedded"
+    assert again.base_plate.embedded_base.embedment == "24"
+    assert again.base_plate.N is None
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_advanced_options_and_combinations(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    advanced = window.advanced
+    advanced._friction.setText("0.3")
+    advanced._fields["rod_bending_lever"].edit.setText("2")
+    advanced._fields["bearing_area"].edit.setText("4 in**2")
+    advanced._fields["washer_thickness"].edit.setText("0.5")
+    advanced._fields["flange_weld"].edit.setText("0.25")
+    for key, value in (("left", "3"), ("right", "4"),
+                       ("bottom", "5"), ("top", "6")):
+        advanced._fields[f"edges.{key}"].edit.setText(value)
+    advanced._add_rebar()
+    advanced._rebar_table.item(0, 0).setText("2")
+    advanced._rebar_table.item(0, 1).setText("3")
+    advanced._rebar_table.item(0, 2).setText("0.75")
+    window._combination_edits["SDS"].setText("1.0")
+    window._combination_edits["live_factor"].setText("0.8")
+
+    target = tmp_path / "advanced.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    bp = again.base_plate
+    assert bp.friction_mu == pytest.approx(0.3)
+    assert bp.rod_bending_lever == "2"
+    assert bp.bearing_area == "4 in**2"
+    assert bp.washer_thickness == "0.5"
+    assert bp.flange_weld == "0.25"
+    assert bp.edges == {"left": "3", "right": "4", "bottom": "5", "top": "6"}
+    assert len(bp.pedestal_rebars) == 1
+    assert bp.pedestal_rebars[0].diameter == "0.75"
+    assert again.combinations.SDS == pytest.approx(1.0)
+    assert again.combinations.live_factor == pytest.approx(0.8)
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_switches_to_embedded(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    window._connection_combo.setCurrentIndex(
+        window._connection_combo.findData("embedded"))
+    assert window._plate_group.isHidden()
+    assert not window.advanced._embedded_group.isHidden()
+    advanced = window.advanced
+    advanced._fields["embedded_base.embedment"].edit.setText("22")
+    advanced._fields["embedded_base.foundation_width"].edit.setText("60")
+    advanced._fields["embedded_base.face_plate_thickness"].edit.setText("1")
+    window._method_boxes[Method.ASD].setChecked(False)
+
+    target = tmp_path / "switched.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.connection_type == "embedded"
+    assert again.base_plate.embedded_base is not None
+    assert again.base_plate.N is None
+    assert again.combinations.methods == [Method.LRFD]
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_units_convert_advanced_fields(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_shear_lug.ocnx"))
+    field = window.advanced._fields["shear_lug.weld"]
+    assert field.edit.text() == "0.3125"
+    assert field.unit.text() == "in"
+    window.set_unit_system("SI_N_mm")
+    assert field.edit.text() == "7.9375"
+    assert field.unit.text() == "mm"
+    assert window.advanced._fields["edges.bottom"].edit.text() == "274.32"
+    target = tmp_path / "lug_units.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.info.units == "SI_N_mm"
+    assert again.base_plate_model().shear_lug.weld == pytest.approx(7.9375)
+    window.close()
+
+
+def test_import_supports_dialog(qapp, tmp_path):
+    export = tmp_path / "model.xlsx"
+    export.write_bytes(b"")
+    dialog = ImportSupportsDialog(None, "Plantilla")
+    dialog._file.setText(str(export))
+    dialog._output.setText(str(tmp_path / "out"))
+    dialog.accept()
+    assert dialog.result() == QDialog.DialogCode.Accepted
+    assert dialog.file == str(export)
+    assert dialog.group == "joint"
+    assert dialog.loads == "cases"
+    assert dialog.method == ""
+    dialog.close()
+
+
+def test_gui_import_from_csi(qapp, tmp_path, monkeypatch):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    monkeypatch.setattr("openconex.gui.app.import_supports", lambda path: object())
+    monkeypatch.setattr(
+        "openconex.gui.app.base_plate_projects",
+        lambda data, template, *args, **kwargs: ({"J1": template}, []))
+    monkeypatch.setattr("openconex.gui.app.QMessageBox.information",
+                        lambda *args: None)
+    paths = window.import_from_csi("model.xlsx", str(tmp_path / "out"),
+                                   "joint", "cases")
+    assert len(paths) == 1 and paths[0].exists()
+    again = load_project(paths[0])
+    assert again.base_plate.column == "W12X96"
+    assert again.cases
     window.close()
 
 
