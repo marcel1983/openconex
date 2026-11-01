@@ -195,6 +195,9 @@ class BasePlate:
     pedestal_rebars: tuple[PedestalRebar, ...] = ()
     weak_base: WeakBase | None = None
     embedded_base: EmbeddedBase | None = None
+    pedestal_N: float | None = None
+    """Pedestal size along N (None: not given; edges then come only from ``edges``)."""
+    pedestal_B: float | None = None
 
     @property
     def Fy(self) -> float:
@@ -592,6 +595,82 @@ def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: floa
     return results
 
 
+def concrete_edges(bp: BasePlate, both_rows: bool = False) -> anchors.Edges:
+    """Edge distances of the anchors in tension: ``edges`` if given, else from the pedestal.
+
+    left/right are along B from the outer rods of a row; bottom is along N from the
+    tension row to its edge, top to the opposite edge (from the other row when
+    ``both_rows``). Without either, the concrete is taken as unbounded.
+    """
+    if bp.edges.values() or not (bp.pedestal_N and bp.pedestal_B):
+        return bp.edges
+    side = max((bp.pedestal_B - bp.rod_spacing) / 2, 0.0)
+    near = max(bp.pedestal_N / 2 - bp.f, 0.0)
+    far = near if both_rows else bp.pedestal_N / 2 + bp.f
+    return anchors.Edges(left=side, right=side, bottom=near, top=far)
+
+
+def _a2_over_a1(bp: BasePlate, method: Method, combo: str) -> CheckResult:
+    """A2/A1 used ≤ the largest concentric, similar area inside the pedestal (§J8)."""
+    c = Calc(method, combo)
+    k = c.step("k", r"\min(N_{ped}/N,\ B_{ped}/B)",
+               min(bp.pedestal_N / bp.N, bp.pedestal_B / bp.B), clause="AISC 360-22 §J8")
+    limit = c.step(r"(A_2/A_1)_{max}", r"\min(k^2,\ 4)", min(k * k, 4.0), clause="AISC 360-22 §J8")
+    return c.result("base_plate.a2_over_a1", "AISC 360-22 §J8", bp.A2_over_A1, limit,
+                    Kind.DIMENSIONLESS)
+
+
+def _side_face_blowout(bp: BasePlate, area: float, demand: float, method: Method,
+                       combo: str) -> CheckResult | None:
+    """Side-face blowout of the tension rods near an edge (ACI 318-19 §17.6.4)."""
+    edges = concrete_edges(bp)
+    candidates = [(c, other) for c, other in ((edges.left, edges.bottom),
+                                               (edges.bottom, edges.left)) if c is not None]
+    if not bp.hef or not candidates:
+        return None
+    ca1, ca2 = min(candidates, key=lambda e: e[0])
+    if bp.hef <= 2.5 * ca1:
+        return None
+    return anchors.side_face_blowout(ca1, area, bp.fc, demand, method, bp.hef, ca2,
+                                     combo=combo)
+
+
+def _concrete_shear(bp: BasePlate, components: tuple[float, float], V: float,
+                    previous: list[CheckResult], method: Method,
+                    combo: str) -> list[CheckResult]:
+    """Breakout toward the edge, pryout and tension-shear interaction (ACI 318-19 §17.7, §17.8).
+
+    The row nearest the edge takes the whole shear (ACI Fig. R17.7.2.1b, case 3;
+    DG1 Example 4.7-4).
+    """
+    out: list[CheckResult] = []
+    edges = concrete_edges(bp)
+    hef = bp.hef or 8 * bp.rod.diameter
+    # (shear, ca1 toward the edge, spacing of the front row, side distances)
+    cases = ((components[0], edges.bottom, bp.rod_spacing, (edges.left, edges.right)),
+             (components[1], edges.left, 2 * bp.f, (edges.bottom, edges.top)))
+    for v, ca1, spacing, ca2 in cases:
+        if v > 0 and ca1:
+            out.append(anchors.breakout_shear(bp.rod.diameter, hef, ca1, bp.fc, v, method,
+                                              spacing=spacing, ca2=ca2, cracked=bp.cracked,
+                                              combo=combo))
+    if bp.hef:
+        whole = anchors.breakout_tension(bp.hef, bp.fc, 0.0, method, span_x=bp.rod_spacing,
+                                         span_y=2 * bp.f, edges=concrete_edges(bp, True),
+                                         cracked=bp.cracked, seismic=bp.seismic, combo=combo)
+        ncbg = next(s.value for s in reversed(whole.steps) if s.symbol == "N_{cbg}")
+        out.append(anchors.pryout(ncbg, bp.hef, V, method, combo))
+    tension = [r.ratio for r in previous if r.id in (
+        "anchor.steel_tension", "anchor.concrete_breakout_tension", "anchor.pullout",
+        "anchor.side_face_blowout")]
+    shear = [r.ratio for r in (*previous, *out) if r.id in (
+        "anchor.steel_shear", "anchor.concrete_breakout_shear", "anchor.pryout")]
+    if tension and shear:
+        out.append(anchors.tension_shear_interaction(max(tension), 1.0, max(shear), 1.0,
+                                                     method, combo))
+    return out
+
+
 def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
@@ -601,12 +680,16 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if bp.embedded_base is not None:
         return _embedded_base_checks(bp, P_, V, M, M2, method, combo)
     lug_shear = (0.0, 0.0)
+    rod_shear = (abs(forces.V2), abs(forces.V3))
     if bp.shear_lug:
         lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)
         e = bp.shear_lug.grout + bp.shear_lug.embedment / 2
         M, M2 = M + lug_shear[0] * e, M2 + lug_shear[1] * e
         V = math.hypot(abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
+        rod_shear = (abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
     results: list[CheckResult] = []
+    if bp.pedestal_N and bp.pedestal_B:
+        results.append(_a2_over_a1(bp, method, combo))
     m, n = _cantilevers(col, bp.N, bp.B)
     if bp.pressure_model is PressureModel.TRIANGULAR and M2:
         raise ValueError("the triangular pressure model does not support weak-axis moment yet")
@@ -707,19 +790,26 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
                     reinforcement.clear_cover, reinforcement.anchor_to_bar, bp.fc,
                     bp.hef, reinforcement.le, method, combo)
             elif bp.hef:
+                both_rows = bend.case == "uplift" and bend.Y == 0
                 bo = anchors.breakout_tension(bp.hef, bp.fc, group_t, method,
-                                              span_x=bp.rod_spacing, edges=bp.edges,
+                                              span_x=bp.rod_spacing,
+                                              span_y=2 * bp.f if both_rows else 0.0,
+                                              edges=concrete_edges(bp, both_rows),
                                               cracked=bp.cracked, seismic=bp.seismic,
                                               combo=combo)
                 results.append(bo)
             area = bp.bearing_area or anchors.heavy_hex_bearing_area(bp.rod.diameter)
             results.append(anchors.pullout(area, bp.fc, rod_t_nd, method, bp.cracked,
                                            bp.seismic, combo))
+            blowout = _side_face_blowout(bp, area, rod_t_nd, method, combo)
+            if blowout is not None:
+                results.append(blowout)
         if V > 0 and use_friction:
             results.append(transfer.friction(P_, bp.N * bp.B, bp.fc, V, bp.friction_mu, combo))
         elif V > 0:
             results.append(anchors.steel_shear(bp.rod.diameter, Fu, Fy, rod_v, method,
                                                bp.grout_pad, combo))
+            results += _concrete_shear(bp, rod_shear, V, results, method, combo)
     else:
         if rod_t > 0:
             results.append(bolts.bolt_tension(bp.rod, rod_t, method, combo))

@@ -10,7 +10,7 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 |---|---|
 | 4.7-1, 4.7-2 | compresión axial, sin y con confinamiento del concreto |
 | 4.7-3 | tracción axial (levantamiento neto) |
-| 4.7-4 | corte resistido por anclajes, limitado por el borde |
+| 4.7-4 | corte resistido por anclajes, limitado por el borde (también `tests/base_plate/test_pedestal_concrete.py`, con la verificación completa: φV_cbg = 18,4 kip) |
 | 4.7-5 | llave de corte (también `tests/base_plate/test_shear_lug.py`, con la verificación completa) |
 | 4.7-6 | anclajes con tracción, corte y flexión de la barra |
 | 4.7-7, 4.7-8 | bases de arriostramiento: tracción y corte; compresión, corte y fricción |

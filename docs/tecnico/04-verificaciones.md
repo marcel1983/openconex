@@ -8,6 +8,7 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 
 | `id` | Verificación | Norma | Placa base |
 |---|---|---|---|
+| `base_plate.a2_over_a1` | A2/A1 admisible por el tamaño del pedestal | AISC 360-22 §J8 | ✔ con pedestal |
 | `base_plate.bearing` | Aplastamiento del concreto bajo la placa (P ≤ φP_p, o q ≤ q_max) | AISC 360-22 §J8; DG1 §4.3 | ✔ |
 | `base_plate.thickness_compression` | Espesor de placa en la interfaz de compresión | DG1 Ec. 4-15, 4-47 a 4-52 | ✔ |
 | `base_plate.thickness_tension` | Espesor de placa en la interfaz de tracción | DG1 Ec. 4-61, 4-62 | ✔ |
@@ -43,11 +44,11 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `anchor.steel_tension` | Acero del anclaje a tracción | §17.6.1.2 | ✔ |
 | `anchor.concrete_breakout_tension` | Arrancamiento del concreto a tracción (grupo) | §17.6.2 | ✔ si `hef` > 0 |
 | `anchor.pullout` | Extracción (tuerca o gancho) | §17.6.3 | ✔ |
-| `anchor.side_face_blowout` | Desprendimiento lateral del concreto | §17.6.4 | — |
+| `anchor.side_face_blowout` | Desprendimiento lateral del concreto | §17.6.4 | ✔ si h_ef > 2,5 c_a1 |
 | `anchor.steel_shear` | Acero del anclaje a corte (×0,8 con mortero) | §17.7.1 | ✔ sin fricción |
-| `anchor.concrete_breakout_shear` | Arrancamiento del concreto a corte | §17.7.2 | — |
-| `anchor.pryout` | Desprendimiento por palanca | §17.7.3 | — |
-| `anchor.interaction` | Interacción tracción–corte | §17.8 | — |
+| `anchor.concrete_breakout_shear` | Arrancamiento del concreto a corte | §17.7.2 | ✔ corte en anclajes con borde |
+| `anchor.pryout` | Desprendimiento por palanca | §17.7.3 | ✔ corte en anclajes |
+| `anchor.interaction` | Interacción tracción–corte | §17.8 | ✔ tracción y corte en anclajes |
 | `anchor.shear_lug_bearing` | Aplastamiento del concreto en la llave de corte | §17.11.2 | ✔ con llave |
 | `anchor.shear_lug_breakout` | Arrancamiento del concreto por la llave | §17.11.3 | ✔ con llave y `ca1` |
 | `anchor.reinforcement` | Refuerzo de anclaje en tracción | §17.5.2.1 | con refuerzo LRFD |

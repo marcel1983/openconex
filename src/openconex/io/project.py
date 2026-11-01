@@ -555,6 +555,8 @@ class Project(_Input):
             bearing_area=(None if bp.bearing_area is None
                           else self.quantity(bp.bearing_area, Kind.AREA)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
+            pedestal_N=None if bp.pedestal_N is None else self.quantity(bp.pedestal_N, L),
+            pedestal_B=None if bp.pedestal_B is None else self.quantity(bp.pedestal_B, L),
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
             grout_pad=bp.grout_pad,
