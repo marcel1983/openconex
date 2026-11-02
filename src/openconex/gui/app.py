@@ -42,7 +42,7 @@ from openconex.core.materials import BOLTS, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
-from openconex.gui.exporting import write_3d, write_dxf
+from openconex.gui.exporting import parts_3d, write_3d, write_dxf
 from openconex.gui.geometry import GeometryEditor, GeometryValues
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import (
@@ -57,6 +57,7 @@ from openconex.gui.quantity import (
     format_quantity,
     unit_label,
 )
+from openconex.gui.viewer3d import Viewer3D
 from openconex.io.csi import import_supports
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
@@ -273,6 +274,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(figure_scroll, "Figuras")
         self.geometry = GeometryEditor(self._read_geometry, self._apply_geometry)
         self.tabs.addTab(self.geometry, "Geometría")
+        self.viewer = Viewer3D(self._load_3d_parts)
+        self.tabs.addTab(self.viewer, "3D")
         self.tabs.currentChanged.connect(self._on_tab_changed)
         splitter.addWidget(self.tabs)
         splitter.setSizes([460, 820])
@@ -580,6 +583,13 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, index: int) -> None:
         if self.tabs.widget(index) is self.geometry:
             self.refresh_geometry()
+        elif self.tabs.widget(index) is self.viewer:
+            self.viewer.load_model()
+
+    def _load_3d_parts(self):
+        if self.project is None:
+            raise ValueError("abra o calcule un proyecto antes de ver el modelo 3D")
+        return parts_3d(self.project.model_copy(deep=True))
 
     def _schedule_geometry_refresh(self, *_args: object) -> None:
         if hasattr(self, "_geometry_timer"):

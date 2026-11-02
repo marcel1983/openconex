@@ -9,6 +9,7 @@ from pathlib import Path
 from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
 from openconex.drawing.embedded_base import write_embedded_base_dxf
 from openconex.geometry3d.base_plate import (
+    Part,
     base_plate_parts,
     embedded_base_parts,
     write_step,
@@ -17,7 +18,7 @@ from openconex.geometry3d.base_plate import (
 from openconex.io.project import Project
 from openconex.units import Kind
 
-__all__ = ["write_3d", "write_dxf"]
+__all__ = ["parts_3d", "write_3d", "write_dxf"]
 
 
 def write_dxf(project: Project, path: str | Path) -> None:
@@ -38,17 +39,21 @@ def write_dxf(project: Project, path: str | Path) -> None:
         write_base_plate_dxf(bp, path, info.unit_system(), info.language, options)
 
 
-def write_3d(project: Project, path: str | Path, kind: str) -> None:
-    """Write a STEP or STL model of ``project``."""
+def parts_3d(project: Project) -> list[Part]:
+    """Solids of ``project`` for the viewer and the STEP/STL writers."""
     bp = project.base_plate_model()
     if bp.embedded_base is not None:
-        parts = embedded_base_parts(bp)
-    else:
-        data = project.base_plate
-        parts = base_plate_parts(
-            bp, project.quantity(data.grout, Kind.LENGTH),
-            None if data.pedestal_N is None else
-            project.quantity(data.pedestal_N, Kind.LENGTH),
-            None if data.pedestal_B is None else
-            project.quantity(data.pedestal_B, Kind.LENGTH))
+        return embedded_base_parts(bp)
+    data = project.base_plate
+    return base_plate_parts(
+        bp, project.quantity(data.grout, Kind.LENGTH),
+        None if data.pedestal_N is None else
+        project.quantity(data.pedestal_N, Kind.LENGTH),
+        None if data.pedestal_B is None else
+        project.quantity(data.pedestal_B, Kind.LENGTH))
+
+
+def write_3d(project: Project, path: str | Path, kind: str) -> None:
+    """Write a STEP or STL model of ``project``."""
+    parts = parts_3d(project)
     (write_step if kind == "step" else write_stl)(parts, path)
