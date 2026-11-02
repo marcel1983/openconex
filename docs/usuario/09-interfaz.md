@@ -1,6 +1,6 @@
 # 9. Interfaz gráfica
 
-> **Estado: edición completa, geometría, visor 3D, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También incluye un editor gráfico de planta y elevación, un visor 3D interactivo, importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel.
+> **Estado: edición completa, geometría, visor 3D, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También incluye un editor gráfico de planta y elevación, un visor 3D interactivo, importa apoyos de SAP2000/ETABS o de una tabla Excel/CSV, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel.
 
 ## Instalación
 
@@ -154,6 +154,24 @@ Opciones del diálogo:
 
 Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exportar. Los avisos de la importación (apoyos sin columna, secciones no admitidas, casos omitidos) se muestran al terminar.
 
+## Importar Excel / CSV
+
+**Archivo > Importar Excel / CSV…** crea proyectos de placa base desde una tabla propia. La primera fila es la cabecera y cada fila es un caso de un apoyo:
+
+| Columna | Uso |
+|---|---|
+| `support` | Nombre del apoyo o proyecto (obligatorio). |
+| `case` | Nombre del caso de carga (obligatorio). |
+| `type` | Tipo ASCE 7-22: `D`, `L`, `Lr`, `S`, `R`, `W`, `WT` o `E`; por defecto `D`. |
+| `column` | Etiqueta AISC o sección propia; si se omite, se usa la columna de la plantilla. |
+| `P` | Fuerza axial, compresión positiva. |
+| `V` | Corte en el eje fuerte. |
+| `M` | Momento en el eje fuerte. |
+| `V_weak` | Corte en el eje débil. |
+| `M_weak` | Momento en el eje débil. |
+
+Los números sin unidad usan el sistema elegido en el diálogo; también se puede escribir la unidad en la celda (`"25 kN"`). El proyecto abierto actúa como plantilla (placa, concreto, anclajes y opciones) y se genera un `.ocnx` por apoyo. Las combinaciones se generan con ASCE 7-22; si hay casos sísmicos, la plantilla debe tener `SDS`.
+
 ## Cálculo por lotes
 
 **Cálculo > Calcular lote…** calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
@@ -209,7 +227,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
 - Cambio de unidades por preset o por magnitud, con conversión del formulario y de los bloques especiales.
 - Edición de casos de carga, opciones de combinaciones y combinaciones propias.
-- Importación de SAP2000/ETABS y creación de proyectos por apoyo o por sección.
+- Importación de SAP2000/ETABS y Excel/CSV, con creación de proyectos por apoyo o por sección.
 - Cálculo y reporte por lotes de una carpeta de proyectos.
 - Cálculo individual, resumen, traza y figuras.
 - Exportación a los formatos disponibles.
