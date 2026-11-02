@@ -61,6 +61,7 @@ from openconex.gui.viewer3d import Viewer3D
 from openconex.io.csi import import_supports
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
+    CustomCombinationInput,
     HSSSectionInput,
     LoadCaseInput,
     MaterialInput,
@@ -413,11 +414,39 @@ class MainWindow(QMainWindow):
             edit = QLineEdit(default)
             self._combination_edits[key] = edit
             layout.addRow(label, edit)
-        note = QLabel("Las combinaciones propias del archivo se conservan. SDS es "
-                      "obligatorio si hay casos sísmicos y se generan combinaciones "
-                      "del código.")
+        note = QLabel("SDS es obligatorio si hay casos sísmicos y se generan "
+                      "combinaciones del código.")
         note.setWordWrap(True)
         layout.addRow(note)
+
+        self._custom_table = QTableWidget(0, 7)
+        self._custom_table.setHorizontalHeaderLabels(
+            ["Nombre", "Método", "Factores", "Sísmica", "Sobre-resist.",
+             "Incr. ASD", "Fuente"])
+        self._custom_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        self._custom_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
+        self._custom_table.verticalHeader().setVisible(False)
+        self._custom_table.horizontalHeader().setStretchLastSection(True)
+        self._custom_table.setMaximumHeight(150)
+        layout.addRow("Propias", self._custom_table)
+        buttons = QHBoxLayout()
+        add = QPushButton("Añadir")
+        add.clicked.connect(self._add_custom_combination)
+        duplicate = QPushButton("Duplicar")
+        duplicate.clicked.connect(self._duplicate_custom_combination)
+        remove = QPushButton("Eliminar")
+        remove.clicked.connect(self._remove_custom_combination)
+        buttons.addWidget(add)
+        buttons.addWidget(duplicate)
+        buttons.addWidget(remove)
+        buttons.addStretch(1)
+        layout.addRow(buttons)
+        factors_note = QLabel("Factores por caso: D=1.2; L=1.6. Los casos deben existir "
+                              "en la tabla de casos de carga.")
+        factors_note.setWordWrap(True)
+        layout.addRow(factors_note)
         return group
 
     def _build_actions(self) -> QWidget:
@@ -578,6 +607,157 @@ class MainWindow(QMainWindow):
                 options.omega0 = value
             else:
                 setattr(options, key, value)
+        self._apply_custom_combinations(options, errors)
+
+    def _fill_custom_combinations(self, project: Project) -> None:
+        self._custom_table.setRowCount(0)
+        for custom in project.combinations.custom:
+            factors = "; ".join(f"{case}={factor:g}"
+                                for case, factor in custom.factors.items())
+            self._insert_custom_row(custom.name, custom.method.value, factors,
+                                    custom.seismic, custom.overstrength,
+                                    custom.allowable_increase, custom.source)
+
+    def _unique_custom_name(self, base: str) -> str:
+        names = {self._custom_table.item(row, 0).text().strip()
+                 for row in range(self._custom_table.rowCount())
+                 if self._custom_table.item(row, 0) is not None}
+        if base not in names:
+            return base
+        number = 2
+        while f"{base} {number}" in names:
+            number += 1
+        return f"{base} {number}"
+
+    def _method_cell(self, method: str) -> QComboBox:
+        combo = QComboBox()
+        combo.addItem("LRFD", Method.LRFD.value)
+        combo.addItem("ASD", Method.ASD.value)
+        index = combo.findData(method)
+        combo.setCurrentIndex(index if index >= 0 else 0)
+        return combo
+
+    @staticmethod
+    def _check_cell(checked: bool) -> QTableWidgetItem:
+        item = QTableWidgetItem()
+        item.setFlags(Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEnabled
+                      | Qt.ItemFlag.ItemIsSelectable)
+        item.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+        return item
+
+    def _insert_custom_row(self, name: str, method: str, factors: str,
+                           seismic: bool, overstrength: bool, allowable: float,
+                           source: str) -> None:
+        row = self._custom_table.rowCount()
+        self._custom_table.insertRow(row)
+        self._custom_table.setItem(row, 0, QTableWidgetItem(name))
+        self._custom_table.setCellWidget(row, 1, self._method_cell(method))
+        self._custom_table.setItem(row, 2, QTableWidgetItem(factors))
+        self._custom_table.setItem(row, 3, self._check_cell(seismic))
+        self._custom_table.setItem(row, 4, self._check_cell(overstrength))
+        self._custom_table.setItem(row, 5, QTableWidgetItem(f"{allowable:g}"))
+        self._custom_table.setItem(row, 6, QTableWidgetItem(source))
+
+    def _add_custom_combination(self) -> None:
+        self._insert_custom_row(self._unique_custom_name("Nueva"), Method.LRFD.value,
+                                "", False, False, 1.0, "")
+        self._custom_table.setCurrentCell(self._custom_table.rowCount() - 1, 2)
+
+    def _duplicate_custom_combination(self) -> None:
+        row = self._custom_table.currentRow()
+        if row < 0:
+            return
+        name = self._custom_table.item(row, 0).text().strip()
+        combo = self._custom_table.cellWidget(row, 1)
+        method = combo.currentData() if isinstance(combo, QComboBox) else Method.LRFD.value
+        factors = self._custom_table.item(row, 2).text()
+        seismic = self._custom_table.item(row, 3).checkState() == Qt.CheckState.Checked
+        overstrength = self._custom_table.item(row, 4).checkState() == Qt.CheckState.Checked
+        try:
+            allowable = float(self._custom_table.item(row, 5).text())
+        except (TypeError, ValueError):
+            allowable = 1.0
+        source = self._custom_table.item(row, 6).text()
+        self._insert_custom_row(self._unique_custom_name(f"{name} copia"), method,
+                                factors, seismic, overstrength, allowable, source)
+        self._custom_table.setCurrentCell(self._custom_table.rowCount() - 1, 2)
+
+    def _remove_custom_combination(self) -> None:
+        row = self._custom_table.currentRow()
+        if row >= 0:
+            self._custom_table.removeRow(row)
+
+    def _apply_custom_combinations(self, options: object, errors: list[str]) -> None:
+        case_names = {
+            self.cases.item(row, 0).text().strip()
+            for row in range(self.cases.rowCount())
+            if self.cases.item(row, 0) is not None
+            and self.cases.item(row, 0).text().strip()
+        }
+        custom: list[CustomCombinationInput] = []
+        names: set[str] = set()
+        for row in range(self._custom_table.rowCount()):
+            name = (self._custom_table.item(row, 0).text().strip()
+                    if self._custom_table.item(row, 0) is not None else "")
+            factors_text = (self._custom_table.item(row, 2).text().strip()
+                            if self._custom_table.item(row, 2) is not None else "")
+            if not name and not factors_text:
+                continue
+            row_errors: list[str] = []
+            if not name:
+                row_errors.append(f"combinación {row + 1}: falta el nombre")
+            elif name in names:
+                row_errors.append(f"combinación {name!r}: nombre repetido")
+            names.add(name)
+            combo = self._custom_table.cellWidget(row, 1)
+            method = combo.currentData() if isinstance(combo, QComboBox) else "LRFD"
+            factors: dict[str, float] = {}
+            if not factors_text:
+                row_errors.append(f"combinación {name!r}: faltan los factores")
+            for part in factors_text.replace("\n", ";").split(";"):
+                part = part.strip()
+                if not part:
+                    continue
+                if "=" not in part:
+                    row_errors.append(f"combinación {name!r}: use Caso=Factor")
+                    continue
+                case, _, value = part.partition("=")
+                case = case.strip()
+                try:
+                    factor = float(value.strip())
+                except ValueError:
+                    row_errors.append(f"combinación {name!r}: factor no válido en {case!r}")
+                    continue
+                if case not in case_names:
+                    row_errors.append(f"combinación {name!r}: caso desconocido {case!r}")
+                if case in factors:
+                    row_errors.append(f"combinación {name!r}: caso repetido {case!r}")
+                factors[case] = factor
+            if not any(value != 0 for value in factors.values()):
+                row_errors.append(f"combinación {name!r}: todos los factores son cero")
+            allowable_text = (self._custom_table.item(row, 5).text().strip()
+                              if self._custom_table.item(row, 5) is not None else "1")
+            try:
+                allowable = float(allowable_text or "1")
+            except ValueError:
+                allowable = 1.0
+                row_errors.append(f"combinación {name!r}: incremento ASD no válido")
+            if allowable < 1:
+                row_errors.append(f"combinación {name!r}: el incremento ASD debe ser ≥ 1")
+            seismic = (self._custom_table.item(row, 3).checkState()
+                       == Qt.CheckState.Checked)
+            overstrength = (self._custom_table.item(row, 4).checkState()
+                            == Qt.CheckState.Checked)
+            source = (self._custom_table.item(row, 6).text().strip()
+                      if self._custom_table.item(row, 6) is not None else "")
+            if row_errors:
+                errors.extend(row_errors)
+                continue
+            custom.append(CustomCombinationInput(
+                name=name, method=Method(method), factors=factors,
+                seismic=seismic, overstrength=overstrength,
+                allowable_increase=allowable, source=source))
+        options.custom = custom
 
     # -- geometry ---------------------------------------------------------------
     def _on_tab_changed(self, index: int) -> None:
@@ -927,6 +1107,7 @@ class MainWindow(QMainWindow):
         for key, box in self._plate_boxes.items():
             box.setChecked(bool(getattr(bp, key, False)))
         self._fill_combinations(project)
+        self._fill_custom_combinations(project)
 
         self.cases.setRowCount(0)
         for case in project.cases:

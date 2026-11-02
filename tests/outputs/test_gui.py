@@ -10,6 +10,7 @@ import pytest
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QApplication, QDialog
 
 from openconex.core.loads import Method
@@ -294,6 +295,34 @@ def test_gui_units_convert_advanced_fields(qapp, tmp_path):
     again = load_project(target)
     assert again.info.units == "SI_N_mm"
     assert again.base_plate_model().shear_lug.weld == pytest.approx(7.9375)
+    window.close()
+
+
+def test_gui_custom_combinations_round_trip(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    window._add_custom_combination()
+    row = window._custom_table.rowCount() - 1
+    window._custom_table.item(row, 0).setText("Custom")
+    window._custom_table.item(row, 2).setText("D=1.2; L=1.6")
+    window._custom_table.item(row, 3).setCheckState(Qt.CheckState.Checked)
+    target = tmp_path / "combinations.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    custom = again.combinations.custom
+    assert len(custom) == 1
+    assert custom[0].name == "Custom"
+    assert custom[0].factors == {"D": 1.2, "L": 1.6}
+    assert custom[0].seismic is True
+    window.calculate()
+    assert window.report is not None
+
+    window._custom_table.setCurrentCell(row, 0)
+    window._duplicate_custom_combination()
+    assert window._custom_table.rowCount() == 2
+    window._custom_table.setCurrentCell(1, 0)
+    window._remove_custom_combination()
+    assert window._custom_table.rowCount() == 1
     window.close()
 
 
