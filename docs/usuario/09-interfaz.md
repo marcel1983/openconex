@@ -131,7 +131,10 @@ Se activa con la casilla del grupo. Incluye el diámetro reducido, la longitud d
 - **Métodos:** LRFD y/o ASD.
 - **Generar combinaciones ASCE 7-22:** activa o desactiva las combinaciones del código.
 - **Factor de carga viva**, **`SDS`**, **`ρ`** y **`Ω0`**.
-- Las combinaciones propias del archivo se conservan; su edición detallada se hace en el `.ocnx`.
+- **Combinaciones propias:** tabla editable con nombre, método, factores, marca sísmica, sobre-resistencia, incremento ASD y fuente. **Añadir**, **Duplicar** y **Eliminar** gestionan las filas.
+  - Factores por caso con el formato `D=1.2; L=1.6`.
+  - Los nombres de caso deben existir en la tabla de casos.
+  - El incremento ASD debe ser mayor o igual que 1.
 
 Si hay casos sísmicos y se generan combinaciones del código, `SDS` es obligatorio. Use `SDS = 0` para omitir el efecto vertical `Ev`.
 
@@ -205,7 +208,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
 - Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
 - Cambio de unidades con conversión del formulario y de los bloques especiales.
-- Edición de casos de carga y de las opciones de combinaciones.
+- Edición de casos de carga, opciones de combinaciones y combinaciones propias.
 - Importación de SAP2000/ETABS y creación de proyectos por apoyo o por sección.
 - Cálculo y reporte por lotes de una carpeta de proyectos.
 - Cálculo individual, resumen, traza y figuras.
@@ -216,5 +219,4 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
 - El visor 3D requiere el extra `3d` (OpenCASCADE); sin él, la pestaña muestra un aviso.
 - Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
-- Las combinaciones propias se conservan, pero se editan en el archivo `.ocnx`.
 - La interfaz no sustituye la revisión del profesional responsable.
