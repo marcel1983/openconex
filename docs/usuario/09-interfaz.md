@@ -1,6 +1,6 @@
 # 9. Interfaz gráfica
 
-> **Estado: edición completa, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel. El editor gráfico de geometría queda para una fase posterior.
+> **Estado: edición completa, geometría, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También incluye un editor gráfico de planta y elevación, importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel.
 
 ## Instalación
 
@@ -50,6 +50,19 @@ openconex-gui examples/base_plate_dg1_4_7_11.ocnx
 12. **Exportar** para generar HTML, DOCX, PDF, DXF, STEP o STL.
 
 El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. Se desactiva en las bases empotradas.
+
+## Geometría
+
+La pestaña **Geometría** muestra la planta y la elevación de la placa y permite cambiar las dimensiones arrastrando:
+
+- los **bordes de la placa** para ajustar `N` y `B`;
+- los **anclajes exteriores** para ajustar `f` y la separación entre barras;
+- los **bordes del pedestal**, si está definido, para ajustar `pedestal_N` y `pedestal_B`;
+- en elevación, los hitos de **espesor de placa**, **mortero** y **empotramiento `hef`**.
+
+Los cambios se reflejan inmediatamente en el formulario y en las etiquetas de unidad. **Deshacer** (`Ctrl+Z`) y **Rehacer** (`Ctrl+Y`) revierten los cambios gráficos. Los controles impiden reducir la placa por debajo de la columna, cruzar los anclajes o dejar espesores no positivos; la validación completa se ejecuta al calcular o guardar.
+
+La columna se elige en el desplegable **Columna**; su huella en planta se actualiza con la sección seleccionada.
 
 ## Tipos de conexión
 
@@ -173,6 +186,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 ## Alcance actual
 
 - Edición de los datos generales y de todos los bloques de la placa base.
+- Editor gráfico de planta y elevación con deshacer/rehacer.
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
 - Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
 - Cambio de unidades con conversión del formulario y de los bloques especiales.
@@ -184,7 +198,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 ## Limitaciones
 
-- No hay edición gráfica de la geometría.
+- La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
 - Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
 - Las combinaciones propias se conservan, pero se editan en el archivo `.ocnx`.
 - La interfaz no sustituye la revisión del profesional responsable.
