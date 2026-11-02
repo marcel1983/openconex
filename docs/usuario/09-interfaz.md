@@ -1,6 +1,6 @@
 # 9. Interfaz gráfica
 
-> **Estado: inicial (F4.1 ampliada).** Cubre el flujo individual de una placa base expuesta. La edición completa de bases empotradas, bases débiles e importación por lotes desde la interfaz queda para las siguientes fases.
+> **Estado: edición individual completa e importación por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También importa apoyos de SAP2000/ETABS y crea un proyecto por apoyo o por sección de columna. El cálculo y el reporte masivo de esos proyectos y el editor gráfico de geometría quedan para una fase posterior.
 
 ## Instalación
 
@@ -25,21 +25,104 @@ openconex-gui examples/base_plate_dg1_4_7_11.ocnx
 ## Flujo de trabajo
 
 1. **Archivo > Abrir** para cargar un `.ocnx`.
-2. Elegir la **columna** en el desplegable. El campo es editable: se puede escribir una etiqueta AISC (`W12X96`) y el autocompletado filtra el catálogo.
-3. Elegir los materiales en los desplegables:
+2. Elegir el **tipo de conexión**:
+   - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
+   - **Base empotrada Tipo I**, con el empotramiento, el pedestal y el refuerzo horizontal.
+3. Elegir la **columna** en el desplegable. El campo es editable: se puede escribir una etiqueta AISC (`W12X96`) y el autocompletado filtra el catálogo.
+4. Elegir los materiales en los desplegables:
    - **Grado de columna** y **Acero de la placa**: aceros de AISC o materiales propios del proyecto.
    - **Grado de anclaje**: grados de pernos y barras de anclaje de AISC 360-22.
-4. Editar las dimensiones y los datos del concreto. Cada valor muestra su unidad a la derecha; las unidades se cambian desde **Unidades**.
-5. Añadir, modificar o eliminar casos de carga en la tabla.
-6. Pulsar **Calcular** o `F5`.
-7. Revisar:
-   - la pestaña **Resumen**, con demanda, capacidad, relación y estado;
-   - la pestaña **Verificaciones**, con la traza y la cláusula;
-   - la pestaña **Figuras**, con planta, elevación e isométrico.
-8. **Archivo > Guardar** o **Guardar como** para conservar los cambios.
-9. **Exportar** para generar HTML, DOCX, PDF, DXF, STEP o STL.
+5. Editar las dimensiones y los datos del concreto. Cada valor muestra su unidad a la derecha; las unidades se cambian desde **Unidades**.
+6. Completar, si hace falta:
+   - **Opciones de cálculo**;
+   - **Llave de corte**;
+   - **Refuerzo de anclaje**;
+   - **Base débil sísmica**;
+   - **Barras del pedestal**.
+7. Añadir, modificar o eliminar casos de carga en la tabla.
+8. Revisar **Combinaciones**: métodos LRFD/ASD, generación ASCE 7-22, `SDS`, `ρ` y `Ω0`.
+9. Pulsar **Calcular** o `F5`.
+10. Revisar:
+    - la pestaña **Resumen**, con demanda, capacidad, relación y estado;
+    - la pestaña **Verificaciones**, con la traza y la cláusula;
+    - la pestaña **Figuras**, con planta, elevación e isométrico.
+11. **Archivo > Guardar** o **Guardar como** para conservar los cambios.
+12. **Exportar** para generar HTML, DOCX, PDF, DXF, STEP o STL.
 
-El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`.
+El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. Se desactiva en las bases empotradas.
+
+## Tipos de conexión
+
+### Placa base expuesta
+
+Muestra los campos de la placa, el pedestal, el mortero y los anclajes. Admite los bloques opcionales de llave de corte, refuerzo de anclaje y base débil.
+
+### Base empotrada Tipo I
+
+Sustituye el formulario expuesto por los datos de la DG1 Capítulo 5:
+
+- empotramiento de la columna;
+- ancho del pedestal;
+- espesor de la placa frontal;
+- `β1`;
+- placa embebida opcional (ancho y espesor, ambos o ninguno);
+- límite de daño;
+- refuerzo horizontal superior e inferior, cada uno con área, `fy` y profundidad.
+
+El motor exige LRFD, perfiles I y ausencia de momento débil, llave de corte o base débil. La interfaz desactiva los bloques incompatibles y muestra el error del proyecto si alguna combinación no cumple.
+
+## Opciones de cálculo
+
+- **Modelo de presión:** rectangular (DG1 §4.3) o triangular (DG1 Ap. B.2).
+- **Área de apoyo:** placa completa o área efectiva (DG1 Ap. B.3).
+- **Brazo de flexión de placa:** distancia del anclaje al alma o ala.
+- **Área de apoyo del anclaje:** área de la tuerca o placa embebida para la extracción.
+- **Arandela soldada:** espesor de la arandela; activa el reparto del corte entre todas las barras.
+- **Soldadura de ala:** tamaño de la soldadura de filete de la columna.
+- **Coeficiente de fricción** placa-concreto.
+- **Bordes del concreto:** izquierdo, derecho, inferior y superior; si se omiten, se deducen del pedestal.
+- **Barras del pedestal:** tabla de posición `x`, `y` y diámetro para el revisor de interferencias.
+
+Los campos opcionales muestran la palabra «opcional» y se pueden dejar vacíos.
+
+## Bloques especiales
+
+### Llave de corte
+
+Se activa con la casilla del grupo. Incluye ancho `b_sl`, empotramiento `h_sl`, espesor, soldadura, dirección (fuerte, débil o cruz), acero y distancias `c_a1`/`c_a2` opcionales.
+
+### Refuerzo de anclaje
+
+Se activa con la casilla del grupo. Incluye la etiqueta de barras, área total, `fy`, diámetro, recubrimiento, distancia anclaje-barra y desarrollo disponible.
+
+### Base débil sísmica
+
+Se activa con la casilla del grupo. Incluye el diámetro reducido, la longitud de estiramiento y `Rt`. Requiere LRFD, presión rectangular y ausencia de momento débil.
+
+## Combinaciones
+
+- **Métodos:** LRFD y/o ASD.
+- **Generar combinaciones ASCE 7-22:** activa o desactiva las combinaciones del código.
+- **Factor de carga viva**, **`SDS`**, **`ρ`** y **`Ω0`**.
+- Las combinaciones propias del archivo se conservan; su edición detallada se hace en el `.ocnx`.
+
+Si hay casos sísmicos y se generan combinaciones del código, `SDS` es obligatorio. Use `SDS = 0` para omitir el efecto vertical `Ev`.
+
+## Importar SAP2000 / ETABS
+
+**Archivo > Importar SAP2000 / ETABS…** crea proyectos de placa base a partir de la exportación de tablas a Excel. El proyecto abierto actúa como plantilla: aporta la placa, el concreto, los anclajes y las opciones; la columna y las cargas se toman del modelo.
+
+Opciones del diálogo:
+
+- **Archivo CSI:** exportación `.xlsx` de SAP2000 o ETABS.
+- **Salida:** carpeta donde se escriben los `.ocnx`.
+- **Agrupación:** un proyecto por apoyo o uno por sección de columna.
+- **Cargas:** casos de carga (OpenConex genera las combinaciones) o combinaciones del programa ya factorizadas.
+- **Incluir:** expresión regular opcional para filtrar casos o combinaciones.
+- **Envolventes:** incluye Max/Min cuando se importan combinaciones.
+- **Método:** LRFD, ASD o el de la plantilla.
+
+Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exportar. Los avisos de la importación (apoyos sin columna, secciones no admitidas, casos omitidos) se muestran al terminar.
 
 ## Unidades
 
@@ -47,9 +130,9 @@ El menú **Unidades** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m
 
 Al cambiar de preset:
 
-- se convierten los valores del formulario y de la tabla de casos;
-- se actualizan las etiquetas de unidad junto a cada campo y en las cabeceras de la tabla;
-- se convierten las dimensiones de las secciones personalizadas y los bloques que todavía no tienen formulario propio, para que el proyecto guardado siga siendo coherente;
+- se convierten los valores del formulario, los bloques especiales, la tabla de barras del pedestal y la tabla de casos;
+- se actualizan las etiquetas de unidad junto a cada campo y en las cabeceras de las tablas;
+- se convierten las dimensiones de las secciones personalizadas;
 - se invalida el resultado anterior hasta volver a calcular.
 
 Los números se pueden escribir con su unidad (`"3/4 in"`, `"25 mm"`, `"120 kN*m"`); si se omite, se usa el preset activo.
@@ -76,19 +159,19 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 ## Alcance actual
 
-- Edición de los datos generales y de la placa base expuesta.
+- Edición de los datos generales y de todos los bloques de la placa base.
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
-- Selección de materiales de columna, placa y anclaje; creación de aceros propios.
-- Cambio de unidades con conversión del formulario.
-- Edición de casos de carga.
+- Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
+- Cambio de unidades con conversión del formulario y de los bloques especiales.
+- Edición de casos de carga y de las opciones de combinaciones.
+- Importación de SAP2000/ETABS y creación de proyectos por apoyo o por sección.
 - Cálculo, resumen, traza y figuras.
 - Exportación a los formatos disponibles.
-- Los bloques `weak_base`, `embedded_base`, `shear_lug` y `reinforcement` se conservan al abrir y guardar, pero todavía no tienen formulario propio.
 
 ## Limitaciones
 
 - No hay edición gráfica de la geometría.
-- No hay importación de SAP2000/ETABS desde la interfaz; se sigue usando `openconex supports`.
-- No hay proceso por lotes ni agrupación por tipo desde la interfaz.
+- No hay cálculo ni reporte masivo de los proyectos importados desde la interfaz; se abren uno a uno.
 - Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
+- Las combinaciones propias se conservan, pero se editan en el archivo `.ocnx`.
 - La interfaz no sustituye la revisión del profesional responsable.

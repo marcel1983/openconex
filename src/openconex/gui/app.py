@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -35,10 +36,13 @@ from PySide6.QtWidgets import (
 )
 
 from openconex.connections.base_plate.check import optimize_base_plate
+from openconex.core.loads import Method
 from openconex.core.materials import BOLTS, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
 from openconex.drawing.embedded_base import write_embedded_base_dxf
+from openconex.gui.advanced import BasePlateAdvancedForm
+from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import (
     SECTION_TYPES,
     MaterialLibraryDialog,
@@ -51,6 +55,8 @@ from openconex.gui.quantity import (
     format_quantity,
     unit_label,
 )
+from openconex.io.csi import import_supports
+from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
     HSSSectionInput,
     LoadCaseInput,
@@ -126,6 +132,9 @@ class MainWindow(QMainWindow):
         self._material_combos: dict[str, QComboBox] = {}
         self._custom_sections: dict[str, SectionInput] = {}
         self._section_labels: list[str] | None = None
+        self._method_boxes: dict[Method, QCheckBox] = {}
+        self._combination_edits: dict[str, QLineEdit] = {}
+        self.advanced: BasePlateAdvancedForm | None = None
         self._unit_actions: dict[str, QAction] = {}
         self._export_actions: list[QAction] = []
         self._build_ui()
@@ -136,7 +145,10 @@ class MainWindow(QMainWindow):
         self.resize(1280, 860)
         self._build_menu()
         self._build_body()
-        self.statusBar().showMessage("Abra un proyecto .ocnx o cree uno desde la plantilla.")
+        self._connection_combo.currentIndexChanged.connect(self._on_connection_changed)
+        self._on_connection_changed()
+        self.statusBar().showMessage("Abra un proyecto .ocnx o importe apoyos de "
+                                     "SAP2000/ETABS.")
 
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("&Archivo")
@@ -151,6 +163,10 @@ class MainWindow(QMainWindow):
         save_as = QAction("Guardar como…", self)
         save_as.triggered.connect(lambda: self.save_project_dialog(save_as=True))
         file_menu.addAction(save_as)
+        file_menu.addSeparator()
+        import_action = QAction("Importar SAP2000 / ETABS…", self)
+        import_action.triggered.connect(self.import_csi_dialog)
+        file_menu.addAction(import_action)
         file_menu.addSeparator()
         exit_action = QAction("Salir", self)
         exit_action.triggered.connect(self.close)
@@ -205,8 +221,13 @@ class MainWindow(QMainWindow):
         form = QWidget()
         form_layout = QVBoxLayout(form)
         form_layout.addWidget(self._build_info_group())
-        form_layout.addWidget(self._build_plate_group())
+        form_layout.addWidget(self._build_connection_group())
+        self._plate_group = self._build_plate_group()
+        form_layout.addWidget(self._plate_group)
+        self.advanced = BasePlateAdvancedForm()
+        form_layout.addWidget(self.advanced)
         form_layout.addWidget(self._build_cases_group())
+        form_layout.addWidget(self._build_combinations_group())
         form_layout.addWidget(self._build_actions())
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -261,9 +282,14 @@ class MainWindow(QMainWindow):
         layout.addRow(label, _quantity_row(edit, unit))
         self._quantity_fields[key] = (edit, unit, kind)
 
-    def _build_plate_group(self) -> QGroupBox:
-        group = QGroupBox("Placa base")
+    def _build_connection_group(self) -> QGroupBox:
+        group = QGroupBox("Conexión")
         layout = QFormLayout(group)
+
+        self._connection_combo = QComboBox()
+        self._connection_combo.addItem("Placa base expuesta", "exposed")
+        self._connection_combo.addItem("Base empotrada Tipo I", "embedded")
+        layout.addRow("Tipo", self._connection_combo)
 
         section_row = QWidget()
         section_layout = QHBoxLayout(section_row)
@@ -285,13 +311,18 @@ class MainWindow(QMainWindow):
         layout.addRow("Columna", section_row)
         layout.addRow("Grado de columna",
                       self._material_combo("column_grade", sorted(STEELS)))
+        layout.addRow("Acero de la placa",
+                      self._material_combo("plate_grade", sorted(STEELS)))
+        self._add_quantity(layout, "fc", "f'c", Kind.STRESS)
+        return group
+
+    def _build_plate_group(self) -> QGroupBox:
+        group = QGroupBox("Placa base expuesta")
+        layout = QFormLayout(group)
 
         self._add_quantity(layout, "N", "Largo N", Kind.LENGTH)
         self._add_quantity(layout, "B", "Ancho B", Kind.LENGTH)
         self._add_quantity(layout, "tp", "Espesor tp", Kind.THICKNESS)
-        layout.addRow("Acero de la placa",
-                      self._material_combo("plate_grade", sorted(STEELS)))
-        self._add_quantity(layout, "fc", "f'c", Kind.STRESS)
         a2 = QLineEdit()
         self._plain_edits["A2_over_A1"] = a2
         layout.addRow("A2/A1", a2)
@@ -333,15 +364,44 @@ class MainWindow(QMainWindow):
         layout.addLayout(buttons)
         return group
 
+    def _build_combinations_group(self) -> QGroupBox:
+        group = QGroupBox("Combinaciones")
+        layout = QFormLayout(group)
+        methods_widget = QWidget()
+        methods_layout = QHBoxLayout(methods_widget)
+        methods_layout.setContentsMargins(0, 0, 0, 0)
+        for method, label in ((Method.LRFD, "LRFD"), (Method.ASD, "ASD")):
+            box = QCheckBox(label)
+            self._method_boxes[method] = box
+            methods_layout.addWidget(box)
+        methods_layout.addStretch(1)
+        layout.addRow("Métodos", methods_widget)
+        self._include_code = QCheckBox("Generar combinaciones ASCE 7-22")
+        layout.addRow("", self._include_code)
+        for key, label, default in (
+                ("live_factor", "Factor de carga viva", "1.0"),
+                ("SDS", "SDS (g)", ""),
+                ("rho", "ρ", "1.0"),
+                ("omega0", "Ω0", "")):
+            edit = QLineEdit(default)
+            self._combination_edits[key] = edit
+            layout.addRow(label, edit)
+        note = QLabel("Las combinaciones propias del archivo se conservan. SDS es "
+                      "obligatorio si hay casos sísmicos y se generan combinaciones "
+                      "del código.")
+        note.setWordWrap(True)
+        layout.addRow(note)
+        return group
+
     def _build_actions(self) -> QWidget:
         widget = QWidget()
         layout = QHBoxLayout(widget)
         calculate = QPushButton("Calcular")
         calculate.clicked.connect(self.calculate)
-        optimize = QPushButton("Optimizar")
-        optimize.clicked.connect(self.optimize)
+        self._optimize_button = QPushButton("Optimizar")
+        self._optimize_button.clicked.connect(self.optimize)
         layout.addWidget(calculate)
-        layout.addWidget(optimize)
+        layout.addWidget(self._optimize_button)
         layout.addStretch(1)
         return widget
 
@@ -355,6 +415,8 @@ class MainWindow(QMainWindow):
     def _update_unit_labels(self) -> None:
         for _key, (_edit, label, kind) in self._quantity_fields.items():
             label.setText(unit_label(self._units, kind))
+        if self.advanced is not None:
+            self.advanced.set_units(self._units)
         self.cases.setHorizontalHeaderLabels(self._case_headers())
 
     def _check_unit_action(self, name: str) -> None:
@@ -423,7 +485,70 @@ class MainWindow(QMainWindow):
                 self._custom_sections[label] = convert_section(section, old, new)
             except Exception:
                 errors.append(label)
+        if self.advanced is not None:
+            errors.extend(self.advanced.convert(old, new))
         return errors
+
+    # -- connection type and combinations ---------------------------------------
+    def _on_connection_changed(self, *_args: object) -> None:
+        embedded = self._connection_combo.currentData() == "embedded"
+        self._plate_group.setVisible(not embedded)
+        if self.advanced is not None:
+            self.advanced.set_embedded(embedded)
+        self.opt_action.setEnabled(not embedded)
+        self._optimize_button.setEnabled(not embedded)
+        if hasattr(self, "statusBar"):
+            kind = "base empotrada Tipo I" if embedded else "placa base expuesta"
+            self.statusBar().showMessage(f"Conexión: {kind}")
+
+    def _fill_combinations(self, project: Project) -> None:
+        options = project.combinations
+        for method, box in self._method_boxes.items():
+            box.setChecked(method in options.methods)
+        self._include_code.setChecked(options.include_code)
+        values = {
+            "live_factor": f"{options.live_factor:g}",
+            "SDS": "" if options.SDS is None else f"{options.SDS:g}",
+            "rho": f"{options.rho:g}",
+            "omega0": "" if options.omega0 is None else f"{options.omega0:g}",
+        }
+        for key, text in values.items():
+            self._combination_edits[key].setText(text)
+
+    def _apply_combinations(self, data: Project, errors: list[str]) -> None:
+        options = data.combinations
+        methods = [method for method, box in self._method_boxes.items()
+                   if box.isChecked()]
+        options.include_code = self._include_code.isChecked()
+        if options.include_code and not methods:
+            errors.append("Combinaciones: active LRFD o ASD")
+        options.methods = methods
+        for key, label, minimum in (
+                ("live_factor", "Factor de carga viva", 0.0),
+                ("rho", "ρ", 0.0),
+                ("SDS", "SDS", 0.0),
+                ("omega0", "Ω0", 0.0)):
+            text = self._combination_edits[key].text().strip()
+            if not text:
+                if key == "SDS":
+                    options.SDS = None
+                elif key == "omega0":
+                    options.omega0 = None
+                continue
+            try:
+                value = float(text)
+            except ValueError:
+                errors.append(f"{label}: valor no válido")
+                continue
+            if value < minimum:
+                errors.append(f"{label}: debe ser mayor o igual que {minimum:g}")
+                continue
+            if key == "SDS":
+                options.SDS = value
+            elif key == "omega0":
+                options.omega0 = value
+            else:
+                setattr(options, key, value)
 
     # -- sections and materials -------------------------------------------------
     def _catalog_labels(self) -> list[str]:
@@ -467,6 +592,8 @@ class MainWindow(QMainWindow):
         if "rod_grade" in self._material_combos:
             self._fill_combo(self._material_combos["rod_grade"], sorted(BOLTS),
                              values.get("rod_grade"))
+        if self.advanced is not None:
+            self.advanced.set_materials(steels)
 
     def _refresh_section_combo(self, select: str | None = None) -> None:
         current = select or self._section_combo.currentText()
@@ -578,6 +705,59 @@ class MainWindow(QMainWindow):
         self._clear_report()
         self.statusBar().showMessage(f"Proyecto abierto: {self.path}")
 
+    def import_csi_dialog(self) -> None:
+        if self.project is None:
+            QMessageBox.warning(self, "Sin plantilla", "Abra el proyecto que servirá de "
+                                "plantilla antes de importar.")
+            return
+        name = self.project.info.name or (self.path.name if self.path else "")
+        dialog = ImportSupportsDialog(self, name)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.import_from_csi(dialog.file, dialog.output, dialog.group, dialog.loads,
+                             dialog.include, dialog.envelopes, dialog.method)
+
+    def import_from_csi(self, file: str, output: str, group: str, loads: str,
+                        include: str = "", envelopes: bool = False,
+                        method: str = "") -> list[Path]:
+        """Create base plate projects from a CSI export, using the open project."""
+        template = self._project_from_form()
+        if template is None:
+            return []
+        try:
+            data = import_supports(file)
+            projects, warnings = base_plate_projects(
+                data, template, LoadSource(loads), include or None, envelopes,
+                Method(method) if method else None, Grouping(group))
+        except Exception as exc:
+            QMessageBox.critical(self, "Error al importar", str(exc))
+            return []
+        if not projects:
+            detail = "\n".join(warnings[:20]) if warnings else "No hay apoyos con columna."
+            QMessageBox.warning(self, "Sin proyectos", detail)
+            return []
+        out = Path(output)
+        written: list[Path] = []
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+            for key, project in projects.items():
+                name = f"{group}-{re.sub(r'[^A-Za-z0-9_.-]', '_', key)}.ocnx"
+                path = out / name
+                save_project(project, path)
+                written.append(path)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error al guardar", str(exc))
+            return written
+        message = f"Se crearon {len(written)} proyectos en:\n{out}"
+        if warnings:
+            extra = "\n".join(warnings[:20])
+            if len(warnings) > 20:
+                extra += f"\n… y {len(warnings) - 20} advertencias más."
+            message += f"\n\nAdvertencias:\n{extra}"
+        QMessageBox.information(self, "Importación completada", message)
+        self.statusBar().showMessage(f"Importados {len(written)} proyectos en {out}")
+        return written
+
     def _fill_form(self, project: Project) -> None:
         info = project.info
         for key, edit in self._info_edits.items():
@@ -606,8 +786,18 @@ class MainWindow(QMainWindow):
         self._section_combo.setCurrentText(column_label)
         self._on_section_changed(column_label)
 
+        bp = project.base_plate
+        embedded = bp.connection_type == "embedded" or bp.embedded_base is not None
+        index = self._connection_combo.findData("embedded" if embedded else "exposed")
+        with QSignalBlocker(self._connection_combo):
+            self._connection_combo.setCurrentIndex(index if index >= 0 else 0)
+        if self.advanced is not None:
+            self.advanced.set_units(self._units)
+            self.advanced.set_materials(self._steel_names())
+            self.advanced.load(project)
+
         for key, (edit, _label, kind) in self._quantity_fields.items():
-            raw = getattr(project.base_plate, key, None)
+            raw = getattr(bp, key, None)
             if raw is None:
                 edit.setText("")
                 continue
@@ -616,10 +806,11 @@ class MainWindow(QMainWindow):
             except Exception:
                 edit.setText(str(raw))
         for key, edit in self._plain_edits.items():
-            raw = getattr(project.base_plate, key, None)
+            raw = getattr(bp, key, None)
             edit.setText("" if raw is None else str(raw))
         for key, box in self._plate_boxes.items():
-            box.setChecked(bool(getattr(project.base_plate, key, False)))
+            box.setChecked(bool(getattr(bp, key, False)))
+        self._fill_combinations(project)
 
         self.cases.setRowCount(0)
         for case in project.cases:
@@ -631,6 +822,7 @@ class MainWindow(QMainWindow):
                                               kind, self._units))
             for col, value in enumerate(values):
                 self.cases.setItem(row, col, QTableWidgetItem(str(value)))
+        self._on_connection_changed()
         self._update_unit_labels()
         self._update_title()
 
@@ -669,14 +861,22 @@ class MainWindow(QMainWindow):
                 return None
             bp.column_grade = grade
 
+        embedded = self._connection_combo.currentData() == "embedded"
         errors: list[str] = []
+        required = {"fc"} if embedded else set(REQUIRED_QUANTITY_FIELDS)
         for key, (edit, label, kind) in self._quantity_fields.items():
             text = edit.text().strip()
             if not text:
-                if key in OPTIONAL_FIELDS:
-                    setattr(bp, key, None)
-                elif key in REQUIRED_QUANTITY_FIELDS:
+                if key in required:
                     errors.append(f"{label}: falta el valor")
+                elif embedded:
+                    if key in ("N", "B", "tp", "rod_diameter", "f", "pedestal_N",
+                               "pedestal_B"):
+                        setattr(bp, key, None)
+                    elif key in ("rod_spacing", "hef"):
+                        setattr(bp, key, 0.0)
+                elif key in OPTIONAL_FIELDS:
+                    setattr(bp, key, None)
                 continue
             try:
                 parse(text, kind, self._units)
@@ -684,23 +884,35 @@ class MainWindow(QMainWindow):
                 errors.append(f"{label}: {exc}")
             else:
                 setattr(bp, key, text)
-        try:
-            a2 = self._plain_edits["A2_over_A1"].text().strip()
-            bp.A2_over_A1 = float(a2) if a2 else bp.A2_over_A1
-            rods = self._plain_edits["rods_per_side"].text().strip()
-            bp.rods_per_side = int(rods) if rods else bp.rods_per_side
-            if bp.A2_over_A1 <= 0 or bp.rods_per_side < 1:
-                raise ValueError("A2/A1 y el número de barras deben ser positivos")
-        except ValueError as exc:
-            errors.append(f"A2/A1 o barras por lado: {exc}")
-        if errors:
-            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
-            return None
+        if embedded:
+            for key in ("N", "B", "tp", "rod_diameter", "f", "pedestal_N",
+                        "pedestal_B"):
+                setattr(bp, key, None)
+            bp.rod_spacing = 0.0
+            bp.hef = 0.0
+            bp.A2_over_A1 = 1.0
+            bp.rods_per_side = 2
+        else:
+            try:
+                a2 = self._plain_edits["A2_over_A1"].text().strip()
+                bp.A2_over_A1 = float(a2) if a2 else bp.A2_over_A1
+                rods = self._plain_edits["rods_per_side"].text().strip()
+                bp.rods_per_side = int(rods) if rods else bp.rods_per_side
+                if bp.A2_over_A1 <= 0 or bp.rods_per_side < 1:
+                    raise ValueError("A2/A1 y el número de barras deben ser positivos")
+            except ValueError as exc:
+                errors.append(f"A2/A1 o barras por lado: {exc}")
 
         bp.plate_grade = self._material_combos["plate_grade"].currentText()
         bp.rod_grade = self._material_combos["rod_grade"].currentText()
         for key, box in self._plate_boxes.items():
             setattr(bp, key, box.isChecked())
+        if self.advanced is not None:
+            self.advanced.apply(data, errors, embedded)
+        self._apply_combinations(data, errors)
+        if errors:
+            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
+            return None
 
         cases: list[LoadCaseInput] = []
         for row in range(self.cases.rowCount()):
