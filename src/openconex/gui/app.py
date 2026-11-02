@@ -8,7 +8,7 @@ import re
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QSignalBlocker, Qt
+from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -43,6 +43,7 @@ from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
 from openconex.gui.exporting import write_3d, write_dxf
+from openconex.gui.geometry import GeometryEditor, GeometryValues
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import (
     SECTION_TYPES,
@@ -146,6 +147,21 @@ class MainWindow(QMainWindow):
         self.resize(1280, 860)
         self._build_menu()
         self._build_body()
+        self._geometry_timer = QTimer(self)
+        self._geometry_timer.setSingleShot(True)
+        self._geometry_timer.timeout.connect(self.refresh_geometry)
+        for key in ("N", "B", "tp", "grout", "f", "rod_spacing", "hef",
+                    "pedestal_N", "pedestal_B"):
+            if key in self._quantity_fields:
+                self._quantity_fields[key][0].textChanged.connect(
+                    self._schedule_geometry_refresh)
+        self._section_combo.currentTextChanged.connect(self._schedule_geometry_refresh)
+        if self.advanced is not None:
+            self.advanced._shear_group.toggled.connect(self._schedule_geometry_refresh)
+            self.advanced._shear_direction.currentIndexChanged.connect(
+                self._schedule_geometry_refresh)
+            self.advanced._fields["shear_lug.width"].edit.textChanged.connect(
+                self._schedule_geometry_refresh)
         self._connection_combo.currentIndexChanged.connect(self._on_connection_changed)
         self._on_connection_changed()
         self.statusBar().showMessage("Abra un proyecto .ocnx o importe apoyos de "
@@ -255,6 +271,9 @@ class MainWindow(QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figure_container)
         self.tabs.addTab(figure_scroll, "Figuras")
+        self.geometry = GeometryEditor(self._read_geometry, self._apply_geometry)
+        self.tabs.addTab(self.geometry, "Geometría")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         splitter.addWidget(self.tabs)
         splitter.setSizes([460, 820])
         self.setCentralWidget(splitter)
@@ -455,6 +474,8 @@ class MainWindow(QMainWindow):
         self._units = new
         self.project = project
         self._update_unit_labels()
+        self.geometry.clear_history()
+        self.refresh_geometry()
         self._check_unit_action(name)
         if project is not None:
             project.info.units = name
@@ -554,6 +575,86 @@ class MainWindow(QMainWindow):
                 options.omega0 = value
             else:
                 setattr(options, key, value)
+
+    # -- geometry ---------------------------------------------------------------
+    def _on_tab_changed(self, index: int) -> None:
+        if self.tabs.widget(index) is self.geometry:
+            self.refresh_geometry()
+
+    def _schedule_geometry_refresh(self, *_args: object) -> None:
+        if hasattr(self, "_geometry_timer"):
+            self._geometry_timer.start(150)
+
+    def refresh_geometry(self) -> None:
+        if getattr(self, "geometry", None) is not None:
+            self.geometry.refresh()
+
+    def _read_geometry(self) -> GeometryValues | None:
+        if self.project is None:
+            return None
+
+        def quantity(key: str, kind: Kind) -> float | None:
+            field = self._quantity_fields.get(key)
+            if field is None:
+                return None
+            text = field[0].text().strip()
+            if not text:
+                return None
+            try:
+                return parse(text, kind, self._units)
+            except Exception:
+                return None
+
+        length, thickness = Kind.LENGTH, Kind.THICKNESS
+        label = self._section_combo.currentText().strip()
+        column_d = column_bf = None
+        custom = self._custom_sections.get(label)
+        try:
+            if custom is not None:
+                column_d = parse(str(custom.d), length, self._units)
+                width = custom.bf if custom.bf is not None else custom.d
+                column_bf = parse(str(width), length, self._units)
+            elif label:
+                section = aisc_shapes().get(label)
+                column_d = section.properties.get("d")
+                column_bf = section.properties.get("bf")
+        except (ShapeDatabaseError, ValueError):
+            column_d = column_bf = None
+
+        rods_text = self._plain_edits["rods_per_side"].text().strip()
+        try:
+            rods = max(int(rods_text), 1)
+        except ValueError:
+            rods = 2
+        lug_width = None
+        lug_direction = "strong"
+        if self.advanced is not None and self.advanced._shear_group.isChecked():
+            text = self.advanced._fields["shear_lug.width"].edit.text().strip()
+            try:
+                lug_width = parse(text, length, self._units) if text else None
+            except Exception:
+                lug_width = None
+            lug_direction = self.advanced._shear_direction.currentData() or "strong"
+        return GeometryValues(
+            N=quantity("N", length), B=quantity("B", length),
+            tp=quantity("tp", thickness), grout=quantity("grout", length),
+            f=quantity("f", length), rod_spacing=quantity("rod_spacing", length),
+            hef=quantity("hef", length), rods_per_side=rods,
+            column_d=column_d, column_bf=column_bf, column_label=label,
+            pedestal_N=quantity("pedestal_N", length),
+            pedestal_B=quantity("pedestal_B", length),
+            lug_width=lug_width, lug_direction=lug_direction, units=self._units)
+
+    def _apply_geometry(self, changes: dict[str, float]) -> None:
+        for key, value in changes.items():
+            field = self._quantity_fields.get(key)
+            if field is None:
+                continue
+            edit, _label, kind = field
+            with QSignalBlocker(edit):
+                edit.setText(format_quantity(value, kind, self._units))
+        if hasattr(self, "_geometry_timer"):
+            self._geometry_timer.start(0)
 
     # -- sections and materials -------------------------------------------------
     def _catalog_labels(self) -> list[str]:
@@ -830,6 +931,8 @@ class MainWindow(QMainWindow):
         self._on_connection_changed()
         self._update_unit_labels()
         self._update_title()
+        self.geometry.clear_history()
+        self.refresh_geometry()
 
     def _update_title(self) -> None:
         name = self.project.info.name if self.project else ""
