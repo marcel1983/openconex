@@ -45,6 +45,7 @@ from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
 from openconex.gui.geometry import GeometryEditor, GeometryValues
 from openconex.gui.import_supports import ImportSupportsDialog
+from openconex.gui.import_table import TableImportDialog
 from openconex.gui.library import (
     SECTION_TYPES,
     MaterialLibraryDialog,
@@ -71,6 +72,7 @@ from openconex.io.project import (
     load_project,
     save_project,
 )
+from openconex.io.table_import import projects_from_table, read_table
 from openconex.report.builder import Report, build_base_plate_report
 from openconex.report.docx import write_docx
 from openconex.report.html import write_html
@@ -187,6 +189,9 @@ class MainWindow(QMainWindow):
         import_action = QAction("Importar SAP2000 / ETABS…", self)
         import_action.triggered.connect(self.import_csi_dialog)
         file_menu.addAction(import_action)
+        table_action = QAction("Importar Excel / CSV…", self)
+        table_action.triggered.connect(self.import_table_dialog)
+        file_menu.addAction(table_action)
         file_menu.addSeparator()
         exit_action = QAction("Salir", self)
         exit_action.triggered.connect(self.close)
@@ -1053,6 +1058,56 @@ class MainWindow(QMainWindow):
             out.mkdir(parents=True, exist_ok=True)
             for key, project in projects.items():
                 name = f"{group}-{re.sub(r'[^A-Za-z0-9_.-]', '_', key)}.ocnx"
+                path = out / name
+                save_project(project, path)
+                written.append(path)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error al guardar", str(exc))
+            return written
+        message = f"Se crearon {len(written)} proyectos en:\n{out}"
+        if warnings:
+            extra = "\n".join(warnings[:20])
+            if len(warnings) > 20:
+                extra += f"\n… y {len(warnings) - 20} advertencias más."
+            message += f"\n\nAdvertencias:\n{extra}"
+        QMessageBox.information(self, "Importación completada", message)
+        self.statusBar().showMessage(f"Importados {len(written)} proyectos en {out}")
+        return written
+
+    def import_table_dialog(self) -> None:
+        if self.project is None:
+            QMessageBox.warning(self, "Sin plantilla", "Abra el proyecto que servirá de "
+                                "plantilla antes de importar.")
+            return
+        default = self._units.name if self._units.name in PRESETS else "US"
+        dialog = TableImportDialog(self, default)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        self.import_table_file(dialog.file, dialog.output, dialog.units)
+
+    def import_table_file(self, file: str, output: str,
+                          units_name: str = "US") -> list[Path]:
+        """Create base plate projects from a generic Excel/CSV table."""
+        template = self._project_from_form()
+        if template is None:
+            return []
+        try:
+            rows = read_table(file)
+            projects, warnings = projects_from_table(rows, template,
+                                                     PRESETS[units_name])
+        except Exception as exc:
+            QMessageBox.critical(self, "Error al importar", str(exc))
+            return []
+        if not projects:
+            detail = "\n".join(warnings[:20]) if warnings else "La tabla no tiene filas válidas."
+            QMessageBox.warning(self, "Sin proyectos", detail)
+            return []
+        out = Path(output)
+        written: list[Path] = []
+        try:
+            out.mkdir(parents=True, exist_ok=True)
+            for key, project in projects.items():
+                name = f"support-{re.sub(r'[^A-Za-z0-9_.-]', '_', key)}.ocnx"
                 path = out / name
                 save_project(project, path)
                 written.append(path)
