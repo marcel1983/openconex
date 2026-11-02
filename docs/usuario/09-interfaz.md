@@ -1,14 +1,16 @@
 # 9. Interfaz gráfica
 
-> **Estado: edición completa, geometría, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También incluye un editor gráfico de planta y elevación, importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel.
+> **Estado: edición completa, geometría, visor 3D, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También incluye un editor gráfico de planta y elevación, un visor 3D interactivo, importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel.
 
 ## Instalación
 
-La interfaz usa PySide6:
+La interfaz usa PySide6; el visor 3D usa OpenCASCADE:
 
 ```bash
-pip install -e ".[gui]"
+pip install -e ".[gui,3d]"
 ```
+
+Sin el extra `3d`, el resto de la interfaz funciona y la pestaña 3D muestra un aviso.
 
 ## Abrir
 
@@ -63,6 +65,18 @@ La pestaña **Geometría** muestra la planta y la elevación de la placa y permi
 Los cambios se reflejan inmediatamente en el formulario y en las etiquetas de unidad. **Deshacer** (`Ctrl+Z`) y **Rehacer** (`Ctrl+Y`) revierten los cambios gráficos. Los controles impiden reducir la placa por debajo de la columna, cruzar los anclajes o dejar espesores no positivos; la validación completa se ejecuta al calcular o guardar.
 
 La columna se elige en el desplegable **Columna**; su huella en planta se actualiza con la sección seleccionada.
+
+## Visor 3D
+
+La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
+
+- **Arrastrar** con el botón izquierdo para girar.
+- **Rueda** para acercar o alejar.
+- **Arrastrar con el botón central o derecho** para desplazar la vista.
+- **Doble clic** o **Ajustar vista** para volver a la vista isométrica.
+- La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla.
+
+El modelo se genera en segundo plano al entrar en la pestaña, con las piezas de `geometry3d.base_plate` (`base_plate_parts` o `embedded_base_parts`). Funciona con placa expuesta y base empotrada. La exportación STEP/STL no cambia.
 
 ## Tipos de conexión
 
@@ -187,6 +201,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 - Edición de los datos generales y de todos los bloques de la placa base.
 - Editor gráfico de planta y elevación con deshacer/rehacer.
+- Visor 3D interactivo con rotación, zoom, ocultación y resaltado de piezas.
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
 - Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
 - Cambio de unidades con conversión del formulario y de los bloques especiales.
@@ -199,6 +214,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 ## Limitaciones
 
 - La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
+- El visor 3D requiere el extra `3d` (OpenCASCADE); sin él, la pestaña muestra un aviso.
 - Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
 - Las combinaciones propias se conservan, pero se editan en el archivo `.ocnx`.
 - La interfaz no sustituye la revisión del profesional responsable.
