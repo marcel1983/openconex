@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from openconex.io.project import HSSSectionInput, Project, WSectionInput
-from openconex.units import Kind, UnitSystem, from_internal, parse
+from openconex.units import PRESETS, Kind, UnitSystem, from_internal, parse
 
 __all__ = [
     "convert_project",
@@ -147,5 +147,5 @@ def convert_project(project: Project, old: UnitSystem, new: UnitSystem) -> Proje
                             ("M_weak", Kind.MOMENT)):
             _convert_field(case, field, kind, old, new)
 
-    data.info.units = new.name
+    data.info.units = new.name if new.name in PRESETS else new
     return data

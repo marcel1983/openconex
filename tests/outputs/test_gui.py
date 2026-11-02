@@ -18,12 +18,14 @@ from openconex.core.model import HSSKind
 from openconex.gui.app import MainWindow
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import MaterialLibraryDialog, SectionLibraryDialog
+from openconex.gui.units import UnitDialog
 from openconex.io.project import (
     HSSSectionInput,
     MaterialInput,
     WSectionInput,
     load_project,
 )
+from openconex.units import PRESETS, Kind
 
 EXAMPLE = Path(__file__).parents[2] / "examples" / "base_plate_dg1_4_7_11.ocnx"
 
@@ -88,6 +90,37 @@ def test_gui_units_round_trip(qapp, tmp_path):
     assert again.info.units == "US"
     assert again.base_plate_model().N == pytest.approx(609.6)
     window.close()
+
+
+def test_gui_custom_units_round_trip(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    custom = (PRESETS["US"].with_unit(Kind.LENGTH, "m")
+              .with_unit(Kind.THICKNESS, "mm"))
+    window.set_unit_system(custom)
+    assert window._quantity_fields["N"][1].text() == "m"
+    assert window._quantity_fields["tp"][1].text() == "mm"
+    target = tmp_path / "custom_units.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    system = again.info.unit_system()
+    assert system.unit(Kind.LENGTH) == "m"
+    assert system.unit(Kind.THICKNESS) == "mm"
+    assert again.base_plate_model().N == pytest.approx(609.6)
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_unit_dialog(qapp):
+    dialog = UnitDialog(None, PRESETS["US"])
+    dialog._combos[Kind.LENGTH].setCurrentText("m")
+    dialog._combos[Kind.THICKNESS].setCurrentText("mm")
+    system = dialog.system()
+    assert system.unit(Kind.LENGTH) == "m"
+    assert system.unit(Kind.THICKNESS) == "mm"
+    assert system.name == "custom"
+    dialog.close()
 
 
 def test_gui_units_keep_preserved_blocks(qapp):

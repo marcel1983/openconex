@@ -57,6 +57,7 @@ from openconex.gui.quantity import (
     format_quantity,
     unit_label,
 )
+from openconex.gui.units import UnitDialog
 from openconex.gui.viewer3d import Viewer3D
 from openconex.io.csi import import_supports
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
@@ -210,6 +211,10 @@ class MainWindow(QMainWindow):
             self._unit_group.addAction(action)
             units_menu.addAction(action)
             self._unit_actions[name] = action
+        units_menu.addSeparator()
+        configure = QAction("Configurar por magnitud…", self)
+        configure.triggered.connect(self.configure_units)
+        units_menu.addAction(configure)
         self._check_unit_action(self._units.name)
 
         calc_menu = self.menuBar().addMenu("&Cálculo")
@@ -485,13 +490,18 @@ class MainWindow(QMainWindow):
             item.setChecked(False)
         self._unit_group.setExclusive(True)
 
-    def set_unit_system(self, name: str) -> None:
+    def set_unit_system(self, selection: str | UnitSystem) -> None:
         """Change the display units and convert the form and the project."""
-        if name not in PRESETS:
-            return
-        new = PRESETS[name]
+        if isinstance(selection, str):
+            if selection not in PRESETS:
+                return
+            new = PRESETS[selection]
+            label = UNIT_PRESET_LABELS[selection]
+        else:
+            new = selection
+            label = "personalizado"
         if new == self._units:
-            self._check_unit_action(name)
+            self._check_unit_action(selection if isinstance(selection, str) else "")
             return
         old = self._units
         project = self.project
@@ -508,16 +518,21 @@ class MainWindow(QMainWindow):
         self._update_unit_labels()
         self.geometry.clear_history()
         self.refresh_geometry()
-        self._check_unit_action(name)
+        self._check_unit_action(selection if isinstance(selection, str) else "")
         if project is not None:
-            project.info.units = name
+            project.info.units = new.name if new.name in PRESETS else new
             self.report = None
             self._set_export_enabled(False)
         if errors:
             QMessageBox.warning(
                 self, "Unidades",
                 "No se pudieron convertir estos valores; revíselos:\n" + "\n".join(errors))
-        self.statusBar().showMessage(f"Unidades del formulario: {UNIT_PRESET_LABELS[name]}")
+        self.statusBar().showMessage(f"Unidades del formulario: {label}")
+
+    def configure_units(self) -> None:
+        dialog = UnitDialog(self, self._units)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.set_unit_system(dialog.system())
 
     def _convert_form_quantities(self, old: UnitSystem, new: UnitSystem) -> list[str]:
         errors: list[str] = []
