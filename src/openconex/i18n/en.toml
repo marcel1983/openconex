@@ -177,6 +177,14 @@ web_crippling = "Web local crippling"
 web_compression_buckling = "Web compression buckling"
 panel_zone = "Web panel-zone shear"
 
+[check.double_angle]
+bolts_beam = "Shear transfer at bolt holes, beam side"
+bolts_support = "Shear transfer at bolt holes, support side"
+angle_shear_yielding = "Shear yielding of the angles"
+angle_shear_rupture = "Shear rupture of the angles"
+block_shear_beam = "Block shear of the angles, beam side"
+block_shear_support = "Block shear of the angles, support side"
+
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"
