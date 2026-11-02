@@ -169,9 +169,9 @@ Cada proyecto se calcula con sus propios datos; el formulario abierto no se modi
 
 ## Unidades
 
-El menú **Unidades** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m)` y `US (kip, in)`.
+El menú **Unidades** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m)` y `US (kip, in)`, y **Configurar por magnitud…** para elegir la unidad de longitud, espesor, fuerza, momento, tensión, área, fuerza por longitud, módulo de sección e inercia.
 
-Al cambiar de preset:
+Al cambiar de unidades:
 
 - se convierten los valores del formulario, los bloques especiales, la tabla de barras del pedestal y la tabla de casos;
 - se actualizan las etiquetas de unidad junto a cada campo y en las cabeceras de las tablas;
@@ -207,7 +207,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Visor 3D interactivo con rotación, zoom, ocultación y resaltado de piezas.
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
 - Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
-- Cambio de unidades con conversión del formulario y de los bloques especiales.
+- Cambio de unidades por preset o por magnitud, con conversión del formulario y de los bloques especiales.
 - Edición de casos de carga, opciones de combinaciones y combinaciones propias.
 - Importación de SAP2000/ETABS y creación de proyectos por apoyo o por sección.
 - Cálculo y reporte por lotes de una carpeta de proyectos.
