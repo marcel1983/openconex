@@ -1,6 +1,6 @@
 # 9. Interfaz gráfica
 
-> **Estado: edición individual completa e importación por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También importa apoyos de SAP2000/ETABS y crea un proyecto por apoyo o por sección de columna. El cálculo y el reporte masivo de esos proyectos y el editor gráfico de geometría quedan para una fase posterior.
+> **Estado: edición completa, importación y cálculo por lotes (F4.1).** La interfaz permite editar todos los bloques de una placa base: expuesta, base débil, base empotrada Tipo I, llave de corte, refuerzo de anclaje, opciones avanzadas y combinaciones. También importa apoyos de SAP2000/ETABS, crea un proyecto por apoyo o por sección de columna, calcula una carpeta completa con sus reportes y exporta el resumen del lote a Excel. El editor gráfico de geometría queda para una fase posterior.
 
 ## Instalación
 
@@ -124,6 +124,19 @@ Opciones del diálogo:
 
 Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exportar. Los avisos de la importación (apoyos sin columna, secciones no admitidas, casos omitidos) se muestran al terminar.
 
+## Cálculo por lotes
+
+**Cálculo > Calcular lote…** calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
+
+- **Proyectos:** carpeta de entrada; se puede incluir subcarpetas.
+- **Salida:** carpeta de los reportes; si se deja vacía, se usa la de entrada.
+- **Salidas:** HTML, Word, PDF, DXF, STEP y/o STL; el resumen en pantalla siempre se genera.
+- **Progreso y cancelación:** el lote se puede cancelar; el proyecto en curso termina y no se empieza el siguiente.
+- **Resumen:** tabla con proyecto, estado (OK/NG/ERROR), relación gobernante, verificación, combinación y error.
+- **Exportar Excel…:** guarda el mismo resumen en un libro `.xlsx`, con archivo, columna y salidas generadas.
+
+Cada proyecto se calcula con sus propios datos; el formulario abierto no se modifica. Un proyecto con error no detiene el resto del lote.
+
 ## Unidades
 
 El menú **Unidades** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m)` y `US (kip, in)`.
@@ -165,13 +178,13 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Cambio de unidades con conversión del formulario y de los bloques especiales.
 - Edición de casos de carga y de las opciones de combinaciones.
 - Importación de SAP2000/ETABS y creación de proyectos por apoyo o por sección.
-- Cálculo, resumen, traza y figuras.
+- Cálculo y reporte por lotes de una carpeta de proyectos.
+- Cálculo individual, resumen, traza y figuras.
 - Exportación a los formatos disponibles.
 
 ## Limitaciones
 
 - No hay edición gráfica de la geometría.
-- No hay cálculo ni reporte masivo de los proyectos importados desde la interfaz; se abren uno a uno.
 - Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
 - Las combinaciones propias se conservan, pero se editan en el archivo `.ocnx`.
 - La interfaz no sustituye la revisión del profesional responsable.

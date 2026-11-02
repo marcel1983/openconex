@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSplitter,
@@ -39,9 +40,9 @@ from openconex.connections.base_plate.check import optimize_base_plate
 from openconex.core.loads import Method
 from openconex.core.materials import BOLTS, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
-from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
-from openconex.drawing.embedded_base import write_embedded_base_dxf
 from openconex.gui.advanced import BasePlateAdvancedForm
+from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
+from openconex.gui.exporting import write_3d, write_dxf
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import (
     SECTION_TYPES,
@@ -201,6 +202,10 @@ class MainWindow(QMainWindow):
         self.opt_action = QAction("Optimizar N, B y tp", self)
         self.opt_action.triggered.connect(self.optimize)
         calc_menu.addAction(self.opt_action)
+        calc_menu.addSeparator()
+        batch_action = QAction("Calcular lote…", self)
+        batch_action.triggered.connect(self.calculate_batch_dialog)
+        calc_menu.addAction(batch_action)
 
         export_menu = self.menuBar().addMenu("&Exportar")
         for key, label, suffix in (
@@ -978,6 +983,39 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Error al optimizar", str(exc))
 
+    def calculate_batch_dialog(self) -> None:
+        dialog = BatchDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        paths = dialog.paths()
+        progress = QProgressDialog("Preparando el lote…", "Cancelar", 0, len(paths), self)
+        progress.setWindowTitle("Cálculo por lotes")
+        progress.setWindowModality(Qt.WindowModality.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.show()
+
+        def update(done: int, total: int, result: object) -> None:
+            progress.setMaximum(total)
+            progress.setValue(done)
+            name = getattr(result, "name", "")
+            status = getattr(result, "status", "")
+            progress.setLabelText(f"{done}/{total}: {name} — {status}")
+            QApplication.processEvents()
+
+        try:
+            results = calculate_batch(paths, dialog.output, dialog.formats(),
+                                      progress=update,
+                                      should_cancel=progress.wasCanceled)
+        except Exception as exc:
+            progress.close()
+            QMessageBox.critical(self, "Error en el lote", str(exc))
+            return
+        progress.close()
+        BatchSummaryDialog(self, results).exec()
+        errors = sum(result.status == "ERROR" for result in results)
+        self.statusBar().showMessage(
+            f"Lote terminado: {len(results)} proyectos, {errors} con error.")
+
     def _show_report(self, report: Report) -> None:
         self.summary.setRowCount(0)
         for row in report.summary:
@@ -1094,40 +1132,10 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Exportado: {target}")
 
     def _write_dxf(self, path: Path) -> None:
-        project = self.project
-        bp = project.base_plate_model()
-        info = project.info
-        data = project.base_plate
-        options = BasePlateDrawing(
-            pedestal_N=(None if data.pedestal_N is None else
-                        project.quantity(data.pedestal_N, Kind.LENGTH)),
-            pedestal_B=(None if data.pedestal_B is None else
-                        project.quantity(data.pedestal_B, Kind.LENGTH)),
-            grout=project.quantity(data.grout, Kind.LENGTH),
-            title=info.name, number=info.number, revision=info.revision, date=info.date)
-        if bp.embedded_base is not None:
-            write_embedded_base_dxf(bp, path, info.unit_system(), info.language, options)
-        else:
-            write_base_plate_dxf(bp, path, info.unit_system(), info.language, options)
+        write_dxf(self.project, path)
 
     def _write_3d(self, path: Path, kind: str) -> None:
-        from openconex.geometry3d.base_plate import (
-            base_plate_parts,
-            embedded_base_parts,
-            write_step,
-            write_stl,
-        )
-        project = self.project
-        bp = project.base_plate_model()
-        if bp.embedded_base is not None:
-            parts = embedded_base_parts(bp)
-        else:
-            data = project.base_plate
-            parts = base_plate_parts(
-                bp, project.quantity(data.grout, Kind.LENGTH),
-                None if data.pedestal_N is None else project.quantity(data.pedestal_N, Kind.LENGTH),
-                None if data.pedestal_B is None else project.quantity(data.pedestal_B, Kind.LENGTH))
-        (write_step if kind == "step" else write_stl)(parts, path)
+        write_3d(self.project, path, kind)
 
 
 def main(argv: list[str] | None = None) -> int:
