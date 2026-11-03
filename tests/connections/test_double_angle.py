@@ -57,3 +57,33 @@ def test_block_shear_governs_on_the_narrower_leg():
     results = {r.id: r for r in check_double_angle(EX, kip(100), Method.LRFD)}
     assert results["double_angle.block_shear_beam"].capacity < \
         results["double_angle.block_shear_support"].capacity
+
+
+# II.A-2A: same beam and column, 2L4x3-1/2x3/8 (l = 23-1/2 in.) bolted to the beam web
+# (eight 3/4 in. bolts, leh = 1-3/8 in.) and welded to the column flange with 5/16 in.
+# fillet welds B (e = 4 in.)
+WELDED = DoubleAngle(bolt=BoltSpec(diameter=inch(0.75)), rows=8, spacing=inch(3),
+                     length=inch(23.5), thickness=inch(0.375), lev=inch(1.25),
+                     leh_beam=inch(1.375), leh_support=inch(0), angle_Fy=ksi(50),
+                     angle_Fu=ksi(65), beam_tw=inch(0.760), beam_Fu=ksi(65),
+                     support_t=inch(0.710), support_Fu=ksi(65), support_weld=inch(5 / 16),
+                     weld_e=inch(4))
+
+EXPECTED_2A = [
+    ("double_angle.bolts_beam", 286, 190),
+    ("double_angle.angle_shear_yielding", 528, 352),
+    ("double_angle.angle_shear_rupture", 363, 242),
+    ("double_angle.block_shear_beam", 380, 253),
+    ("double_angle.weld_support", 318, 212),
+]
+
+
+@pytest.mark.parametrize(("method", "R", "col"), [(Method.LRFD, 226, 0), (Method.ASD, 151, 1)])
+def test_example_ii_a_2a_welded_support(method, R, col):
+    results = {r.id: r for r in check_double_angle(WELDED, kip(R), method)}
+    for key, *values in EXPECTED_2A:
+        assert results[key].capacity == pytest.approx(kip(values[col]), rel=0.01), key
+    assert results["double_angle.support_thickness"].demand == pytest.approx(inch(0.238),
+                                                                               rel=0.01)
+    assert "double_angle.bolts_support" not in results
+    assert all(r.status.value == "ok" for r in results.values())
