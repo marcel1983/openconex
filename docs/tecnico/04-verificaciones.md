@@ -158,6 +158,18 @@ La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC 
 | `seated.shear_yielding` | Fluencia por corte del ala, 0,60 F_y L t | §J4.2(a) |
 | `seated.flexural_yielding` | R_n = (F_y L t²/4)/e_c, e_c = holgura + l_b/2 − t − 3/8 in | Manual Parte 10 |
 | `seated.bolts` | n · mín(corte del perno, aplastamiento en el ángulo y en el apoyo) | §J3.7, §J3.11 |
+| `seated.weld` | Con `support_weld` > 0 (asiento soldado): R_n = 2 r_w l_v²/√(l_v² + 20,25 e²), e = holgura + (ala − holgura)/2. Reemplaza `seated.bolts` | Manual Tabla 10-6 |
+
+## Asiento rigidizado soldado (`connections/shear/stiffened_seat.py`)
+
+Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al apoyo (Manual AISC Parte 10). No se diseñan la placa de asiento ni el ángulo superior.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `stiffened_seat.width` | W ≥ W_min = (R − R_a)/R_b + holgura + tolerancia, por fluencia (R_1, R_2) y aplastamiento local del alma (R_3, R_4 o R_5, R_6 según l_b/d) | Manual Tabla 9-4; §J10.2, §J10.3 |
+| `stiffened_seat.weld` | R_n = 2 r_w · 1,2 l²/√(l² + 16 e²), e = 0,8 W | Manual Tabla 10-8 |
+| `stiffened_seat.stiffener_thickness` | t ≥ máx(1,5 w, F_y,viga t_w / F_y,rigidizador); 1,5 w vale para placas de 50 ksi y electrodos E70 | Manual Parte 10 |
+| `stiffened_seat.support_thickness` | t ≥ 3,09 D/F_u, o 6,19 D/F_u con asientos a ambos lados del alma | Manual Ec. 9-6, 9-7 |
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
