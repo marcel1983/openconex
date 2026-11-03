@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
 PLATFORMS = ("windows-x64", "macos-arm64", "linux-x86_64")
+GUI_NAME = "OpenConex"
+CLI_BUILD_NAME = "openconex-cli"
+CLI_RELEASE_NAME = "openconex"
 
 HIDDEN = (
     "PySide6.QtWebEngineWidgets",
@@ -65,11 +68,15 @@ def smoke(platform: str) -> None:
     env = os.environ.copy()
     env["QT_QPA_PLATFORM"] = "offscreen"
     mac_app = DIST / "OpenConex.app"
-    gui = (mac_app / "Contents" / "MacOS" / "OpenConex" if mac_app.exists()
-           else executable(DIST / "OpenConex", "OpenConex"))
-    cli = executable(DIST / "openconex", "openconex")
+    gui = (mac_app / "Contents" / "MacOS" / GUI_NAME if mac_app.exists()
+           else executable(DIST / GUI_NAME, GUI_NAME))
+    cli = executable(DIST / CLI_BUILD_NAME, CLI_BUILD_NAME)
     if not gui.exists() or not cli.exists():
         raise RuntimeError(f"missing executable: GUI={gui} CLI={cli}")
+    if hashlib.sha256(gui.read_bytes()).digest() == hashlib.sha256(
+            cli.read_bytes()).digest():
+        raise RuntimeError(
+            "GUI and CLI executables are identical; use distinct PyInstaller names")
     run([gui, "--version"], env=env, timeout=120)
     run([cli, "--version"], env=env, timeout=120)
     run([cli, "convert", "3/4 in", "thickness", "--to", "mm"],
@@ -89,14 +96,16 @@ def package(platform: str) -> Path:
     staging = BUILD / "portable" / f"OpenConex-{__version__}-{platform}"
     shutil.rmtree(staging, ignore_errors=True)
     staging.mkdir(parents=True)
-    mac_app = DIST / "OpenConex.app"
+    mac_app = DIST / f"{GUI_NAME}.app"
     if mac_app.exists():
         # ditto preserves the framework symlinks inside the .app bundle.
         run(["ditto", str(mac_app), str(staging / "OpenConex.app")])
-        run(["ditto", str(DIST / "openconex"), str(staging / "openconex-cli")])
+        run(["ditto", str(DIST / CLI_BUILD_NAME), str(staging / "openconex-cli")])
     else:
-        shutil.copytree(DIST / "OpenConex", staging / "OpenConex")
-        shutil.copytree(DIST / "openconex", staging / "openconex-cli")
+        shutil.copytree(DIST / GUI_NAME, staging / "OpenConex")
+        shutil.copytree(DIST / CLI_BUILD_NAME, staging / "openconex-cli")
+    cli_binary = executable(staging / "openconex-cli", CLI_BUILD_NAME)
+    cli_binary.replace(executable(staging / "openconex-cli", CLI_RELEASE_NAME))
     for source, target in (
             (ROOT / "LICENSE", staging / "LICENSE"),
             (ROOT / "packaging" / "README-portable.txt", staging / "LEEME.txt"),
@@ -129,8 +138,8 @@ def main() -> int:
         return 2
     platform = sys.argv[1]
     DIST.mkdir(exist_ok=True)
-    pyinstaller("OpenConex", "packaging/gui_entry.py", windowed=True)
-    pyinstaller("openconex", "packaging/cli_entry.py", windowed=False)
+    pyinstaller(GUI_NAME, "packaging/gui_entry.py", windowed=True)
+    pyinstaller(CLI_BUILD_NAME, "packaging/cli_entry.py", windowed=False)
     smoke(platform)
     package(platform)
     return 0
