@@ -187,6 +187,8 @@ block_shear_support = "Bloque de corte de los ángulos, lado del apoyo"
 weld_support = "Soldadura de los ángulos al apoyo (centro instantáneo)"
 weld_max_size = "Tamaño máximo de soldadura para el espesor del ángulo"
 support_thickness = "Espesor mínimo del apoyo para desarrollar la soldadura"
+weld_beam = "Soldaduras de los ángulos al alma de la viga (centro instantáneo)"
+beam_web_thickness = "Espesor mínimo del alma de la viga para las soldaduras"
 
 [check.single_plate]
 bolts = "Transferencia de corte en los agujeros (centro instantáneo)"

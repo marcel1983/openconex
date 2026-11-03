@@ -87,3 +87,33 @@ def test_example_ii_a_2a_welded_support(method, R, col):
                                                                                rel=0.01)
     assert "double_angle.bolts_support" not in results
     assert all(r.status.value == "ok" for r in results.values())
+
+
+# II.A-3: all-welded 2L4x3-1/2x5/16 (SLBB), l = 24 in., 3/16 in. welds A on the 3-1/2 in.
+# legs and 1/4 in. welds B on the 4 in. legs
+ALL_WELDED = DoubleAngle(bolt=BoltSpec(diameter=inch(0.75)), rows=0, spacing=inch(3),
+                         length=inch(24), thickness=inch(5 / 16), lev=inch(0), leh_beam=inch(0),
+                         leh_support=inch(0), angle_Fy=ksi(50), angle_Fu=ksi(65),
+                         beam_tw=inch(0.760), beam_Fu=ksi(65), support_t=inch(0.710),
+                         support_Fu=ksi(65), support_weld=inch(0.25), weld_e=inch(4),
+                         beam_weld=inch(3 / 16), beam_leg=inch(3.5))
+
+EXPECTED_3 = [
+    ("double_angle.weld_beam", 257, 171),
+    ("double_angle.weld_support", 260, 173),
+    ("double_angle.angle_shear_yielding", 450, 300),
+    ("double_angle.angle_shear_rupture", 439, 293),
+]
+
+
+@pytest.mark.parametrize(("method", "R", "col"), [(Method.LRFD, 226, 0), (Method.ASD, 151, 1)])
+def test_example_ii_a_3_all_welded(method, R, col):
+    results = {r.id: r for r in check_double_angle(ALL_WELDED, kip(R), method)}
+    for key, *values in EXPECTED_3:
+        assert results[key].capacity == pytest.approx(kip(values[col]), rel=0.01), key
+    assert results["double_angle.beam_web_thickness"].demand == pytest.approx(inch(0.286),
+                                                                               rel=0.01)
+    assert results["double_angle.support_thickness"].demand == pytest.approx(inch(0.190),
+                                                                              rel=0.01)
+    assert not {"double_angle.bolts_beam", "double_angle.bolts_support"} & set(results)
+    assert all(r.status.value == "ok" for r in results.values())
