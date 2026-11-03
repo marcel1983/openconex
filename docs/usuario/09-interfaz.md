@@ -138,6 +138,8 @@ Se activa con la casilla del grupo. Incluye el diámetro reducido, la longitud d
 
 Si hay casos sísmicos y se generan combinaciones del código, `SDS` es obligatorio. Use `SDS = 0` para omitir el efecto vertical `Ev`.
 
+Las verificaciones de concreto de ACI 318 se ejecutan solo con combinaciones **LRFD**. En **ASD** los anclajes se revisan como pernos según AISC 360-22 §J3.
+
 ## Importar SAP2000 / ETABS
 
 **Archivo > Importar SAP2000 / ETABS…** crea proyectos de placa base a partir de la exportación de tablas a Excel. El proyecto abierto actúa como plantilla: aporta la placa, el concreto, los anclajes y las opciones; la columna y las cargas se toman del modelo.
