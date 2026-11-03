@@ -46,6 +46,7 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 | II.A-17A | placa simple convencional: agujeros (58,5/38,9 kip; el centro instantáneo da C = 3,556 frente a 3,54 interpolado, 0,5 %), fluencia (86,4/57,6) y rotura (58,5/39,0) por corte, bloque de corte (65,3/43,6), límites dimensionales | `tests/connections/test_single_plate.py` |
 | II.A-17B | placa simple con corte y tracción axial: pernos (98,9/65,9 kip con C a 30°), fluencia y rotura por corte, tracción y flexión, pandeo lateral-torsional, interacciones (0,181 y 0,500), bloques de corte en ambas direcciones e interacción (0,241), corte del ala de la columna | `tests/connections/test_single_plate_axial.py` |
 | II.A-4, II.A-6 (A y B), II.A-7 | viga con destaje: flexión de la sección destajada con destaje superior (374/249, 116/77,2, 150/100 kip) y en ambas alas (37,9/25,2), corte del alma, bloque de corte del alma (68,6/45,8) y S_c, Z_c de la Tabla 9-2 | `tests/connections/test_coped_beam.py` |
+| II.A-19A | placa simple extendida con dos líneas de pernos: grupo (41,7/27,7 kip), t_max = 0,575 in, corte, bloque de corte (145/96,5), flexión y pandeo lateral-torsional (810/539 kip·in), interacción (0,200), rotura por flexión (624/416; Z_net = 12,75 in³ contra 12,8 de la Tabla 15-2) | `tests/connections/test_extended_single_plate.py` |
 
 ## Hallazgos de la validación
 
