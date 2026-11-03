@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+"""Solid model of a beam-end shear connection (optional extra ``3d``).
+
+Same axes as the elevation drawing: x along the beam from the face of the
+support, y up from the bottom of the beam, z across the web (web centered on
+z = 0). Parts are simple prisms and cylinders; welds are not modeled.
+"""
+
+from __future__ import annotations
+
+from openconex.connections.shear.check import ShearConnection
+from openconex.connections.shear.double_angle import DoubleAngle
+from openconex.connections.shear.end_plate import EndPlate
+from openconex.connections.shear.seated import SeatedAngle
+from openconex.connections.shear.stiffened_seat import StiffenedSeat
+from openconex.drawing.shear import INCH, shear_layout
+
+from .base_plate import Part, _box, _cut_all, _fuse_all, _require
+
+__all__ = ["shear_parts"]
+
+
+def _cylinder_x(x0, y, z, r, h):
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakeCylinder
+    from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+    return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(x0, y, z), gp_Dir(1, 0, 0)), r, h).Shape()
+
+
+def _cylinder_z(x, y, z0, r, h):
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakeCylinder
+    from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+    return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(x, y, z0), gp_Dir(0, 0, 1)), r, h).Shape()
+
+
+def shear_parts(conn: ShearConnection) -> list[Part]:
+    """Beam, support, connecting elements and bolts as OCP solids."""
+    _require()
+    lay = shear_layout(conn)
+    beam, el = conn.beam, conn.element
+    d, tf, tw, bf = beam.d, beam.tf, beam.tw, beam.bf
+    x0, length = lay.beam_start, lay.beam_length
+    parts: list[Part] = []
+    # beam with copes
+    shape = _fuse_all([_box(x0, 0, -bf / 2, length, tf, bf),
+                       _box(x0, d - tf, -bf / 2, length, tf, bf),
+                       _box(x0, tf, -tw / 2, length, d - 2 * tf, tw)])
+    cuts = []
+    if lay.cope_top:
+        c, dc = lay.cope_top
+        cuts.append(_box(x0 - 1, d - dc, -bf, c + 1, dc + 1, 2 * bf))
+    if lay.cope_bottom:
+        c, dc = lay.cope_bottom
+        cuts.append(_box(x0 - 1, -1, -bf, c + 1, dc + 1, 2 * bf))
+    parts.append(Part("beam", _cut_all(shape, cuts)))
+    # support (flange or web seen as a plate)
+    ys = [y for p in lay.plates for y in (p[1], p[3])] + [0.0, d]
+    lo, hi = min(ys) - 4 * INCH, max(ys) + 4 * INCH
+    sup_w = conn.support.bf if conn.support is not None and conn.support_element == "flange" \
+        else max(bf, 12 * INCH)
+    t_sup = max(lay.support_t, INCH / 4)
+    parts.append(Part("support", _box(-t_sup, lo, -sup_w / 2, t_sup, hi - lo, sup_w)))
+    # connecting elements
+    t = lay.plate_thickness
+    side = tw / 2
+    for x_0, y_0, x_1, y_1, name in lay.plates:
+        w, h = x_1 - x_0, y_1 - y_0
+        if isinstance(el, DoubleAngle):
+            out = (el.weld_e or 3.5 * INCH)
+            for sign in (1, -1):
+                z = side if sign > 0 else -side - t
+                leg = _box(x_0, y_0, z, w, h, t)
+                outstanding = _box(x_0, y_0, side if sign > 0 else -side - out, t, h, out)
+                parts.append(Part(f"angle{'+' if sign > 0 else '-'}",
+                                  _fuse_all([leg, outstanding])))
+        elif isinstance(el, EndPlate):
+            width = 2 * el.leh + 5.5 * INCH
+            parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
+        elif isinstance(el, SeatedAngle):
+            parts.append(Part(name, _box(x_0, y_0, -el.length / 2, w, h, el.length)))
+        elif isinstance(el, StiffenedSeat):
+            if name == "seat":
+                width = max(bf, el.width)
+                parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
+            else:
+                parts.append(Part(name, _box(x_0, y_0, -t / 2, w, h, t)))
+        else:
+            parts.append(Part(name, _box(x_0, y_0, side, w, h, t)))
+    # bolts
+    r = lay.bolt_diameter / 2 if lay.bolt_diameter else 0.375 * INCH
+    grip = tw + 2 * t + 2 * r
+    for i, (x, y) in enumerate(lay.bolts):
+        parts.append(Part(f"bolt{i + 1}", _cylinder_z(x, y, -grip / 2 - r, r, grip + 2 * r)))
+    gage = 5.5 * INCH if isinstance(el, (EndPlate, DoubleAngle)) else 0.0
+    for i, y in enumerate(lay.support_bolts):
+        for j, z in enumerate((-gage / 2, gage / 2) if gage else (0.0,)):
+            parts.append(Part(f"support_bolt{i + 1}{'ab'[j]}",
+                              _cylinder_x(-t_sup - r, y, z, r, t_sup + t + 3 * r)))
+    return parts

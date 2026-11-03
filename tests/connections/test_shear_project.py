@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+"""Shear connection projects: file, engine dispatch, report, command and drawing."""
+
+import json
+from pathlib import Path
+
+import ezdxf
+import pytest
+from pydantic import ValidationError
+
+from openconex.cli import main
+from openconex.connections.shear.check import check_shear_envelope
+from openconex.io.project import Project, load_project
+from openconex.report.builder import build_report
+from openconex.units import Kind, to_internal
+
+EXAMPLES = Path(__file__).parents[2] / "examples"
+
+
+def kip(v):
+    return to_internal(v, "kip", Kind.FORCE)
+
+
+def governing(project):
+    out = {}
+    for r in check_shear_envelope(project.shear_model(), project.load_combinations(),
+                                  project.case_forces()):
+        if r.id not in out or r.ratio > out[r.id].ratio:
+            out[r.id] = r
+    return out
+
+
+def test_single_plate_example_matches_ii_a_17a():
+    results = governing(load_project(EXAMPLES / "shear_single_plate.ocnx"))
+    bolts = results["single_plate.bolts"]
+    assert bolts.combo == "LRFD-2" and bolts.demand == pytest.approx(kip(49.6))
+    assert bolts.capacity == pytest.approx(kip(58.5), rel=0.01)
+    assert results["single_plate.block_shear"].capacity == pytest.approx(kip(65.3), rel=0.01)
+
+
+def test_coped_double_angle_example_matches_ii_a_4():
+    results = governing(load_project(EXAMPLES / "shear_double_angle_coped.ocnx"))
+    assert results["coped_beam.block_shear"].capacity == pytest.approx(kip(68.6), rel=0.01)
+    assert results["coped_beam.shear_yielding"].capacity == pytest.approx(kip(170), rel=0.01)
+    assert results["double_angle.bolts_beam"].demand == pytest.approx(kip(60))
+
+
+def _data(**changes):
+    data = json.loads((EXAMPLES / "shear_single_plate.ocnx").read_text(encoding="utf-8"))
+    data["shear_connection"].update(changes.pop("connection", {}))
+    data.update(changes)
+    return data
+
+
+def test_axial_tension_uses_the_part_12_checks():
+    data = _data(cases=[{"name": "D", "type": "D", "V": "8 kip", "P": "-10 kip"},
+                        {"name": "L", "type": "L", "V": "25 kip", "P": "-20 kip"}])
+    ids = set(governing(Project.model_validate(data)))
+    assert {"single_plate.tension_yielding", "single_plate.interaction_rupture"} <= ids
+
+
+def test_axial_compression_is_reported_as_not_verified():
+    data = _data(cases=[{"name": "D", "type": "D", "V": "8 kip", "P": "5 kip"}])
+    check = governing(Project.model_validate(data))["shear_connection.axial_compression"]
+    assert check.status.value == "ng"
+
+
+def test_axial_tension_on_a_seat_is_reported_as_not_verified():
+    data = _data(connection={"type": "seated", "length": "8 in", "thickness": "5/8 in",
+                             "leg": "4 in"},
+                 cases=[{"name": "D", "type": "D", "V": "8 kip", "P": "-5 kip"}])
+    check = governing(Project.model_validate(data))["shear_connection.axial_unsupported"]
+    assert check.status.value == "ng"
+
+
+@pytest.mark.parametrize(("data", "message"), [
+    (_data(connection={"a": None}), "needs a"),
+    (_data(base_plate={"column": "W12X96", "fc": "4 ksi"}), "exactly one"),
+    (_data(cases=[{"name": "D", "type": "D", "V": "8 kip", "M": "10 kip*in"}]), "only V and P"),
+    (_data(connection={"grade": "unknown"}), "unknown material"),
+])
+def test_invalid_projects(data, message):
+    with pytest.raises(ValidationError, match=message):
+        Project.model_validate(data)
+
+
+@pytest.mark.parametrize("lang", ["es", "en"])
+def test_report_and_drawing(lang, tmp_path):
+    project = load_project(EXAMPLES / "shear_double_angle_coped.ocnx")
+    project.info.language = lang
+    report = build_report(project)
+    assert report.ok and report.case_headers[2:] == ["V", "P"]
+    assert any(f.key == "elevation" for f in report.figures)
+    assert len(report.summary) == 10
+
+
+def test_command_writes_the_outputs(tmp_path, capsys):
+    out = tmp_path / "sp"
+    code = main(["shear", str(EXAMPLES / "shear_single_plate.ocnx"), "-o", str(out), "--html",
+                 "--docx", "--dxf"])
+    assert code == 0
+    for suffix in (".html", ".docx", ".dxf"):
+        assert out.with_suffix(suffix).exists()
+    doc = ezdxf.readfile(out.with_suffix(".dxf"))
+    assert len(doc.modelspace().query("CIRCLE")) == 4
+    assert "single_plate.bolts" not in capsys.readouterr().err
+
+
+def test_commands_refuse_the_other_project_type(tmp_path):
+    assert main(["baseplate", str(EXAMPLES / "shear_single_plate.ocnx")]) == 2
+    assert main(["shear", str(EXAMPLES / "base_plate_generic_w.ocnx")]) == 2
+
+
+@pytest.mark.parametrize("kind", ["double_angle", "single_plate", "extended_single_plate",
+                                  "end_plate", "seated", "stiffened_seat"])
+def test_every_type_draws(kind, tmp_path):
+    fields = {
+        "double_angle": {"leh_support": "1.25 in", "leh": "1.25 in"},
+        "extended_single_plate": {"lines": 2, "gage": "3 in", "a": "9 in"},
+        "end_plate": {},
+        "seated": {"leg": "4 in", "thickness": "5/8 in", "length": "8 in"},
+        "stiffened_seat": {"width": "7 in", "length": "15 in", "thickness": "5/8 in",
+                           "weld": "5/16 in"},
+    }.get(kind, {})
+    project = Project.model_validate(_data(connection={"type": kind, **fields}))
+    from openconex.drawing.shear import write_shear_dxf
+    path = write_shear_dxf(project.shear_model(), tmp_path / "x.dxf",
+                           project.info.unit_system())
+    assert path.exists()
+    assert build_report(project).summary
+
+
+@pytest.mark.parametrize("name", ["shear_single_plate", "shear_double_angle_coped"])
+def test_3d_model(name, tmp_path):
+    pytest.importorskip("OCP")
+    from openconex.geometry3d.base_plate import write_step
+    from openconex.geometry3d.shear import shear_parts
+    parts = shear_parts(load_project(EXAMPLES / f"{name}.ocnx").shear_model())
+    assert {"beam", "support"} <= {p.name for p in parts}
+    assert write_step(parts, tmp_path / "x.step").stat().st_size > 0

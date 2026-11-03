@@ -24,7 +24,8 @@ from openconex.io.project import Project
 from openconex.report.figures import Figure, base_plate_figures
 from openconex.units import Kind, UnitSystem, format_value
 
-__all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "factor_expression", "fmt"]
+__all__ = ["CheckBlock", "Report", "Row", "build_base_plate_report", "build_report",
+           "factor_expression", "fmt"]
 
 CODES = [
     "ANSI/AISC 360-22, Specification for Structural Steel Buildings",
@@ -270,3 +271,11 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",
                   date=today.isoformat()),
         disclaimer=tr("report.disclaimer", lang), results=results, figures=figures)
+
+
+def build_report(project: Project, today: dt.date | None = None) -> Report:
+    """Report of a base plate or of a shear connection project."""
+    if project.shear_connection is not None:
+        from openconex.report.shear import build_shear_report
+        return build_shear_report(project, today)
+    return build_base_plate_report(project, today)

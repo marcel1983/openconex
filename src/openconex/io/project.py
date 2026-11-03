@@ -46,6 +46,7 @@ from openconex.core.materials import (
 )
 from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
+from openconex.io.shear_project import BoltInput, CopeInput, ShearConnectionInput
 from openconex.kernel.anchors import Edges
 from openconex.units import PRESETS, Kind, UnitSystem, parse
 
@@ -53,8 +54,10 @@ __all__ = [
     "FORMAT_VERSION",
     "BasePlateInput",
     "BoltGradeInput",
+    "BoltInput",
     "ColumnSectionInput",
     "CombinationOptions",
+    "CopeInput",
     "CustomCombinationInput",
     "ElectrodeInput",
     "EmbeddedBaseInput",
@@ -66,13 +69,14 @@ __all__ = [
     "Project",
     "ProjectInfo",
     "ReinforcementInput",
+    "ShearConnectionInput",
     "WSectionInput",
     "WeakBaseInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 9
+FORMAT_VERSION = 10
 Quantity = str | float
 
 
@@ -177,6 +181,9 @@ class WSectionInput(_Input):
     def label(self) -> str:
         return self.name or "W " + "×".join(
             _dimension_text(value) for value in (self.d, self.bf, self.tf, self.tw))
+
+
+ShearConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 
 
 class HSSSectionInput(_Input):
@@ -401,7 +408,9 @@ class Project(_Input):
     """Welding electrodes added to the built-in library."""
     sections: list[ColumnSectionInput] = Field(default_factory=list)
     """Custom column sections saved with the project, available in the GUI."""
-    base_plate: BasePlateInput
+    base_plate: BasePlateInput | None = None
+    shear_connection: ShearConnectionInput | None = None
+    """Beam-end shear connection; a project holds either this or ``base_plate``."""
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
@@ -426,6 +435,10 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
+        if (self.base_plate is None) == (self.shear_connection is None):
+            raise ValueError("a project needs exactly one of base_plate or shear_connection")
+        if self.shear_connection is not None:
+            return self._validate_shear()
         library = self.material_library()
         if self.base_plate.plate_grade not in library:
             raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
@@ -537,6 +550,32 @@ class Project(_Input):
                 if self.quantity(value, kind) <= 0:
                     raise ValueError("reinforcement dimensions and strengths must be positive")
         return self
+
+    def _validate_shear(self) -> Project:
+        sc = self.shear_connection
+        missing = sc.missing()
+        if missing:
+            raise ValueError(f"{sc.type.value} connection needs {', '.join(missing)}")
+        library = self.material_library()
+        for grade in (sc.grade, sc.beam_grade, sc.support_grade):
+            if grade not in library:
+                raise ValueError(f"unknown material: {grade!r}")
+        for section in (sc.beam, sc.support):
+            if not isinstance(section, str) and section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
+        if sc.bolt.grade not in self.bolt_library():
+            raise ValueError(f"unknown bolt grade: {sc.bolt.grade!r}")
+        if sc.electrode not in self.electrode_library():
+            raise ValueError(f"unknown electrode: {sc.electrode!r}")
+        if any(self.quantity(c.M, Kind.MOMENT) or self.quantity(c.V_weak, Kind.FORCE)
+               or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
+            raise ValueError("shear connections take only V and P load cases")
+        return self
+
+    def shear_model(self):
+        """Engine model of the shear connection (:class:`ShearConnection`)."""
+        from openconex.io.shear_project import shear_model
+        return shear_model(self)
 
     def material_library(self) -> dict[str, SteelGrade]:
         """Built-in AISC steels plus the project-defined ones."""
