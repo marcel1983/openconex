@@ -66,6 +66,25 @@ Manual AISC Parte 10, configuración convencional, con pernos en una fila. Por a
 | `single_plate.weld_size` | w ≥ 5t_p/8 | Manual Parte 10 |
 | `single_plate.support_thickness` | t_min = 3,09 D/F_u del apoyo | Manual Ec. 9-6 |
 
+### Placa simple con carga axial (`connections/shear/single_plate_axial.py`)
+
+`check_single_plate_axial(sp, V, N, ...)` sigue el método del Manual Parte 12: la placa es un voladizo desde la soldadura con M = V·a. Con N = 0 equivale a `check_single_plate`. Usa además `single_plate.bolts`, `shear_yielding`, `shear_rupture`, `block_shear`, `weld_size` y `support_thickness`.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `single_plate.tension_yielding` | Fluencia por tracción de la placa | §J4.1(a) |
+| `single_plate.tension_rupture` | Rotura por tracción, A_e = A_n | §J4.1(b) |
+| `single_plate.flexural_yielding` | M_n = mín(F_y Z, 1,5 F_y S) | §F11.1 |
+| `single_plate.flexural_ltb` | Pandeo lateral-torsional con L_b = a y C_b = 1,84 | §F11.2 |
+| `single_plate.flexural_rupture` | M_n = F_u Z_net | §J4.5; Manual Ec. 9-8 |
+| `single_plate.interaction_yielding` | Interacción N, M, V con resistencias de fluencia | Manual Ec. 12-2, 12-3 |
+| `single_plate.interaction_rupture` | Interacción N, M, V con resistencias de rotura | Manual Ec. 12-2, 12-3 |
+| `single_plate.block_shear_axial` | Bloque de corte en dirección axial, mínimo entre forma L y U | §J4.3 |
+| `single_plate.block_shear_interaction` | (V/R_v)² + (N/R_t)² ≤ 1 en el bloque de corte | Manual Ec. 12-1 |
+| `single_plate.support_shear_rupture` | Rotura por corte del apoyo en dos planos, A_nv = 2 l t | §J4.2(b) |
+
+En los pernos, C se calcula con el centro instantáneo para la resultante a θ = atan(N/V) y e = a; el desgarro usa la peor distancia al borde (l_ev o l_eh de la placa, y l_eh de la viga menos la tolerancia de longitud, ¼ in por defecto).
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |
