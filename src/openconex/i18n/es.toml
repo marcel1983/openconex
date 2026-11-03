@@ -252,6 +252,13 @@ bearing_length = "Longitud de apoyo requerida (fluencia y aplastamiento local de
 shear_yielding = "Fluencia por corte del ala del asiento"
 flexural_yielding = "Fluencia por flexión del ala del asiento"
 bolts = "Pernos del asiento (corte y aplastamiento)"
+weld = "Soldaduras del asiento al apoyo"
+
+[check.stiffened_seat]
+width = "Ancho mínimo del rigidizador (fluencia y aplastamiento local del alma)"
+weld = "Soldaduras del rigidizador al apoyo"
+stiffener_thickness = "Espesor mínimo del rigidizador"
+support_thickness = "Espesor mínimo del apoyo para las soldaduras"
 
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"

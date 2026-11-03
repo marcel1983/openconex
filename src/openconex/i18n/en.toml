@@ -252,6 +252,13 @@ bearing_length = "Required bearing length (web local yielding and crippling)"
 shear_yielding = "Shear yielding of the seat leg"
 flexural_yielding = "Flexural yielding of the seat leg"
 bolts = "Seat bolts (shear and bearing)"
+weld = "Seat welds to the support"
+
+[check.stiffened_seat]
+width = "Minimum stiffener width (web local yielding and crippling)"
+weld = "Stiffener welds to the support"
+stiffener_thickness = "Minimum stiffener thickness"
+support_thickness = "Minimum support thickness for the welds"
 
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"

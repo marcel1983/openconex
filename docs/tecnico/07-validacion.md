@@ -51,6 +51,8 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 | II.A-19A | placa simple extendida con dos líneas de pernos: grupo (41,7/27,7 kip), t_max = 0,575 in, corte, bloque de corte (145/96,5), flexión y pandeo lateral-torsional (810/539 kip·in), interacción (0,200), rotura por flexión (624/416; Z_net = 12,75 in³ contra 12,8 de la Tabla 15-2) | `tests/connections/test_extended_single_plate.py` |
 | II.A-11A, Parte B | placa de extremo de corte: agujeros (96,4/64,1 kip), fluencia (128/85,3) y rotura (86,3/57,5) por corte, bloque de corte (93,8/62,5), soldaduras (67,9/45,3) y t_w,min = 0,286 in | `tests/connections/test_end_plate.py` |
 | II.A-12A | asiento no rigidizado apernado: longitud de apoyo por fluencia (0,309/0,307 in) y aplastamiento local (negativo, gobierna k_des = 1,03 in), fluencia por corte del ala (150/100 kip) y flexión del ala con l_b = 1⅛ in (113/74,9, Tabla 10-5) | `tests/connections/test_seated.py` |
+| II.A-13, II.A-16 | asiento soldado: soldaduras (66,7/44,5 y 53,4/35,6 kip, Tabla 10-6) | `tests/connections/test_seated.py` |
+| II.A-14, II.A-15 | asiento rigidizado: W_min por aplastamiento (6,93/6,96 in) y fluencia (3,59/3,61 in), soldaduras (139/93,0 kip, Tabla 10-8), espesor del rigidizador (0,469 in) y del apoyo (0,238 in; 0,476 in con asientos a ambos lados, que no cumple) | `tests/connections/test_stiffened_seat.py` |
 
 ## Hallazgos de la validación
 

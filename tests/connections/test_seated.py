@@ -64,3 +64,24 @@ def test_bearing_on_thin_parts_governs_the_bolts():
     full = {r.id: r for r in check_seated(EX, kip(30), Method.LRFD)}["seated.bolts"]
     assert bolts.capacity < full.capacity
     assert full.capacity == pytest.approx(kip(4 * 17.9), rel=0.01)
+
+
+# II.A-13: L8x4x5/8, 8 in. long, welded to a W14x61 column flange with 5/16 in. welds;
+# W21x62 beam. II.A-16: L7x4x5/8, 6 in. long, same welds
+WELDED = dataclasses.replace(EX, beam_d=inch(21.0), beam_tw=inch(0.400), beam_tf=inch(0.615),
+                             beam_kdes=inch(1.12), support_weld=inch(5 / 16),
+                             vertical_leg=inch(8), support_t=inch(0.645))
+
+
+@pytest.mark.parametrize(("seat", "R", "expected"), [
+    (WELDED, (54.8, 36.5), (66.7, 44.5)),
+    (dataclasses.replace(WELDED, length=inch(6), vertical_leg=inch(7)), (51.4, 34.2),
+     (53.4, 35.6)),
+])
+@pytest.mark.parametrize(("method", "col"), [(Method.LRFD, 0), (Method.ASD, 1)])
+def test_welded_seats_ii_a_13_and_16(seat, R, expected, method, col):
+    results = {r.id: r for r in check_seated(seat, kip(R[col]), method)}
+    assert results["seated.weld"].capacity == pytest.approx(kip(expected[col]), rel=0.01)
+    assert "seated.bolts" not in results
+    assert results["seated.bearing_length"].demand == pytest.approx(inch(1.12))
+    assert all(r.status.value == "ok" for r in results.values())

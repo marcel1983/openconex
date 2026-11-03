@@ -17,6 +17,11 @@ Limit states for the beam end reaction R:
   shear and bearing on the angle and the support (§J3.7, §J3.11; edge distances
   are taken large enough that tearout does not govern, as in Manual Table 10-5).
 
+With ``support_weld`` > 0 the vertical leg is welded to the support with a
+fillet weld along each end (Design Examples II.A-13, II.A-16) instead of
+bolted: R_n = 2 r_w l_v^2 / sqrt(l_v^2 + 20.25 e^2) (elastic method of Manual
+Part 10, Table 10-6), l_v the vertical leg and e = setback + (leg − setback)/2.
+
 The top (stability) angle is not designed.
 """
 
@@ -31,6 +36,7 @@ from openconex.core.materials import E_STEEL
 from openconex.core.model import BoltSpec
 from openconex.kernel import bolts, elements
 from openconex.kernel.design import FLEXURE, Calc, Resistance
+from openconex.kernel.welds import fillet_weld_per_length
 from openconex.units import Kind, to_internal
 
 from .double_angle import SPEC
@@ -63,6 +69,10 @@ class SeatedAngle:
     beam_Fy: float
     setback: float = to_internal(0.75, "in", Kind.LENGTH)
     """Setback including the length underrun (Manual Part 10: 1/2 in. + 1/4 in.)."""
+    support_weld: float = 0.0
+    """Fillet weld size along each end of the vertical leg; 0 when bolted."""
+    vertical_leg: float = 0.0
+    FEXX: float = to_internal(70.0, "ksi", Kind.STRESS)
     bearing_length: float | None = None
     """Bearing length used for the leg flexure; defaults to the required l_b,min."""
 
@@ -117,6 +127,12 @@ def check_seated(sa: SeatedAngle, R: float, method: Method,
     flexure = c.result("seated.flexural_yielding", clause, R,
                        c.available(rn, FLEXURE, Kind.FORCE, clause), Kind.FORCE)
 
+    if sa.support_weld > 0:
+        bolt_check = _welds(sa, R, method, combo)
+        shear = elements.shear_yielding(sa.length * t, sa.Fy, R, method, combo)
+        shear = shear.model_copy(update={"id": "seated.shear_yielding",
+                                         "text_id": "check.seated.shear_yielding"})
+        return [bearing, shear, flexure, bolt_check]
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11"
     b = sa.bolt
@@ -132,3 +148,16 @@ def check_seated(sa: SeatedAngle, R: float, method: Method,
     shear = shear.model_copy(update={"id": "seated.shear_yielding",
                                      "text_id": "check.seated.shear_yielding"})
     return [bearing, shear, flexure, bolt_check]
+
+
+def _welds(sa: SeatedAngle, R: float, method: Method, combo: str) -> CheckResult:
+    c = Calc(method, combo)
+    clause = f"{PART10}, Table 10-6"
+    e = c.step("e", r"\mathrm{setback} + (\mathrm{leg} - \mathrm{setback})/2",
+               sa.setback + (sa.leg - sa.setback) / 2, Kind.LENGTH, clause)
+    rw = fillet_weld_per_length(sa.support_weld, sa.FEXX, 0.0, method).capacity
+    lv = sa.vertical_leg
+    rn = c.step("R_n", r"\frac{2 r_w l_v^2}{\sqrt{l_v^2 + 20.25 e^2}}",
+                2 * rw * lv**2 / math.sqrt(lv**2 + 20.25 * e**2), Kind.FORCE, clause,
+                l_v=(lv, Kind.LENGTH), w=(sa.support_weld, Kind.THICKNESS))
+    return c.result("seated.weld", clause, R, rn, Kind.FORCE)
