@@ -228,6 +228,14 @@ flexural_rupture = "Rotura por flexión de la placa"
 weld_size = "Tamaño de la soldadura de la placa"
 support_thickness = "Espesor mínimo del apoyo"
 
+[check.end_plate]
+bolts = "Transferencia de corte en los agujeros"
+shear_yielding = "Fluencia por corte de la placa de extremo"
+shear_rupture = "Rotura por corte de la placa de extremo"
+block_shear = "Bloque de corte de la placa de extremo"
+weld = "Soldaduras de la placa al alma de la viga"
+beam_web_thickness = "Espesor mínimo del alma de la viga para las soldaduras"
+
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"
