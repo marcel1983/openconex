@@ -30,7 +30,7 @@ from PySide6.QtWidgets import (
 
 from openconex.gui.exporting import write_3d, write_dxf
 from openconex.io.project import Project, load_project
-from openconex.report.builder import Report, build_base_plate_report
+from openconex.report.builder import Report, build_report
 from openconex.report.docx import write_docx
 from openconex.report.html import write_html
 from openconex.report.pdf import write_pdf
@@ -132,12 +132,16 @@ def _calculate_one(path: Path, out: Path | None, formats: tuple[str, ...],
                    used: set[str]) -> BatchResult:
     try:
         project = load_project(path)
-        report = build_base_plate_report(project)
+        report = build_report(project)
     except Exception as exc:
         return BatchResult(path=path, name=path.stem, status="ERROR", error=str(exc))
     check, combo, ratio = _summary(report)
-    column = project.base_plate.column
-    column_text = column if isinstance(column, str) else column.label()
+    if project.shear_connection is not None:
+        beam = project.shear_connection.beam
+        column_text = beam if isinstance(beam, str) else beam.label()
+    else:
+        column = project.base_plate.column
+        column_text = column if isinstance(column, str) else column.label()
     result = BatchResult(path=path, name=project.info.name or path.stem,
                          status="OK" if report.ok else "NG", column=column_text,
                          ratio=ratio, check=check, combo=combo)

@@ -187,6 +187,9 @@ class MainWindow(QMainWindow):
         save_as = QAction("Guardar como…", self)
         save_as.triggered.connect(lambda: self.save_project_dialog(save_as=True))
         file_menu.addAction(save_as)
+        shear_action = QAction("Nueva conexión de corte…", self)
+        shear_action.triggered.connect(lambda: self.open_shear_window())
+        file_menu.addAction(shear_action)
         file_menu.addSeparator()
         import_action = QAction("Importar SAP2000 / ETABS…", self)
         import_action.triggered.connect(self.import_csi_dialog)
@@ -1059,11 +1062,25 @@ class MainWindow(QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Error al abrir", str(exc))
             return
+        if project.shear_connection is not None:
+            self.open_shear_window(project, path)
+            return
         self.project = project
         self.path = Path(path)
         self._fill_form(project)
         self._clear_report()
         self.statusBar().showMessage(f"Proyecto abierto: {self.path}")
+
+    def open_shear_window(self, project: Project | None = None,
+                          path: str | Path | None = None):
+        """Open a beam-end shear connection project in its own window."""
+        from openconex.gui.shear import ShearWindow
+        window = ShearWindow(project, path, parent=self)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._shear_windows = [*getattr(self, "_shear_windows", []), window]
+        window.show()
+        self.statusBar().showMessage("Conexión de corte abierta en otra ventana.")
+        return window
 
     def import_csi_dialog(self) -> None:
         if self.project is None:
