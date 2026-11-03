@@ -1,6 +1,24 @@
 # 1. Instalación
 
-Se necesita **Python 3.12 o posterior** en Windows, macOS o Linux.
+Se necesita **Python 3.12 o posterior** en Windows, macOS o Linux, o se puede usar un **ejecutable portable** publicado en cada release.
+
+## Ejecutables portables
+
+Los releases de GitHub incluyen un paquete portable por plataforma:
+
+| Plataforma | Archivo |
+|---|---|
+| Windows x64 | `OpenConex-0.4.0-windows-x64.zip` |
+| macOS ARM64 | `OpenConex-0.4.0-macos-arm64.zip` |
+| Linux x86_64 | `OpenConex-0.4.0-linux-x86_64.zip` |
+
+Descomprima el archivo y ejecute:
+
+- **Windows:** `OpenConex\OpenConex.exe` (GUI) o `openconex-cli\openconex.exe` (CLI).
+- **macOS:** `OpenConex.app` (GUI) o `openconex-cli/openconex` (CLI).
+- **Linux:** `OpenConex/OpenConex` (GUI) o `openconex-cli/openconex` (CLI).
+
+No requieren Python instalado. Incluyen Qt, el visor 3D, la exportación PDF y el catálogo AISC. Los binarios no están firmados en esta fase: Windows SmartScreen y macOS Gatekeeper pueden pedir confirmación. Cada release publica `SHA256SUMS.txt` para verificar las descargas.
 
 ## Desde el código fuente
 
