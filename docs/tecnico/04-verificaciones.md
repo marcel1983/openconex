@@ -37,6 +37,19 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
 | `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara, máx(0,75 t_w, 3/8 in) | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
 
+## Doble ángulo apernado (`connections/shear/double_angle.py`)
+
+Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como biblioteca: todavía no tiene proyecto, comando, memoria ni interfaz.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `double_angle.bolts_beam` | Transferencia de corte en los agujeros, lado de la viga: Σ mín(2 r_n,perno, 2 r_n,ángulo, r_n,alma) | §J3.7 (nota), §J3.11 |
+| `double_angle.bolts_support` | Transferencia de corte en los agujeros, lado del apoyo: Σ mín(2 r_n,perno, 2 r_n,ángulo, 2 r_n,apoyo) | §J3.7 (nota), §J3.11 |
+| `double_angle.angle_shear_yielding` | Fluencia por corte de los ángulos, A_gv = 2 l t | §J4.2(a) |
+| `double_angle.angle_shear_rupture` | Rotura por corte de los ángulos, A_nv = 2 (l − n(d_h + 1/16 in)) t | §J4.2(b), §B4.3b |
+| `double_angle.block_shear_beam` | Bloque de corte de los ángulos, lado de la viga (U_bs = 1) | §J4.3 |
+| `double_angle.block_shear_support` | Bloque de corte de los ángulos, lado del apoyo (U_bs = 1) | §J4.3 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

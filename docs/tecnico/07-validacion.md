@@ -37,6 +37,12 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 
 La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redondean a tres cifras.
 
+## AISC Design Examples (v16.0)
+
+| Ejemplo | Tema | Prueba |
+|---|---|---|
+| II.A-1A, Parte B | doble ángulo apernado: transferencia de corte en los agujeros (282/187 kip), fluencia (441/294) y rotura (302/201) por corte, bloque de corte (315/210), LRFD/ASD | `tests/connections/test_double_angle.py` |
+
 ## Hallazgos de la validación
 
 - **Soldaduras concéntricas:** si todos los elementos son paralelos se usa §J2.4(b) sin compatibilidad de deformaciones. Si son longitudinales y transversales, se toma la mayor entre la compatibilidad y la Ec. J2-6.

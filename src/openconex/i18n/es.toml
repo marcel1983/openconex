@@ -177,6 +177,14 @@ web_crippling = "Aplastamiento local del alma"
 web_compression_buckling = "Pandeo del alma por compresión"
 panel_zone = "Corte en la zona de panel"
 
+[check.double_angle]
+bolts_beam = "Transferencia de corte en los agujeros, lado de la viga"
+bolts_support = "Transferencia de corte en los agujeros, lado del apoyo"
+angle_shear_yielding = "Fluencia por corte de los ángulos"
+angle_shear_rupture = "Rotura por corte de los ángulos"
+block_shear_beam = "Bloque de corte de los ángulos, lado de la viga"
+block_shear_support = "Bloque de corte de los ángulos, lado del apoyo"
+
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"
