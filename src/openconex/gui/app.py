@@ -1566,6 +1566,11 @@ class MainWindow(QMainWindow):
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv if argv is None else argv
+    if "--version" in args[1:]:
+        from openconex import __version__
+        if sys.stdout is not None:
+            print(f"OpenConex {__version__}")
+        return 0
     app = QApplication(args)
     window = MainWindow()
     if len(args) > 1:
