@@ -206,6 +206,12 @@ block_shear_axial = "Block shear of the plate, axial direction"
 block_shear_interaction = "Block shear interaction, shear and tension"
 support_shear_rupture = "Shear rupture of the support"
 
+[check.coped_beam]
+flexure = "Flexure of the coped section (yielding and local buckling)"
+shear_yielding = "Shear yielding of the coped web"
+shear_rupture = "Shear rupture of the coped web"
+block_shear = "Block shear of the coped web"
+
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"
