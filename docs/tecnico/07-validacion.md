@@ -37,11 +37,12 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 
 La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redondean a tres cifras.
 
-## AISC Design Examples (v16.0)
+## AISC Design Examples (v16.0 y v16.1)
 
 | Ejemplo | Tema | Prueba |
 |---|---|---|
 | II.A-1A, Parte B | doble ángulo apernado: transferencia de corte en los agujeros (282/187 kip), fluencia (441/294) y rotura (302/201) por corte, bloque de corte (315/210), LRFD/ASD | `tests/connections/test_double_angle.py` |
+| II.A-17A | placa simple convencional: agujeros (58,5/38,9 kip; el centro instantáneo da C = 3,556 frente a 3,54 interpolado, 0,5 %), fluencia (86,4/57,6) y rotura (58,5/39,0) por corte, bloque de corte (65,3/43,6), límites dimensionales | `tests/connections/test_single_plate.py` |
 
 ## Hallazgos de la validación
 

@@ -50,6 +50,22 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como 
 | `double_angle.block_shear_beam` | Bloque de corte de los ángulos, lado de la viga (U_bs = 1) | §J4.3 |
 | `double_angle.block_shear_support` | Bloque de corte de los ángulos, lado del apoyo (U_bs = 1) | §J4.3 |
 
+## Placa simple convencional (`connections/shear/single_plate.py`)
+
+Manual AISC Parte 10, configuración convencional, con pernos en una fila. Por ahora solo como biblioteca.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `single_plate.bolts` | Transferencia de corte en los agujeros: (C/n) Σ mín(r_n,perno, r_n,placa, r_n,alma), C del centro instantáneo con e = a/2 | §J3.7 (nota), §J3.11; Manual Tabla 10-9 |
+| `single_plate.shear_yielding` | Fluencia por corte de la placa | §J4.2(a) |
+| `single_plate.shear_rupture` | Rotura por corte de la placa | §J4.2(b), §B4.3b |
+| `single_plate.block_shear` | Bloque de corte de la placa (U_bs = 1) | §J4.3 |
+| `single_plate.max_thickness` | mín(t_p, t_w) ≤ d/2 + 1/16 in | Manual Parte 10 |
+| `single_plate.leh` | l_eh ≥ 2d | Manual Parte 10 |
+| `single_plate.lev` | l_ev según la Tabla J3.4 | §J3.4 |
+| `single_plate.weld_size` | w ≥ 5t_p/8 | Manual Parte 10 |
+| `single_plate.support_thickness` | t_min = 3,09 D/F_u del apoyo | Manual Ec. 9-6 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |
