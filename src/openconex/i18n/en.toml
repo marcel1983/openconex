@@ -215,6 +215,19 @@ shear_yielding = "Shear yielding of the coped web"
 shear_rupture = "Shear rupture of the coped web"
 block_shear = "Block shear of the coped web"
 
+[check.extended_plate]
+bolts = "Eccentric bolt group (instantaneous center)"
+max_thickness = "Maximum plate thickness (yielding before bolt shear)"
+shear_yielding = "Shear yielding of the plate"
+shear_rupture = "Shear rupture of the plate"
+block_shear = "Block shear of the plate"
+flexural_yielding = "Flexural yielding of the plate"
+flexural_ltb = "Lateral-torsional buckling of the plate"
+interaction = "Shear and flexure interaction (yielding)"
+flexural_rupture = "Flexural rupture of the plate"
+weld_size = "Size of the plate weld"
+support_thickness = "Minimum support thickness"
+
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"

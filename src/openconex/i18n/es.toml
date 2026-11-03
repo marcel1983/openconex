@@ -215,6 +215,19 @@ shear_yielding = "Fluencia por corte del alma destajada"
 shear_rupture = "Rotura por corte del alma destajada"
 block_shear = "Bloque de corte del alma destajada"
 
+[check.extended_plate]
+bolts = "Grupo de pernos excéntrico (centro instantáneo)"
+max_thickness = "Espesor máximo de la placa (fluencia antes del corte de los pernos)"
+shear_yielding = "Fluencia por corte de la placa"
+shear_rupture = "Rotura por corte de la placa"
+block_shear = "Bloque de corte de la placa"
+flexural_yielding = "Fluencia por flexión de la placa"
+flexural_ltb = "Pandeo lateral-torsional de la placa"
+interaction = "Interacción de corte y flexión (fluencia)"
+flexural_rupture = "Rotura por flexión de la placa"
+weld_size = "Tamaño de la soldadura de la placa"
+support_thickness = "Espesor mínimo del apoyo"
+
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"

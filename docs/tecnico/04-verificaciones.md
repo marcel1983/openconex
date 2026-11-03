@@ -99,6 +99,24 @@ Extremo de viga destajado (Manual AISC Parte 9). La reacción actúa a e = c + h
 | `coped_beam.shear_rupture` | Rotura por corte, descontando los agujeros si los hay | §J4.2(b) |
 | `coped_beam.block_shear` | Bloque de corte del alma apernada; l_eh menos la tolerancia de longitud (¼ in); U_bs = 1 con una línea y 0,5 con dos | §J4.3 |
 
+## Placa simple extendida (`connections/shear/extended_single_plate.py`)
+
+Placa soldada al apoyo (por ejemplo, al alma de una columna) con una o dos líneas de pernos lejos de la soldadura (Manual AISC Parte 10). Momento M = R·a en la primera línea de pernos. No se verifica el desgarro del alma de la viga, que se supone protegido por el ala superior.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `extended_plate.bolts` | C · mín(corte del perno, aplastamiento en alma y placa, desgarro del perno de borde de la placa); C por el centro instantáneo con e desde el apoyo al centroide | §J3.7, §J3.11; Manual Parte 7 |
+| `extended_plate.max_thickness` | t_p ≤ t_max = 6 M_max/(F_y l²), M_max = F_nv A_b C'/0,90 | Manual Ec. 10-6, 10-7 |
+| `extended_plate.shear_yielding` | Fluencia por corte de la placa | §J4.2(a) |
+| `extended_plate.shear_rupture` | Rotura por corte en la línea de agujeros | §J4.2(b) |
+| `extended_plate.block_shear` | Bloque de corte (U_bs = 0,5 con dos líneas) | §J4.3 |
+| `extended_plate.flexural_yielding` | M_n = mín(F_y Z, 1,5 F_y S) | §F11.1 |
+| `extended_plate.flexural_ltb` | Pandeo lateral-torsional con L_b = a y C_b = 1,84 | §F11.2 |
+| `extended_plate.interaction` | (V/V_c)² + (M/M_c)² ≤ 1 | Manual Parte 10 |
+| `extended_plate.flexural_rupture` | M_n = F_u Z_net en la primera línea | Manual Ec. 9-8 |
+| `extended_plate.weld_size` | w ≥ 5t_p/8 | Manual Parte 10 |
+| `extended_plate.support_thickness` | t_min = 3,09 D/F_u | Manual Ec. 9-6 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |
