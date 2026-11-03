@@ -55,6 +55,22 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como 
 | `double_angle.weld_beam` | Con `beam_weld` > 0 (ángulos soldados al alma, "soldaduras A"): soldadura en C por ángulo (línea vertical en la punta y dos retornos de `beam_leg` − ½ in), cargada en el talón, por el centro instantáneo. Reemplaza `bolts_beam` y `block_shear_beam`; con los dos lados soldados los ángulos no tienen agujeros | §J2.4; Manual Tabla 10-3 |
 | `double_angle.beam_web_thickness` | t_w ≥ 6,19 D/F_u | Manual Ec. 9-3 |
 
+### Doble ángulo con carga axial (`connections/shear/double_angle_axial.py`)
+
+`check_double_angle_axial(da, V, N, gage=..., outstanding_leg=..., beam=...)` agrega la tracción axial N al doble ángulo apernado. Con N = 0 equivale a `check_double_angle`. Usa además `bolts_beam` (con las distancias de desgarro a lo largo de la fuerza: l_ev/cos θ en el perno de borde y l_eh/cos β en los demás y en el alma, esta menos la tolerancia de longitud), `bolts_support` (solo corte), `angle_shear_yielding`, `angle_shear_rupture`, `block_shear_beam` y `block_shear_support`.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `double_angle.bolts_tension` | n · F'_nt A_b · Q: tracción con corte y efecto palanca de los ángulos, p = l/n | §J3.8; Manual Parte 9 |
+| `double_angle.angle_tension_yielding` | Fluencia por tracción de los ángulos | §J4.1(a) |
+| `double_angle.angle_tension_rupture` | Rotura por tracción, A_e = A_n (U = 1) | §J4.1(b) |
+| `double_angle.block_shear_axial` | Bloque de corte axial en el lado de la viga, mínimo entre forma L y U | §J4.3 |
+| `double_angle.block_shear_interaction` | (V/R_v)² + (N/R_t)² ≤ 1 | como Manual Ec. 12-1 |
+| `double_angle.beam_shear_yielding` | Con `beam`: fluencia por corte del alma, d t_w | §J4.2(a) |
+| `double_angle.beam_tension_yielding` | Con `beam`: fluencia por tracción de la viga | §J4.1(a) |
+| `double_angle.beam_tension_rupture` | Con `beam`: rotura por tracción, U = (d − 2t_f) t_w / A_g | §J4.1(b), §D3 |
+| `double_angle.beam_block_shear` | Con `beam`: bloque de corte axial del alma (forma U) | §J4.3 |
+
 ## Placa simple convencional (`connections/shear/single_plate.py`)
 
 Manual AISC Parte 10, configuración convencional, con pernos en una fila. Por ahora solo como biblioteca.
