@@ -49,6 +49,9 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como 
 | `double_angle.angle_shear_rupture` | Rotura por corte de los ángulos, A_nv = 2 (l − n(d_h + 1/16 in)) t | §J4.2(b), §B4.3b |
 | `double_angle.block_shear_beam` | Bloque de corte de los ángulos, lado de la viga (U_bs = 1) | §J4.3 |
 | `double_angle.block_shear_support` | Bloque de corte de los ángulos, lado del apoyo (U_bs = 1) | §J4.3 |
+| `double_angle.weld_support` | Con `support_weld` > 0 (ángulos soldados al apoyo, "soldaduras B"): dos líneas de soldadura excéntricas, e = ancho del ala soldada, por el centro instantáneo con el C1 de la Tabla 8-3. Reemplaza `bolts_support` y `block_shear_support` | §J2.4; Manual Tabla 10-2 |
+| `double_angle.weld_max_size` | w ≤ t − 1/16 in (t ≥ ¼ in) | §J2.2b |
+| `double_angle.support_thickness` | t_min = 3,09 D/F_u del apoyo | Manual Ec. 9-6 |
 
 ## Placa simple convencional (`connections/shear/single_plate.py`)
 

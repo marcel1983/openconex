@@ -12,6 +12,13 @@ reaction R. Limit states:
 * shear yielding and rupture of the angles (§J4.2);
 * block shear rupture of the angles on each leg (§J4.3).
 
+With ``support_weld`` > 0 the support legs are welded instead ("welds B",
+Design Example II.A-2A): the bolt and block shear checks of the support side
+are replaced by the strength of the two eccentric weld lines (instantaneous
+center, e = width of the welded leg, as in Manual Table 10-2), the maximum
+weld size for the angle thickness (§J2.2b) and the support thickness that
+develops the welds (Manual Eq. 9-6).
+
 The beam pushes the angles down at the beam web, so the bottom bolt is the
 edge bolt for angle tearout there; at the support the angles bear up, so the
 top bolt is the edge bolt. The beam web and the support are taken without a
@@ -28,7 +35,8 @@ from openconex.core.model import BoltSpec
 from openconex.kernel import bolts, elements
 from openconex.kernel.bolts import clear_distance
 from openconex.kernel.design import Calc
-from openconex.units import Kind, to_internal
+from openconex.kernel.weld_group import WeldLine, weld_group_eccentric
+from openconex.units import Kind, from_internal, to_internal
 
 __all__ = ["DoubleAngle", "check_double_angle"]
 
@@ -58,6 +66,11 @@ class DoubleAngle:
     """Thickness of the support (column flange or girder web)."""
     support_Fu: float
     deformation_considered: bool = True
+    support_weld: float = 0.0
+    """Fillet weld size of the legs welded to the support ("welds B"); 0 when bolted."""
+    weld_e: float = 0.0
+    """Eccentricity of the support welds: width of the leg welded to the support."""
+    FEXX: float = to_internal(70.0, "ksi", Kind.STRESS)
 
 
 def _hole_net(bolt: BoltSpec) -> float:
@@ -126,13 +139,41 @@ def check_double_angle(da: DoubleAngle, R: float, method: Method,
     t, hole = da.thickness, _hole_net(da.bolt)
     agv = 2 * da.length * t
     anv = 2 * (da.length - da.rows * hole) * t
+    if da.support_weld > 0:
+        support = _support_welds(da, R, method, combo)
+    else:
+        support = [_transfer(da, R, method, combo, "support"),
+                   _block_shear(da, da.leh_support, R, method, combo, "block_shear_support")]
     return [
         _transfer(da, R, method, combo, "beam"),
-        _transfer(da, R, method, combo, "support"),
         _renamed(elements.shear_yielding(agv, da.angle_Fy, R, method, combo),
                  "angle_shear_yielding"),
         _renamed(elements.shear_rupture(anv, da.angle_Fu, R, method, combo),
                  "angle_shear_rupture"),
         _block_shear(da, da.leh_beam, R, method, combo, "block_shear_beam"),
-        _block_shear(da, da.leh_support, R, method, combo, "block_shear_support"),
+        *support,
     ]
+
+
+def _support_welds(da: DoubleAngle, R: float, method: Method, combo: str) -> list[CheckResult]:
+    w, length = da.support_weld, da.length
+    lines = [WeldLine(0.0, 0.0, 0.0, length), WeldLine(0.0, 0.0, 0.0, length)]
+    weld = _renamed(weld_group_eccentric(lines, w, da.FEXX, (da.weld_e, length / 2), R, method,
+                                         combo=combo), "weld_support")
+    sixteenth = to_internal(1 / 16, "in", Kind.LENGTH)
+    max_size = da.thickness if da.thickness < 4 * sixteenth else da.thickness - sixteenth
+    c = Calc(method, combo)
+    clause = f"{SPEC} §J2.2b"
+    c.step("w_{max}", r"t - 1/16\ \mathrm{in.}", max_size, Kind.THICKNESS, clause)
+    # w = t - 1/16 in. exactly is allowed; avoid a float round-off NG
+    size = c.result("double_angle.weld_max_size", clause, w, max_size * (1 + 1e-9),
+                    Kind.THICKNESS)
+    c = Calc(method, combo)
+    clause = "AISC Manual 16th ed., Eq. 9-6"
+    D = w / sixteenth
+    t_min = c.step("t_{min}", r"\frac{3.09 D}{F_u}",
+                   to_internal(3.09 * D / from_internal(da.support_Fu, Kind.STRESS, "ksi"), "in",
+                               Kind.LENGTH), Kind.THICKNESS, clause)
+    support = c.result("double_angle.support_thickness", clause, t_min, da.support_t,
+                       Kind.THICKNESS)
+    return [weld, size, support]
