@@ -46,6 +46,12 @@ python -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 ```
 
+Para las pruebas de interfaz gráfica, instale también Qt y `pytest-qt`:
+
+```bash
+.venv/bin/pip install -e ".[dev,pdf,gui-test]"
+```
+
 ## English
 
 Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
