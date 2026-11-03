@@ -85,6 +85,17 @@ Manual AISC Parte 10, configuración convencional, con pernos en una fila. Por a
 
 En los pernos, C se calcula con el centro instantáneo para la resultante a θ = atan(N/V) y e = a; el desgarro usa la peor distancia al borde (l_ev o l_eh de la placa, y l_eh de la viga menos la tolerancia de longitud, ¼ in por defecto).
 
+## Viga con destaje (`connections/shear/coped_beam.py`)
+
+Extremo de viga destajado (Manual AISC Parte 9). La reacción actúa a e = c + holgura (½ in por defecto). Las propiedades de la T que deja un destaje superior se calculan sin filetes, como en la Tabla 9-2.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `coped_beam.flexure` | R_n = M_n/e. Destaje superior: fluencia y pandeo local del alma con f, k y k_1. Destaje en ambas alas: pandeo lateral-torsional del alma como barra rectangular, L_b = c y C_b de la Ec. 9-21 | Manual Ec. 9-9 a 9-21; §F11 |
+| `coped_beam.shear_yielding` | Fluencia por corte del alma reducida, h_c t_w | §J4.2(a) |
+| `coped_beam.shear_rupture` | Rotura por corte, descontando los agujeros si los hay | §J4.2(b) |
+| `coped_beam.block_shear` | Bloque de corte del alma apernada; l_eh menos la tolerancia de longitud (¼ in); U_bs = 1 con una línea y 0,5 con dos | §J4.3 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

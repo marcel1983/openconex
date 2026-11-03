@@ -206,6 +206,12 @@ block_shear_axial = "Bloque de corte de la placa, dirección axial"
 block_shear_interaction = "Interacción del bloque de corte, corte y tracción"
 support_shear_rupture = "Rotura por corte del apoyo"
 
+[check.coped_beam]
+flexure = "Flexión de la sección destajada (fluencia y pandeo local)"
+shear_yielding = "Fluencia por corte del alma destajada"
+shear_rupture = "Rotura por corte del alma destajada"
+block_shear = "Bloque de corte del alma destajada"
+
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"
