@@ -46,7 +46,7 @@ def test_round_trip(tmp_path, project):
     path = tmp_path / "copy.ocnx"
     save_project(project, path)
     again = load_project(path)
-    assert again == project
+    assert again == project.model_copy(update={"format_version": FORMAT_VERSION})
     assert json.loads(path.read_text())["format_version"] == FORMAT_VERSION
 
 

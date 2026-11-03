@@ -9,6 +9,7 @@
 | agrega o cambia un campo del `.ocnx` | `docs/usuario/03-proyecto.md` (y un ejemplo en `examples/` si es una función nueva) |
 | agrega o cambia un comando u opción | `docs/usuario/04-comandos.md` |
 | agrega o cambia una verificación | `docs/tecnico/04-verificaciones.md`, `docs/tecnico/03-placa-base.md` (si la usa la placa base) y los títulos en `i18n/es.toml` y `en.toml` |
+| agrega un tipo de conexión de corte | `ShearType` y el despachador en `connections/shear/check.py`, `REQUIRED` en `io/shear_project.py`, `TYPE_FIELDS` en `gui/shear.py`, `shear_layout` en `drawing/shear.py`, la tabla de campos de `docs/usuario/03-proyecto.md` y `shear.type` en `i18n` |
 | cambia una fórmula, hipótesis o criterio | `docs/tecnico/03-placa-base.md` o el documento técnico del tema |
 | agrega una validación (ejemplo o tabla) | `docs/tecnico/07-validacion.md` |
 | cambia la importación | `docs/usuario/05-importar-sap2000.md` y `docs/tecnico/06-importacion-csi.md` |

@@ -46,6 +46,9 @@ def dxf_to_svg(doc, width: float = 210, height: float = 150) -> str:
     Frontend(RenderContext(doc), backend).draw_layout(doc.modelspace())
     svg = backend.get_string(Page(width, height))
     # ezdxf uses a dark model-space background; reports are printed on white.
+    # ACI color 7 is drawn white on that background: make it black on paper.
+    svg = svg.replace("stroke: #ffffff", "stroke: #000000").replace("fill: #ffffff",
+                                                                    "fill: #000000")
     return svg.replace('fill="#212830"', 'fill="#ffffff"')
 
 

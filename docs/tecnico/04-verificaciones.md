@@ -171,6 +171,13 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 | `stiffened_seat.stiffener_thickness` | t ≥ máx(1,5 w, F_y,viga t_w / F_y,rigidizador); 1,5 w vale para placas de 50 ksi y electrodos E70 | Manual Parte 10 |
 | `stiffened_seat.support_thickness` | t ≥ 3,09 D/F_u, o 6,19 D/F_u con asientos a ambos lados del alma | Manual Ec. 9-6, 9-7 |
 
+## Conexión de corte: resultados comunes (`connections/shear/check.py`)
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `shear_connection.axial_compression` | Compresión axial en el extremo de la viga: no está implementada y se informa con capacidad 0 (no cumple) | — |
+| `shear_connection.axial_unsupported` | Tracción axial en un tipo sin procedimiento axial (placa extendida, placa de extremo, asientos, doble ángulo soldado): capacidad 0 | — |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

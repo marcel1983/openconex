@@ -25,6 +25,29 @@ Calcula todas las combinaciones del proyecto, imprime la verificación que gobie
 
 `--optimize` reduce N, B y tp desde la placa actual en pasos de 1 in y 0,25 in respectivamente, manteniendo todas las combinaciones y el revisor de interferencias en cumplimiento. Es una optimización local determinista, no una búsqueda global.
 
+## `openconex shear`: calcular una conexión de corte
+
+```bash
+openconex shear proyecto.ocnx [opciones]
+```
+
+Calcula un proyecto con `shear_connection` (ver [El archivo de proyecto](03-proyecto.md#conexión-de-corte-shear_connection)) en todas sus combinaciones, imprime la verificación que gobierna de cada tipo y escribe las salidas pedidas. Devuelve 0 si todo cumple, 1 si algo no cumple y 2 si el proyecto es de placa base.
+
+| Opción | Efecto |
+|---|---|
+| `-o`, `--output RUTA` | Ruta de las salidas, sin extensión. |
+| `--lang es\|en` | Idioma de la memoria y el plano. |
+| `--units SISTEMA` | Sistema de unidades de las salidas. |
+| `--html`, `--docx`, `--pdf` | Memoria de cálculo (PDF con el extra `pdf`). |
+| `--dxf` | Plano DXF en elevación. |
+| `--step`, `--stl` | Modelo 3D (requiere el extra `3d`). |
+
+```bash
+openconex shear examples/shear_single_plate.ocnx --html --dxf
+```
+
+`openconex baseplate` rechaza los proyectos de conexión de corte (código 2) y viceversa.
+
 ## `openconex supports`: apoyos de SAP2000 / ETABS
 
 ```bash

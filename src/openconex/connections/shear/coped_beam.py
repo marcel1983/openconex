@@ -13,7 +13,7 @@ Limit states:
     rectangular bar (AISC 360-22 §F11), L_b = c and C_b per Manual Eq. 9-21;
 
 * shear yielding and shear rupture of the reduced web (§J4.2);
-* block shear of the web for a bolted connection (one line of bolts, U_bs = 1;
+* block shear of the web for a bolted connection when ``leh`` is given (one line of bolts, U_bs = 1;
   two lines, U_bs = 0.5), with the beam length underrun subtracted from l_eh.
 
 The section properties of the tee left by a top cope are computed without
@@ -162,7 +162,7 @@ def check_coped_beam(cb: CopedBeam, R: float, method: Method,
         _rename("shear_rupture", elements.shear_rupture((hc - holes) * cb.tw, cb.Fu, R, method,
                                                         combo)),
     ]
-    if cb.rows:
+    if cb.rows and cb.leh > 0:
         length = cb.lev + (cb.rows - 1) * cb.spacing
         agv = length * cb.tw
         anv = agv - (cb.rows - 0.5) * cb.hole * cb.tw

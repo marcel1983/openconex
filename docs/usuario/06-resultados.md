@@ -2,7 +2,7 @@
 
 ## Resumen en pantalla
 
-`openconex baseplate` imprime, para cada tipo de verificación, la combinación que gobierna:
+`openconex baseplate` y `openconex shear` imprimen, para cada tipo de verificación, la combinación que gobierna:
 
 ```
 OK     0.465  Espesor de placa en la interfaz de compresión (CU3 1.2CM+CV+SX+0.3SY)
@@ -36,6 +36,12 @@ DXF R2013, a escala 1:1 en la unidad de longitud del proyecto (mm o in), legible
 
 Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `BP-COTAS`, `BP-TEXTO`, `BP-EJES` y `BP-CONCRETO`.
 
+### Plano de una conexión de corte
+
+`openconex shear --dxf` dibuja la elevación vista hacia el alma de la viga: apoyo (ala o alma), viga con sus destajes, placa o ángulos, pernos, soldaduras, cotas principales y notas con el tipo, los perfiles, los pernos y las soldaduras. Es un esquema para revisión, sin lista de materiales. Capas: `SC-VIGA`, `SC-APOYO`, `SC-PLACA`, `SC-PERNO`, `SC-SOLDADURA`, `SC-COTAS` y `SC-TEXTO`. La memoria de una conexión de corte incluye esta elevación y el isométrico del modelo 3D, y en los datos de carga muestra `V` y `P`.
+
 ## Modelo 3D (`--step`, `--stl`)
 
 Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.
+
+En una conexión de corte: viga (con destajes), apoyo, placa, ángulos, asiento o rigidizador, y pernos. Las soldaduras no se modelan.

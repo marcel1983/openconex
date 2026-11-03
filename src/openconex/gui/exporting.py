@@ -22,7 +22,14 @@ __all__ = ["parts_3d", "write_3d", "write_dxf"]
 
 
 def write_dxf(project: Project, path: str | Path) -> None:
-    """Write the base plate drawing of ``project``."""
+    """Write the drawing of ``project`` (base plate or shear connection)."""
+    if project.shear_connection is not None:
+        from openconex.drawing.shear import ShearDrawing, write_shear_dxf
+        info = project.info
+        write_shear_dxf(project.shear_model(), path, info.unit_system(), info.language,
+                        ShearDrawing(title=info.name, number=info.number,
+                                     revision=info.revision, date=info.date))
+        return
     bp = project.base_plate_model()
     info = project.info
     data = project.base_plate
@@ -41,6 +48,9 @@ def write_dxf(project: Project, path: str | Path) -> None:
 
 def parts_3d(project: Project) -> list[Part]:
     """Solids of ``project`` for the viewer and the STEP/STL writers."""
+    if project.shear_connection is not None:
+        from openconex.geometry3d.shear import shear_parts
+        return shear_parts(project.shear_model())
     bp = project.base_plate_model()
     if bp.embedded_base is not None:
         return embedded_base_parts(bp)

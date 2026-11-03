@@ -1,0 +1,33 @@
+{
+  "format_version": 10,
+  "info": {
+    "name": "Ejemplo: placa simple convencional (AISC II.A-17A)",
+    "number": "OC-0101",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-03",
+    "language": "es",
+    "units": "US"
+  },
+  "shear_connection": {
+    "type": "single_plate",
+    "beam": "W16X50",
+    "support": "W14X90",
+    "support_element": "flange",
+    "grade": "ASTM A572 Gr. 50",
+    "bolt": {"diameter": "3/4 in", "grade": "ASTM F3125 Gr. A325"},
+    "rows": 4,
+    "spacing": "3 in",
+    "length": "11.5 in",
+    "thickness": "0.25 in",
+    "lev": "1.25 in",
+    "leh": "1.5 in",
+    "a": "3 in",
+    "weld": "3/16 in"
+  },
+  "cases": [
+    {"name": "D", "type": "D", "V": "8 kip"},
+    {"name": "L", "type": "L", "V": "25 kip"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}
