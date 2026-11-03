@@ -91,10 +91,12 @@ def package(platform: str) -> Path:
     staging.mkdir(parents=True)
     mac_app = DIST / "OpenConex.app"
     if mac_app.exists():
-        shutil.copytree(mac_app, staging / "OpenConex.app")
+        # ditto preserves the framework symlinks inside the .app bundle.
+        run(["ditto", str(mac_app), str(staging / "OpenConex.app")])
+        run(["ditto", str(DIST / "openconex"), str(staging / "openconex-cli")])
     else:
         shutil.copytree(DIST / "OpenConex", staging / "OpenConex")
-    shutil.copytree(DIST / "openconex", staging / "openconex-cli")
+        shutil.copytree(DIST / "openconex", staging / "openconex-cli")
     for source, target in (
             (ROOT / "LICENSE", staging / "LICENSE"),
             (ROOT / "packaging" / "README-portable.txt", staging / "LEEME.txt"),
@@ -105,10 +107,14 @@ def package(platform: str) -> Path:
 
     archive = DIST / f"OpenConex-{__version__}-{platform}.zip"
     archive.unlink(missing_ok=True)
-    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
-        for path in sorted(staging.rglob("*")):
-            arcname = Path(staging.name) / path.relative_to(staging)
-            zipped.write(path, arcname)
+    if platform.startswith("macos"):
+        run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent",
+             str(staging), str(archive)])
+    else:
+        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
+            for path in sorted(staging.rglob("*")):
+                arcname = Path(staging.name) / path.relative_to(staging)
+                zipped.write(path, arcname)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = DIST / f"SHA256SUMS-{platform}.txt"
     checksum.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
