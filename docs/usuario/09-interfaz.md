@@ -174,6 +174,20 @@ Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exporta
 
 Los números sin unidad usan el sistema elegido en el diálogo; también se puede escribir la unidad en la celda (`"25 kN"`). El proyecto abierto actúa como plantilla (placa, concreto, anclajes y opciones) y se genera un `.ocnx` por apoyo. Las combinaciones se generan con ASCE 7-22; si hay casos sísmicos, la plantilla debe tener `SDS`.
 
+## Conexiones de corte
+
+**Archivo > Nueva conexión de corte…** abre una ventana propia para las conexiones de extremo de viga. Al abrir un `.ocnx` con `shear_connection` desde la ventana principal, se abre también en esa ventana.
+
+1. Elegir el **tipo**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento o asiento rigidizado. Solo se muestran los campos de ese tipo; los obligatorios llevan `*`.
+2. Elegir la **viga** y el **apoyo** (catálogo W, editable) y si la conexión va al **ala** o al **alma** del apoyo.
+3. Escribir el material, el electrodo, los pernos y la geometría. Las cantidades se escriben con su unidad (`3 in`, `75 mm`); un número sin unidad usa las unidades del proyecto.
+4. Marcar **Destaje de la viga** si la viga está destajada.
+5. Completar los casos de carga con `V` y `P` (tracción negativa) y los métodos LRFD/ASD.
+6. **Calcular** (`F5`): pestañas **Resumen**, **Verificaciones**, **Figuras** (elevación e isométrico) y **3D**.
+7. **Archivo > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
+
+El cálculo por lotes también admite proyectos de conexión de corte; en el resumen, la columna muestra la viga.
+
 ## Cálculo por lotes
 
 **Cálculo > Calcular lote…** calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
@@ -233,9 +247,11 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Cálculo y reporte por lotes de una carpeta de proyectos.
 - Cálculo individual, resumen, traza y figuras.
 - Exportación a los formatos disponibles.
+- Ventana de conexiones de corte: edición, cálculo, figuras, 3D y exportación.
 
 ## Limitaciones
 
+- La ventana de conexiones de corte no tiene editor gráfico ni conversión automática de unidades: las cantidades se escriben con su unidad.
 - La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
 - El visor 3D requiere el extra `3d` (OpenCASCADE); sin él, la pestaña muestra un aviso.
 - La interfaz no sustituye la revisión del profesional responsable.

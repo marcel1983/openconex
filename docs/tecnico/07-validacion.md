@@ -63,6 +63,8 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 
 ## Otras pruebas
 
+- **Conexiones de corte en proyecto:** los ejemplos `shear_single_plate.ocnx` y `shear_double_angle_coped.ocnx` reproducen II.A-17A y II.A-4 a través del archivo, las combinaciones y el despachador (`tests/connections/test_shear_project.py`), con memoria, comando, plano y 3D; la ventana de la interfaz se prueba en `tests/outputs/test_gui_shear.py`.
+
 - **Unidades:** pruebas de propiedades (hypothesis) de ida y vuelta entre unidades.
 - **Centro instantáneo:** equilibrio de fuerzas y momentos, resistencia decreciente con la excentricidad, límite elástico ≤ ICR.
 - **Importación:** un Excel sintético con el formato de SAP2000 (`tests/test_csi_import.py`). Se probó además con una exportación real de SAP2000 v27, que no se incluye en el repositorio.

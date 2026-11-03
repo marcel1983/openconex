@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate` o `shear_connection` (uno de los dos), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -20,6 +20,8 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
 | `examples/base_plate_template_sap2000.ocnx` | plantilla para importar de SAP2000 / ETABS |
+| `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
+| `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
 
 ## Datos generales (`info`)
 
@@ -313,9 +315,88 @@ Una placa soldada bajo la placa base que transmite el corte al concreto por apla
 
 La componente del corte que no toma la llave sigue yendo a fricción o a los anclajes. Ver la [documentación técnica](../tecnico/03-placa-base.md#llave-de-corte).
 
+## Conexión de corte (`shear_connection`)
+
+Conexión del extremo de una viga a una columna o a una viga principal (Manual AISC Partes 9, 10 y 12). Un proyecto tiene `shear_connection` **o** `base_plate`, nunca los dos. Se calcula con `openconex shear` o en la ventana de conexiones de corte de la interfaz.
+
+```json
+"shear_connection": {
+  "type": "single_plate",
+  "beam": "W16X50",
+  "support": "W14X90",
+  "support_element": "flange",
+  "bolt": {"diameter": "3/4 in"},
+  "rows": 4, "spacing": "3 in", "length": "11.5 in", "thickness": "1/4 in",
+  "lev": "1.25 in", "leh": "1.5 in", "a": "3 in", "weld": "3/16 in"
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `type` | (obligatorio) | `double_angle`, `single_plate`, `extended_single_plate`, `end_plate`, `seated` o `stiffened_seat`. |
+| `beam` | (obligatorio) | Viga: etiqueta W del catálogo AISC o sección W genérica (como la columna W genérica). |
+| `beam_grade` | `ASTM A992` | Acero de la viga del catálogo. |
+| `support` | (obligatorio) | Columna o viga principal: etiqueta del catálogo o sección W genérica. |
+| `support_grade` | `ASTM A992` | Acero del apoyo del catálogo. |
+| `support_element` | `flange` | Parte del apoyo a la que se une: `flange` (ala) o `web` (alma); define el espesor del apoyo. |
+| `grade` | `ASTM A572 Gr. 50` | Acero de la placa, los ángulos o el rigidizador. |
+| `electrode` | `E70XX` | Electrodo de las soldaduras. |
+| `bolt` | ¾ in A325-N, agujero estándar | Pernos: `diameter`, `grade`, `threads` (`N` incluidas, `X` excluidas) y `hole` (`STD`, `OVS`, `SSL`, `LSL`). |
+| `deformation_considered` | `true` | Aplastamiento con deformación en servicio considerada (2,4 d t F_u); `false` usa 3,0 d t F_u. |
+| `cope` | — | Destaje de la viga (ver abajo). |
+| `rows` | — | Pernos por línea vertical; en la placa de extremo, filas de dos pernos. |
+| `lines` | `1` | Placa extendida: líneas verticales de pernos (1 o 2). |
+| `spacing` | — | Separación vertical entre pernos. |
+| `gage` | — | Placa extendida: separación entre líneas. Doble ángulo con tracción: gramil entre las alas salientes. |
+| `length` | — | Largo de la placa, los ángulos, el asiento o el rigidizador. |
+| `thickness` | — | Espesor de la placa, los ángulos, el asiento o el rigidizador. |
+| `lev` | — | Distancia vertical del perno extremo al borde. |
+| `leh` | — | Distancia horizontal al borde de la placa; en el doble ángulo, en el ala sobre el alma de la viga. |
+| `leh_support` | — | Doble ángulo: distancia horizontal al borde en las alas salientes. |
+| `a` | — | Placa simple: distancia de la soldadura a la (primera) línea de pernos. |
+| `weld` | — | Soldadura de la placa, la placa de extremo o el rigidizador. |
+| `support_weld` | — | Doble ángulo: soldaduras al apoyo (soldaduras B). Asiento: soldadura del ala vertical. |
+| `beam_weld` | — | Doble ángulo: soldaduras al alma de la viga (soldaduras A). |
+| `beam_leg` | — | Doble ángulo: ancho del ala sobre el alma de la viga (con `beam_weld`). |
+| `outstanding_leg` | — | Doble ángulo: ancho de las alas salientes (soldaduras B y tracción). |
+| `beam_leh` | — | Distancia del extremo de la viga a los pernos, para el desgarro del alma con tracción. |
+| `leg` | — | Asiento: ala horizontal. |
+| `vertical_leg` | — | Asiento soldado: ala vertical. |
+| `bolts` | `4` | Asiento apernado: pernos del ala vertical. |
+| `bearing_length` | — | Asiento: longitud de apoyo usada en la flexión del ala (por defecto, la mínima requerida). |
+| `width` | — | Asiento rigidizado: ancho W del rigidizador. |
+| `two_sided` | `false` | Asiento rigidizado: asientos a ambos lados del alma del apoyo. |
+| `beam_area` | — | Área bruta de una viga genérica, para las verificaciones de la viga con tracción. |
+
+Campos que necesita cada tipo:
+
+| `type` | Campos obligatorios |
+|---|---|
+| `double_angle` | `rows`, `spacing`, `length`, `thickness`, `lev`; `leh` o `beam_weld` + `beam_leg`; `leh_support` o `support_weld` + `outstanding_leg` |
+| `single_plate` | `rows`, `spacing`, `length`, `thickness`, `lev`, `leh`, `a`, `weld` |
+| `extended_single_plate` | los de `single_plate`; con `lines: 2`, también `gage` |
+| `end_plate` | `rows`, `spacing`, `length`, `thickness`, `lev`, `leh`, `weld` |
+| `seated` | `length`, `thickness`, `leg`; con `support_weld`, también `vertical_leg` |
+| `stiffened_seat` | `width`, `length`, `thickness`, `weld` |
+
+### Destaje de la viga (`cope`)
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `c` | (obligatorio) | Largo del destaje. |
+| `dc` | (obligatorio) | Profundidad del destaje del ala superior. |
+| `dc_bottom` | `0` | Profundidad del destaje del ala inferior. |
+| `setback` | `0.5 in` | Holgura entre el apoyo y el extremo de la viga; la reacción actúa a e = c + holgura. |
+| `lev` | — | Del borde del destaje al primer perno; con `leh` activa el bloque de corte del alma. |
+| `leh` | — | Del extremo de la viga a la línea de pernos (sin descontar la tolerancia de ¼ in, que se resta sola). |
+
+### Cargas de una conexión de corte
+
+Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple y en el doble ángulo apernado; en los demás tipos, y la compresión en todos, aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
+
 ## Casos de carga (`cases`)
 
-Cada caso es un conjunto de fuerzas en la base de la columna, sin mayorar:
+Cada caso es un conjunto de fuerzas sin mayorar en la base de la columna (o en el extremo de la viga, para una conexión de corte):
 
 | Campo | Por defecto | Significado |
 |---|---|---|

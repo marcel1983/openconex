@@ -16,6 +16,10 @@
 - **Momentos y cortes:** las verificaciones usan su valor absoluto. Los signos se conservan al combinar casos, para que dos casos de signo contrario se resten.
 - **Anclajes:** dos filas paralelas a B, en x = ±f. Cada fila tiene `rods_per_side` barras repartidas en `rod_spacing` a lo largo de y.
 
+## Signos de una conexión de corte
+
+En el extremo de la viga, `V` (`Forces.V2`) es la reacción vertical y se usa en valor absoluto; `P` es la fuerza axial con la compresión positiva, como en la placa base. Las bibliotecas de corte reciben la tracción como `N = −P ≥ 0`. En el plano y el modelo 3D, x va a lo largo de la viga desde la cara del apoyo, y hacia arriba desde el ala inferior y z perpendicular al alma.
+
 ## LRFD y ASD
 
 - **Clase `Resistance(phi, omega)`** (`kernel/design.py`). `Calc.available` devuelve φRn (LRFD) o Rn/Ω (ASD) y deja el paso en la traza.
