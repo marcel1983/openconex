@@ -19,6 +19,14 @@ center, e = width of the welded leg, as in Manual Table 10-2), the maximum
 weld size for the angle thickness (§J2.2b) and the support thickness that
 develops the welds (Manual Eq. 9-6).
 
+With ``beam_weld`` > 0 the legs are welded to the beam web ("welds A",
+Design Example II.A-3): each angle has a C-shaped weld (a vertical line at the
+toe and two horizontal returns) loaded at the heel, solved by the
+instantaneous center as in Manual Table 10-3. It replaces the bolt and block
+shear checks of the beam side and adds the beam web thickness that develops
+both welds, t_min = 6.19 D / F_u (Manual Eq. 9-3). With both sides welded the
+angles have no holes.
+
 The beam pushes the angles down at the beam web, so the bottom bolt is the
 edge bolt for angle tearout there; at the support the angles bear up, so the
 top bolt is the edge bolt. The beam web and the support are taken without a
@@ -71,6 +79,12 @@ class DoubleAngle:
     weld_e: float = 0.0
     """Eccentricity of the support welds: width of the leg welded to the support."""
     FEXX: float = to_internal(70.0, "ksi", Kind.STRESS)
+    beam_weld: float = 0.0
+    """Fillet weld size of the legs welded to the beam web ("welds A"); 0 when bolted."""
+    beam_leg: float = 0.0
+    """Width of the leg welded to the beam web (eccentricity of welds A)."""
+    beam_weld_return: float | None = None
+    """Length of the horizontal returns of welds A; defaults to ``beam_leg`` − 1/2 in."""
 
 
 def _hole_net(bolt: BoltSpec) -> float:
@@ -138,21 +152,51 @@ def check_double_angle(da: DoubleAngle, R: float, method: Method,
     """All limit states of the connection for the beam end reaction ``R``."""
     t, hole = da.thickness, _hole_net(da.bolt)
     agv = 2 * da.length * t
-    anv = 2 * (da.length - da.rows * hole) * t
+    holes = 0 if da.support_weld > 0 and da.beam_weld > 0 else da.rows
+    anv = 2 * (da.length - holes * hole) * t
+    if da.beam_weld > 0:
+        beam = _beam_welds(da, R, method, combo)
+    else:
+        beam = [_transfer(da, R, method, combo, "beam"),
+                _block_shear(da, da.leh_beam, R, method, combo, "block_shear_beam")]
     if da.support_weld > 0:
         support = _support_welds(da, R, method, combo)
     else:
         support = [_transfer(da, R, method, combo, "support"),
                    _block_shear(da, da.leh_support, R, method, combo, "block_shear_support")]
     return [
-        _transfer(da, R, method, combo, "beam"),
+        beam[0],
         _renamed(elements.shear_yielding(agv, da.angle_Fy, R, method, combo),
                  "angle_shear_yielding"),
         _renamed(elements.shear_rupture(anv, da.angle_Fu, R, method, combo),
                  "angle_shear_rupture"),
-        _block_shear(da, da.leh_beam, R, method, combo, "block_shear_beam"),
+        *beam[1:],
         *support,
     ]
+
+
+def _beam_welds(da: DoubleAngle, R: float, method: Method, combo: str) -> list[CheckResult]:
+    w, length = da.beam_weld, da.length
+    kl = (da.beam_weld_return if da.beam_weld_return is not None
+          else da.beam_leg - to_internal(0.5, "in", Kind.LENGTH))
+    lines = [WeldLine(0.0, 0.0, 0.0, length), WeldLine(0.0, length, kl, length),
+             WeldLine(0.0, 0.0, kl, 0.0)]
+    # one angle; the reaction is shared by the two angles
+    one = weld_group_eccentric(lines, w, da.FEXX, (da.beam_leg, length / 2), R / 2, method,
+                               combo=combo)
+    weld = one.model_copy(update={
+        "id": "double_angle.weld_beam", "text_id": "check.double_angle.weld_beam",
+        "demand": R, "capacity": 2 * one.capacity})
+    sixteenth = to_internal(1 / 16, "in", Kind.LENGTH)
+    c = Calc(method, combo)
+    clause = "AISC Manual 16th ed., Eq. 9-3"
+    t_min = c.step("t_{min}", r"\frac{6.19 D}{F_u}",
+                   to_internal(6.19 * (w / sixteenth) / from_internal(da.beam_Fu, Kind.STRESS,
+                                                                      "ksi"), "in", Kind.LENGTH),
+                   Kind.THICKNESS, clause)
+    web = c.result("double_angle.beam_web_thickness", clause, t_min, da.beam_tw,
+                   Kind.THICKNESS)
+    return [weld, web]
 
 
 def _support_welds(da: DoubleAngle, R: float, method: Method, combo: str) -> list[CheckResult]:

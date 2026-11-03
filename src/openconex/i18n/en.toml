@@ -187,6 +187,8 @@ block_shear_support = "Block shear of the angles, support side"
 weld_support = "Welds of the angles to the support (instantaneous center)"
 weld_max_size = "Maximum weld size for the angle thickness"
 support_thickness = "Minimum support thickness to develop the welds"
+weld_beam = "Welds of the angles to the beam web (instantaneous center)"
+beam_web_thickness = "Minimum beam web thickness for the welds"
 
 [check.single_plate]
 bolts = "Shear transfer at bolt holes (instantaneous center)"

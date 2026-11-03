@@ -52,6 +52,8 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como 
 | `double_angle.weld_support` | Con `support_weld` > 0 (ángulos soldados al apoyo, "soldaduras B"): dos líneas de soldadura excéntricas, e = ancho del ala soldada, por el centro instantáneo con el C1 de la Tabla 8-3. Reemplaza `bolts_support` y `block_shear_support` | §J2.4; Manual Tabla 10-2 |
 | `double_angle.weld_max_size` | w ≤ t − 1/16 in (t ≥ ¼ in) | §J2.2b |
 | `double_angle.support_thickness` | t_min = 3,09 D/F_u del apoyo | Manual Ec. 9-6 |
+| `double_angle.weld_beam` | Con `beam_weld` > 0 (ángulos soldados al alma, "soldaduras A"): soldadura en C por ángulo (línea vertical en la punta y dos retornos de `beam_leg` − ½ in), cargada en el talón, por el centro instantáneo. Reemplaza `bolts_beam` y `block_shear_beam`; con los dos lados soldados los ángulos no tienen agujeros | §J2.4; Manual Tabla 10-3 |
+| `double_angle.beam_web_thickness` | t_w ≥ 6,19 D/F_u | Manual Ec. 9-3 |
 
 ## Placa simple convencional (`connections/shear/single_plate.py`)
 
