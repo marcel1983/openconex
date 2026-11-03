@@ -20,6 +20,8 @@ from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import MaterialLibraryDialog, SectionLibraryDialog
 from openconex.gui.units import UnitDialog
 from openconex.io.project import (
+    BoltGradeInput,
+    ElectrodeInput,
     HSSSectionInput,
     MaterialInput,
     WSectionInput,
@@ -179,6 +181,30 @@ def test_gui_custom_hss_section(qapp):
                               grade="ASTM A500 Gr. C (rectangular)")
     window.add_custom_section(section)
     assert window._section_combo.currentText() == "HSS-GUI"
+    window.calculate()
+    assert window.report is not None
+    window.close()
+
+
+def test_gui_custom_bolts_and_electrodes(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    bolt = BoltGradeInput(name="Perno GUI", Fnt="100 ksi", Fnv_N="60 ksi",
+                          Fnv_X="75 ksi", Fu="125 ksi", Fy="100 ksi")
+    window.add_custom_bolt(bolt)
+    assert window._material_combos["rod_grade"].findText("Perno GUI") >= 0
+    electrode = ElectrodeInput(name="E90XX", FEXX="90 ksi")
+    window.add_custom_electrode(electrode)
+    assert window.advanced._electrode.findText("E90XX") >= 0
+    window._material_combos["rod_grade"].setCurrentText("Perno GUI")
+    window.advanced._electrode.setCurrentText("E90XX")
+    window.advanced._fields["flange_weld"].edit.setText("0.25")
+    target = tmp_path / "custom_bolts.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.rod_grade == "Perno GUI"
+    assert again.base_plate.electrode == "E90XX"
+    assert again.base_plate_model().rod.material.name == "Perno GUI"
     window.calculate()
     assert window.report is not None
     window.close()

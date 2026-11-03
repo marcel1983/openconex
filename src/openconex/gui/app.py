@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
 
 from openconex.connections.base_plate.check import optimize_base_plate
 from openconex.core.loads import Method
-from openconex.core.materials import BOLTS, STEELS
+from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
@@ -63,7 +63,9 @@ from openconex.gui.viewer3d import Viewer3D
 from openconex.io.csi import import_supports
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
+    BoltGradeInput,
     CustomCombinationInput,
+    ElectrodeInput,
     HSSSectionInput,
     LoadCaseInput,
     MaterialInput,
@@ -881,6 +883,18 @@ class MainWindow(QMainWindow):
         names.update(section.grade for section in self._custom_sections.values())
         return sorted(names)
 
+    def _bolt_names(self) -> list[str]:
+        names = set(BOLTS)
+        if self.project is not None:
+            names.update(grade.name for grade in self.project.bolts)
+        return sorted(names)
+
+    def _electrode_names(self) -> list[str]:
+        names = set(ELECTRODES)
+        if self.project is not None:
+            names.update(electrode.name for electrode in self.project.electrodes)
+        return sorted(names)
+
     @staticmethod
     def _fill_combo(combo: QComboBox, names: list[str], current: str | None) -> None:
         with QSignalBlocker(combo):
@@ -906,7 +920,7 @@ class MainWindow(QMainWindow):
             self._fill_combo(self._material_combos["plate_grade"], steels,
                              values.get("plate_grade"))
         if "rod_grade" in self._material_combos:
-            self._fill_combo(self._material_combos["rod_grade"], sorted(BOLTS),
+            self._fill_combo(self._material_combos["rod_grade"], self._bolt_names(),
                              values.get("rod_grade"))
         if self.advanced is not None:
             self.advanced.set_materials(steels)
@@ -971,6 +985,29 @@ class MainWindow(QMainWindow):
         self.project.materials.append(material.model_copy(update={"name": name}))
         self._refresh_material_combos()
 
+    def add_custom_bolt(self, grade: BoltGradeInput) -> None:
+        """Add a custom bolt grade to the project and to the combos."""
+        if self.project is None:
+            raise ValueError("abra un proyecto .ocnx antes de crear pernos")
+        name = grade.name.strip()
+        existing = {*BOLTS, *(item.name for item in self.project.bolts)}
+        if name in existing:
+            raise ValueError(f"Ya existe un grado de perno llamado {name!r}.")
+        self.project.bolts.append(grade.model_copy(update={"name": name}))
+        self._refresh_material_combos()
+
+    def add_custom_electrode(self, electrode: ElectrodeInput) -> None:
+        """Add a custom electrode to the project and to the combos."""
+        if self.project is None:
+            raise ValueError("abra un proyecto .ocnx antes de crear electrodos")
+        name = electrode.name.strip()
+        existing = {*ELECTRODES, *(item.name for item in self.project.electrodes)}
+        if name in existing:
+            raise ValueError(f"Ya existe un electrodo llamado {name!r}.")
+        self.project.electrodes.append(electrode.model_copy(update={"name": name}))
+        if self.advanced is not None:
+            self.advanced.set_electrodes(self._electrode_names())
+
     def _on_section_changed(self, label: str) -> None:
         section = self._custom_sections.get(label)
         if section is not None and "column_grade" in self._material_combos:
@@ -987,8 +1024,15 @@ class MainWindow(QMainWindow):
 
     def open_material_library(self) -> None:
         materials = [] if self.project is None else self.project.materials
+        bolts = [] if self.project is None else self.project.bolts
+        electrodes = [] if self.project is None else self.project.electrodes
         callback = self.add_custom_material if self.project is not None else None
-        dialog = MaterialLibraryDialog(self, self._units, materials, callback)
+        bolt_callback = self.add_custom_bolt if self.project is not None else None
+        electrode_callback = (self.add_custom_electrode if self.project is not None
+                              else None)
+        dialog = MaterialLibraryDialog(self, self._units, materials, callback,
+                                       bolts, electrodes, bolt_callback,
+                                       electrode_callback)
         dialog.exec()
 
     # -- project form -----------------------------------------------------------
@@ -1160,6 +1204,7 @@ class MainWindow(QMainWindow):
         if self.advanced is not None:
             self.advanced.set_units(self._units)
             self.advanced.set_materials(self._steel_names())
+            self.advanced.set_electrodes(self._electrode_names())
             self.advanced.load(project)
 
         for key, (edit, _label, kind) in self._quantity_fields.items():

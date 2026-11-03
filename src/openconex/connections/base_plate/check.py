@@ -34,7 +34,7 @@ from enum import StrEnum
 
 from openconex.core.checks import CheckResult, Status, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
-from openconex.core.materials import STEELS, SteelGrade
+from openconex.core.materials import STEELS, SteelGrade, WeldElectrode
 from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape
 from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
@@ -181,6 +181,9 @@ class BasePlate:
     grout_pad: bool = True
     flange_weld: float | None = None
     """Fillet weld size on the column flanges (None: not checked)."""
+    electrode: str = "E70XX"
+    electrodes: Mapping[str, WeldElectrode] = field(default_factory=dict, repr=False)
+    """Project electrode library; the built-in library is the fallback."""
     friction_mu: float = 0.4
     cracked: bool = True
     seismic: bool = False
@@ -829,7 +832,8 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
 
     # --- welds ---------------------------------------------------------------
     if M > 0 and bp.flange_weld:
-        weld = FilletWeld(size=bp.flange_weld, length=col.bf)
+        weld = FilletWeld(size=bp.flange_weld, length=col.bf, electrode=bp.electrode,
+                          electrodes=bp.electrodes)
         results.append(transfer.flange_weld_for_moment(M, col.d, weld, method, combo))
     return results
 
