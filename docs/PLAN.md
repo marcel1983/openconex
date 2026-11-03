@@ -241,7 +241,7 @@ Python 3.12+, PySide6 (Qt 6), pydantic, pint, shapely, numpy/scipy, OCP/build123
 
 **Documentación (2026-10-31):** manual de usuario en `docs/usuario/` y documentación técnica en `docs/tecnico/`. Se actualizan en el mismo pull request que cada cambio; `tests/test_docs.py` comprueba que verificaciones, comandos, campos del proyecto, ejemplos y materiales estén documentados.
 
-**Estado F5 (2026-11-02):** iniciada. `connections/shear/double_angle.py` verifica el doble ángulo apernado (transferencia de corte en los agujeros de ambos lados, fluencia y rotura por corte de los ángulos, bloque de corte) y está validado contra el AISC Design Example II.A-1A en LRFD y ASD. Pendiente: viga con destaje (bloque de corte y rotura del alma), doble ángulo soldado (II.A-2, II.A-3), carga axial (II.A-1B), placa simple, asiento, y su integración en proyecto, comando, memoria, planos e interfaz.
+**Estado F5 (2026-11-03):** iniciada. `connections/shear/double_angle.py` verifica el doble ángulo apernado (transferencia de corte en los agujeros de ambos lados, fluencia y rotura por corte de los ángulos, bloque de corte) y está validado contra el AISC Design Example II.A-1A en LRFD y ASD. `connections/shear/single_plate.py` verifica la placa simple convencional (centro instantáneo con e = a/2, placa, soldadura 5t_p/8, límites dimensionales y espesor del apoyo), validada contra II.A-17A. Pendiente: viga con destaje (bloque de corte y rotura del alma), doble ángulo soldado (II.A-2, II.A-3), carga axial (II.A-1B, II.A-17B), placa simple extendida (II.A-19), asiento, y su integración en proyecto, comando, memoria, planos e interfaz.
 
 ## 9. Hoja de ruta
 

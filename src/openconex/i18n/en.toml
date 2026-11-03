@@ -185,6 +185,17 @@ angle_shear_rupture = "Shear rupture of the angles"
 block_shear_beam = "Block shear of the angles, beam side"
 block_shear_support = "Block shear of the angles, support side"
 
+[check.single_plate]
+bolts = "Shear transfer at bolt holes (instantaneous center)"
+shear_yielding = "Shear yielding of the plate"
+shear_rupture = "Shear rupture of the plate"
+block_shear = "Block shear of the plate"
+max_thickness = "Maximum plate or web thickness"
+leh = "Minimum horizontal edge distance"
+lev = "Minimum vertical edge distance"
+weld_size = "Size of the plate weld"
+support_thickness = "Minimum support thickness"
+
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"

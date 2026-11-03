@@ -185,6 +185,17 @@ angle_shear_rupture = "Rotura por corte de los ángulos"
 block_shear_beam = "Bloque de corte de los ángulos, lado de la viga"
 block_shear_support = "Bloque de corte de los ángulos, lado del apoyo"
 
+[check.single_plate]
+bolts = "Transferencia de corte en los agujeros (centro instantáneo)"
+shear_yielding = "Fluencia por corte de la placa"
+shear_rupture = "Rotura por corte de la placa"
+block_shear = "Bloque de corte de la placa"
+max_thickness = "Espesor máximo de la placa o del alma"
+leh = "Distancia horizontal al borde mínima"
+lev = "Distancia vertical al borde mínima"
+weld_size = "Tamaño de la soldadura de la placa"
+support_thickness = "Espesor mínimo del apoyo"
+
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
 bearing = "Aplastamiento en el concreto bajo la placa"
