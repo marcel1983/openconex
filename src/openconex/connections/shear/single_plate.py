@@ -60,6 +60,9 @@ class SinglePlate:
     support_t: float
     support_Fu: float
     deformation_considered: bool = True
+    beam_leh: float | None = None
+    """Horizontal edge distance of the beam web (end of beam to bolt line); only for
+    tearout of the web under axial load. Defaults to ``leh``."""
 
 
 def _result(sp, key: str, check: CheckResult) -> CheckResult:
