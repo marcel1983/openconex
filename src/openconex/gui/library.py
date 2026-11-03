@@ -28,11 +28,19 @@ from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.model import HSSKind
 from openconex.core.shapes import Section, aisc_shapes
 from openconex.gui.quantity import format_quantity, stored_quantity, unit_label
-from openconex.io.project import HSSSectionInput, MaterialInput, WSectionInput
+from openconex.io.project import (
+    BoltGradeInput,
+    ElectrodeInput,
+    HSSSectionInput,
+    MaterialInput,
+    WSectionInput,
+)
 from openconex.units import Kind, UnitSystem, format_value, parse
 
 __all__ = [
     "MaterialLibraryDialog",
+    "NewBoltDialog",
+    "NewElectrodeDialog",
     "NewMaterialDialog",
     "NewSectionDialog",
     "SectionLibraryDialog",
@@ -357,13 +365,21 @@ class MaterialLibraryDialog(QDialog):
 
     def __init__(self, parent: QWidget | None, system: UnitSystem,
                  materials: list[MaterialInput],
-                 on_created: Callable[[MaterialInput], None] | None = None) -> None:
+                 on_created: Callable[[MaterialInput], None] | None = None,
+                 bolts: list[BoltGradeInput] | None = None,
+                 electrodes: list[ElectrodeInput] | None = None,
+                 on_bolt: Callable[[BoltGradeInput], None] | None = None,
+                 on_electrode: Callable[[ElectrodeInput], None] | None = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("Biblioteca de materiales")
         self.resize(760, 500)
         self._system = system
         self._materials = materials
         self._on_created = on_created
+        self._bolts = bolts or []
+        self._electrodes = electrodes or []
+        self._on_bolt = on_bolt
+        self._on_electrode = on_electrode
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -396,19 +412,31 @@ class MaterialLibraryDialog(QDialog):
             f"Fu ({unit})", f"Fy ({unit})"])
         bolt_layout.addWidget(self._bolt_table, 1)
         bolt_note = QLabel("Grados de pernos y barras de anclaje de AISC 360-22 "
-                           "Tabla J3.2. De momento son de solo lectura.")
+                           "Tabla J3.2, más los grados propios del proyecto.")
         bolt_note.setWordWrap(True)
         bolt_layout.addWidget(bolt_note)
+        bolt_buttons = QHBoxLayout()
+        self._new_bolt = QPushButton("Nuevo perno…")
+        self._new_bolt.setEnabled(self._on_bolt is not None)
+        bolt_buttons.addWidget(self._new_bolt)
+        bolt_buttons.addStretch(1)
+        bolt_layout.addLayout(bolt_buttons)
         self._tabs.addTab(bolts, "Pernos y anclajes")
 
         welds = QWidget()
         weld_layout = QVBoxLayout(welds)
         self._weld_table = _table(["Nombre", f"FEXX ({unit})"])
         weld_layout.addWidget(self._weld_table, 1)
-        weld_note = QLabel("Electrodos de soldadura de filete. De momento son de "
-                           "solo lectura; se usa E70XX por defecto.")
+        weld_note = QLabel("Electrodos de soldadura de filete de AISC, más los "
+                           "electrodos propios del proyecto.")
         weld_note.setWordWrap(True)
         weld_layout.addWidget(weld_note)
+        weld_buttons = QHBoxLayout()
+        self._new_electrode = QPushButton("Nuevo electrodo…")
+        self._new_electrode.setEnabled(self._on_electrode is not None)
+        weld_buttons.addWidget(self._new_electrode)
+        weld_buttons.addStretch(1)
+        weld_layout.addLayout(weld_buttons)
         self._tabs.addTab(welds, "Soldadura")
 
         self._refresh_steels()
@@ -422,6 +450,8 @@ class MaterialLibraryDialog(QDialog):
         layout.addLayout(footer)
 
         self._new.clicked.connect(self._new_material)
+        self._new_bolt.clicked.connect(self._new_bolt_dialog)
+        self._new_electrode.clicked.connect(self._new_electrode_dialog)
         close.clicked.connect(self.reject)
 
     def _refresh_steels(self) -> None:
@@ -443,27 +473,49 @@ class MaterialLibraryDialog(QDialog):
                 self._steel_table.setItem(row, col, QTableWidgetItem(value))
 
     def _refresh_bolts(self) -> None:
+        unit = unit_label(self._system, STRESS)
+        rows = [(grade.name, "AISC", grade.Fnt, grade.Fnv_N, grade.Fnv_X,
+                 grade.Fu, grade.Fy) for grade in BOLTS.values()]
+        built_in = set(BOLTS)
+        rows += [(grade.name, "Proyecto", *(
+            parse(str(grade.Fnt), STRESS, self._system),
+            parse(str(grade.Fnv_N), STRESS, self._system),
+            parse(str(grade.Fnv_X), STRESS, self._system),
+            parse(str(grade.Fu), STRESS, self._system),
+            None if grade.Fy is None else parse(str(grade.Fy), STRESS, self._system)))
+            for grade in self._bolts if grade.name not in built_in]
         self._bolt_table.setRowCount(0)
-        self._bolt_table.setRowCount(len(BOLTS))
-        for row, grade in enumerate(BOLTS.values()):
-            values = (grade.name,
-                      format_quantity(grade.Fnt, STRESS, self._system),
-                      format_quantity(grade.Fnv_N, STRESS, self._system),
-                      format_quantity(grade.Fnv_X, STRESS, self._system),
-                      format_quantity(grade.Fu, STRESS, self._system),
-                      "" if grade.Fy is None else
-                      format_quantity(grade.Fy, STRESS, self._system))
+        self._bolt_table.setRowCount(len(rows))
+        for row, (name, origin, fnt, fnv_n, fnv_x, fu, fy) in enumerate(rows):
+            values = (name, origin, format_quantity(fnt, STRESS, self._system),
+                      format_quantity(fnv_n, STRESS, self._system),
+                      format_quantity(fnv_x, STRESS, self._system),
+                      format_quantity(fu, STRESS, self._system),
+                      "" if fy is None else format_quantity(fy, STRESS, self._system))
             for col, value in enumerate(values):
                 self._bolt_table.setItem(row, col, QTableWidgetItem(value))
+        self._bolt_table.setColumnCount(7)
+        self._bolt_table.setHorizontalHeaderLabels([
+            "Nombre", "Origen", f"Fnt ({unit})", f"Fnv N ({unit})",
+            f"Fnv X ({unit})", f"Fu ({unit})", f"Fy ({unit})"])
 
     def _refresh_welds(self) -> None:
+        unit = unit_label(self._system, STRESS)
+        rows = [(electrode.name, "AISC", electrode.FEXX)
+                for electrode in ELECTRODES.values()]
+        built_in = set(ELECTRODES)
+        rows += [(electrode.name, "Proyecto",
+                  parse(str(electrode.FEXX), STRESS, self._system))
+                 for electrode in self._electrodes if electrode.name not in built_in]
         self._weld_table.setRowCount(0)
-        self._weld_table.setRowCount(len(ELECTRODES))
-        for row, electrode in enumerate(ELECTRODES.values()):
-            values = (electrode.name,
-                      format_quantity(electrode.FEXX, STRESS, self._system))
+        self._weld_table.setRowCount(len(rows))
+        for row, (name, origin, fexx) in enumerate(rows):
+            values = (name, origin, format_quantity(fexx, STRESS, self._system))
             for col, value in enumerate(values):
                 self._weld_table.setItem(row, col, QTableWidgetItem(value))
+        self._weld_table.setColumnCount(3)
+        self._weld_table.setHorizontalHeaderLabels(
+            ["Nombre", "Origen", f"FEXX ({unit})"])
 
     def _new_material(self) -> None:
         if self._on_created is None:
@@ -478,6 +530,34 @@ class MaterialLibraryDialog(QDialog):
             QMessageBox.critical(self, "Material no válido", str(exc))
             return
         self._refresh_steels()
+
+    def _new_bolt_dialog(self) -> None:
+        if self._on_bolt is None:
+            return
+        names = [*BOLTS, *(grade.name for grade in self._bolts)]
+        dialog = NewBoltDialog(self, self._system, names)
+        if dialog.exec() != QDialog.DialogCode.Accepted or dialog.bolt is None:
+            return
+        try:
+            self._on_bolt(dialog.bolt)
+        except ValueError as exc:
+            QMessageBox.critical(self, "Perno no válido", str(exc))
+            return
+        self._refresh_bolts()
+
+    def _new_electrode_dialog(self) -> None:
+        if self._on_electrode is None:
+            return
+        names = [*ELECTRODES, *(electrode.name for electrode in self._electrodes)]
+        dialog = NewElectrodeDialog(self, self._system, names)
+        if dialog.exec() != QDialog.DialogCode.Accepted or dialog.electrode is None:
+            return
+        try:
+            self._on_electrode(dialog.electrode)
+        except ValueError as exc:
+            QMessageBox.critical(self, "Electrodo no válido", str(exc))
+            return
+        self._refresh_welds()
 
 
 class NewMaterialDialog(QDialog):
@@ -544,4 +624,139 @@ class NewMaterialDialog(QDialog):
             QMessageBox.warning(self, "Datos no válidos", str(exc))
             return
         self.material = material
+        self.accept()
+
+
+class NewBoltDialog(QDialog):
+    """Create a custom bolt or anchor-rod grade for the project."""
+
+    def __init__(self, parent: QWidget | None, system: UnitSystem,
+                 existing_names: list[str]) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Nuevo grado de perno")
+        self._system = system
+        self._existing = {name.casefold() for name in existing_names}
+        self.bolt: BoltGradeInput | None = None
+        self._fields: dict[str, tuple[QLineEdit, bool]] = {}
+        self._build_ui()
+
+    def _build_ui(self) -> None:
+        base = BOLTS["ASTM F3125 Gr. A325"]
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        self._name = QLineEdit()
+        self._name.setPlaceholderText("Por ejemplo A325 del proyecto")
+        form.addRow("Nombre", self._name)
+        for key, label, value, required in (
+                ("Fnt", "Fnt", base.Fnt, True),
+                ("Fnv_N", "Fnv (rosca incluida)", base.Fnv_N, True),
+                ("Fnv_X", "Fnv (rosca excluida)", base.Fnv_X, True),
+                ("Fu", "Fu", base.Fu, True),
+                ("Fy", "Fy (opcional)", None, False)):
+            edit = QLineEdit("" if value is None else
+                             format_quantity(value, STRESS, self._system))
+            self._fields[key] = (edit, required)
+            form.addRow(label, _quantity_row(edit,
+                                             QLabel(unit_label(self._system, STRESS))))
+        layout.addLayout(form)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        cancel = QPushButton("Cancelar")
+        create = QPushButton("Crear")
+        create.setDefault(True)
+        buttons.addWidget(cancel)
+        buttons.addWidget(create)
+        layout.addLayout(buttons)
+        cancel.clicked.connect(self.reject)
+        create.clicked.connect(self._create)
+
+    def _create(self) -> None:
+        name = self._name.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Datos incompletos", "Escriba un nombre.")
+            return
+        if name.casefold() in self._existing:
+            QMessageBox.warning(self, "Nombre repetido",
+                                f"Ya existe un grado llamado {name!r}.")
+            return
+        try:
+            values: dict[str, float] = {}
+            for key, (edit, required) in self._fields.items():
+                text = edit.text().strip()
+                if not text:
+                    if required:
+                        raise ValueError(f"falta {key}")
+                    continue
+                value = parse(text, STRESS, self._system)
+                if value <= 0:
+                    raise ValueError(f"{key} debe ser positivo")
+                values[key] = value
+            bolt = BoltGradeInput(
+                name=name,
+                Fnt=stored_quantity(self._fields["Fnt"][0].text(), STRESS, self._system),
+                Fnv_N=stored_quantity(self._fields["Fnv_N"][0].text(), STRESS,
+                                      self._system),
+                Fnv_X=stored_quantity(self._fields["Fnv_X"][0].text(), STRESS,
+                                      self._system),
+                Fu=stored_quantity(self._fields["Fu"][0].text(), STRESS, self._system),
+                Fy=(stored_quantity(self._fields["Fy"][0].text(), STRESS, self._system)
+                    if self._fields["Fy"][0].text().strip() else None))
+        except Exception as exc:
+            QMessageBox.warning(self, "Datos no válidos", str(exc))
+            return
+        self.bolt = bolt
+        self.accept()
+
+
+class NewElectrodeDialog(QDialog):
+    """Create a custom welding electrode for the project."""
+
+    def __init__(self, parent: QWidget | None, system: UnitSystem,
+                 existing_names: list[str]) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Nuevo electrodo")
+        self._system = system
+        self._existing = {name.casefold() for name in existing_names}
+        self.electrode: ElectrodeInput | None = None
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        self._name = QLineEdit()
+        self._name.setPlaceholderText("Por ejemplo E90XX")
+        form.addRow("Nombre", self._name)
+        self._fexx = QLineEdit(
+            format_quantity(ELECTRODES["E70XX"].FEXX, STRESS, self._system))
+        form.addRow("FEXX", _quantity_row(self._fexx,
+                                          QLabel(unit_label(self._system, STRESS))))
+        layout.addLayout(form)
+        buttons = QHBoxLayout()
+        buttons.addStretch(1)
+        cancel = QPushButton("Cancelar")
+        create = QPushButton("Crear")
+        create.setDefault(True)
+        buttons.addWidget(cancel)
+        buttons.addWidget(create)
+        layout.addLayout(buttons)
+        cancel.clicked.connect(self.reject)
+        create.clicked.connect(self._create)
+
+    def _create(self) -> None:
+        name = self._name.text().strip()
+        if not name:
+            QMessageBox.warning(self, "Datos incompletos", "Escriba un nombre.")
+            return
+        if name.casefold() in self._existing:
+            QMessageBox.warning(self, "Nombre repetido",
+                                f"Ya existe un electrodo llamado {name!r}.")
+            return
+        try:
+            value = parse(self._fexx.text().strip(), STRESS, self._system)
+            if value <= 0:
+                raise ValueError("FEXX debe ser positivo")
+            electrode = ElectrodeInput(
+                name=name,
+                FEXX=stored_quantity(self._fexx.text(), STRESS, self._system))
+        except Exception as exc:
+            QMessageBox.warning(self, "Datos no válidos", str(exc))
+            return
+        self.electrode = electrode
         self.accept()

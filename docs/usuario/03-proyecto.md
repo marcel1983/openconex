@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `sections` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -51,7 +51,23 @@ La librería integrada contiene los aceros típicos de AISC 360-22. Para usar un
 | `Fu` | (obligatorio) | Resistencia última mínima especificada; debe ser mayor o igual que `Fy`. |
 | `E` | `"29000 ksi"` | Módulo de elasticidad. |
 
-Los materiales propios se usan en todo el cálculo: secciones de columna, placa base y llave de corte. Las barras de anclaje y los electrodos mantienen sus librerías propias (`rod_grade` y el electrodo de la soldadura).
+Los materiales propios se usan en todo el cálculo: secciones de columna, placa base y llave de corte. Las barras de anclaje y los electrodos se definen en los bloques `bolts` y `electrodes`.
+
+## Pernos y electrodos propios (`bolts`, `electrodes`)
+
+La librería integrada contiene los grados de perno y anclaje de AISC 360-22 Tabla J3.2 y los electrodos E70XX/E80XX. Para añadir un grado propio:
+
+```json
+"bolts": [
+  {"name": "Perno del proyecto", "Fnt": "100 ksi", "Fnv_N": "60 ksi",
+   "Fnv_X": "75 ksi", "Fu": "125 ksi", "Fy": "100 ksi"}
+],
+"electrodes": [
+  {"name": "E90XX", "FEXX": "90 ksi"}
+]
+```
+
+Después se referencian desde `rod_grade`, `base_plate.electrode` y `shear_lug.electrode`. Los nombres no pueden coincidir con los de la librería integrada.
 
 ## Secciones propias (`sections`)
 
@@ -91,6 +107,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `B` | (obligatorio en `exposed`) | Ancho de la placa. |
 | `tp` | (obligatorio en `exposed`) | Espesor de la placa. |
 | `plate_grade` | `"ASTM A572 Gr. 50"` | Acero de la placa. |
+| `electrode` | `"E70XX"` | Electrodo de la soldadura de ala; nombre de la librería integrada o de `electrodes`. |
 | `pressure_model` | `"rectangular"` | Distribución de presiones: `rectangular` (DG1 §4.3) o `triangular` (DG1 Apéndice B.2). |
 | `bearing_area_model` | `"plate"` | Área para el aplastamiento: `plate` (B × N) o `effective` (área efectiva bajo la columna, DG1 Apéndice B.3). |
 | `fc` | (obligatorio) | Resistencia del concreto f'c. |
@@ -290,6 +307,7 @@ Una placa soldada bajo la placa base que transmite el corte al concreto por apla
 | `weld` | (obligatorio) | Tamaño de las soldaduras de filete, una en cada cara. |
 | `direction` | `"strong"` | `strong`: resiste el corte en la dirección de N (V). `weak`: en la dirección de B (V_weak). `both`: llave en cruz, resiste ambos. |
 | `grade` | `"ASTM A572 Gr. 50"` | Acero de la llave. |
+| `electrode` | `"E70XX"` | Electrodo de la soldadura de la llave. |
 | `ca1` | sin verificar | Distancia al borde del concreto en la dirección del corte; si se da, se verifica el arrancamiento del concreto hacia ese borde. |
 | `ca2` | `[null, null]` | Distancias a los bordes a cada lado de la llave (`null`: lejano). |
 

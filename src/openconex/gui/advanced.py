@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from openconex.connections.base_plate.check import BearingAreaModel, PressureModel
-from openconex.core.materials import STEELS
+from openconex.core.materials import ELECTRODES, STEELS
 from openconex.gui.quantity import convert_text, format_quantity, unit_label
 from openconex.io.project import (
     EmbeddedBaseInput,
@@ -125,6 +125,9 @@ class BasePlateAdvancedForm(QWidget):
                                  "compresión concéntrica.")
         layout.addRow("Área de apoyo", self._bearing)
 
+        self._electrode = QComboBox()
+        self._electrode.addItems(sorted(ELECTRODES))
+        layout.addRow("Electrodo", self._electrode)
         self._add(layout, "rod_bending_lever", "Brazo de flexión de placa",
                   Kind.LENGTH, required=False)
         self._add(layout, "bearing_area", "Área de apoyo del anclaje", Kind.AREA,
@@ -195,6 +198,9 @@ class BasePlateAdvancedForm(QWidget):
         self._shear_grade = QComboBox()
         self._shear_grade.addItems(sorted(STEELS))
         layout.addRow("Acero", self._shear_grade)
+        self._lug_electrode = QComboBox()
+        self._lug_electrode.addItems(sorted(ELECTRODES))
+        layout.addRow("Electrodo", self._lug_electrode)
         self._add(layout, "shear_lug.ca1", "Borde c_a1", Kind.LENGTH, required=False)
         self._add(layout, "shear_lug.ca2.0", "Borde c_a2 izquierdo", Kind.LENGTH,
                   required=False)
@@ -288,6 +294,21 @@ class BasePlateAdvancedForm(QWidget):
                     self._shear_grade.addItem(current)
                     self._shear_grade.setCurrentIndex(self._shear_grade.count() - 1)
 
+    def set_electrodes(self, names: list[str]) -> None:
+        """Refresh the electrode combos with the project's electrodes."""
+        for combo in (self._electrode, self._lug_electrode):
+            current = combo.currentText()
+            with QSignalBlocker(combo):
+                combo.clear()
+                combo.addItems(names)
+                if current:
+                    index = combo.findText(current)
+                    if index >= 0:
+                        combo.setCurrentIndex(index)
+                    else:
+                        combo.addItem(current)
+                        combo.setCurrentIndex(combo.count() - 1)
+
     def set_embedded(self, embedded: bool) -> None:
         """Show the embedded form or the exposed-base optional blocks."""
         self._embedded_group.setVisible(embedded)
@@ -311,11 +332,13 @@ class BasePlateAdvancedForm(QWidget):
 
         self._select(self._pressure, bp.pressure_model.value)
         self._select(self._bearing, bp.bearing_area_model.value)
+        self._electrode.setCurrentText(bp.electrode)
         self._friction.setText(f"{bp.friction_mu:g}")
 
         lug = bp.shear_lug
         self._shear_group.setChecked(lug is not None)
         self._select(self._shear_direction, "strong" if lug is None else lug.direction)
+        self._lug_electrode.setCurrentText("E70XX" if lug is None else lug.electrode)
         if lug is not None:
             self._shear_grade.setCurrentText(lug.grade)
 
@@ -356,6 +379,7 @@ class BasePlateAdvancedForm(QWidget):
         bp = data.base_plate
         bp.pressure_model = PressureModel(self._pressure.currentData())
         bp.bearing_area_model = BearingAreaModel(self._bearing.currentData())
+        bp.electrode = self._electrode.currentText()
         for key in ("rod_bending_lever", "bearing_area", "washer_thickness",
                     "flange_weld"):
             setattr(bp, key, self._read(key, errors, required=False))
@@ -412,7 +436,8 @@ class BasePlateAdvancedForm(QWidget):
                 bp.shear_lug = ShearLugInput(
                     width=width, embedment=embedment, thickness=thickness, weld=weld,
                     direction=self._shear_direction.currentData(),
-                    grade=self._shear_grade.currentText(), ca1=ca1, ca2=ca2)
+                    grade=self._shear_grade.currentText(),
+                    electrode=self._lug_electrode.currentText(), ca1=ca1, ca2=ca2)
         if self._reinforcement_group.isChecked():
             start = len(errors)
             area = self._read("reinforcement.area", errors)

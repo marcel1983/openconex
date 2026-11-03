@@ -70,7 +70,7 @@ También puede elegirse la unidad de cada magnitud por separado:
 | `ASTM A1065 Gr. 50W` | 50 ksi | 70 ksi |
 | `ASTM A1085` | 50 ksi | 65 ksi |
 
-La tabla anterior es la librería integrada. Si el proyecto usa otro acero, defínalo en el bloque `materials` (ver [El archivo de proyecto](03-proyecto.md)) y úselo en `column_grade`, `plate_grade`, `grade` de una sección genérica o `shear_lug.grade`. El nombre debe ser único y `Fu` no puede ser menor que `Fy`; `E` es opcional y vale `29000 ksi` por defecto. Las barras de anclaje y los electrodos no se definen en `materials`: tienen sus propias librerías.
+La tabla anterior es la librería integrada. Si el proyecto usa otro acero, defínalo en el bloque `materials` (ver [El archivo de proyecto](03-proyecto.md)) y úselo en `column_grade`, `plate_grade`, `grade` de una sección genérica o `shear_lug.grade`. El nombre debe ser único y `Fu` no puede ser menor que `Fy`; `E` es opcional y vale `29000 ksi` por defecto. Las barras de anclaje y los electrodos no se definen en `materials`: tienen sus propios bloques `bolts` y `electrodes` (ver [El archivo de proyecto](03-proyecto.md)).
 
 **Barras de anclaje y pernos** (`rod_grade`):
 
@@ -82,6 +82,6 @@ La tabla anterior es la librería integrada. Si el proyecto usa otro acero, def�
 | `ASTM F3125 Gr. A325` | pernos estructurales |
 | `ASTM F3125 Gr. A490` | pernos estructurales |
 
-**Electrodos:** `E70XX` y `E80XX`. Las soldaduras de la placa base usan E70XX.
+**Electrodos:** `E70XX` y `E80XX`, más los electrodos propios de `electrodes`. La soldadura de ala usa `base_plate.electrode` y la llave usa `shear_lug.electrode`; el valor por defecto es `E70XX`.
 
 **Perfiles:** la base de datos AISC Shapes v16.0 (2 299 perfiles) viene incluida. Sus datos son de AISC y no están bajo la GPL (ver `NOTICE.md`).

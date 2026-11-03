@@ -36,7 +36,14 @@ from openconex.core.loads import (
     SeismicParameters,
     asce7_combinations,
 )
-from openconex.core.materials import STEELS, SteelGrade
+from openconex.core.materials import (
+    BOLTS,
+    ELECTRODES,
+    STEELS,
+    BoltGrade,
+    SteelGrade,
+    WeldElectrode,
+)
 from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
 from openconex.kernel.anchors import Edges
@@ -45,9 +52,11 @@ from openconex.units import PRESETS, Kind, UnitSystem, parse
 __all__ = [
     "FORMAT_VERSION",
     "BasePlateInput",
+    "BoltGradeInput",
     "ColumnSectionInput",
     "CombinationOptions",
     "CustomCombinationInput",
+    "ElectrodeInput",
     "EmbeddedBaseInput",
     "EmbeddedRebarInput",
     "HSSSectionInput",
@@ -106,6 +115,44 @@ class MaterialInput(_Input):
         self.name = self.name.strip()
         if not self.name:
             raise ValueError("material name must not be blank")
+        return self
+
+
+class BoltGradeInput(_Input):
+    """A bolt or anchor-rod grade added to the built-in AISC library."""
+
+    name: str = Field(min_length=1)
+    Fnt: Quantity
+    """Nominal tensile stress."""
+    Fnv_N: Quantity
+    """Nominal shear stress, threads included."""
+    Fnv_X: Quantity
+    """Nominal shear stress, threads excluded."""
+    Fu: Quantity
+    """Specified minimum tensile strength."""
+    Fy: Quantity | None = None
+    """Specified minimum yield stress, when the grade defines one."""
+
+    @model_validator(mode="after")
+    def _nonblank_name(self) -> BoltGradeInput:
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("bolt grade name must not be blank")
+        return self
+
+
+class ElectrodeInput(_Input):
+    """A welding electrode added to the built-in library."""
+
+    name: str = Field(min_length=1)
+    FEXX: Quantity
+    """Filler metal classification strength."""
+
+    @model_validator(mode="after")
+    def _nonblank_name(self) -> ElectrodeInput:
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("electrode name must not be blank")
         return self
 
 
@@ -180,6 +227,7 @@ class ShearLugInput(_Input):
     direction: Literal["strong", "weak", "both"] = "strong"
     """strong: resists the shear along N (lug along B); weak: along B; both: cruciform."""
     grade: str = "ASTM A572 Gr. 50"
+    electrode: str = "E70XX"
     ca1: Quantity | None = None
     """Edge distance in the shear direction for concrete breakout (omit: not checked)."""
     ca2: list[Quantity | None] = Field(default_factory=lambda: [None, None])
@@ -258,6 +306,7 @@ class BasePlateInput(_Input):
     B: Quantity | None = None
     tp: Quantity | None = None
     plate_grade: str = "ASTM A572 Gr. 50"
+    electrode: str = "E70XX"
     pressure_model: PressureModel = PressureModel.RECTANGULAR
     bearing_area_model: BearingAreaModel = BearingAreaModel.PLATE
     rod_bending_lever: Quantity | None = None
@@ -346,6 +395,10 @@ class Project(_Input):
     info: ProjectInfo = Field(default_factory=ProjectInfo)
     materials: list[MaterialInput] = Field(default_factory=list)
     """Structural steels added to the built-in AISC library for this project."""
+    bolts: list[BoltGradeInput] = Field(default_factory=list)
+    """Bolt and anchor-rod grades added to the built-in AISC library."""
+    electrodes: list[ElectrodeInput] = Field(default_factory=list)
+    """Welding electrodes added to the built-in library."""
     sections: list[ColumnSectionInput] = Field(default_factory=list)
     """Custom column sections saved with the project, available in the GUI."""
     base_plate: BasePlateInput
@@ -376,10 +429,17 @@ class Project(_Input):
         library = self.material_library()
         if self.base_plate.plate_grade not in library:
             raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
-        if (self.base_plate.shear_lug is not None
-                and self.base_plate.shear_lug.grade not in library):
-            raise ValueError(f"unknown shear lug material: "
-                             f"{self.base_plate.shear_lug.grade!r}")
+        bolts = self.bolt_library()
+        if self.base_plate.rod_grade not in bolts:
+            raise ValueError(f"unknown bolt grade: {self.base_plate.rod_grade!r}")
+        electrodes = self.electrode_library()
+        if self.base_plate.electrode not in electrodes:
+            raise ValueError(f"unknown electrode: {self.base_plate.electrode!r}")
+        lug = self.base_plate.shear_lug
+        if lug is not None and lug.grade not in library:
+            raise ValueError(f"unknown shear lug material: {lug.grade!r}")
+        if lug is not None and lug.electrode not in electrodes:
+            raise ValueError(f"unknown shear lug electrode: {lug.electrode!r}")
         repeated = _repeated([section.label() for section in self.sections])
         if repeated:
             raise ValueError(f"duplicate custom section names: {repeated}")
@@ -495,6 +555,39 @@ class Project(_Input):
             library[name] = SteelGrade(name=name, Fy=Fy, Fu=Fu, E=E)
         return library
 
+    def bolt_library(self) -> dict[str, BoltGrade]:
+        """Built-in AISC bolt grades plus the project-defined ones."""
+        library = dict(BOLTS)
+        for custom in self.bolts:
+            name = custom.name.strip()
+            if name in library:
+                raise ValueError(f"bolt grade name already exists: {name!r}")
+            Fnt = self.quantity(custom.Fnt, Kind.STRESS)
+            Fnv_N = self.quantity(custom.Fnv_N, Kind.STRESS)
+            Fnv_X = self.quantity(custom.Fnv_X, Kind.STRESS)
+            Fu = self.quantity(custom.Fu, Kind.STRESS)
+            if min(Fnt, Fnv_N, Fnv_X, Fu) <= 0:
+                raise ValueError(f"bolt grade {name!r} needs positive stresses")
+            Fy = None if custom.Fy is None else self.quantity(custom.Fy, Kind.STRESS)
+            if Fy is not None and Fy <= 0:
+                raise ValueError(f"bolt grade {name!r}: Fy must be positive")
+            library[name] = BoltGrade(name=name, Fnt=Fnt, Fnv_N=Fnv_N, Fnv_X=Fnv_X,
+                                      Fu=Fu, Fy=Fy)
+        return library
+
+    def electrode_library(self) -> dict[str, WeldElectrode]:
+        """Built-in electrodes plus the project-defined ones."""
+        library = dict(ELECTRODES)
+        for custom in self.electrodes:
+            name = custom.name.strip()
+            if name in library:
+                raise ValueError(f"electrode name already exists: {name!r}")
+            FEXX = self.quantity(custom.FEXX, Kind.STRESS)
+            if FEXX <= 0:
+                raise ValueError(f"electrode {name!r} needs a positive FEXX")
+            library[name] = WeldElectrode(name=name, FEXX=FEXX)
+        return library
+
     # -- conversion to the engine model ------------------------------------------------
     def quantity(self, value: Quantity, kind: Kind) -> float:
         """Value typed in the project (text with unit, or number in project units), internal."""
@@ -529,6 +622,8 @@ class Project(_Input):
         bp = self.base_plate
         L, T = Kind.LENGTH, Kind.THICKNESS
         library = self.material_library()
+        bolts = self.bolt_library()
+        electrodes = self.electrode_library()
         column = self.column_model(library)
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
 
@@ -539,7 +634,7 @@ class Project(_Input):
             column=column, N=dim(bp.N, L), B=dim(bp.B, L), tp=dim(bp.tp, T),
             fc=self.quantity(bp.fc, Kind.STRESS),
             rod=BoltSpec(diameter=dim(bp.rod_diameter, L, self.quantity("1 in", L)),
-                         grade=bp.rod_grade),
+                         grade=bp.rod_grade, bolts=bolts),
             f=dim(bp.f, L), rods_per_side=bp.rods_per_side,
             rod_spacing=self.quantity(bp.rod_spacing, L), hef=self.quantity(bp.hef, L),
             plate_grade=bp.plate_grade, pressure_model=bp.pressure_model,
@@ -561,8 +656,9 @@ class Project(_Input):
                               else self.quantity(bp.washer_thickness, T)),
             grout_pad=bp.grout_pad,
             flange_weld=None if bp.flange_weld is None else self.quantity(bp.flange_weld, T),
+            electrode=bp.electrode, electrodes=electrodes,
             friction_mu=bp.friction_mu, cracked=bp.cracked, seismic=bp.seismic,
-            shear_lug=self._shear_lug(), materials=library,
+            shear_lug=self._shear_lug(electrodes), materials=library,
         )
 
     def _reinforcement(self) -> Reinforcement | None:
@@ -613,7 +709,7 @@ class Project(_Input):
             rebar_bottom=layer(embedded.rebar_bottom),
             damage_limit=embedded.damage_limit)
 
-    def _shear_lug(self) -> ShearLug | None:
+    def _shear_lug(self, electrodes: dict[str, WeldElectrode]) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH
         if lug is None:
             return None
@@ -622,7 +718,8 @@ class Project(_Input):
                         embedment=self.quantity(lug.embedment, L),
                         thickness=self.quantity(lug.thickness, Kind.THICKNESS),
                         weld=self.quantity(lug.weld, Kind.THICKNESS), direction=lug.direction,
-                        grade=lug.grade, grout=self.quantity(self.base_plate.grout, L),
+                        grade=lug.grade, FEXX=electrodes[lug.electrode].FEXX,
+                        grout=self.quantity(self.base_plate.grout, L),
                         ca1=None if lug.ca1 is None else self.quantity(lug.ca1, L),
                         ca2=tuple([*sides, None, None][:2]))
 

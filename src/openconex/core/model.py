@@ -49,15 +49,19 @@ class BoltSpec(_Part):
     grade: str = "ASTM F3125 Gr. A325"
     threads: Threads = Threads.INCLUDED
     hole: HoleType = HoleType.STANDARD
+    bolts: Mapping[str, BoltGrade] = Field(default_factory=dict, exclude=True, repr=False)
+    """Project bolt library; the built-in ``BOLTS`` are used as fallback."""
 
     @model_validator(mode="after")
     def _known_grade(self) -> BoltSpec:
-        if self.grade not in BOLTS:
+        if self.grade not in self.bolts and self.grade not in BOLTS:
             raise ValueError(f"unknown bolt grade: {self.grade}")
         return self
 
     @property
     def material(self) -> BoltGrade:
+        if self.grade in self.bolts:
+            return self.bolts[self.grade]
         return BOLTS[self.grade]
 
     @property
@@ -133,15 +137,20 @@ class FilletWeld(_Part):
     """Leg size w [mm]."""
     length: float = Field(gt=0)
     electrode: str = "E70XX"
+    electrodes: Mapping[str, WeldElectrode] = Field(default_factory=dict, exclude=True,
+                                                   repr=False)
+    """Project electrode library; ``ELECTRODES`` is used as fallback."""
 
     @model_validator(mode="after")
     def _known_electrode(self) -> FilletWeld:
-        if self.electrode not in ELECTRODES:
+        if self.electrode not in self.electrodes and self.electrode not in ELECTRODES:
             raise ValueError(f"unknown electrode: {self.electrode}")
         return self
 
     @property
     def material(self) -> WeldElectrode:
+        if self.electrode in self.electrodes:
+            return self.electrodes[self.electrode]
         return ELECTRODES[self.electrode]
 
     @property

@@ -9,7 +9,9 @@ from openconex.core.loads import Method
 from openconex.core.model import HSSKind, HSSShape, IShape
 from openconex.io.project import (
     FORMAT_VERSION,
+    BoltGradeInput,
     CustomCombinationInput,
+    ElectrodeInput,
     MaterialInput,
     Project,
     WSectionInput,
@@ -513,6 +515,28 @@ def test_custom_materials_round_trip(tmp_path, project):
     assert again.materials == project.materials
     assert again.material_library()["Acero del proyecto"].Fy == pytest.approx(
         project.quantity("50 ksi", Kind.STRESS))
+
+
+def test_custom_bolts_and_electrodes_round_trip(tmp_path, project):
+    project.bolts = [BoltGradeInput(
+        name="Perno del proyecto", Fnt="100 ksi", Fnv_N="60 ksi",
+        Fnv_X="75 ksi", Fu="125 ksi", Fy="100 ksi")]
+    project.electrodes = [ElectrodeInput(name="E90XX", FEXX="90 ksi")]
+    project.base_plate.rod_grade = "Perno del proyecto"
+    project.base_plate.electrode = "E90XX"
+    project.base_plate.flange_weld = "0.25 in"
+    path = tmp_path / "custom_bolts.ocnx"
+    save_project(project, path)
+    again = load_project(path)
+    assert again.bolt_library()["Perno del proyecto"].Fnt == pytest.approx(
+        again.quantity("100 ksi", Kind.STRESS))
+    assert again.electrode_library()["E90XX"].FEXX == pytest.approx(
+        again.quantity("90 ksi", Kind.STRESS))
+    model = again.base_plate_model()
+    assert model.rod.material.name == "Perno del proyecto"
+    assert model.electrode == "E90XX"
+    assert model.electrodes["E90XX"].FEXX == pytest.approx(
+        again.quantity("90 ksi", Kind.STRESS))
 
 
 def test_seismic_cases_without_sds_are_rejected():

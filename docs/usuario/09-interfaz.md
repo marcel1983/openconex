@@ -105,7 +105,7 @@ El motor exige LRFD, perfiles I y ausencia de momento débil, llave de corte o b
 - **Brazo de flexión de placa:** distancia del anclaje al alma o ala.
 - **Área de apoyo del anclaje:** área de la tuerca o placa embebida para la extracción.
 - **Arandela soldada:** espesor de la arandela; activa el reparto del corte entre todas las barras.
-- **Soldadura de ala:** tamaño de la soldadura de filete de la columna.
+- **Soldadura de ala:** tamaño de la soldadura de filete de la columna y electrodo.
 - **Coeficiente de fricción** placa-concreto.
 - **Bordes del concreto:** izquierdo, derecho, inferior y superior; si se omiten, se deducen del pedestal.
 - **Barras del pedestal:** tabla de posición `x`, `y` y diámetro para el revisor de interferencias.
@@ -116,7 +116,7 @@ Los campos opcionales muestran la palabra «opcional» y se pueden dejar vacíos
 
 ### Llave de corte
 
-Se activa con la casilla del grupo. Incluye ancho `b_sl`, empotramiento `h_sl`, espesor, soldadura, dirección (fuerte, débil o cruz), acero y distancias `c_a1`/`c_a2` opcionales.
+Se activa con la casilla del grupo. Incluye ancho `b_sl`, empotramiento `h_sl`, espesor, soldadura, dirección (fuerte, débil o cruz), acero, electrodo y distancias `c_a1`/`c_a2` opcionales.
 
 ### Refuerzo de anclaje
 
@@ -215,8 +215,8 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 **Bibliotecas > Materiales…** muestra tres pestañas:
 
 - **Columnas y placas**: aceros de AISC 360-22 y materiales propios del proyecto. **Nuevo material…** crea un acero con nombre, Fy, Fu y E; queda disponible para columnas, placas y llaves de corte.
-- **Pernos y anclajes**: grados de AISC 360-22 Tabla J3.2 (solo lectura por ahora).
-- **Soldadura**: electrodos E70XX y E80XX (solo lectura por ahora; el cálculo usa E70XX por defecto).
+- **Pernos y anclajes**: grados de AISC 360-22 Tabla J3.2 y grados propios del proyecto. **Nuevo perno…** crea un grado con Fnt, Fnv, Fu y Fy.
+- **Soldadura**: electrodos E70XX/E80XX y electrodos propios. **Nuevo electrodo…** crea un electrodo con su FEXX.
 
 ## Alcance actual
 
@@ -224,7 +224,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Editor gráfico de planta y elevación con deshacer/rehacer.
 - Visor 3D interactivo con rotación, zoom, ocultación y resaltado de piezas.
 - Selección de secciones del catálogo y creación de secciones W/HSS genéricas.
-- Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros propios.
+- Selección de materiales de columna, placa, anclaje y llave de corte; creación de aceros, pernos y electrodos propios.
 - Cambio de unidades por preset o por magnitud, con conversión del formulario y de los bloques especiales.
 - Edición de casos de carga, opciones de combinaciones y combinaciones propias.
 - Importación de SAP2000/ETABS y Excel/CSV, con creación de proyectos por apoyo o por sección.
@@ -236,5 +236,4 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 - La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
 - El visor 3D requiere el extra `3d` (OpenCASCADE); sin él, la pestaña muestra un aviso.
-- Los grados de pernos y electrodos son de solo lectura; añadir grados propios requiere ampliar el motor de cálculo.
 - La interfaz no sustituye la revisión del profesional responsable.
