@@ -48,6 +48,7 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 | II.A-4, II.A-6 (A y B), II.A-7 | viga con destaje: flexión de la sección destajada con destaje superior (374/249, 116/77,2, 150/100 kip) y en ambas alas (37,9/25,2), corte del alma, bloque de corte del alma (68,6/45,8) y S_c, Z_c de la Tabla 9-2 | `tests/connections/test_coped_beam.py` |
 | II.A-19A | placa simple extendida con dos líneas de pernos: grupo (41,7/27,7 kip), t_max = 0,575 in, corte, bloque de corte (145/96,5), flexión y pandeo lateral-torsional (810/539 kip·in), interacción (0,200), rotura por flexión (624/416; Z_net = 12,75 in³ contra 12,8 de la Tabla 15-2) | `tests/connections/test_extended_single_plate.py` |
 | II.A-11A, Parte B | placa de extremo de corte: agujeros (96,4/64,1 kip), fluencia (128/85,3) y rotura (86,3/57,5) por corte, bloque de corte (93,8/62,5), soldaduras (67,9/45,3) y t_w,min = 0,286 in | `tests/connections/test_end_plate.py` |
+| II.A-12A | asiento no rigidizado apernado: longitud de apoyo por fluencia (0,309/0,307 in) y aplastamiento local (negativo, gobierna k_des = 1,03 in), fluencia por corte del ala (150/100 kip) y flexión del ala con l_b = 1⅛ in (113/74,9, Tabla 10-5) | `tests/connections/test_seated.py` |
 
 ## Hallazgos de la validación
 

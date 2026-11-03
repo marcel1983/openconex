@@ -130,6 +130,17 @@ Placa soldada al extremo del alma de la viga y apernada al apoyo con dos pernos 
 | `end_plate.weld` | Dos soldaduras al alma, longitud efectiva l − 2w | §J2.4 |
 | `end_plate.beam_web_thickness` | t_w ≥ 6,19 D/F_u | Manual Ec. 9-3 |
 
+## Asiento no rigidizado apernado (`connections/shear/seated.py`)
+
+La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC Parte 10). La holgura incluye la tolerancia de longitud (¾ in por defecto). No se diseña el ángulo superior de estabilidad.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `seated.bearing_length` | l_b,min = máx(fluencia local del alma, aplastamiento local del alma, k_des) ≤ ala − holgura | Manual Ec. 10-1 a 10-3; §J10.2, §J10.3 |
+| `seated.shear_yielding` | Fluencia por corte del ala, 0,60 F_y L t | §J4.2(a) |
+| `seated.flexural_yielding` | R_n = (F_y L t²/4)/e_c, e_c = holgura + l_b/2 − t − 3/8 in | Manual Parte 10 |
+| `seated.bolts` | n · mín(corte del perno, aplastamiento en el ángulo y en el apoyo) | §J3.7, §J3.11 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

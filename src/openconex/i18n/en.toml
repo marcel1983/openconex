@@ -236,6 +236,12 @@ block_shear = "Block shear of the end plate"
 weld = "Welds of the plate to the beam web"
 beam_web_thickness = "Minimum beam web thickness for the welds"
 
+[check.seated]
+bearing_length = "Required bearing length (web local yielding and crippling)"
+shear_yielding = "Shear yielding of the seat leg"
+flexural_yielding = "Flexural yielding of the seat leg"
+bolts = "Seat bolts (shear and bearing)"
+
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
 bearing = "Concrete bearing under the plate"
