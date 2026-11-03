@@ -117,6 +117,19 @@ Placa soldada al apoyo (por ejemplo, al alma de una columna) con una o dos líne
 | `extended_plate.weld_size` | w ≥ 5t_p/8 | Manual Parte 10 |
 | `extended_plate.support_thickness` | t_min = 3,09 D/F_u | Manual Ec. 9-6 |
 
+## Placa de extremo de corte (`connections/shear/end_plate.py`)
+
+Placa soldada al extremo del alma de la viga y apernada al apoyo con dos pernos por fila (Manual AISC Parte 10).
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `end_plate.bolts` | Σ por fila mín(2 r_n,perno, 2 r_n,placa, 2 r_n,apoyo); el perno superior es el de borde | §J3.7 (nota), §J3.11 |
+| `end_plate.shear_yielding` | Fluencia por corte, A_gv = 2 l t | §J4.2(a) |
+| `end_plate.shear_rupture` | Rotura por corte, A_nv = 2 (l − n d_h') t | §J4.2(b) |
+| `end_plate.block_shear` | Bloque de corte en las dos líneas (U_bs = 1) | §J4.3 |
+| `end_plate.weld` | Dos soldaduras al alma, longitud efectiva l − 2w | §J2.4 |
+| `end_plate.beam_web_thickness` | t_w ≥ 6,19 D/F_u | Manual Ec. 9-3 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |
