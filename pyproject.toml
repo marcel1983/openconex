@@ -34,6 +34,7 @@ dependencies = [
 pdf = ["PySide6>=6.8"]
 gui = ["PySide6>=6.8"]
 3d = ["cadquery-ocp-novtk>=7.8"]
+gui-test = ["pytest-qt>=4.4"]
 dev = [
     "pytest>=8",
     "hypothesis>=6.100",

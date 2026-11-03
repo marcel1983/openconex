@@ -46,7 +46,7 @@ jobs:
           python-version: "3.13"
       - name: System libraries for Qt WebEngine (headless)
         run: sudo apt-get update && sudo apt-get install -y libegl1 libnss3 libxkbcommon0 libgbm1 libasound2t64 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1
-      - run: python -m pip install -e ".[dev,pdf,3d]"
+      - run: python -m pip install -e ".[dev,pdf,3d,gui-test]"
       - run: python -m pytest tests/outputs -ra
       - run: openconex baseplate examples/base_plate_dg1_4_7_11.ocnx -o out/example --html --docx --pdf --dxf --step
       - uses: actions/upload-artifact@v4
