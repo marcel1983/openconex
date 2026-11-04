@@ -251,7 +251,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 ## Limitaciones
 
-- La ventana de conexiones de corte no tiene editor gráfico ni conversión automática de unidades: las cantidades se escriben con su unidad.
+- La ventana de conexiones de corte convierte automáticamente las unidades al cambiar el preset. No tiene editor gráfico 2D.
 - La huella de la columna se selecciona con el desplegable de sección; no se edita arrastrando en el lienzo.
 - El visor 3D requiere el extra `3d` (OpenCASCADE); sin él, la pestaña muestra un aviso.
 - La interfaz no sustituye la revisión del profesional responsable.

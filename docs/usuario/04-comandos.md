@@ -46,6 +46,12 @@ Calcula un proyecto con `shear_connection` (ver [El archivo de proyecto](03-proy
 openconex shear examples/shear_single_plate.ocnx --html --dxf
 ```
 
+Para el ejemplo de placa simple con destaje superior (II.A-18), que incluye la lista de materiales y el cuadro de soldaduras en el DXF:
+
+```bash
+openconex shear examples/shear_single_plate_coped.ocnx --html --dxf
+```
+
 `openconex baseplate` rechaza los proyectos de conexión de corte (código 2) y viceversa.
 
 ## `openconex supports`: apoyos de SAP2000 / ETABS

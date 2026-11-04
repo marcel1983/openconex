@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>OpenConex — propuesta azul AISC</title>
+<style>
+  :root {
+    --bg: #06141f;
+    --panel: #0b2638;
+    --line: #1d4f6b;
+    --text: #f5fafd;
+    --muted: #b9d6e7;
+    --dim: #8fb4c9;
+    --blue: #5aa3ce;
+    --ice: #8cc8e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(circle at 74% 8%, #164f70 0, var(--bg) 48%);
+    color: var(--text);
+    font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  main { max-width: 1320px; margin: 0 auto; padding: 48px 32px 80px; }
+  h1 { font-size: 34px; font-weight: 300; margin: 0 0 6px; }
+  h1 strong { color: var(--ice); font-weight: 700; }
+  h2 { font-size: 20px; font-weight: 600; margin: 48px 0 14px; color: var(--text); }
+  p { color: var(--muted); line-height: 1.55; max-width: 880px; }
+  .kicker { color: var(--blue); font: 13px Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+  .card { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--panel); }
+  .card img { display: block; width: 100%; height: auto; }
+  .icon-row { display: flex; gap: 22px; flex-wrap: wrap; align-items: end; }
+  .icon-box { text-align: center; color: var(--dim); font: 12px Consolas, monospace; }
+  .icon-box img { display: block; margin-bottom: 8px; border-radius: 22%; }
+  .swatches { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .swatch { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .chip { height: 38px; border-radius: 8px; margin-bottom: 9px; border: 1px solid #1a4157; }
+  .swatch b { display: block; font-size: 13px; font-weight: 600; }
+  .swatch span { color: var(--dim); font: 12px Consolas, monospace; }
+  .note { border-left: 3px solid var(--blue); padding-left: 16px; margin-top: 28px; }
+  .two { display: grid; gap: 20px; grid-template-columns: 1.55fr 1fr; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  .renderbox { background: #071824; border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: flex; justify-content: center; }
+</style>
+</head>
+<body>
+<main>
+  <div class="kicker">Propuesta cromática · OpenConex · azul AISC</div>
+  <h1>El árbol que <strong>conecta</strong></h1>
+  <p>La estructura de conexiones se mantiene como protagonista y se lleva a la paleta de la referencia AISC: azul noche, azul profundo, azul medio, azul claro y blanco. El render se recolorea en azul acero y el icono repite la misma estructura en azul y plata.</p>
+
+  <h2>Banner para GitHub · 1600 × 600</h2>
+  <div class="card"><img src="banner-github.png" alt="Banner azul AISC de OpenConex"></div>
+
+  <h2>Social preview de GitHub · 1280 × 640</h2>
+  <div class="card"><img src="github-social-preview.png" alt="Social preview azul AISC de OpenConex"></div>
+
+  <div class="two" style="margin-top:48px">
+    <div>
+      <h2 style="margin-top:0">Splash screen · 1000 × 700</h2>
+      <div class="card"><img src="splash.png" alt="Splash azul AISC de OpenConex"></div>
+    </div>
+    <div>
+      <h2 style="margin-top:0">Icono</h2>
+      <div class="renderbox">
+        <img src="icon-compact-1024.png" alt="Icono azul AISC de OpenConex" style="width:min(320px,100%); border-radius:22%">
+      </div>
+      <div class="icon-row" style="margin-top:24px">
+        <div class="icon-box"><img src="icon-compact-256.png" width="128" alt="Icono 128"><br>128 px</div>
+        <div class="icon-box"><img src="icon-compact-64.png" width="64" alt="Icono 64"><br>64 px</div>
+        <div class="icon-box"><img src="icon-micro-32.png" width="32" alt="Icono 32"><br>32 px</div>
+        <div class="icon-box"><img src="icon-micro-16.png" width="16" alt="Icono 16"><br>16 px</div>
+      </div>
+    </div>
+  </div>
+
+  <h2>El render en azul</h2>
+  <div class="renderbox">
+    <img src="render-blue.png" alt="Render azul de la estructura" style="width:min(520px,100%)">
+  </div>
+
+  <h2>Paleta</h2>
+  <div class="swatches">
+    <div class="swatch"><div class="chip" style="background:#071824"></div><b>Azul noche</b><span>#071824</span></div>
+    <div class="swatch"><div class="chip" style="background:#0D334A"></div><b>Azul profundo</b><span>#0D334A</span></div>
+    <div class="swatch"><div class="chip" style="background:#1D6F9F"></div><b>Azul AISC</b><span>#1D6F9F</span></div>
+    <div class="swatch"><div class="chip" style="background:#2E86B8"></div><b>Azul medio</b><span>#2E86B8</span></div>
+    <div class="swatch"><div class="chip" style="background:#5AA3CE"></div><b>Azul claro</b><span>#5AA3CE</span></div>
+    <div class="swatch"><div class="chip" style="background:#8CC8E8"></div><b>Azul hielo</b><span>#8CC8E8</span></div>
+    <div class="swatch"><div class="chip" style="background:#D6E8F2"></div><b>Blanco azulado</b><span>#D6E8F2</span></div>
+    <div class="swatch"><div class="chip" style="background:#F5FAFD"></div><b>Blanco</b><span>#F5FAFD</span></div>
+  </div>
+
+  <div class="note">
+    <p><strong>Idea de uso:</strong> el banner abre el README, el social preview se configura en el repositorio y el splash aparece antes de la ventana principal. El icono conserva la lectura en 16 y 32 px.</p>
+  </div>
+</main>
+</body>
+</html>

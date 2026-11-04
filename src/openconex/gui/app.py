@@ -42,6 +42,7 @@ from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
+from openconex.gui.branding import app_icon, show_splash, splash_pixmap
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
 from openconex.gui.geometry import GeometryEditor, GeometryValues
 from openconex.gui.import_supports import ImportSupportsDialog
@@ -151,6 +152,7 @@ class MainWindow(QMainWindow):
     # -- construction -----------------------------------------------------------
     def _build_ui(self) -> None:
         self.setWindowTitle(APP_NAME)
+        self.setWindowIcon(app_icon())
         self.resize(1280, 860)
         self._build_menu()
         self._build_body()
@@ -1566,14 +1568,36 @@ class MainWindow(QMainWindow):
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv if argv is None else argv
-    if "--version" in args[1:]:
+    no_splash = "--no-splash" in args[1:]
+    check_assets = "--check-assets" in args[1:]
+    qt_args = [arg for arg in args if arg not in {"--no-splash", "--check-assets"}]
+    if "--version" in qt_args[1:]:
         from openconex import __version__
         if sys.stdout is not None:
             print(f"OpenConex {__version__}")
         return 0
-    app = QApplication(args)
-    window = MainWindow()
-    if len(args) > 1:
-        window.open_project(args[1])
-    window.show()
-    return app.exec()
+
+    from openconex import __version__
+
+    app = QApplication(qt_args)
+    app.setApplicationName(APP_NAME)
+    app.setApplicationVersion(__version__)
+    app.setOrganizationName(APP_NAME)
+    app.setWindowIcon(app_icon())
+
+    if check_assets:
+        return 0 if not app_icon().isNull() and not splash_pixmap().isNull() else 1
+
+    splash = None if no_splash else show_splash(app)
+    try:
+        window = MainWindow()
+        projects = [arg for arg in qt_args[1:] if not arg.startswith("-")]
+        if projects:
+            window.open_project(projects[0])
+        window.show()
+        if splash is not None:
+            splash.finish(window)
+        return app.exec()
+    finally:
+        if splash is not None:
+            splash.close()

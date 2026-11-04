@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtGui import QAction, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -42,6 +42,7 @@ from openconex.core.loads import LoadType, Method
 from openconex.core.model import HoleType, Threads
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.quantity import convert_text
 from openconex.gui.viewer3d import Viewer3D
 from openconex.i18n import tr
 from openconex.io.project import Project, load_project, save_project
@@ -51,7 +52,7 @@ from openconex.report.docx import write_docx
 from openconex.report.html import write_html
 from openconex.report.pdf import write_pdf
 from openconex.report.shear import build_shear_report
-from openconex.units import PRESETS
+from openconex.units import PRESETS, Kind
 
 __all__ = ["TYPE_FIELDS", "ShearWindow"]
 
@@ -101,6 +102,7 @@ class ShearWindow(QMainWindow):
         super().__init__(parent)
         self.project = project or Project.model_validate(TEMPLATE)
         self.path = None if path is None else Path(path)
+        self._units = self.project.info.unit_system()
         self.report: Report | None = None
         self._fields: dict[str, QWidget] = {}
         self._rows: dict[str, tuple[QLabel, QWidget]] = {}
@@ -196,6 +198,7 @@ class ShearWindow(QMainWindow):
         form.addRow("Idioma", self.language)
         self.units = QComboBox()
         self.units.addItems(sorted(PRESETS))
+        self.units.currentTextChanged.connect(self._change_units)
         form.addRow("Unidades", self.units)
         self._methods = {m: QCheckBox(m.value) for m in Method}
         row = QWidget()
@@ -321,17 +324,73 @@ class ShearWindow(QMainWindow):
             text = tr(f"input.{'seat_bolts' if name == 'bolts' else name}", "es")
             label.setText(f"{text} *" if name in required else text)
 
+    def _change_units(self, name: str) -> None:
+        if name == CUSTOM_UNITS:
+            return
+        new = PRESETS.get(name)
+        if new is None or new.name == self._units.name:
+            return
+        old = self._units
+        try:
+            lines, case_lines = self._converted_lines(old, new)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Unidades", str(exc))
+            with QSignalBlocker(self.units):
+                self.units.setCurrentText(
+                    old.name if old.name in PRESETS else CUSTOM_UNITS)
+            return
+        for widget, text in lines:
+            widget.setText(text)
+        for item, text in case_lines:
+            item.setText(text)
+        self._units = new
+        self.project.info.units = name
+        custom = self.units.findText(CUSTOM_UNITS)
+        if custom >= 0:
+            self.units.removeItem(custom)
+        self.statusBar().showMessage(f"Unidades convertidas a {name}.")
+
+    def _converted_lines(self, old, new) -> tuple[
+            list[tuple[QLineEdit, str]], list[tuple[QTableWidgetItem, str]]]:
+        lines: list[tuple[QLineEdit, str]] = []
+        case_lines: list[tuple[QTableWidgetItem, str]] = []
+        for name in ("spacing", "gage", "length", "width", "lev", "leh", "leh_support",
+                     "a", "beam_leg", "outstanding_leg", "beam_leh", "leg",
+                     "vertical_leg", "bearing_length"):
+            self._collect_line(lines, self._fields.get(name), Kind.LENGTH, old, new)
+        for name in ("thickness", "weld", "support_weld", "beam_weld"):
+            self._collect_line(lines, self._fields.get(name), Kind.THICKNESS, old, new)
+        self._collect_line(lines, self._fields.get("beam_area"), Kind.AREA, old, new)
+        self._collect_line(lines, self.bolt_diameter, Kind.LENGTH, old, new)
+        for edit in self._cope.values():
+            self._collect_line(lines, edit, Kind.LENGTH, old, new)
+        for row in range(self.cases.rowCount()):
+            for col in (2, 3):
+                item = self.cases.item(row, col)
+                if item is not None and item.text().strip():
+                    case_lines.append(
+                        (item, convert_text(item.text().strip(), Kind.FORCE, old, new)))
+        return lines, case_lines
+
+    @staticmethod
+    def _collect_line(lines: list[tuple[QLineEdit, str]], widget, kind: Kind,
+                      old, new) -> None:
+        if isinstance(widget, QLineEdit) and widget.text().strip():
+            lines.append((widget, convert_text(widget.text().strip(), kind, old, new)))
+
     def _fill(self, project: Project) -> None:
         info = project.info
         for key, edit in self._info.items():
             edit.setText(_text(getattr(info, key)))
         self.language.setCurrentText(info.language)
-        if isinstance(info.units, str):
-            self.units.setCurrentText(info.units)
-        else:
-            if self.units.findText(CUSTOM_UNITS) < 0:
-                self.units.addItem(CUSTOM_UNITS)
-            self.units.setCurrentText(CUSTOM_UNITS)
+        self._units = info.unit_system()
+        with QSignalBlocker(self.units):
+            if isinstance(info.units, str):
+                self.units.setCurrentText(info.units)
+            else:
+                if self.units.findText(CUSTOM_UNITS) < 0:
+                    self.units.addItem(CUSTOM_UNITS)
+                self.units.setCurrentText(CUSTOM_UNITS)
         for method, check in self._methods.items():
             check.setChecked(method in project.combinations.methods)
         sc = project.shear_connection

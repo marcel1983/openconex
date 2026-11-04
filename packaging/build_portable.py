@@ -21,6 +21,7 @@ PLATFORMS = ("windows-x64", "macos-arm64", "linux-x86_64")
 GUI_NAME = "OpenConex"
 CLI_BUILD_NAME = "openconex-cli"
 CLI_RELEASE_NAME = "openconex"
+BRANDING = ROOT / "src" / "openconex" / "data" / "branding"
 
 HIDDEN = (
     "PySide6.QtWebEngineWidgets",
@@ -38,7 +39,8 @@ def run(args: list[str], *, env: dict[str, str] | None = None,
                    timeout=timeout)
 
 
-def pyinstaller(name: str, entry: str, windowed: bool) -> None:
+def pyinstaller(name: str, entry: str, windowed: bool,
+                icon: Path | None = None) -> None:
     work = BUILD / f"pyinstaller-{name}"
     specs = BUILD / f"spec-{name}"
     work.mkdir(parents=True, exist_ok=True)
@@ -55,6 +57,8 @@ def pyinstaller(name: str, entry: str, windowed: bool) -> None:
         "--collect-data", "latex2mathml",
     ]
     args += [f"--hidden-import={module}" for module in HIDDEN]
+    if icon is not None:
+        args += ["--icon", str(icon)]
     args += ["--windowed" if windowed else "--console", entry]
     run(args)
 
@@ -78,6 +82,7 @@ def smoke(platform: str) -> None:
         raise RuntimeError(
             "GUI and CLI executables are identical; use distinct PyInstaller names")
     run([gui, "--version"], env=env, timeout=120)
+    run([gui, "--check-assets"], env=env, timeout=120)
     run([cli, "--version"], env=env, timeout=120)
     run([cli, "convert", "3/4 in", "thickness", "--to", "mm"],
         env=env, timeout=120)
@@ -132,14 +137,47 @@ def package(platform: str) -> Path:
     return archive
 
 
+def platform_icon() -> Path | None:
+    if sys.platform == "win32":
+        path = BRANDING / "icon.ico"
+        if not path.exists():
+            raise RuntimeError(f"missing Windows icon: {path}")
+        return path
+    if sys.platform == "darwin":
+        iconset = BUILD / "openconex.iconset"
+        shutil.rmtree(iconset, ignore_errors=True)
+        iconset.mkdir(parents=True)
+        mapping = {
+            "icon_16x16.png": 16,
+            "icon_16x16@2x.png": 32,
+            "icon_32x32.png": 32,
+            "icon_32x32@2x.png": 64,
+            "icon_128x128.png": 128,
+            "icon_128x128@2x.png": 256,
+            "icon_256x256.png": 256,
+            "icon_256x256@2x.png": 512,
+            "icon_512x512.png": 512,
+            "icon_512x512@2x.png": 1024,
+        }
+        for name, size in mapping.items():
+            shutil.copy2(BRANDING / f"icon-{size}.png", iconset / name)
+        output = BUILD / "openconex.icns"
+        output.unlink(missing_ok=True)
+        run(["iconutil", "-c", "icns", str(iconset), "-o", str(output)])
+        return output
+    return None
+
+
 def main() -> int:
     if len(sys.argv) != 2 or sys.argv[1] not in PLATFORMS:
         print(f"usage: {sys.argv[0]} {'|'.join(PLATFORMS)}", file=sys.stderr)
         return 2
     platform = sys.argv[1]
     DIST.mkdir(exist_ok=True)
-    pyinstaller(GUI_NAME, "packaging/gui_entry.py", windowed=True)
-    pyinstaller(CLI_BUILD_NAME, "packaging/cli_entry.py", windowed=False)
+    icon = platform_icon()
+    pyinstaller(GUI_NAME, "packaging/gui_entry.py", windowed=True, icon=icon)
+    pyinstaller(CLI_BUILD_NAME, "packaging/cli_entry.py", windowed=False,
+                icon=icon if sys.platform == "win32" else None)
     smoke(platform)
     package(platform)
     return 0
