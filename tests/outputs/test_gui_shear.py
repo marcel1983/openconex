@@ -13,6 +13,7 @@ pytest.importorskip("PySide6")
 from openconex.gui.app import MainWindow
 from openconex.gui.shear import TYPE_FIELDS, ShearWindow
 from openconex.io.project import load_project
+from openconex.units import Kind, to_internal
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
 
@@ -36,6 +37,25 @@ def test_round_trip_and_calculate(app, tmp_path):
     assert window.export("html", ".html", tmp_path / "x").exists()
     assert window.save_to(tmp_path / "copy.ocnx")
     assert load_project(tmp_path / "copy.ocnx").shear_connection == original.shear_connection
+
+
+def test_shear_window_converts_units(app):
+    window = ShearWindow(load_project(EXAMPLES / "shear_single_plate_coped.ocnx"))
+    assert window._fields["length"].text() == "11.5 in"
+    window.units.setCurrentText("SI_N_mm")
+    assert window._units.name == "SI_N_mm"
+    assert float(window._fields["length"].text()) == pytest.approx(
+        to_internal(11.5, "in", Kind.LENGTH), rel=1e-6)
+    assert float(window._cope["leh"].text()) == pytest.approx(
+        to_internal(2.25, "in", Kind.LENGTH), rel=1e-6)
+    assert float(window.cases.item(0, 2).text()) == pytest.approx(
+        to_internal(6.5, "kip", Kind.FORCE), rel=1e-5)
+    project = window.project_from_form()
+    assert project.info.units == "SI_N_mm"
+    assert project.quantity(project.shear_connection.length, Kind.LENGTH) == pytest.approx(
+        to_internal(11.5, "in", Kind.LENGTH), rel=1e-6)
+    assert window.calculate()
+    window.close()
 
 
 def test_fields_follow_the_type(app):

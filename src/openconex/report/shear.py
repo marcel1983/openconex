@@ -86,7 +86,7 @@ def shear_figures(project: Project, lang: str, units: UnitSystem) -> list:
 
     info = project.info
     options = ShearDrawing(title=info.name, number=info.number, revision=info.revision,
-                           date=info.date)
+                           date=info.date, bom=False)
     svg = dxf_to_svg(shear_dxf(project.shear_model(), units, lang, options))
     figures = [Figure("elevation", tr("report.figure_elevation", lang), svg,
                       png=svg_to_png(svg))]

@@ -10,8 +10,11 @@ length unit. Layers SC-*.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from ezdxf.enums import TextEntityAlignment
 
 from openconex.connections.shear.check import ShearConnection, ShearType
 from openconex.connections.shear.double_angle import DoubleAngle
@@ -23,7 +26,7 @@ from openconex.connections.shear.stiffened_seat import StiffenedSeat
 from openconex.i18n import tr
 from openconex.units import Kind, UnitSystem, format_value, to_internal
 
-from .base_plate import _Sheet
+from .base_plate import STEEL_DENSITY, _Sheet
 
 __all__ = ["LAYERS", "ShearDrawing", "ShearLayout", "shear_dxf", "shear_layout",
            "write_shear_dxf"]
@@ -47,6 +50,8 @@ class ShearDrawing:
     number: str = ""
     revision: str = "0"
     date: str = ""
+    bom: bool = True
+    """Include the bill of materials and weld schedule in the DXF."""
 
 
 @dataclass
@@ -164,6 +169,143 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
     return lay
 
 
+def _steel(s: _Sheet, stress: float) -> str:
+    return f"Fy={format_value(stress, Kind.STRESS, s.units, 4)}"
+
+
+def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ...]]:
+    el = conn.element
+    rows: list[tuple[str, ...]] = []
+
+    def add(qty: int | str, description: str, material: str = "",
+            mass: float | None = None) -> None:
+        rows.append((str(len(rows) + 1), str(qty), description, material,
+                     "" if mass is None else f"{mass:.1f} kg"))
+
+    def t(key: str, **kw) -> str:
+        return tr(f"drawing.{key}", lang, **kw)
+
+    if isinstance(el, (SinglePlate, ExtendedSinglePlate)):
+        lines = el.lines if isinstance(el, ExtendedSinglePlate) else 1
+        gage = el.gage if isinstance(el, ExtendedSinglePlate) else 0.0
+        width = el.a + el.leh + (lines - 1) * gage
+        add(1, f"{t('shear_plate')} {s.label(width)} x {s.label(el.length)} x "
+               f"{s.label(el.thickness)}", _steel(s, el.plate_Fy),
+            width * el.length * el.thickness * STEEL_DENSITY)
+    elif isinstance(el, EndPlate):
+        add(1, f"{t('end_plate')} {s.label(el.length)} x {s.label(el.thickness)}",
+            _steel(s, el.plate_Fy))
+    elif isinstance(el, DoubleAngle):
+        leg = el.beam_leg or el.weld_e or el.leh_beam
+        outstanding = el.weld_e or el.leh_support or leg
+        mass = None
+        if leg and outstanding:
+            mass = (2 * (leg + outstanding - el.thickness) * el.thickness * el.length
+                    * STEEL_DENSITY)
+        description = (f"2L {s.label(leg)} x {s.label(outstanding)} x "
+                       f"{s.label(el.thickness)} x {s.label(el.length)}"
+                       if leg and outstanding else
+                       f"2L {s.label(el.thickness)} x {s.label(el.length)}")
+        add(2, description, _steel(s, el.angle_Fy), mass)
+    elif isinstance(el, SeatedAngle):
+        vertical = el.vertical_leg or el.leg + 2 * INCH
+        mass = (el.leg + vertical - el.thickness) * el.thickness * el.length * STEEL_DENSITY
+        add(1, f"L {s.label(el.leg)} x {s.label(vertical)} x {s.label(el.thickness)}",
+            _steel(s, el.Fy), mass)
+    elif isinstance(el, StiffenedSeat):
+        add(1, f"{t('stiffener')} {s.label(el.width)} x {s.label(el.length)} x "
+               f"{s.label(el.thickness)}", _steel(s, el.stiffener_Fy),
+            el.width * el.length * el.thickness * STEEL_DENSITY)
+        add(1, f"{t('seat_plate')} {s.label(el.width)} x {s.label(3 * INCH / 8)}",
+            _steel(s, el.stiffener_Fy))
+
+    bolt = getattr(el, "bolt", None)
+    count = 0
+    if isinstance(el, (SinglePlate, ExtendedSinglePlate)):
+        count = el.rows * (el.lines if isinstance(el, ExtendedSinglePlate) else 1)
+    elif isinstance(el, EndPlate):
+        count = 2 * el.rows
+    elif isinstance(el, DoubleAngle):
+        count = (0 if el.beam_weld else el.rows) + (0 if el.support_weld else el.rows)
+    elif isinstance(el, SeatedAngle):
+        count = 0 if el.support_weld else el.bolts
+    if count and bolt is not None:
+        add(count, f"{t('bolts')} Ø {s.label(bolt.diameter)}", bolt.grade)
+    return rows
+
+
+def _weld_sizes(conn: ShearConnection) -> list[float]:
+    el = conn.element
+    sizes = (getattr(el, "weld", 0.0), getattr(el, "support_weld", 0.0),
+             getattr(el, "beam_weld", 0.0))
+    return [value for value in dict.fromkeys(sizes) if value > 0]
+
+
+def _weld_length(lay: ShearLayout) -> float:
+    return sum(math.hypot(x1 - x0, y1 - y0) for x0, y0, x1, y1 in lay.welds)
+
+
+def _weld_symbol(s: _Sheet, x: float, y: float, h: float) -> None:
+    attrs = {"layer": "SC-SOLDADURA", "lineweight": 70}
+    s.msp.add_line((x, y), (x + 4 * h, y), dxfattribs=attrs)
+    s.msp.add_line((x + h, y), (x + 1.8 * h, y + h), dxfattribs=attrs)
+    s.msp.add_line((x + 1.8 * h, y + h), (x + 2.6 * h, y), dxfattribs=attrs)
+    s.msp.add_line((x + 1.8 * h, y), (x + 1.8 * h, y + h), dxfattribs=attrs)
+    s.text("w", x + 0.45 * h, y + 0.25 * h, 0.55 * h, layer="SC-TEXTO")
+
+
+def _draw_bom(s: _Sheet, conn: ShearConnection, lay: ShearLayout, x: float, y: float,
+              lang: str) -> None:
+    def t(key: str, **kw) -> str:
+        return tr(f"drawing.{key}", lang, **kw)
+
+    h = s.text_h
+    rows = [
+        (t("item"), t("qty"), t("description"), t("material"), t("weight")),
+        *_bom_rows(conn, s, lang),
+    ]
+    widths = (3, 3, 36, 16, 8)
+    s.text(t("bom"), x, y + 2 * h, 1.2 * h, layer="SC-TEXTO")
+    for r, row in enumerate(rows):
+        top = y - r * 2 * h
+        cursor = x
+        for col, (width, cell) in enumerate(zip(widths, row, strict=True)):
+            s.rect(cursor, top - 2 * h, cursor + width * h, top, "SC-TEXTO")
+            if col in (0, 1, 4):
+                s.text(cell, cursor + width * h - 0.25 * h, top - 1.55 * h,
+                       0.65 * h, layer="SC-TEXTO", align=TextEntityAlignment.RIGHT)
+            else:
+                s.text(cell, cursor + 0.25 * h, top - 1.55 * h, 0.65 * h,
+                       layer="SC-TEXTO")
+            cursor += width * h
+
+    note_y = y - len(rows) * 2 * h - 1.4 * h
+    s.text(t("note_units", unit=s.unit), x, note_y, 0.75 * h, layer="SC-TEXTO")
+
+    sizes = _weld_sizes(conn)
+    if not sizes:
+        return
+    wy = note_y - 2.4 * h
+    s.text(t("weld_schedule"), x, wy, 1.1 * h, layer="SC-TEXTO")
+    weld_widths = (6, 9, 8, 9)
+    header = (t("symbol"), t("type"), t("size"), t("length"))
+    for row_index, row in enumerate([header] + [
+            ("", t("fillet_weld"), s.label(size),
+             s.label(_weld_length(lay)) if len(sizes) == 1 else "—") for size in sizes]):
+        top = wy - (row_index + 1) * 2 * h
+        cursor = x
+        for width, cell in zip(weld_widths, row, strict=True):
+            s.rect(cursor, top - 2 * h, cursor + width * h, top, "SC-TEXTO")
+            if row_index and width == 6:
+                _weld_symbol(s, cursor + 0.5 * h, top - 1.45 * h, 0.55 * h)
+            else:
+                s.text(cell, cursor + 0.25 * h, top - 1.55 * h, 0.65 * h,
+                       layer="SC-TEXTO")
+            cursor += width * h
+    s.text(t("weld_note"), x, wy - (len(sizes) + 2) * 2 * h, 0.7 * h,
+           layer="SC-TEXTO")
+
+
 def _draw(s: _Sheet, conn: ShearConnection, lay: ShearLayout, opt: ShearDrawing,
           lang: str) -> None:
     u = s.u
@@ -236,6 +378,9 @@ def _draw(s: _Sheet, conn: ShearConnection, lay: ShearLayout, opt: ShearDrawing,
     title = " · ".join(v for v in (opt.title, opt.number, f"Rev. {opt.revision}", opt.date) if v)
     if title:
         s.text(title, -st, y - s.text_h, height=1.2 * s.text_h, layer="SC-TEXTO")
+
+    if opt.bom:
+        _draw_bom(s, conn, lay, x0 + xl + 6 * s.text_h, hi, lang)
 
 
 def _description(conn: ShearConnection, s: _Sheet, lang: str) -> list[str]:

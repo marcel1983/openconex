@@ -46,6 +46,18 @@ def test_coped_double_angle_example_matches_ii_a_4():
     assert results["double_angle.bolts_beam"].demand == pytest.approx(kip(60))
 
 
+def test_single_plate_coped_example_matches_ii_a_18():
+    results = governing(load_project(EXAMPLES / "shear_single_plate_coped.ocnx"))
+    bolts = results["single_plate.bolts"]
+    assert bolts.demand == pytest.approx(kip(39.8), rel=0.01)
+    assert bolts.capacity == pytest.approx(kip(58.5), rel=0.01)
+    assert results["single_plate.block_shear"].capacity == pytest.approx(kip(65.3),
+                                                                        rel=0.01)
+    assert results["coped_beam.block_shear"].capacity == pytest.approx(kip(88.2),
+                                                                      rel=0.01)
+    assert all(result.status.value == "ok" for result in results.values())
+
+
 def _data(**changes):
     data = json.loads((EXAMPLES / "shear_single_plate.ocnx").read_text(encoding="utf-8"))
     data["shear_connection"].update(changes.pop("connection", {}))
@@ -104,6 +116,10 @@ def test_command_writes_the_outputs(tmp_path, capsys):
         assert out.with_suffix(suffix).exists()
     doc = ezdxf.readfile(out.with_suffix(".dxf"))
     assert len(doc.modelspace().query("CIRCLE")) == 4
+    texts = [entity.dxf.text for entity in doc.modelspace().query("TEXT")]
+    assert any("LISTA DE MATERIALES" in text for text in texts)
+    assert any("Placa de corte" in text for text in texts)
+    assert any("SOLDADURAS" in text for text in texts)
     assert "single_plate.bolts" not in capsys.readouterr().err
 
 

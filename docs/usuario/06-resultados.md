@@ -38,7 +38,7 @@ Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `
 
 ### Plano de una conexión de corte
 
-`openconex shear --dxf` dibuja la elevación vista hacia el alma de la viga: apoyo (ala o alma), viga con sus destajes, placa o ángulos, pernos, soldaduras, cotas principales y notas con el tipo, los perfiles, los pernos y las soldaduras. Es un esquema para revisión, sin lista de materiales. Capas: `SC-VIGA`, `SC-APOYO`, `SC-PLACA`, `SC-PERNO`, `SC-SOLDADURA`, `SC-COTAS` y `SC-TEXTO`. La memoria de una conexión de corte incluye esta elevación y el isométrico del modelo 3D, y en los datos de carga muestra `V` y `P`.
+`openconex shear --dxf` dibuja la elevación vista hacia el alma de la viga: apoyo (ala o alma), viga con sus destajes, placa o ángulos, pernos, soldaduras, cotas principales, lista de materiales y cuadro de soldaduras con símbolo de filete AWS A2.4. Capas: `SC-VIGA`, `SC-APOYO`, `SC-PLACA`, `SC-PERNO`, `SC-SOLDADURA`, `SC-COTAS` y `SC-TEXTO`. La memoria de una conexión de corte incluye esta elevación y el isométrico del modelo 3D, y en los datos de carga muestra `V` y `P`.
 
 ## Modelo 3D (`--step`, `--stl`)
 

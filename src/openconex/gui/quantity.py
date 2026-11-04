@@ -79,6 +79,30 @@ def _convert_optional_layer(layer: object | None, old: UnitSystem,
     _convert_field(layer, "depth", Kind.LENGTH, old, new)
 
 
+def _convert_shear_connection(sc, old: UnitSystem, new: UnitSystem) -> None:
+    """Convert the quantities of a beam-end shear connection in place."""
+    if isinstance(sc.beam, WSectionInput):
+        sc.beam = convert_section(sc.beam, old, new)
+    if isinstance(sc.support, WSectionInput):
+        sc.support = convert_section(sc.support, old, new)
+    _convert_field(sc.bolt, "diameter", Kind.LENGTH, old, new)
+    for field, kind in (
+            ("spacing", Kind.LENGTH), ("gage", Kind.LENGTH),
+            ("length", Kind.LENGTH), ("thickness", Kind.THICKNESS),
+            ("lev", Kind.LENGTH), ("leh", Kind.LENGTH),
+            ("leh_support", Kind.LENGTH), ("a", Kind.LENGTH),
+            ("weld", Kind.THICKNESS), ("support_weld", Kind.THICKNESS),
+            ("beam_weld", Kind.THICKNESS), ("beam_leg", Kind.LENGTH),
+            ("outstanding_leg", Kind.LENGTH), ("beam_leh", Kind.LENGTH),
+            ("leg", Kind.LENGTH), ("vertical_leg", Kind.LENGTH),
+            ("bearing_length", Kind.LENGTH), ("width", Kind.LENGTH),
+            ("beam_area", Kind.AREA)):
+        _convert_field(sc, field, kind, old, new)
+    if sc.cope is not None:
+        for field in ("c", "dc", "dc_bottom", "setback", "lev", "leh"):
+            _convert_field(sc.cope, field, Kind.LENGTH, old, new)
+
+
 def convert_project(project: Project, old: UnitSystem, new: UnitSystem) -> Project:
     """Return a copy of ``project`` with every stored quantity in ``new`` units.
 
@@ -94,7 +118,17 @@ def convert_project(project: Project, old: UnitSystem, new: UnitSystem) -> Proje
                                      f"{new.unit(Kind.STRESS)}")
 
     data.sections = [convert_section(section, old, new) for section in data.sections]
+    if data.shear_connection is not None:
+        _convert_shear_connection(data.shear_connection, old, new)
     bp = data.base_plate
+    if bp is None:
+        for case in data.cases:
+            for field, kind in (("P", Kind.FORCE), ("V", Kind.FORCE),
+                                ("V_weak", Kind.FORCE), ("M", Kind.MOMENT),
+                                ("M_weak", Kind.MOMENT)):
+                _convert_field(case, field, kind, old, new)
+        data.info.units = new.name if new.name in PRESETS else new
+        return data
     if not isinstance(bp.column, str):
         bp.column = convert_section(bp.column, old, new)
 

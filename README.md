@@ -3,6 +3,12 @@
 Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC.
 *Free (GPL-3.0) software for the design of steel connections to AISC.*
 
+<p align="center">
+  <a href="https://github.com/marcel1983/openconex/releases/latest">
+    <img src="branding/aisc/banner-github.png" alt="OpenConex — conexiones de acero AISC" width="100%">
+  </a>
+</p>
+
 > **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19) y genera memoria, planos DXF y modelo 3D desde la línea de comandos o desde una interfaz gráfica inicial. Ver el [plan de desarrollo](docs/PLAN.md).
 
 ## Alcance previsto

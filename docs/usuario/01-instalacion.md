@@ -8,9 +8,9 @@ Los releases de GitHub incluyen un paquete portable por plataforma:
 
 | Plataforma | Archivo |
 |---|---|
-| Windows x64 | `OpenConex-0.4.1-windows-x64.zip` |
-| macOS ARM64 | `OpenConex-0.4.1-macos-arm64.zip` |
-| Linux x86_64 | `OpenConex-0.4.1-linux-x86_64.zip` |
+| Windows x64 | `OpenConex-0.4.2-windows-x64.zip` |
+| macOS ARM64 | `OpenConex-0.4.2-macos-arm64.zip` |
+| Linux x86_64 | `OpenConex-0.4.2-linux-x86_64.zip` |
 
 Descomprima el archivo y ejecute:
 
