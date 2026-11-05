@@ -46,6 +46,8 @@ def test_dg1_4_7_15_end_to_end():
         pytest.approx(79.2, rel=0.01)
     assert from_internal(r["anchor.reinforcement_development"].demand,
                          Kind.LENGTH, "in") == pytest.approx(9.71, rel=0.01)
+    assert from_internal(r["anchor.reinforcement_straight_development"].demand,
+                         Kind.LENGTH, "in") == pytest.approx(15.2, rel=0.01)
     assert from_internal(r["anchor.reinforcement_embedment"].demand,
                          Kind.LENGTH, "in") == pytest.approx(13.6, rel=0.01)
     assert "anchor.concrete_breakout_tension" not in r

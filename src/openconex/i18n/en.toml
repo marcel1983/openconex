@@ -162,7 +162,8 @@ interaction = "Tension and shear interaction in anchors"
 shear_lug_bearing = "Concrete bearing on shear lug"
 shear_lug_breakout = "Concrete breakout of shear lug"
 reinforcement = "Anchor reinforcement in tension"
-reinforcement_development = "Anchor reinforcement development"
+reinforcement_development = "Anchor reinforcement hook development"
+reinforcement_straight_development = "Anchor reinforcement straight development"
 reinforcement_embedment = "Required embedment for anchor reinforcement"
 
 [check.prying]

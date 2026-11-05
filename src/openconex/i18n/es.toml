@@ -162,7 +162,8 @@ interaction = "Interacción tracción y corte en anclajes"
 shear_lug_bearing = "Aplastamiento del concreto en la llave de corte"
 shear_lug_breakout = "Arrancamiento del concreto por la llave de corte"
 reinforcement = "Refuerzo de anclaje en tracción"
-reinforcement_development = "Desarrollo del refuerzo de anclaje"
+reinforcement_development = "Desarrollo del gancho del refuerzo de anclaje"
+reinforcement_straight_development = "Desarrollo recto del refuerzo de anclaje"
 reinforcement_embedment = "Empotramiento requerido para el refuerzo de anclaje"
 
 [check.prying]

@@ -178,7 +178,7 @@ Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensio
 
 ### Refuerzo de anclaje (`reinforcement`)
 
-Cuando el arrancamiento del concreto en tracción no alcanza, se puede definir un refuerzo con gancho desarrollado a ambos lados de la superficie de falla (ACI 318-19 §17.5.2.1, DG1 4.7-15):
+Cuando el arrancamiento del concreto en tracción no alcanza, se puede definir un refuerzo desarrollado a ambos lados de la superficie de falla: gancho arriba y barra recta abajo (ACI 318-19 §17.5.2.1, DG1 4.7-15):
 
 ```json
 "reinforcement": {
@@ -198,11 +198,11 @@ Cuando el arrancamiento del concreto en tracción no alcanza, se puede definir u
 | `area` | (obligatorio) | Área total de refuerzo. |
 | `fy` | (obligatorio) | Fluencia del refuerzo. |
 | `db` | (obligatorio) | Diámetro de la barra. |
-| `clear_cover` | `"2 in"` | Recubrimiento libre usado en el empotramiento requerido. |
+| `clear_cover` | `"2 in"` | Recubrimiento libre; se usa en el empotramiento y en el desarrollo recto. |
 | `anchor_to_bar` | (obligatorio) | Distancia horizontal del anclaje a la barra. |
-| `le` | (obligatorio) | Longitud de desarrollo disponible. |
+| `le` | (obligatorio) | Longitud de desarrollo recta disponible bajo el plano de falla. |
 
-Si se define refuerzo, la verificación de arrancamiento del concreto se sustituye por las comprobaciones de capacidad, desarrollo y empotramiento del refuerzo.
+Si se define refuerzo, la verificación de arrancamiento del concreto se sustituye por las comprobaciones de capacidad, desarrollo del gancho, desarrollo recto y empotramiento del refuerzo.
 
 ### Base sísmica débil (`weak_base`)
 

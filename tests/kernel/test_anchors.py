@@ -137,18 +137,32 @@ def test_dg1_4_7_15_hooked_bar_geometry():
     assert development.psi_c == pytest.approx(0.867, rel=0.01)
 
 
+def test_dg1_4_7_15_straight_bar_geometry():
+    development = A.straight_bar_ld(ksi(60), ksi(4), inch(0.75), inch(4.0))
+    assert from_internal(development.ld, Kind.LENGTH, "in") == pytest.approx(17.1, rel=0.01)
+    assert from_internal(development.ld_min, Kind.LENGTH, "in") == pytest.approx(12.0)
+    assert development.confinement == pytest.approx(2.5)
+    assert development.psi_s == pytest.approx(0.8)
+
+
 def test_dg1_4_7_15_reinforcement_design():
     checks = A.anchor_reinforcement_design(
         to_internal(70, "kip", Kind.FORCE), ksi(60), to_internal(1.76, "in**2", Kind.AREA),
         inch(0.75), inch(2.0), inch(2.83), ksi(4), inch(14), inch(15.2), LRFD)
     by_id = {check.id: check for check in checks}
     assert set(by_id) == {"anchor.reinforcement", "anchor.reinforcement_development",
+                          "anchor.reinforcement_straight_development",
                           "anchor.reinforcement_embedment"}
     assert all(check.status == "ok" for check in checks)
     capacity = by_id["anchor.reinforcement"]
     assert in2(step(capacity, "A_{s,req}")) == pytest.approx(1.56, rel=0.01)
     assert in2(step(capacity, "A_s")) == pytest.approx(1.76, rel=0.01)
     assert kips(capacity.capacity) == pytest.approx(79.2, rel=0.01)
+    straight = by_id["anchor.reinforcement_straight_development"]
+    assert from_internal(straight.demand, Kind.LENGTH, "in") == pytest.approx(15.2, rel=0.01)
+    assert from_internal(straight.capacity, Kind.LENGTH, "in") == pytest.approx(15.2, rel=0.01)
+    hooked = by_id["anchor.reinforcement_development"]
+    assert from_internal(hooked.capacity, Kind.LENGTH, "in") == pytest.approx(10.11, rel=0.01)
 
 
 def test_dg1_6_4_1_seismic():
