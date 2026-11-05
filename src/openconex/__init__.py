@@ -2,4 +2,4 @@
 # Copyright (C) 2026 The OpenConex contributors
 """OpenConex — free software for the design of steel connections to AISC."""
 
-__version__ = "0.4.2"
+__version__ = "0.4.3"

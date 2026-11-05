@@ -8,9 +8,9 @@ Los releases de GitHub incluyen un paquete portable por plataforma:
 
 | Plataforma | Archivo |
 |---|---|
-| Windows x64 | `OpenConex-0.4.2-windows-x64.zip` |
-| macOS ARM64 | `OpenConex-0.4.2-macos-arm64.zip` |
-| Linux x86_64 | `OpenConex-0.4.2-linux-x86_64.zip` |
+| Windows x64 | `OpenConex-<versión>-windows-x64.zip` |
+| macOS ARM64 | `OpenConex-<versión>-macos-arm64.zip` |
+| Linux x86_64 | `OpenConex-<versión>-linux-x86_64.zip` |
 
 Descomprima el archivo y ejecute:
 
@@ -19,6 +19,8 @@ Descomprima el archivo y ejecute:
 - **Linux:** `OpenConex/OpenConex` (GUI) o `openconex-cli/openconex` (CLI).
 
 No requieren Python instalado. Incluyen Qt, el visor 3D, la exportación PDF y el catálogo AISC. Los binarios no están firmados en esta fase: Windows SmartScreen y macOS Gatekeeper pueden pedir confirmación. Cada release publica `SHA256SUMS.txt` para verificar las descargas.
+
+En Linux, el ZIP usa enlaces simbólicos para no repetir las bibliotecas de Qt y OpenCASCADE. Extráigalo con una herramienta que los conserve (`unzip`, `tar` o el gestor de archivos del escritorio) y mantenga juntas las carpetas `OpenConex` y `openconex-cli`.
 
 ## Desde el código fuente
 
@@ -50,7 +52,7 @@ Eso basta para calcular y generar la memoria HTML y Word, los planos DXF y la im
 
 Se pueden combinar: `pip install -e ".[pdf,3d]"`.
 
-En Linux sin escritorio, la memoria PDF necesita las bibliotecas de sistema de Qt (por ejemplo `libegl1`, `libgl1`, `libxkbcommon0`, `libnss3`).
+En Linux, la GUI y la memoria PDF necesitan bibliotecas de sistema de Qt. En una instalación mínima instale, por ejemplo, `libegl1`, `libgl1`, `libxkbcommon0`, `libnss3`, `libxcb-cursor0`, `libxcomposite1`, `libxdamage1`, `libxrandr2`, `libxtst6`, `libxkbfile1`, `libgbm1` y `libasound2`.
 
 ## Comprobar la instalación
 
