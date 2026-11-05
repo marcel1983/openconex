@@ -27,6 +27,9 @@ git commit -s -m "mensaje"
 - **Pruebas:** `python -m pytest`. Toda verificación nueva necesita al menos un ejemplo de referencia.
 - **Documentación:** se actualiza en el mismo pull request que el cambio (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`). La guía está en [docs/tecnico/08-mantener-documentacion.md](docs/tecnico/08-mantener-documentacion.md); `tests/test_docs.py` falla si algo queda sin documentar.
 - **Estilo:** `ruff check .`
+- **Tipos:** `python -m mypy` revisa de forma gradual `units.py`, `core/checks.py` y `core/loads.py`; al añadir módulos, amplíe `[tool.mypy]` en `pyproject.toml`.
+- **Cobertura:** `python -m pytest --cov=openconex --cov-fail-under=55`; el umbral está en la CI y debe subir cuando se añadan pruebas.
+- **Dependencias:** Dependabot abre PR semanales para `pip` y GitHub Actions; revise y fusione solo con la CI en verde.
 
 ### Pull requests encadenados
 Un PR encadenado es uno cuya base es la rama de otro PR, no `main`.
@@ -64,4 +67,4 @@ Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
 - **Units:** the engine works in N, mm and MPa floats; convert only at the boundaries via `openconex.units`.
 - **Checks** return a `CheckResult` with a full trace and code clause.
 - **Documentation** is updated in the same pull request as the change (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`); `tests/test_docs.py` fails when something is left undocumented.
-- Run `python -m pytest` and `ruff check .` before opening a pull request.
+- Run `python -m pytest`, `python -m mypy`, `ruff check .` and `python -m pytest --cov=openconex --cov-fail-under=55` before opening a pull request. Dependabot opens weekly PRs for `pip` and GitHub Actions.
