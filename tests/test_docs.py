@@ -56,7 +56,8 @@ MODELS = [project.ProjectInfo, project.MaterialInput, project.BasePlateInput,
           project.WeakBaseInput, project.EmbeddedBaseInput,
           project.EmbeddedRebarInput, project.LoadCaseInput,
           project.CombinationOptions, project.CustomCombinationInput,
-          project.ShearConnectionInput, project.CopeInput, project.BoltInput]
+          project.ShearConnectionInput, project.CopeInput, project.BoltInput,
+          project.DoublerPlateInput, project.LongitudinalStiffenerInput]
 
 
 @pytest.mark.parametrize("model", MODELS, ids=lambda m: m.__name__)

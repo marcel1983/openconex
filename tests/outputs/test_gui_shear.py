@@ -2,6 +2,7 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Shear connection window of the desktop interface."""
 
+import json
 import os
 from pathlib import Path
 
@@ -37,6 +38,16 @@ def test_round_trip_and_calculate(app, tmp_path):
     assert window.export("html", ".html", tmp_path / "x").exists()
     assert window.save_to(tmp_path / "copy.ocnx")
     assert load_project(tmp_path / "copy.ocnx").shear_connection == original.shear_connection
+
+
+def test_cope_reinforcement_is_preserved(app):
+    data = json.loads((EXAMPLES / "shear_double_angle_coped.ocnx").read_text(
+        encoding="utf-8"))
+    data["shear_connection"]["cope"]["doubler"] = {
+        "thickness": "1/4 in", "depth": "6.5 in", "gap": "0.5 in", "weld": "1/4 in"}
+    window = ShearWindow(Project.model_validate(data))
+    project = window.project_from_form()
+    assert project.shear_connection.cope.doubler is not None
 
 
 def test_shear_window_converts_units(app):

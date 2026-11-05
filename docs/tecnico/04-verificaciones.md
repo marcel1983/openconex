@@ -117,6 +117,23 @@ Extremo de viga destajado (Manual AISC Parte 9). La reacción actúa a e = c + h
 | `coped_beam.shear_rupture` | Rotura por corte, descontando los agujeros si los hay | §J4.2(b) |
 | `coped_beam.block_shear` | Bloque de corte del alma apernada; l_eh menos la tolerancia de longitud (¼ in); U_bs = 1 con una línea y 0,5 con dos | §J4.3 |
 
+### Refuerzo del destaje (`connections/shear/cope_reinforcement.py`)
+
+Con placa doble o rigidizador longitudinal se sustituye la comprobación de flexión de la sección sin reforzar por la de la sección reforzada (Manual Parte 9, ejemplo II.A-6 C y D). Las propiedades se calculan como la T del destaje más la placa, sin filetes.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `coped_beam.doubler_flexure` | R_n = M_n/e con S_net y Z_net de la sección con placa doble; M_n por la Ec. 9-7 | Manual Ec. 9-7, 9-9 |
+| `coped_beam.doubler_shear_yielding` | Fluencia por corte del alma más la placa | §J4.2(a) |
+| `coped_beam.doubler_shear_rupture` | Rotura por corte del alma más la placa | §J4.2(b) |
+| `coped_beam.doubler_compact` | d_p/t_p ≤ 1,12√(E/F_y) | Tabla B4.1b |
+| `coped_beam.doubler_weld` | Flujo de corte RQ/I en dos soldaduras | §J2.4; Manual Ec. 9-6 |
+| `coped_beam.stiffener_flexure` | R_n = M_n/e con la sección reforzada; M_n por §F4 con R_pc = 1,0 | §F4; Manual Ec. 9-9 |
+| `coped_beam.stiffener_compact` | b/t del rigidizador ≤ 0,38√(E/F_y) | Tabla B4.1b, caso 11 |
+| `coped_beam.stiffener_web_compact` | h_c/t_w ≤ 5,70√(E/F_y) | Tabla B4.1b, caso 16 |
+| `coped_beam.stiffener_weld` | Flujo de corte y transferencia de fuerza en dos soldaduras | §J2.4 |
+| `coped_beam.stiffener_web_shear` | Rotura por corte del alma en la longitud del rigidizador | §J4.2(b) |
+
 ## Placa simple extendida (`connections/shear/extended_single_plate.py`)
 
 Placa soldada al apoyo (por ejemplo, al alma de una columna) con una o dos líneas de pernos lejos de la soldadura (Manual AISC Parte 10). Momento M = R·a en la primera línea de pernos. No se verifica el desgarro del alma de la viga, que se supone protegido por el ala superior.

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from openconex.connections.shear.check import ShearConnection, ShearType
+from openconex.connections.shear.cope_reinforcement import DoublerPlate, LongitudinalStiffener
 from openconex.connections.shear.coped_beam import CopedBeam
 from openconex.connections.shear.double_angle import DoubleAngle, _hole_net
 from openconex.connections.shear.double_angle_axial import AxialBeam
@@ -28,7 +29,8 @@ from openconex.units import Kind
 if TYPE_CHECKING:
     from openconex.io.project import Project, WSectionInput
 
-__all__ = ["REQUIRED", "BoltInput", "CopeInput", "ShearConnectionInput", "shear_model"]
+__all__ = ["REQUIRED", "BoltInput", "CopeInput", "DoublerPlateInput",
+           "LongitudinalStiffenerInput", "ShearConnectionInput", "shear_model"]
 
 Quantity = str | float
 
@@ -44,6 +46,27 @@ class BoltInput(_Input):
     hole: HoleType = HoleType.STANDARD
 
 
+class DoublerPlateInput(_Input):
+    """Doubler plate welded to the coped web (AISC II.A-6 C)."""
+
+    thickness: Quantity
+    depth: Quantity
+    gap: Quantity = "0.5 in"
+    """Distance from the cope line to the near face of the plate."""
+    weld: Quantity = "3/16 in"
+    """Fillet weld size on each side of the plate."""
+
+
+class LongitudinalStiffenerInput(_Input):
+    """Longitudinal stiffener welded along the cope line (AISC II.A-6 D)."""
+
+    width: Quantity
+    thickness: Quantity
+    weld: Quantity = "1/4 in"
+    length: Quantity | None = None
+    """Length along the beam; default ``c + dc``."""
+
+
 class CopeInput(_Input):
     c: Quantity
     """Cope length."""
@@ -56,6 +79,8 @@ class CopeInput(_Input):
     """Top of the coped web to the top bolt; with ``leh`` enables the web block shear."""
     leh: Quantity | None = None
     """End of the beam to the bolt line nearest to it."""
+    doubler: DoublerPlateInput | None = None
+    stiffener: LongitudinalStiffenerInput | None = None
 
 
 REQUIRED: dict[ShearType, tuple[str, ...]] = {
@@ -266,6 +291,20 @@ def shear_model(project: Project) -> ShearConnection:
         bolted = kind in {ShearType.SINGLE_PLATE, ShearType.EXTENDED_SINGLE_PLATE} or (
             kind is ShearType.DOUBLE_ANGLE and sc.beam_weld is None)
         block = bolted and sc.cope.lev is not None and sc.cope.leh is not None
+        doubler = None
+        if sc.cope.doubler is not None:
+            doubler = DoublerPlate(
+                thickness=q(sc.cope.doubler.thickness, T),
+                depth=q(sc.cope.doubler.depth), gap=q(sc.cope.doubler.gap),
+                weld=q(sc.cope.doubler.weld, T))
+        stiffener = None
+        if sc.cope.stiffener is not None:
+            stiffener = LongitudinalStiffener(
+                width=q(sc.cope.stiffener.width),
+                thickness=q(sc.cope.stiffener.thickness, T),
+                weld=q(sc.cope.stiffener.weld, T),
+                length=None if sc.cope.stiffener.length is None
+                else q(sc.cope.stiffener.length))
         cope = CopedBeam(
             d=beam.d, tw=beam.tw, bf=beam.bf, tf=beam.tf, Fy=bm.Fy, Fu=bm.Fu,
             c=q(sc.cope.c), dc=q(sc.cope.dc), dc_bottom=q(sc.cope.dc_bottom),
@@ -275,7 +314,8 @@ def shear_model(project: Project) -> ShearConnection:
             spacing=q(sc.spacing), lev=q(sc.cope.lev) if block else 0.0,
             leh=q(sc.cope.leh) if block else 0.0,
             gage=q(sc.gage) if kind is ShearType.EXTENDED_SINGLE_PLATE else 0.0,
-            hole=_hole_net(bolt) if bolted else 0.0)
+            hole=_hole_net(bolt) if bolted else 0.0,
+            doubler=doubler, stiffener=stiffener)
     return ShearConnection(
         type=kind, element=el, beam=beam, support=support,
         support_element=sc.support_element, cope=cope,

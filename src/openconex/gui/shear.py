@@ -76,6 +76,7 @@ TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
     ShearType.STIFFENED_SEAT: ("width", "length", "thickness", "weld", "two_sided"),
 }
 COPE_FIELDS = ("c", "dc", "dc_bottom", "setback", "lev", "leh")
+COPE_HIDDEN = ("doubler", "stiffener")
 # Advanced seat details kept in the project but not shown in the form; preserved on save.
 HIDDEN_FIELDS = ("seat_plate_width", "seat_plate_thickness", "seat_plate_weld",
                  "top_angle_leg", "top_angle_thickness", "top_angle_length",
@@ -459,8 +460,15 @@ class ShearWindow(QMainWindow):
                 if value is not None:
                     connection.setdefault(name, value)
         if self.cope_group.isChecked():
-            connection["cope"] = {name: edit.text().strip() for name, edit in self._cope.items()
-                                  if edit.text().strip()}
+            cope = {name: edit.text().strip() for name, edit in self._cope.items()
+                    if edit.text().strip()}
+            original = (self.project.shear_connection.cope
+                        if self.project.shear_connection is not None else None)
+            for name in COPE_HIDDEN:
+                value = getattr(original, name, None) if original is not None else None
+                if value is not None:
+                    cope[name] = value.model_dump()
+            connection["cope"] = cope
         cases = []
         for row in range(self.cases.rowCount()):
             name = (self.cases.item(row, 0) or QTableWidgetItem("")).text().strip()
