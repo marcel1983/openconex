@@ -19,7 +19,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Presión triangular | `plate.triangular_bending` | B.2-1, B.2-2 | Integrada en eje fuerte |
 | Área efectiva | `plate.effective_area` | B.3-1 | Integrada en compresión concéntrica de perfiles I |
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
-| Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, desarrollo y empotramiento |
+| Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, gancho, desarrollo recto y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
 | Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I con refuerzo horizontal y placa embebida opcionales |
 | Llave de corte en DXF/3D | - | 4.7-5 | Integrada en DXF y 3D |
@@ -43,7 +43,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 
 1. **Fase 1 (hecha):** presión triangular y área efectiva en el eje fuerte.
 2. **Fase 2:** flexión de placa por anclajes; decidir si `a` se deriva o se pide explícitamente.
-3. **Fase 3 (hecha):** refuerzo de anclaje; capacidad, desarrollo y empotramiento.
+3. **Fase 3 (hecha):** refuerzo de anclaje; capacidad, gancho, desarrollo recto y empotramiento.
 4. **Fase 4 (parcial):** llave de corte integrada en DXF/3D; falta la flexión local si hay método validado.
 5. **Fase 5 (hecha):** bases sísmicas débiles y empotradas, en dos PRs separados.
 6. **Fase 6 (hecha):** HSS con momento declarado como limitación explícita.

@@ -18,7 +18,7 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 | 4.7-10, 4.7-11 | compresión con momento pequeño y grande |
 | 4.7-12, 4.7-13 | levantamiento con momento grande y pequeño |
 | 4.7-14 | flexión biaxial (también `tests/base_plate/test_biaxial.py`: interacción 0,988) |
-| 4.7-15 | refuerzo de anclaje |
+| 4.7-15 | refuerzo de anclaje (gancho l_dh = 9,71 in; recto l_d = 17,1 in; l_e = 15,2 in) |
 | 5.3-1 | base empotrada tipo I (también `tests/base_plate/test_embedded_base.py`, con la verificación completa) |
 | 6.4-1 | base débil con anclajes dúctiles (sísmica) |
 | B.2-1, B.2-2, B.3-1 | distribución triangular y área efectiva (Apéndice B) |

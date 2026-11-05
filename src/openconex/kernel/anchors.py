@@ -25,6 +25,7 @@ __all__ = [
     "SEISMIC_FACTOR",
     "Edges",
     "HookedBarDevelopment",
+    "StraightBarDevelopment",
     "anchor_reinforcement",
     "anchor_reinforcement_design",
     "breakout_shear",
@@ -41,6 +42,7 @@ __all__ = [
     "side_face_blowout",
     "steel_shear",
     "steel_tension",
+    "straight_bar_ld",
     "tensile_stress_area",
     "tension_shear_interaction",
     "threads_per_inch",
@@ -412,6 +414,49 @@ def hooked_bar_ldh(fy: float, fc: float, db: float) -> HookedBarDevelopment:
                                 to_internal(ldh_min_in, "in", Kind.LENGTH), psi_c)
 
 
+@dataclass(frozen=True)
+class StraightBarDevelopment:
+    ld: float
+    """Required straight development length [mm]."""
+    ld_min: float
+    """Minimum straight development length, 12 in [mm]."""
+    confinement: float
+    """(cb + Ktr)/db, capped at 2.5."""
+    psi_s: float
+    psi_g: float
+
+
+def straight_bar_ld(fy: float, fc: float, db: float, cb: float, *,
+                    ktr: float = 0.0, psi_t: float = 1.0, psi_e: float = 1.0,
+                    psi_s: float | None = None, psi_g: float | None = None,
+                    lambda_: float = 1.0) -> StraightBarDevelopment:
+    """Straight deformed-bar development length, ACI 318-19 Eq. 25.4.2.4a.
+
+    ``cb`` is the smaller of the side cover and half the clear spacing, measured
+    to the bar center. ``Ktr`` defaults to 0 because transverse reinforcement is
+    not defined. The confinement term is capped at 2.5 and ``sqrt(f'c)`` at
+    100 psi (ACI 318-19 §25.4.1.4). The minimum length is 12 in.
+    """
+    if db <= 0 or cb <= 0:
+        raise ValueError("straight_bar_ld needs positive db and cb")
+    fy_psi = from_internal(fy, Kind.STRESS, "psi")
+    fc_psi = min(from_internal(fc, Kind.STRESS, "psi"), 10_000.0)
+    db_in = from_internal(db, Kind.LENGTH, "in")
+    cb_in = from_internal(cb, Kind.LENGTH, "in")
+    ktr_in = from_internal(ktr, Kind.LENGTH, "in")
+    if psi_s is None:
+        psi_s = 0.8 if db <= to_internal(0.75, "in", Kind.LENGTH) else 1.0
+    if psi_g is None:
+        psi_g = 1.0 if fy_psi <= 60_000.0 else 1.15 if fy_psi <= 80_000.0 else 1.3
+    confinement = min((cb_in + ktr_in) / db_in, 2.5)
+    ld_in = (3.0 / 40.0) * (fy_psi * psi_t * psi_e * psi_s * psi_g
+                            / (lambda_ * math.sqrt(fc_psi))) * (db_in / confinement)
+    ld_min_in = 12.0
+    return StraightBarDevelopment(to_internal(max(ld_in, ld_min_in), "in", Kind.LENGTH),
+                                  to_internal(ld_min_in, "in", Kind.LENGTH),
+                                  confinement, psi_s, psi_g)
+
+
 def anchor_reinforcement(demand: float, fy: float, area: float, method: Method,
                          combo: str = "") -> CheckResult:
     """Anchor reinforcement developed on both sides of the breakout: φ As fy (§17.5.2.1), φ=0.75."""
@@ -446,8 +491,29 @@ def anchor_reinforcement_design(demand: float, fy: float, area: float, db: float
                  hooked.ldh, Kind.LENGTH, f"{ACI} Eq. 25.4.3.1a")
     c.step("l_{dh,min}", r"\max(8d_b,\ 6\ in)", hooked.ldh_min, Kind.LENGTH,
            f"{ACI} §25.4.3.1")
+    available_above = max(hef - clear_cover - anchor_to_bar / 1.5, 0.0)
+    c.step("l_{disp}", r"h_{ef} - c_c - \frac{g}{1.5}", available_above,
+           Kind.LENGTH, f"{ACI} §17.5.2.1")
     development = c.result("anchor.reinforcement_development",
-                           f"{ACI} §25.4.3.1", ldh, le, Kind.LENGTH)
+                           f"{ACI} §25.4.3.1", ldh, available_above, Kind.LENGTH)
+
+    straight = straight_bar_ld(fy, fc, db, clear_cover + db / 2)
+    c = Calc(method, combo)
+    c.step(r"\frac{c_b + K_{tr}}{d_b}", r"\le 2.5", straight.confinement,
+           clause=f"{ACI} Table 25.4.2.5")
+    c.step(r"\psi_s", r"\le 19\ mm", straight.psi_s, clause=f"{ACI} Table 25.4.2.5")
+    c.step(r"\psi_g", r"f_y", straight.psi_g, clause=f"{ACI} Table 25.4.2.5")
+    c.step("l_d", r"\frac{3}{40}\frac{f_y\psi_t\psi_e\psi_s\psi_g}"
+           r"{\lambda\sqrt{f'_c}}\frac{d_b}{\frac{c_b+K_{tr}}{d_b}}",
+           straight.ld, Kind.LENGTH, f"{ACI} Eq. 25.4.2.4a")
+    as_req = max(demand, 0.0) / (ANCHOR_REINFORCEMENT.phi * fy)
+    reduction = min(as_req / area, 1.0) if area > 0 else 1.0
+    straight_req = max(straight.ld * reduction, straight.ld_min)
+    c.step("l_{d,req}", r"l_d\frac{A_{s,req}}{A_{s,prov}} \ge 12\ in",
+           straight_req, Kind.LENGTH, f"{ACI} §25.4.10")
+    straight_check = c.result(
+        "anchor.reinforcement_straight_development",
+        f"{ACI} §25.4.2.4 and §25.4.10", straight_req, le, Kind.LENGTH)
 
     c = Calc(method, combo)
     hef_req = c.step("h_{ef,req}", r"l_{dh} + \frac{g}{1.5} + c_c",
@@ -455,4 +521,4 @@ def anchor_reinforcement_design(demand: float, fy: float, area: float, db: float
                      f"{ACI} §17.5.2.1")
     embedment = c.result("anchor.reinforcement_embedment",
                          f"{ACI} §17.5.2.1", hef_req, hef, Kind.LENGTH)
-    return [capacity, development, embedment]
+    return [capacity, development, straight_check, embedment]
