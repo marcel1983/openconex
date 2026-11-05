@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-05, sobre `main` (`257e12a`, versión 0.4.2). La rama de empaquetado prepara la 0.4.3. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-05, sobre `main` (`ff3d3af`, versión 0.4.3). La rama de asientos prepara la 0.4.4. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0. Completado en 0.4.2
 
@@ -93,8 +93,6 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [ ] Flexión de la viga y corte del alma sin destaje.
 - [ ] Refuerzo de destajes: placa doble y rigidizadores longitudinales (II.A-6 C y D).
 - [ ] Placa simple extendida con carga axial (II.A-19B).
-- [ ] Reparto de la carga por excentricidad del asiento (II.A-16).
-- [ ] Ángulo superior de los asientos y placa de asiento del asiento rigidizado.
 - [ ] Doble destaje viga-viga con placa simple y conexiones desplazadas o en ángulo (II.A-9, II.A-10).
 - [ ] Importar reacciones de vigas desde SAP2000/ETABS para crear proyectos de corte.
 - [ ] Editor gráfico 2D de la ventana de corte.
@@ -104,6 +102,9 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [x] Conversión automática de unidades en la ventana de corte.
 - [x] Lista de materiales y cuadro de soldaduras AWS A2.4 en el DXF.
 - [x] Placa simple con destaje superior validada contra II.A-18.
+- [x] Ángulo superior de los asientos: detalle estándar L4×4×1/4, dos pernos por ala o soldadura de 3/16 in, incluido en DXF, BOM y 3D. No se le asigna carga porque el asiento toma toda la reacción.
+- [x] Placa de asiento del asiento rigidizado: PL 3/8 in × W × (W + 1 in), soldadura de 5/16 in y longitud mínima 0,2 l; comprobación de aplastamiento sobre el rigidizador.
+- [x] II.A-16: el reparto queda aclarado: el asiento toma toda la carga, el ángulo superior solo estabiliza y la soldadura del asiento se verifica con el método elástico de la Tabla 10-6.
 
 ## 3. Próximas fases
 

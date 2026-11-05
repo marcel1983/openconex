@@ -13,7 +13,7 @@ from openconex.connections.shear.check import ShearConnection
 from openconex.connections.shear.double_angle import DoubleAngle
 from openconex.connections.shear.end_plate import EndPlate
 from openconex.connections.shear.seated import SeatedAngle
-from openconex.connections.shear.stiffened_seat import StiffenedSeat
+from openconex.connections.shear.stiffened_seat import StiffenedSeat, seat_plate_width
 from openconex.drawing.shear import INCH, shear_layout
 
 from .base_plate import Part, _box, _cut_all, _fuse_all, _require
@@ -77,10 +77,14 @@ def shear_parts(conn: ShearConnection) -> list[Part]:
             width = 2 * el.leh + 5.5 * INCH
             parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
         elif isinstance(el, SeatedAngle):
-            parts.append(Part(name, _box(x_0, y_0, -el.length / 2, w, h, el.length)))
+            width = el.top_angle_length if name == "top_angle" else el.length
+            parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
         elif isinstance(el, StiffenedSeat):
             if name == "seat":
-                width = max(bf, el.width)
+                width = seat_plate_width(el)
+                parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
+            elif name == "top_angle":
+                width = el.top_angle_length
                 parts.append(Part(name, _box(x_0, y_0, -width / 2, w, h, width)))
             else:
                 parts.append(Part(name, _box(x_0, y_0, -t / 2, w, h, t)))

@@ -12,7 +12,7 @@ pytest.importorskip("PySide6")
 
 from openconex.gui.app import MainWindow
 from openconex.gui.shear import TYPE_FIELDS, ShearWindow
-from openconex.io.project import load_project
+from openconex.io.project import Project, load_project
 from openconex.units import Kind, to_internal
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
@@ -71,6 +71,20 @@ def test_new_project_calculates(app):
     window = ShearWindow()
     assert window.calculate()
     assert window.report.ok
+
+
+def test_hidden_seat_details_survive_a_save(app):
+    project = Project.model_validate({
+        "shear_connection": {
+            "type": "seated", "beam": "W16X50", "support": "W14X90",
+            "length": "8 in", "thickness": "5/8 in", "leg": "4 in",
+            "top_angle_thickness": "3/8 in",
+        },
+        "cases": [{"name": "D", "type": "D", "V": "8 kip"}],
+    })
+    window = ShearWindow(project)
+    saved = window.project_from_form()
+    assert saved.shear_connection.top_angle_thickness == "3/8 in"
 
 
 def test_main_window_opens_shear_projects_in_their_window(app):

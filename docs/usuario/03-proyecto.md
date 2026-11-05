@@ -366,6 +366,14 @@ Conexión del extremo de una viga a una columna o a una viga principal (Manual A
 | `bearing_length` | — | Asiento: longitud de apoyo usada en la flexión del ala (por defecto, la mínima requerida). |
 | `width` | — | Asiento rigidizado: ancho W del rigidizador. |
 | `two_sided` | `false` | Asiento rigidizado: asientos a ambos lados del alma del apoyo. |
+| `seat_plate_width` | W + 1 in | Asiento rigidizado: ancho de la placa de asiento. |
+| `seat_plate_thickness` | `3/8 in` | Asiento rigidizado: espesor de la placa de asiento. |
+| `seat_plate_weld` | `5/16 in` | Asiento rigidizado: soldadura de la placa de asiento al rigidizador. |
+| `top_angle_leg` | `4 in` | Asiento: ala del ángulo superior de estabilidad. |
+| `top_angle_thickness` | `1/4 in` | Asiento: espesor del ángulo superior. |
+| `top_angle_length` | `4 in` | Asiento: largo del ángulo superior a lo largo de la viga. |
+| `top_angle_bolts` | `2` | Asiento apernado: pernos por ala del ángulo superior. |
+| `top_angle_weld` | `3/16 in` | Asiento soldado: soldadura del ángulo superior al apoyo. |
 | `beam_area` | — | Área bruta de una viga genérica, para las verificaciones de la viga con tracción. |
 
 Campos que necesita cada tipo:
