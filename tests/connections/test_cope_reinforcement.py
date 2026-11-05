@@ -90,6 +90,26 @@ def test_cope_reinforcement_is_parsed_and_checked_in_a_project():
     assert any("placa doble" in row.cells[0].lower() for row in report.summary)
 
 
+def test_cope_reinforcement_layout_and_3d():
+    from openconex.drawing.shear import shear_layout
+
+    data = json.loads((EXAMPLES / "shear_double_angle_coped.ocnx").read_text(
+        encoding="utf-8"))
+    data["shear_connection"]["cope"]["doubler"] = {
+        "thickness": "1/4 in", "depth": "6.5 in", "gap": "0.5 in", "weld": "1/4 in"}
+    data["shear_connection"]["cope"]["stiffener"] = {
+        "width": "4 in", "thickness": "1/4 in", "weld": "1/4 in"}
+    project = Project.model_validate(data)
+    conn = project.shear_model()
+    lay = shear_layout(conn)
+    assert lay.cope_doubler is not None
+    assert lay.cope_stiffener is not None
+    pytest.importorskip("OCP")
+    from openconex.geometry3d.shear import shear_parts
+    names = {part.name for part in shear_parts(conn)}
+    assert {"doubler", "stiffener"} <= names
+
+
 def test_cope_reinforcement_rejects_a_bottom_cope():
     data = json.loads((EXAMPLES / "shear_double_angle_coped.ocnx").read_text(
         encoding="utf-8"))

@@ -67,6 +67,10 @@ class ShearLayout:
     cope_top: tuple[float, float] | None = None
     """(c, dc) of the top cope."""
     cope_bottom: tuple[float, float] | None = None
+    cope_doubler: tuple[float, float, float, float] | None = None
+    """Elevation rectangle (x0, y0, x1, y1) of the doubler plate."""
+    cope_stiffener: tuple[float, float, float, float] | None = None
+    """Elevation rectangle (x0, y0, x1, y1) of the longitudinal stiffener."""
     plates: list[tuple[float, float, float, float, str]] = field(default_factory=list)
     """Rectangles (x0, y0, x1, y1, name) of the connecting elements."""
     plate_thickness: float = 0.0
@@ -175,6 +179,21 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
                         el.beam_d + el.top_angle_leg, "top_angle")]
         lay.plate_thickness = el.thickness
         lay.welds.append((0.0, -seat - el.length, 0.0, 0.0))
+    if conn.cope is not None:
+        x_start = lay.beam_start
+        length = conn.cope.c + conn.cope.dc
+        if conn.cope.doubler is not None:
+            dp = conn.cope.doubler
+            y1 = d - conn.cope.dc - dp.gap
+            lay.cope_doubler = (x_start, y1 - dp.depth, x_start + length, y1)
+            lay.welds += [(x_start, y1 - dp.depth, x_start, y1),
+                          (x_start + length, y1 - dp.depth, x_start + length, y1)]
+        if conn.cope.stiffener is not None:
+            st = conn.cope.stiffener
+            length = st.length if st.length is not None else length
+            y1 = d - conn.cope.dc
+            lay.cope_stiffener = (x_start, y1 - st.thickness, x_start + length, y1)
+            lay.welds.append((x_start, y1, x_start + length, y1))
     return lay
 
 
@@ -241,6 +260,22 @@ def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ..
                f"{s.label(el.top_angle_thickness)} x {s.label(el.top_angle_length)}",
             _steel(s, el.stiffener_Fy), top_mass)
 
+    if conn.cope is not None:
+        base_length = conn.cope.c + conn.cope.dc
+        if conn.cope.doubler is not None:
+            dp = conn.cope.doubler
+            add(1, f"{t('doubler_plate')} {s.label(dp.thickness)} x "
+                   f"{s.label(dp.depth)} x {s.label(base_length)}",
+                _steel(s, conn.beam.material.Fy),
+                dp.depth * base_length * dp.thickness * STEEL_DENSITY)
+        if conn.cope.stiffener is not None:
+            st = conn.cope.stiffener
+            length = st.length if st.length is not None else base_length
+            add(1, f"{t('long_stiffener')} {s.label(st.width)} x "
+                   f"{s.label(st.thickness)} x {s.label(length)}",
+                _steel(s, conn.beam.material.Fy),
+                st.width * length * st.thickness * STEEL_DENSITY)
+
     bolt = getattr(el, "bolt", None)
     count = 0
     if isinstance(el, (SinglePlate, ExtendedSinglePlate)):
@@ -260,6 +295,9 @@ def _weld_sizes(conn: ShearConnection) -> list[float]:
     el = conn.element
     sizes = (getattr(el, "weld", 0.0), getattr(el, "support_weld", 0.0),
              getattr(el, "beam_weld", 0.0))
+    if conn.cope is not None:
+        sizes += (getattr(conn.cope.doubler, "weld", 0.0),
+                  getattr(conn.cope.stiffener, "weld", 0.0))
     return [value for value in dict.fromkeys(sizes) if value > 0]
 
 
@@ -361,6 +399,10 @@ def _draw(s: _Sheet, conn: ShearConnection, lay: ShearLayout, opt: ShearDrawing,
     # elements
     for x_0, y_0, x_1, y_1, _ in lay.plates:
         s.rect(u(x_0), u(y_0), u(x_1), u(y_1), "SC-PLACA")
+    for rectangle in (lay.cope_doubler, lay.cope_stiffener):
+        if rectangle is not None:
+            x_0, y_0, x_1, y_1 = rectangle
+            s.rect(u(x_0), u(y_0), u(x_1), u(y_1), "SC-PLACA")
     r = u(lay.bolt_diameter) / 2 if lay.bolt_diameter else u(INCH * 0.375)
     for x, y in lay.bolts:
         s.msp.add_circle((u(x), u(y)), r, dxfattribs={"layer": "SC-PERNO"})
@@ -427,6 +469,15 @@ def _description(conn: ShearConnection, s: _Sheet, lang: str) -> list[str]:
         value = getattr(el, key, 0.0)
         if value:
             out.append(f"{tr(f'input.{key}', lang)}: {q(value)}")
+    if conn.cope is not None:
+        if conn.cope.doubler is not None:
+            dp = conn.cope.doubler
+            out.append(f"{tr('drawing.doubler_plate', lang)}: {q(dp.thickness)} x "
+                       f"{q(dp.depth)}")
+        if conn.cope.stiffener is not None:
+            st = conn.cope.stiffener
+            out.append(f"{tr('drawing.long_stiffener', lang)}: {q(st.width)} x "
+                       f"{q(st.thickness)}")
     return out
 
 

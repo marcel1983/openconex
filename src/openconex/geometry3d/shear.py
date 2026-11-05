@@ -90,6 +90,15 @@ def shear_parts(conn: ShearConnection) -> list[Part]:
                 parts.append(Part(name, _box(x_0, y_0, -t / 2, w, h, t)))
         else:
             parts.append(Part(name, _box(x_0, y_0, side, w, h, t)))
+    if conn.cope is not None and lay.cope_doubler is not None:
+        x_0, y_0, x_1, y_1 = lay.cope_doubler
+        parts.append(Part("doubler", _box(x_0, y_0, side, x_1 - x_0, y_1 - y_0,
+                                          conn.cope.doubler.thickness)))
+    if conn.cope is not None and lay.cope_stiffener is not None:
+        x_0, y_0, x_1, y_1 = lay.cope_stiffener
+        width = conn.cope.stiffener.width
+        parts.append(Part("stiffener", _box(x_0, y_0, -width / 2, x_1 - x_0,
+                                            y_1 - y_0, width)))
     # bolts
     r = lay.bolt_diameter / 2 if lay.bolt_diameter else 0.375 * INCH
     grip = tw + 2 * t + 2 * r

@@ -181,7 +181,7 @@ Los números sin unidad usan el sistema elegido en el diálogo; también se pued
 1. Elegir el **tipo**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento o asiento rigidizado. Solo se muestran los campos de ese tipo; los obligatorios llevan `*`.
 2. Elegir la **viga** y el **apoyo** (catálogo W, editable) y si la conexión va al **ala** o al **alma** del apoyo.
 3. Escribir el material, el electrodo, los pernos y la geometría. Las cantidades se escriben con su unidad (`3 in`, `75 mm`); un número sin unidad usa las unidades del proyecto.
-4. Marcar **Destaje de la viga** si la viga está destajada.
+4. Marcar **Destaje de la viga** si la viga está destajada. Dentro del mismo grupo se puede activar la **placa doble** o el **rigidizador longitudinal** y editar sus dimensiones y soldadura.
 5. Completar los casos de carga con `V` y `P` (tracción negativa) y los métodos LRFD/ASD.
 6. **Calcular** (`F5`): pestañas **Resumen**, **Verificaciones**, **Figuras** (elevación e isométrico) y **3D**.
 7. **Archivo > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
@@ -247,7 +247,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Cálculo y reporte por lotes de una carpeta de proyectos.
 - Cálculo individual, resumen, traza y figuras.
 - Exportación a los formatos disponibles.
-- Ventana de conexiones de corte: edición, cálculo, figuras, 3D y exportación.
+- Ventana de conexiones de corte: edición (incluido el refuerzo del destaje), cálculo, figuras, 3D y exportación.
 
 ## Limitaciones
 

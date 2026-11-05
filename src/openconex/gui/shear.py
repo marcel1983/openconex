@@ -76,7 +76,8 @@ TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
     ShearType.STIFFENED_SEAT: ("width", "length", "thickness", "weld", "two_sided"),
 }
 COPE_FIELDS = ("c", "dc", "dc_bottom", "setback", "lev", "leh")
-COPE_HIDDEN = ("doubler", "stiffener")
+DOUBLER_FIELDS = ("thickness", "depth", "gap", "weld")
+STIFFENER_FIELDS = ("width", "thickness", "weld", "length")
 # Advanced seat details kept in the project but not shown in the form; preserved on save.
 HIDDEN_FIELDS = ("seat_plate_width", "seat_plate_thickness", "seat_plate_weld",
                  "top_angle_leg", "top_angle_thickness", "top_angle_length",
@@ -112,6 +113,7 @@ class ShearWindow(QMainWindow):
         self._fields: dict[str, QWidget] = {}
         self._rows: dict[str, tuple[QLabel, QWidget]] = {}
         self._cope: dict[str, QLineEdit] = {}
+        self._cope_reinf: dict[str, QLineEdit] = {}
         self._export_actions: list[QAction] = []
         self.setWindowTitle("OpenConex — conexión de corte")
         self.resize(1280, 860)
@@ -288,6 +290,28 @@ class ShearWindow(QMainWindow):
             edit = QLineEdit()
             self._cope[name] = edit
             form.addRow(label, edit)
+        self.doubler_enabled = QCheckBox("Placa doble (II.A-6 C)")
+        form.addRow(self.doubler_enabled)
+        for name, label, placeholder in (
+                ("thickness", "Espesor t_p", "1/4 in"),
+                ("depth", "Profundidad d_p", "6.5 in"),
+                ("gap", "Separación a la línea del destaje", "0.5 in"),
+                ("weld", "Soldadura", "3/16 in")):
+            edit = QLineEdit()
+            edit.setPlaceholderText(placeholder)
+            self._cope_reinf[f"doubler_{name}"] = edit
+            form.addRow("  " + label, edit)
+        self.stiffener_enabled = QCheckBox("Rigidizador longitudinal (II.A-6 D)")
+        form.addRow(self.stiffener_enabled)
+        for name, label, placeholder in (
+                ("width", "Ancho b_s", "4 in"),
+                ("thickness", "Espesor t_s", "1/4 in"),
+                ("weld", "Soldadura", "1/4 in"),
+                ("length", "Longitud (opcional)", "c + d_c")):
+            edit = QLineEdit()
+            edit.setPlaceholderText(placeholder)
+            self._cope_reinf[f"stiffener_{name}"] = edit
+            form.addRow("  " + label, edit)
         return self.cope_group
 
     def _build_cases(self) -> QGroupBox:
@@ -369,6 +393,11 @@ class ShearWindow(QMainWindow):
         self._collect_line(lines, self.bolt_diameter, Kind.LENGTH, old, new)
         for edit in self._cope.values():
             self._collect_line(lines, edit, Kind.LENGTH, old, new)
+        for name in ("doubler_depth", "doubler_gap", "stiffener_width", "stiffener_length"):
+            self._collect_line(lines, self._cope_reinf.get(name), Kind.LENGTH, old, new)
+        for name in ("doubler_thickness", "doubler_weld", "stiffener_thickness",
+                     "stiffener_weld"):
+            self._collect_line(lines, self._cope_reinf.get(name), Kind.THICKNESS, old, new)
         for row in range(self.cases.rowCount()):
             for col in (2, 3):
                 item = self.cases.item(row, col)
@@ -423,6 +452,14 @@ class ShearWindow(QMainWindow):
         for name, edit in self._cope.items():
             value = None if sc.cope is None else getattr(sc.cope, name)
             edit.setText("" if value in (None, 0, 0.0) else _text(value))
+        doubler = None if sc.cope is None else sc.cope.doubler
+        stiffener = None if sc.cope is None else sc.cope.stiffener
+        self.doubler_enabled.setChecked(doubler is not None)
+        self.stiffener_enabled.setChecked(stiffener is not None)
+        for name, edit in self._cope_reinf.items():
+            group, field = name.split("_", 1)
+            value = getattr(doubler if group == "doubler" else stiffener, field, None)
+            edit.setText("" if value in (None, 0, 0.0) else _text(value))
         self.cases.setRowCount(0)
         for case in project.cases:
             self._add_case(case.name, case.type.value,
@@ -462,12 +499,16 @@ class ShearWindow(QMainWindow):
         if self.cope_group.isChecked():
             cope = {name: edit.text().strip() for name, edit in self._cope.items()
                     if edit.text().strip()}
-            original = (self.project.shear_connection.cope
-                        if self.project.shear_connection is not None else None)
-            for name in COPE_HIDDEN:
-                value = getattr(original, name, None) if original is not None else None
-                if value is not None:
-                    cope[name] = value.model_dump()
+            if self.doubler_enabled.isChecked():
+                cope["doubler"] = {
+                    name: self._cope_reinf[f"doubler_{name}"].text().strip()
+                    for name in DOUBLER_FIELDS
+                    if self._cope_reinf[f"doubler_{name}"].text().strip()}
+            if self.stiffener_enabled.isChecked():
+                cope["stiffener"] = {
+                    name: self._cope_reinf[f"stiffener_{name}"].text().strip()
+                    for name in STIFFENER_FIELDS
+                    if self._cope_reinf[f"stiffener_{name}"].text().strip()}
             connection["cope"] = cope
         cases = []
         for row in range(self.cases.rowCount()):
