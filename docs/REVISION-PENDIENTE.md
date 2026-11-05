@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-04, sobre `main` (`19e68d6`, versión 0.4.2). Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-05, sobre `main` (`257e12a`, versión 0.4.2). La rama de empaquetado prepara la 0.4.3. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0. Completado en 0.4.2
 
@@ -14,53 +14,53 @@ Estado al 2026-11-04, sobre `main` (`19e68d6`, versión 0.4.2). Cada tarea indic
 
 ## 1. Empaquetado y releases (PR #101 a #105)
 
-### 1.1 Zip de Linux duplicado — A
+### 1.1 Zip de Linux duplicado — A (resuelto en 0.4.3)
 
-**Confirmado en 0.4.2.** El zip de Linux pesa 1.071 MiB y contiene 9.377 entradas. Al descomprimirlo ocupa 3.484 MiB. `libQt6WebEngineCore.so.6` aparece cuatro veces con 194,47 MiB cada una: en `OpenConex/_internal/PySide6/Qt/lib`, en `OpenConex/_internal`, y las mismas dos rutas en `openconex-cli`.
+**Confirmado en 0.4.2 y corregido en 0.4.3.** El zip de 0.4.2 pesaba 1.071 MiB y ocupaba 3.484 MiB descomprimido. `libQt6WebEngineCore.so.6` aparecía cuatro veces con 194,47 MiB cada una: en `OpenConex/_internal/PySide6/Qt/lib`, en `OpenConex/_internal`, y las mismas dos rutas en `openconex-cli`.
 
-`packaging/build_portable.py` arma el zip con `zipfile` recorriendo `rglob`; `ZipFile.write` sigue los symlinks de las bibliotecas Qt/OCP y guarda el contenido completo en cada ruta.
+`packaging/build_portable.py` ahora sustituye por symlinks relativos los archivos idénticos de más de 1 MiB antes de comprimir. En 0.4.3 reemplazó 330 archivos y evitó 2.137 MiB de copias; el zip quedó en **438 MiB**.
 
-Puntos a verificar:
-- [ ] Guardar los symlinks como tales (por ejemplo, `zip -y` en Linux) en lugar de duplicar el contenido.
-- [ ] Comparar el tamaño: debería quedar cerca de 550 MiB.
-- [ ] Descomprimir el zip nuevo en un Linux limpio y comprobar que la GUI y la CLI arrancan.
-- [ ] Revisar que los permisos de ejecución se conservan.
+Puntos verificados:
+- [x] Guardar los symlinks como tales en el ZIP en lugar de duplicar el contenido.
+- [x] Comparar el tamaño: 438 MiB.
+- [x] Descomprimir el zip en un runner Linux limpio y ejecutar la GUI, la CLI, la exportación PDF y el modelo STEP desde el paquete extraído.
+- [x] Conservar los permisos de ejecución al extraer con `unzip`.
 
 ### 1.2 Qt y OpenCASCADE duplicados entre GUI y CLI — B
 
-La GUI y la CLI se compilan como dos `--onedir` independientes, cada uno con su copia de Qt y OCP. Aunque se corrijan los symlinks, sigue habiendo dos copias completas.
+En Linux, la deduplicación por contenido también elimina la copia que la CLI tiene de Qt y OCP: los symlinks cruzan de `openconex-cli` a `OpenConex`. En Windows y macOS siguen siendo dos `--onedir` completos, con 589 MiB y 538 MiB respectivamente.
 
 Puntos a verificar:
-- [ ] Medir cuánto ocupa cada carpeta dentro del zip.
+- [ ] Medir cuánto ocupa cada carpeta dentro del zip en Windows y macOS.
 - [ ] Probar un `.spec` con `MERGE`, o un solo ejecutable con modo CLI, y comparar el tamaño.
-- [ ] Repetir la prueba de humo de `build_portable.py` (versión, assets, conversión, placa base y conexión de corte) en las tres plataformas.
-- [ ] En Windows, confirmar que no vuelve el choque de nombres entre `OpenConex.exe` y `openconex.exe` que corrigió el #103.
+- [x] Repetir la prueba de humo de `build_portable.py` (versión, assets, conversión, placa base y conexión de corte) en las tres plataformas.
+- [x] Confirmar que no vuelve el choque de nombres entre `OpenConex.exe` y `openconex.exe` que corrigió el #103.
 
-### 1.3 Licencias de las bibliotecas incluidas — A
+### 1.3 Licencias de las bibliotecas incluidas — A (resuelto en 0.4.3)
 
-El paquete portable solo trae `LICENSE` de OpenConex y `NOTICE-AISC.md`. No hay una carpeta `licenses/` con los textos de PySide6/Qt ni de OpenCASCADE, que se redistribuyen bajo LGPL. Los `dist-info` de algunos paquetes Python incluyen sus licencias, pero no cubren esas bibliotecas nativas.
+El paquete ahora incluye `licenses/` con los textos de PySide6/Qt (LGPL-3.0), OpenCASCADE (LGPL-2.1 y excepción OCCT), PyInstaller y Python, además de `LICENSE` y `NOTICE-AISC.md`.
 
-Puntos a verificar:
-- [ ] Listar las bibliotecas que PyInstaller incluye en cada paquete.
-- [ ] Copiar sus licencias a una carpeta `licenses/` dentro del zip.
-- [ ] Comprobar que `tools/check_licenses.py` cubre también las dependencias del paquete portable (PyInstaller, PySide6, OCP).
-- [ ] Confirmar que la distribución `--onedir` permite reemplazar las bibliotecas LGPL (relinking) y documentarlo.
+Puntos verificados:
+- [x] Copiar las licencias de las bibliotecas nativas a una carpeta `licenses/` dentro del zip.
+- [x] `tools/check_licenses.py` ya revisa PySide6 y OCP porque el trabajo `licenses` instala los extras `pdf` y `3d`; PyInstaller es una herramienta de compilación y se incluye su texto.
+- [x] Documentar que la distribución `--onedir` permite reemplazar las bibliotecas LGPL (relinking) en `docs/tecnico/10-release.md`.
+- [x] Comprobar en el ZIP extraído que `LICENSE` y las licencias de PySide6/OpenCASCADE están presentes.
 
-### 1.4 Documentación del empaquetado — B
+### 1.4 Documentación del empaquetado — B (resuelto en 0.4.3)
 
-Puntos a verificar:
-- [ ] `docs/usuario/01-instalacion.md`: cambiar los nombres con versión fija (`OpenConex-0.4.2-…`) por `OpenConex-X.Y.Z-…` o por el nombre del release actual.
-- [ ] `packaging/README-portable.txt` y el manual: indicar las bibliotecas del sistema que necesita Linux (`libxcb-cursor0`, `libegl1`, `libnss3`…).
-- [ ] Documentar en `docs/tecnico/` cómo se hace una release (etiqueta `v*`, workflow, prueba de humo, checksums).
-- [ ] Registrar en `docs/PLAN.md` el avance de la F8 (instaladores portables).
+Puntos verificados:
+- [x] `docs/usuario/01-instalacion.md` usa nombres genéricos `OpenConex-<versión>-…`.
+- [x] `packaging/README-portable.txt` y el manual indican las bibliotecas de sistema de Linux y cómo extraer los symlinks.
+- [x] `docs/tecnico/10-release.md` documenta la etiqueta `v*`, el workflow, las pruebas de humo y los checksums.
+- [x] `docs/PLAN.md` registra el avance de la F8.
 
-### 1.5 Workflow de release — C
+### 1.5 Workflow de release — C (resuelto en 0.4.3)
 
-Puntos a verificar:
-- [ ] Dar `contents: write` solo al trabajo `publish`; los trabajos de compilación pueden quedar en `read`.
-- [ ] Fijar las acciones (`actions/checkout`, `setup-python`, `upload-artifact`, `download-artifact`) por commit.
-- [ ] Probar `workflow_dispatch` sin etiqueta y con `publish` activado: debe fallar con un mensaje claro y no publicar nada.
-- [ ] Agregar la línea de copyright a los archivos de `packaging/`, como en el resto del repositorio.
+Puntos verificados:
+- [x] `contents: write` solo en el trabajo `publish`; el resto usa `contents: read`.
+- [x] Acciones fijadas por commit (`checkout`, `setup-python`, `upload-artifact`, `download-artifact`).
+- [x] `workflow_dispatch` con `publish` activado y sin `tag` falla al inicio con un mensaje claro y no publica nada.
+- [x] Línea de copyright en los archivos Python de `packaging/`.
 
 ## 2. Conexiones de corte (F5)
 

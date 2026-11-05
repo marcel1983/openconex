@@ -11,3 +11,4 @@ Cómo está hecho OpenConex y cómo calcula. Está dirigida a quien revisa los r
 7. [Validación](07-validacion.md): contra qué se comprobó cada parte.
 8. [Mantener la documentación](08-mantener-documentacion.md)
 9. [Cierre de la placa base](09-cierre-placa-base.md): alcance pendiente y criterios de aceptación.
+10. [Publicar una release](10-release.md): versión, etiqueta, workflow, checksums y paquetes portables.

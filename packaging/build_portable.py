@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
 """Build portable PyInstaller bundles for one platform.
 
 Usage: python packaging/build_portable.py windows-x64
@@ -9,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import zipfile
@@ -22,6 +24,7 @@ GUI_NAME = "OpenConex"
 CLI_BUILD_NAME = "openconex-cli"
 CLI_RELEASE_NAME = "openconex"
 BRANDING = ROOT / "src" / "openconex" / "data" / "branding"
+LICENSES = ROOT / "packaging" / "licenses"
 
 HIDDEN = (
     "PySide6.QtWebEngineWidgets",
@@ -68,6 +71,60 @@ def executable(folder: Path, name: str) -> Path:
     return folder / f"{name}{suffix}"
 
 
+def deduplicate_copies(staging: Path,
+                       min_size: int = 1_048_576) -> tuple[int, int]:
+    """Replace identical large files with relative symlinks before zipping.
+
+    PyInstaller copies the same shared library into several runtime search
+    paths, and the GUI and CLI bundles each get their own copy. A ZIP file
+    cannot store hardlinks, so keeping every path as a regular file duplicates
+    more than two gigabytes. The first path stays as the real file; later
+    copies become relative symlinks to it. Files below ``min_size`` are left
+    alone because symlinking them saves little and adds noise.
+    """
+    by_size: dict[int, list[Path]] = {}
+    for path in sorted(staging.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        size = path.stat().st_size
+        if size >= min_size:
+            by_size.setdefault(size, []).append(path)
+
+    seen: dict[str, Path] = {}
+    replaced = 0
+    saved = 0
+    for size, paths in by_size.items():
+        if len(paths) < 2:
+            continue
+        for path in paths:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            first = seen.get(digest)
+            if first is None:
+                seen[digest] = path
+                continue
+            target = os.path.relpath(first, start=path.parent)
+            path.unlink()
+            path.symlink_to(target)
+            replaced += 1
+            saved += size
+    return replaced, saved
+
+
+def zip_tree(staging: Path, archive: Path) -> None:
+    """Zip a PyInstaller onedir, storing Unix symlinks instead of following them."""
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
+        for path in sorted(staging.rglob("*")):
+            arcname = (Path(staging.name) / path.relative_to(staging)).as_posix()
+            if path.is_symlink():
+                info = zipfile.ZipInfo(arcname)
+                info.create_system = 3  # Unix
+                info.external_attr = (stat.S_IFLNK | 0o777) << 16
+                info.compress_type = zipfile.ZIP_STORED
+                zipped.writestr(info, os.readlink(path))
+            else:
+                zipped.write(path, arcname)
+
+
 def smoke(platform: str) -> None:
     env = os.environ.copy()
     env["QT_QPA_PLATFORM"] = "offscreen"
@@ -95,6 +152,43 @@ def smoke(platform: str) -> None:
     print(f"smoke tests OK for {platform}", flush=True)
 
 
+def verify_archive(platform: str, archive: Path) -> None:
+    """Extract the published zip and run the GUI and CLI from the result.
+
+    This catches broken symlinks, missing Qt/OCP libraries and permission
+    problems that do not appear when testing the PyInstaller ``dist`` folders.
+    """
+    target = BUILD / "verify" / platform
+    shutil.rmtree(target, ignore_errors=True)
+    target.mkdir(parents=True)
+    if sys.platform == "darwin":
+        run(["ditto", "-x", "-k", str(archive), str(target)])
+    elif sys.platform.startswith("linux"):
+        run(["unzip", "-q", str(archive), "-d", str(target)])
+    else:
+        with zipfile.ZipFile(archive) as zipped:
+            zipped.extractall(target)
+
+    root = target / archive.stem
+    for relative in ("LICENSE", "licenses/PySide6/LGPL-3.0-only.txt",
+                     "licenses/OpenCASCADE/LGPL-2.1.txt"):
+        if not (root / relative).is_file():
+            raise RuntimeError(f"missing {relative} in {archive.name}")
+    mac_app = root / "OpenConex.app"
+    gui = (mac_app / "Contents" / "MacOS" / GUI_NAME if mac_app.exists()
+           else executable(root / GUI_NAME, GUI_NAME))
+    cli = executable(root / CLI_BUILD_NAME, CLI_RELEASE_NAME)
+    env = os.environ.copy()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    run([gui, "--version"], env=env, timeout=120)
+    run([gui, "--check-assets"], env=env, timeout=120)
+    run([cli, "--version"], env=env, timeout=120)
+    out = target / "smoke"
+    run([cli, "shear", "examples/shear_single_plate.ocnx", "--pdf", "--step",
+         "-o", str(out / "shear")], env=env, timeout=900)
+    print(f"extracted archive OK for {platform}", flush=True)
+
+
 def package(platform: str) -> Path:
     from openconex import __version__
 
@@ -118,6 +212,13 @@ def package(platform: str) -> Path:
              staging / "NOTICE-AISC.md")):
         if source.exists():
             shutil.copy2(source, target)
+    if not LICENSES.is_dir():
+        raise RuntimeError(f"missing third-party licenses: {LICENSES}")
+    shutil.copytree(LICENSES, staging / "licenses")
+    if sys.platform.startswith("linux"):
+        replaced, saved = deduplicate_copies(staging)
+        print(f"identical files replaced by symlinks: {replaced} "
+              f"({saved / 1048576:.1f} MiB saved)", flush=True)
 
     archive = DIST / f"OpenConex-{__version__}-{platform}.zip"
     archive.unlink(missing_ok=True)
@@ -125,15 +226,13 @@ def package(platform: str) -> Path:
         run(["ditto", "-c", "-k", "--sequesterRsrc", "--keepParent",
              str(staging), str(archive)])
     else:
-        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipped:
-            for path in sorted(staging.rglob("*")):
-                arcname = Path(staging.name) / path.relative_to(staging)
-                zipped.write(path, arcname)
+        zip_tree(staging, archive)
     digest = hashlib.sha256(archive.read_bytes()).hexdigest()
     checksum = DIST / f"SHA256SUMS-{platform}.txt"
     checksum.write_text(f"{digest}  {archive.name}\n", encoding="utf-8")
     print(f"archive: {archive} ({archive.stat().st_size / 1_048_576:.1f} MiB)",
           flush=True)
+    verify_archive(platform, archive)
     return archive
 
 
