@@ -27,6 +27,7 @@ from openconex.connections.base_plate.check import (
     ShearLug,
     WeakBase,
 )
+from openconex.connections.shear.check import ShearType
 from openconex.core.loads import (
     Forces,
     LoadCase,
@@ -585,6 +586,26 @@ class Project(_Input):
         if any(self.quantity(c.M, Kind.MOMENT) or self.quantity(c.V_weak, Kind.FORCE)
                or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
             raise ValueError("shear connections take only V and P load cases")
+        if sc.type is ShearType.SKEWED_BENT_PLATE:
+            for name, kind in (("length", Kind.LENGTH), ("thickness", Kind.THICKNESS),
+                               ("spacing", Kind.LENGTH), ("lev", Kind.LENGTH),
+                               ("leh", Kind.LENGTH), ("weld", Kind.THICKNESS),
+                               ("weld_return", Kind.LENGTH), ("weld_offset", Kind.LENGTH)):
+                if self.quantity(getattr(sc, name), kind) <= 0:
+                    raise ValueError(f"skewed bent plate {name} must be positive")
+            if sc.share_a is not None:
+                share = self.quantity(sc.share_a, Kind.DIMENSIONLESS)
+                if not 0.0 < share < 1.0:
+                    raise ValueError("share_a must be between 0 and 1")
+            else:
+                row = self.quantity(sc.row_distance, Kind.LENGTH)
+                offset = self.quantity(sc.load_offset, Kind.LENGTH)
+                if not 0.0 < offset < row:
+                    raise ValueError("load_offset must be between 0 and row_distance")
+            for name in ("plate_a_width", "plate_b_width"):
+                value = getattr(sc, name)
+                if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
+                    raise ValueError(f"skewed bent plate {name} must be positive")
         cope = sc.cope
         if cope is not None:
             if (cope.doubler is not None or cope.stiffener is not None) and \

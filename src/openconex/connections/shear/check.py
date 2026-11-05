@@ -23,6 +23,7 @@ from openconex.core.model import IShape
 from openconex.kernel.design import Calc
 from openconex.units import Kind
 
+from .bent_plate import SkewedBentPlate, check_skewed_bent_plate
 from .coped_beam import CopedBeam, check_coped_beam
 from .double_angle import DoubleAngle, check_double_angle, check_shared_support_bolts
 from .double_angle_axial import AxialBeam, check_double_angle_axial
@@ -44,6 +45,7 @@ class ShearType(StrEnum):
     END_PLATE = "end_plate"
     SEATED = "seated"
     STIFFENED_SEAT = "stiffened_seat"
+    SKEWED_BENT_PLATE = "skewed_bent_plate"
 
 
 ELEMENTS = {
@@ -53,6 +55,7 @@ ELEMENTS = {
     ShearType.END_PLATE: EndPlate,
     ShearType.SEATED: SeatedAngle,
     ShearType.STIFFENED_SEAT: StiffenedSeat,
+    ShearType.SKEWED_BENT_PLATE: SkewedBentPlate,
 }
 
 AXIAL_TYPES = {ShearType.DOUBLE_ANGLE, ShearType.SINGLE_PLATE,
@@ -63,7 +66,7 @@ AXIAL_TYPES = {ShearType.DOUBLE_ANGLE, ShearType.SINGLE_PLATE,
 class ShearConnection:
     type: ShearType
     element: (DoubleAngle | SinglePlate | ExtendedSinglePlate | EndPlate | SeatedAngle
-              | StiffenedSeat)
+              | StiffenedSeat | SkewedBentPlate)
     beam: IShape | None = None
     support: IShape | None = None
     support_element: str = "flange"
@@ -130,8 +133,12 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
         out += check_end_plate(el, V, method, combo)
     elif conn.type is ShearType.SEATED:
         out += check_seated(el, V, method, combo)
-    else:
+    elif conn.type is ShearType.STIFFENED_SEAT:
         out += check_stiffened_seat(el, V, method, combo)
+    elif conn.type is ShearType.SKEWED_BENT_PLATE:
+        out += check_skewed_bent_plate(el, V, method, combo)
+    else:
+        raise AssertionError(f"unsupported shear connection type: {conn.type}")
     if conn.cope is not None:
         out += check_coped_beam(conn.cope, V, method, combo)
     return out

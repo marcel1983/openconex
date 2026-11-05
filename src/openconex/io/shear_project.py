@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from openconex.connections.shear.bent_plate import BentPlate, SkewedBentPlate
 from openconex.connections.shear.check import ShearConnection, ShearType
 from openconex.connections.shear.cope_reinforcement import DoublerPlate, LongitudinalStiffener
 from openconex.connections.shear.coped_beam import CopedBeam
@@ -92,6 +93,8 @@ REQUIRED: dict[ShearType, tuple[str, ...]] = {
     ShearType.END_PLATE: ("rows", "spacing", "length", "thickness", "lev", "leh", "weld"),
     ShearType.SEATED: ("length", "thickness", "leg"),
     ShearType.STIFFENED_SEAT: ("width", "length", "thickness", "weld"),
+    ShearType.SKEWED_BENT_PLATE: ("rows", "spacing", "length", "thickness", "lev", "leh",
+                                  "weld", "weld_return", "weld_offset"),
 }
 
 
@@ -141,6 +144,22 @@ class ShearConnectionInput(_Input):
     """End of the beam to the bolt line (web tearout under axial load)."""
     offset: Quantity | None = None
     """Double angle: beam centreline offset for a shared support bolt row (II.A-9)."""
+    skew: str | None = None
+    """Skewed bent plate: skew as written in the drawing (e.g. ``6:12``)."""
+    row_distance: Quantity | None = None
+    """Skewed bent plate: distance between the two vertical bolt rows."""
+    load_offset: Quantity | None = None
+    """Skewed bent plate: load line to the bolt row of plate B."""
+    share_a: Quantity | None = None
+    """Skewed bent plate: direct load share of plate A; overrides row_distance/load_offset."""
+    plate_a_width: Quantity | None = None
+    """Skewed bent plate: width of plate A (informational in this phase)."""
+    plate_b_width: Quantity | None = None
+    """Skewed bent plate: width of plate B (informational in this phase)."""
+    weld_return: Quantity | None = None
+    """Skewed bent plate: length of the top and bottom weld returns."""
+    weld_offset: Quantity | None = None
+    """Skewed bent plate: vertical weld line to the load line."""
     leg: Quantity | None = None
     """Seat angle: outstanding leg."""
     vertical_leg: Quantity | None = None
@@ -188,6 +207,11 @@ class ShearConnectionInput(_Input):
         if self.type is ShearType.SEATED and self.support_weld is not None \
                 and self.vertical_leg is None:
             missing.append("vertical_leg")
+        if self.type is ShearType.SKEWED_BENT_PLATE and self.share_a is None:
+            if self.row_distance is None:
+                missing.append("row_distance")
+            if self.load_offset is None:
+                missing.append("load_offset")
         return missing
 
 
@@ -258,6 +282,29 @@ def shear_model(project: Project) -> ShearConnection:
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh=q(sc.leh), plate_Fy=plate.Fy,
             plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t, support_Fu=sp.Fu,
             FEXX=FEXX, deformation_considered=sc.deformation_considered, **common)
+    elif kind is ShearType.SKEWED_BENT_PLATE:
+        if sc.share_a is not None:
+            share_a = project.quantity(sc.share_a, Kind.DIMENSIONLESS)
+        else:
+            row_distance = q(sc.row_distance)
+            if row_distance <= 0.0:
+                raise ValueError("row_distance must be positive")
+            share_a = q(sc.load_offset) / row_distance
+        if not 0.0 < share_a < 1.0:
+            raise ValueError("the load share of plate A must be between 0 and 1")
+        bent = {
+            "bolt": bolt, "rows": sc.rows, "spacing": q(sc.spacing),
+            "length": q(sc.length), "thickness": q(sc.thickness, T), "lev": q(sc.lev),
+            "leh": q(sc.leh), "plate_Fy": plate.Fy, "plate_Fu": plate.Fu,
+            "weld": q(sc.weld, T), "weld_return": q(sc.weld_return),
+            "weld_offset": q(sc.weld_offset), "FEXX": FEXX, "support_t": support_t,
+            "support_Fu": sp.Fu, "deformation_considered": sc.deformation_considered,
+            **common,
+        }
+        el = SkewedBentPlate(
+            plate_a=BentPlate(width=q(sc.plate_a_width), **bent),
+            plate_b=BentPlate(width=q(sc.plate_b_width), **bent),
+            share_a=share_a, skew=sc.skew or "")
     elif kind is ShearType.SEATED:
         top = {}
         for name, unit in (("top_angle_leg", L), ("top_angle_thickness", T),

@@ -97,6 +97,9 @@ def _bolt_column(x: float, top: float, rows: int, spacing: float) -> list[tuple[
 
 
 def shear_layout(conn: ShearConnection) -> ShearLayout:
+    if conn.type is ShearType.SKEWED_BENT_PLATE:
+        raise NotImplementedError(
+            "the drawing and 3D model of the skewed bent-plate connection are phase 2")
     beam = conn.beam
     assert beam is not None
     d, tf = beam.d, beam.tf

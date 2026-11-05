@@ -1,0 +1,40 @@
+{
+  "format_version": 10,
+  "info": {
+    "name": "Ejemplo: conexión sesgada de doble placa doblada (AISC II.A-10)",
+    "number": "OC-0110",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-05",
+    "language": "es",
+    "units": "US"
+  },
+  "shear_connection": {
+    "type": "skewed_bent_plate",
+    "beam": "W16X77",
+    "support": "W27X94",
+    "support_element": "web",
+    "grade": "ASTM A36",
+    "electrode": "E70XX",
+    "bolt": {"diameter": "7/8 in"},
+    "rows": 3,
+    "spacing": "3 in",
+    "length": "8 1/2 in",
+    "thickness": "3/8 in",
+    "lev": "1 1/4 in",
+    "leh": "1 1/4 in",
+    "weld": "1/4 in",
+    "weld_return": "2 1/2 in",
+    "weld_offset": "3 5/8 in",
+    "row_distance": "6 in",
+    "load_offset": "2 1/4 in",
+    "plate_a_width": "7 1/4 in",
+    "plate_b_width": "6 3/4 in",
+    "skew": "6:12"
+  },
+  "cases": [
+    {"name": "D", "type": "D", "V": "13.3 kip"},
+    {"name": "L", "type": "L", "V": "40 kip"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}
