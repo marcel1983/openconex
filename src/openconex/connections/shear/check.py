@@ -24,7 +24,7 @@ from openconex.kernel.design import Calc
 from openconex.units import Kind
 
 from .coped_beam import CopedBeam, check_coped_beam
-from .double_angle import DoubleAngle, check_double_angle
+from .double_angle import DoubleAngle, check_double_angle, check_shared_support_bolts
 from .double_angle_axial import AxialBeam, check_double_angle_axial
 from .end_plate import EndPlate, check_end_plate
 from .extended_single_plate import ExtendedSinglePlate, check_extended_single_plate
@@ -77,6 +77,8 @@ class ShearConnection:
     """Double angle: width of the outstanding legs (axial load)."""
     beam_leh: float | None = None
     """Double angle: beam web edge distance before the underrun (axial load)."""
+    offset: float = 0.0
+    """Double angle: beam centreline offset for a shared support bolt row (II.A-9)."""
 
     def __post_init__(self) -> None:
         if not isinstance(self.element, ELEMENTS[self.type]):
@@ -116,6 +118,8 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
                                             beam=conn.axial_beam)
         else:
             out += check_double_angle(el, V, method, combo)
+            if conn.offset > 0 and not conn.welded_double_angle:
+                out.append(check_shared_support_bolts(el, V, method, combo))
     elif conn.type is ShearType.SINGLE_PLATE:
         out += (check_single_plate_axial(el, V, N, method, combo) if N > 0
                 else check_single_plate(el, V, method, combo))

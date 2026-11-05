@@ -139,6 +139,8 @@ class ShearConnectionInput(_Input):
     """Double angle: width of the outstanding legs."""
     beam_leh: Quantity | None = None
     """End of the beam to the bolt line (web tearout under axial load)."""
+    offset: Quantity | None = None
+    """Double angle: beam centreline offset for a shared support bolt row (II.A-9)."""
     leg: Quantity | None = None
     """Seat angle: outstanding leg."""
     vertical_leg: Quantity | None = None
@@ -321,4 +323,5 @@ def shear_model(project: Project) -> ShearConnection:
         support_element=sc.support_element, cope=cope,
         axial_beam=AxialBeam(d=beam.d, tf=beam.tf, Ag=beam_area, Fy=bm.Fy),
         gage=q(sc.gage), outstanding_leg=q(sc.outstanding_leg),
-        beam_leh=None if sc.beam_leh is None else q(sc.beam_leh))
+        beam_leh=None if sc.beam_leh is None else q(sc.beam_leh),
+        offset=0.0 if sc.offset is None else q(sc.offset))

@@ -186,6 +186,7 @@ panel_zone = "Corte en la zona de panel"
 [check.double_angle]
 bolts_beam = "Transferencia de corte en los agujeros, lado de la viga"
 bolts_support = "Transferencia de corte en los agujeros, lado del apoyo"
+bolts_support_shared = "Fila de pernos compartida por dos vigas desplazadas (II.A-9)"
 angle_shear_yielding = "Fluencia por corte de los ángulos"
 angle_shear_rupture = "Rotura por corte de los ángulos"
 block_shear_beam = "Bloque de corte de los ángulos, lado de la viga"

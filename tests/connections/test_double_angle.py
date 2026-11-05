@@ -2,12 +2,19 @@
 # Copyright (C) 2026 The OpenConex contributors
 """All-bolted double angle against AISC Design Example II.A-1A (v16.0), Part B."""
 
+import json
+from pathlib import Path
+
 import pytest
 
+from openconex.connections.shear.check import check_shear_connection
 from openconex.connections.shear.double_angle import DoubleAngle, check_double_angle
-from openconex.core.loads import Method
+from openconex.core.loads import Forces, Method
 from openconex.core.model import BoltSpec
+from openconex.io.project import Project
 from openconex.units import Kind, to_internal
+
+EXAMPLES = Path(__file__).parents[2] / "examples"
 
 
 def inch(v):
@@ -117,3 +124,16 @@ def test_example_ii_a_3_all_welded(method, R, col):
                                                                               rel=0.01)
     assert not {"double_angle.bolts_beam", "double_angle.bolts_support"} & set(results)
     assert all(r.status.value == "ok" for r in results.values())
+
+
+def test_offset_shared_support_bolts_ii_a_9():
+    data = json.loads((EXAMPLES / "shear_double_angle_coped.ocnx").read_text(
+        encoding="utf-8"))
+    data["shear_connection"]["offset"] = "6 in"
+    project = Project.model_validate(data)
+    conn = project.shear_model()
+    checks = {result.id: result for result in check_shear_connection(
+        conn, Forces(V2=kip(60)), Method.LRFD)}
+    shared = checks["double_angle.bolts_support_shared"]
+    assert shared.demand == pytest.approx(kip(120))
+    assert shared.status.value == "ok"
