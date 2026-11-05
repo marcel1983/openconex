@@ -244,6 +244,13 @@ interaction = "Interacción de corte y flexión (fluencia)"
 flexural_rupture = "Rotura por flexión de la placa"
 weld_size = "Tamaño de la soldadura de la placa"
 support_thickness = "Espesor mínimo del apoyo"
+tension_yielding = "Fluencia por tracción de la placa"
+tension_rupture = "Rotura por tracción de la placa"
+interaction_yielding = "Interacción axial, flexión y corte (fluencia)"
+interaction_rupture = "Interacción axial, flexión y corte (rotura)"
+block_shear_axial = "Bloque de corte de la placa, dirección axial"
+block_shear_interaction = "Interacción del bloque de corte, corte y tracción"
+support_shear_rupture = "Rotura por corte del apoyo"
 
 [check.end_plate]
 bolts = "Transferencia de corte en los agujeros"

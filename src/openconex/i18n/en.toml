@@ -244,6 +244,13 @@ interaction = "Shear and flexure interaction (yielding)"
 flexural_rupture = "Flexural rupture of the plate"
 weld_size = "Size of the plate weld"
 support_thickness = "Minimum support thickness"
+tension_yielding = "Tensile yielding of the plate"
+tension_rupture = "Tensile rupture of the plate"
+interaction_yielding = "Axial, flexure and shear interaction (yielding)"
+interaction_rupture = "Axial, flexure and shear interaction (rupture)"
+block_shear_axial = "Block shear of the plate, axial direction"
+block_shear_interaction = "Block shear interaction, shear and tension"
+support_shear_rupture = "Shear rupture of the support"
 
 [check.end_plate]
 bolts = "Shear transfer at bolt holes"

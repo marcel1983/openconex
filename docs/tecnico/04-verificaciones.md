@@ -135,6 +135,20 @@ Placa soldada al apoyo (por ejemplo, al alma de una columna) con una o dos líne
 | `extended_plate.weld_size` | w ≥ 5t_p/8 | Manual Parte 10 |
 | `extended_plate.support_thickness` | t_min = 3,09 D/F_u | Manual Ec. 9-6 |
 
+### Placa simple extendida con carga axial (`extended_single_plate_axial.py`)
+
+La placa extendida con tracción axial añade los estados límite de la placa y del bloque de corte en la dirección axial (Manual Parte 12, ejemplo II.A-19B). El grupo de pernos usa el centro instantáneo con el ángulo del resultado. No se comprueban la viga ni la línea de fluencia del alma de la columna.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `extended_plate.tension_yielding` | Fluencia por tracción de la placa, A_g = l t | §J4.1(a) |
+| `extended_plate.tension_rupture` | Rotura por tracción, A_n = (l − n d_h') t, U = 1 | §J4.1(b) |
+| `extended_plate.interaction_yielding` | Interacción axial, flexión y corte (fluencia), Ec. 12-2 o 12-3 | Manual Parte 12 |
+| `extended_plate.interaction_rupture` | Interacción axial, flexión y corte (rotura) | Manual Parte 12 |
+| `extended_plate.block_shear_axial` | Bloque de corte axial, mínimo de las formas L y U | §J4.3 |
+| `extended_plate.block_shear_interaction` | (V/R_v)² + (N/R_t)² ≤ 1 | Manual Ec. 12-1 |
+| `extended_plate.support_shear_rupture` | Rotura por corte del apoyo en dos planos | §J4.2(b) |
+
 ## Placa de extremo de corte (`connections/shear/end_plate.py`)
 
 Placa soldada al extremo del alma de la viga y apernada al apoyo con dos pernos por fila (Manual AISC Parte 10).

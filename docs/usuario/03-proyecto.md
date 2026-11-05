@@ -21,6 +21,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
 | `examples/base_plate_template_sap2000.ocnx` | plantilla para importar de SAP2000 / ETABS |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
+| `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
 
 ## Datos generales (`info`)

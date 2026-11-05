@@ -70,6 +70,9 @@ class ExtendedSinglePlate:
     gage: float = 0.0
     """Distance between the bolt lines."""
     deformation_considered: bool = True
+    beam_leh: float | None = None
+    """Horizontal edge distance of the beam web (end of beam to bolt line); only for
+    tearout of the web under axial load. Defaults to ``leh``."""
 
 
 def _rename(key: str, check: CheckResult) -> CheckResult:

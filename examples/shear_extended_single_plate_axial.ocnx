@@ -1,0 +1,41 @@
+{
+  "format_version": 10,
+  "info": {
+    "name": "Ejemplo: placa simple extendida con carga axial (AISC II.A-19B)",
+    "number": "OC-0107",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-05",
+    "language": "es",
+    "units": "US"
+  },
+  "shear_connection": {
+    "type": "extended_single_plate",
+    "beam": "W18X60",
+    "support": "W14X90",
+    "support_element": "web",
+    "grade": "ASTM A572 Gr. 50",
+    "bolt": {"diameter": "1 in", "grade": "ASTM F3125 Gr. A325"},
+    "rows": 5,
+    "spacing": "3 in",
+    "length": "14.5 in",
+    "thickness": "0.75 in",
+    "lev": "1.25 in",
+    "leh": "1.75 in",
+    "a": "9.75 in",
+    "lines": 2,
+    "gage": "3 in",
+    "beam_leh": "1.75 in",
+    "weld": "0.5 in",
+    "deformation_considered": false
+  },
+  "cases": [
+    {"name": "S1", "type": "D", "V": "75 kip", "P": "-60 kip"}
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {"name": "II.A-19B-LRFD", "method": "LRFD", "factors": {"S1": 1.0}, "source": "AISC II.A-19B"}
+    ]
+  }
+}
