@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-05, sobre `main` (`ff3d3af`, versión 0.4.3). La rama de asientos prepara la 0.4.4. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-05, sobre `main` (`d937ff3`, versión 0.4.4). Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0. Completado en 0.4.2
 
@@ -11,6 +11,13 @@ Estado al 2026-11-05, sobre `main` (`ff3d3af`, versión 0.4.3). La rama de asien
 - [x] Lista de materiales y cuadro de soldaduras AWS A2.4 en el DXF de corte.
 - [x] Ejemplo y validación de placa simple con destaje superior contra II.A-18.
 - [x] Release 0.4.2 publicada y verificada en las tres plataformas.
+
+## 0 bis. Completado en 0.4.3 y 0.4.4
+
+- [x] Release 0.4.3 y 0.4.4 publicadas con checksums y prueba de humo en las tres plataformas.
+- [x] Zip de Linux deduplicado con symlinks (438 MiB) y licencias de PySide6, OpenCASCADE, PyInstaller y Python.
+- [x] Workflow de release para etiquetas `v*`, con wheel, sdist y checksums.
+- [x] Ángulo superior de los asientos y placa de asiento del asiento rigidizado.
 
 ## 1. Empaquetado y releases (PR #101 a #105)
 

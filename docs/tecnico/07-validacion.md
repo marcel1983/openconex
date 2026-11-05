@@ -23,6 +23,17 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 | 6.4-1 | base débil con anclajes dúctiles (sísmica) |
 | B.2-1, B.2-2, B.3-1 | distribución triangular y área efectiva (Apéndice B) |
 
+## Steel Tube Institute (2024)
+
+El artículo *HSS Base Plate Design for Axial Compression and Bending Moment* (M. Manor, septiembre de 2024) adapta la DG1 a columnas HSS e incluye dos ejemplos resueltos. Se comparan con `tests/base_plate/test_hss_moment.py`:
+
+| Ejemplo | Tema | Valores comprobados |
+|---|---|---|
+| 1 | HSS circular 12x0.375, Pu = 500 kip, placa 18x18x1¼ in, f'c = 3 ksi | t_p,req = 1,10 in |
+| 2 | HSS rectangular 16x12x½, Pu = 376 kip, Mu = 300 kip·ft, placa 24x20x1½ in, f'c = 4 ksi | Y = 9,71 in, T = 53,3 kip, t_p,compresión = 1,38 in, t_p,tracción = 0,73 in, 13,3 kip/anclaje |
+
+El artículo no incluye un ejemplo de HSS circular con momento; por eso OpenConex rechaza ese caso en lugar de presentar una aproximación no validada.
+
 ## Manual AISC (16ª ed.)
 
 | Tabla | Contenido | Valores | Prueba |

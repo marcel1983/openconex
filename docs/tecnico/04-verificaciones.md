@@ -31,7 +31,7 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.lug_weld` | Llave de corte: soldadura a la placa | AISC 360-22 §J2.4; DG1 Ej. 4.7-5 | ✔ |
 | `base_plate.lug_plate_bending` | Llave de corte: flexión local de la placa base | AISC 360-22 §J4.5; DG1 Ej. 4.7-5 | ✔ |
 | `base_plate.lug_anchor_embedment` | Empotramiento de anclajes con llave (h_ef ≥ 2,5 h_sl) | ACI 318-19 §17.11.1 | ✔ |
-| `base_plate.plate_bending_rods` | Flexión de la placa por los anclajes en tracción | DG1 Ej. 4.7-3, 4.7-7 | — |
+| `base_plate.plate_bending_rods` | Flexión de la placa por los anclajes en tracción | DG1 Ej. 4.7-3, 4.7-7 | ✔ con `rod_bending_lever` |
 | `base_plate.embedded_moment` | Momento resistente de la base empotrada | DG1 §5.2 | ✔ con `embedded_base` |
 | `base_plate.face_plate_bearing` | Aplastamiento del concreto en las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
 | `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
@@ -39,7 +39,7 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 
 ## Doble ángulo apernado (`connections/shear/double_angle.py`)
 
-Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como biblioteca: todavía no tiene proyecto, comando, memoria ni interfaz.
+Primera conexión de corte de la F5 (Manual AISC Parte 10). Integrada en el proyecto (`shear_connection`), el comando `openconex shear`, la memoria, el DXF, el modelo 3D y la GUI; validada contra II.A-1A/1B, II.A-2A y II.A-3.
 
 | `id` | Verificación | Norma |
 |---|---|---|
@@ -73,7 +73,7 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Por ahora solo como 
 
 ## Placa simple convencional (`connections/shear/single_plate.py`)
 
-Manual AISC Parte 10, configuración convencional, con pernos en una fila. Por ahora solo como biblioteca.
+Manual AISC Parte 10, configuración convencional, con pernos en una fila. Integrada en el proyecto, el comando `openconex shear`, la memoria, el DXF, el modelo 3D y la GUI; validada contra II.A-17A y II.A-17B.
 
 | `id` | Verificación | Norma |
 |---|---|---|

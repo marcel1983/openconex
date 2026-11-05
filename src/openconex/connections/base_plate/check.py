@@ -680,6 +680,11 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     col = bp.column
     P_, V = forces.P, math.hypot(forces.V2, forces.V3)
     M, M2 = abs(forces.M3), abs(forces.M2)
+    if bp.bearing_area_model is BearingAreaModel.EFFECTIVE and (M or M2 or P_ < 0):
+        raise ValueError("effective bearing area is only defined for concentric compression")
+    if isinstance(col, HSSShape) and col.kind is HSSKind.ROUND and (M or M2):
+        raise ValueError(
+            "round HSS with moment is not supported; only axial compression is validated")
     if bp.embedded_base is not None:
         return _embedded_base_checks(bp, P_, V, M, M2, method, combo)
     lug_shear = (0.0, 0.0)
@@ -694,8 +699,6 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if bp.pedestal_N and bp.pedestal_B:
         results.append(_a2_over_a1(bp, method, combo))
     m, n = _cantilevers(col, bp.N, bp.B)
-    if bp.pressure_model is PressureModel.TRIANGULAR and M2:
-        raise ValueError("the triangular pressure model does not support weak-axis moment yet")
     weak = bp.weak_base if method is Method.LRFD else None
     ductile = None
     tension_demand = None
@@ -746,9 +749,11 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
     if M2:
         if _weak_anchors(bp):
             m_weak, n_weak = _cantilevers_weak(col, bp.N, bp.B)
-            bend_weak, T_weak, axis = _bending_checks(bp, P_, M2, bp.B, bp.N, bp.rod_spacing / 2,
-                                                      _tension_lever(bp, True), m_weak, n_weak,
-                                                      method, combo, "_weak")
+            bend_weak, T_weak, axis = _bending_checks(
+                bp, P_, M2, bp.B, bp.N, bp.rod_spacing / 2,
+                _tension_lever(bp, True), m_weak, n_weak, method, combo, "_weak",
+                PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR,
+                rod_edge=bp.B / 2 - bp.rod_spacing / 2, rods_in_tension=2)
             results += axis
         else:
             results.append(_weak_axis_without_anchors(bp, P_, M2, method, combo))

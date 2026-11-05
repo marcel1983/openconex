@@ -139,8 +139,9 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 
 ### Modelos de presión y área efectiva
 
-- `pressure_model: "triangular"` usa la distribución lineal de presiones del Apéndice B.2 de la DG1. En esta versión solo se aplica al eje fuerte y a combinaciones con compresión (`P > 0`); las combinaciones con levantamiento siguen usando el modelo rectangular, y el momento débil requiere el modelo rectangular.
-- `bearing_area_model: "effective"` usa el área efectiva bajo el perfil I (Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica. No se admite en HSS ni junto con el modelo triangular.
+- `pressure_model: "triangular"` usa la distribución lineal de presiones del Apéndice B.2 de la DG1. Se aplica a cada eje con compresión (`P > 0`); en el eje débil se intercambian las dimensiones de la placa y la columna. Las combinaciones con levantamiento siguen usando el modelo rectangular.
+- `bearing_area_model: "effective"` usa el área efectiva bajo el perfil I (Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica. No se admite en HSS, con el modelo triangular, con momento ni con levantamiento.
+- El HSS rectangular o cuadrado con momento usa el modelo rectangular con líneas de fluencia a 0,95 de las dimensiones exteriores; está validado contra el Ejemplo 2 del artículo del Steel Tube Institute (2024). El HSS circular con momento se rechaza porque no hay un ejemplo publicado que lo valide.
 - Los valores por defecto son `rectangular` y `plate`, por lo que los proyectos existentes no cambian.
 
 ### Columna del catálogo
@@ -173,7 +174,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `t` | Espesor de pared. |
 | `grade` | Acero; obligatorio. Nombre de la librería integrada o de `materials`. |
 
-Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensiones exteriores para HSS rectangular o cuadrada, y a 0,8 del diámetro para HSS circular (DG1 §4.3.3).
+Las líneas de fluencia de la placa en compresión están a 0,95 de las dimensiones exteriores para HSS rectangular o cuadrada, y a 0,8 del diámetro para HSS circular (DG1 §4.3.3). El HSS rectangular o cuadrado con momento está validado contra el Ejemplo 2 del Steel Tube Institute (2024); el HSS circular con momento se rechaza.
 
 ### Refuerzo de anclaje (`reinforcement`)
 
