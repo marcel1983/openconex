@@ -1,6 +1,6 @@
 # 7. Validación
 
-Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. Las pruebas están en `tests/` y corren en cada pull request, en Windows, macOS y Linux.
+Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. Las pruebas están en `tests/` y corren en cada pull request, en Windows, macOS y Linux. El [manual de verificación](../verificacion/README.md) ([English](../verificacion/README.en.md)) resume la evidencia y el protocolo de comparación cruzada.
 
 ## AISC Design Guide 1 (3ª ed.)
 

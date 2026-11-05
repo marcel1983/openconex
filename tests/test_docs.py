@@ -3,6 +3,7 @@
 """The documentation covers what the program offers (docs/tecnico/08-mantener-documentacion.md)."""
 
 import argparse
+import csv
 import re
 from pathlib import Path
 
@@ -75,6 +76,19 @@ def test_every_material_is_listed():
     text = _text(USER / "07-unidades-materiales.md")
     missing = [g for g in (*STEELS, *BOLTS, *ELECTRODES) if f"`{g}`" not in text]
     assert not missing, f"materials missing in docs/usuario/07-unidades-materiales.md: {missing}"
+
+
+def test_verification_case_matrix_is_complete():
+    path = DOCS / "verificacion" / "casos.csv"
+    with path.open(encoding="utf-8", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    assert len(rows) >= 20
+    required = {"id", "familia", "metodo", "archivo", "descripcion", "referencia",
+                "programa_externo", "version_externa", "fecha", "resultado_openconex",
+                "resultado_externo", "diferencia", "notas"}
+    assert required <= set(rows[0])
+    assert len({row["id"] for row in rows}) == len(rows)
+    assert all(row["archivo"] and (ROOT / row["archivo"]).exists() for row in rows)
 
 
 LINK = re.compile(r"\]\(([^)#\s]+)(?:#[^)]*)?\)")

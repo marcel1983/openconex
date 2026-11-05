@@ -277,7 +277,7 @@ Con dos desarrolladores (uno en el motor y las conexiones, otro en interfaz, mem
 - Tablas del Manual (pernos con excentricidad, Tabla 7-6 a 7-14; soldaduras, Tabla 8-4 a 8-11; Parte 10) recalculadas y comparadas, con tolerancia ≤ 1 %.
 - Invariancia de unidades.
 - Comparación con RAM Connection, RISAConnection o SkyCiv en 20 casos por tipo.
-- Pruebas de regresión en CI y manual de verificación ES/EN.
+- Pruebas de regresión en CI y [manual de verificación ES/EN](verificacion/README.md), con la matriz `verificacion/casos.csv` para la comparación cruzada.
 
 ## 11. Riesgos
 

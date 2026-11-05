@@ -4,6 +4,7 @@
 |---|---|
 | **Usar el programa** | [Manual de usuario](usuario/README.md) |
 | **Entender cómo calcula** | [Documentación técnica](tecnico/README.md) |
+| **Revisar o auditar resultados** | [Manual de verificación](verificacion/README.md) ([English](verificacion/README.en.md)) |
 | **Saber qué viene** | [Plan de desarrollo](PLAN.md) |
 | **Aportar código** | [CONTRIBUTING.md](../CONTRIBUTING.md) |
 

@@ -23,6 +23,7 @@ Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC
 
 - **[Manual de usuario](docs/usuario/README.md):** instalación, inicio rápido, archivo de proyecto, comandos, importación desde SAP2000, resultados, unidades y limitaciones.
 - **[Documentación técnica](docs/tecnico/README.md):** arquitectura, convenciones, algoritmo de la placa base, catálogo de verificaciones, combinaciones, importación y validación.
+- **[Manual de verificación](docs/verificacion/README.md)** ([English](docs/verificacion/README.en.md)): referencias publicadas, cobertura y protocolo de comparación cruzada.
 - **[Plan de desarrollo](docs/PLAN.md)**
 
 ## Uso en 30 segundos
