@@ -28,6 +28,7 @@ from .double_angle import DoubleAngle, check_double_angle
 from .double_angle_axial import AxialBeam, check_double_angle_axial
 from .end_plate import EndPlate, check_end_plate
 from .extended_single_plate import ExtendedSinglePlate, check_extended_single_plate
+from .extended_single_plate_axial import check_extended_single_plate_axial
 from .seated import SeatedAngle, check_seated
 from .single_plate import SinglePlate, check_single_plate
 from .single_plate_axial import check_single_plate_axial
@@ -54,7 +55,8 @@ ELEMENTS = {
     ShearType.STIFFENED_SEAT: StiffenedSeat,
 }
 
-AXIAL_TYPES = {ShearType.DOUBLE_ANGLE, ShearType.SINGLE_PLATE}
+AXIAL_TYPES = {ShearType.DOUBLE_ANGLE, ShearType.SINGLE_PLATE,
+               ShearType.EXTENDED_SINGLE_PLATE}
 
 
 @dataclass(frozen=True)
@@ -118,7 +120,8 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
         out += (check_single_plate_axial(el, V, N, method, combo) if N > 0
                 else check_single_plate(el, V, method, combo))
     elif conn.type is ShearType.EXTENDED_SINGLE_PLATE:
-        out += check_extended_single_plate(el, V, method, combo)
+        out += (check_extended_single_plate_axial(el, V, N, method, combo) if N > 0
+                else check_extended_single_plate(el, V, method, combo))
     elif conn.type is ShearType.END_PLATE:
         out += check_end_plate(el, V, method, combo)
     elif conn.type is ShearType.SEATED:

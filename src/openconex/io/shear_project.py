@@ -223,7 +223,8 @@ def shear_model(project: Project) -> ShearConnection:
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh=q(sc.leh), a=q(sc.a),
             plate_Fy=plate.Fy, plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t,
             support_Fu=sp.Fu, lines=sc.lines, gage=q(sc.gage),
-            deformation_considered=sc.deformation_considered, **common)
+            deformation_considered=sc.deformation_considered,
+            beam_leh=None if sc.beam_leh is None else q(sc.beam_leh), **common)
     elif kind is ShearType.END_PLATE:
         el = EndPlate(
             bolt=bolt, rows=sc.rows, spacing=q(sc.spacing), length=q(sc.length),
