@@ -125,6 +125,22 @@ class ShearConnectionInput(_Input):
     """Stiffened seat: stiffener width."""
     two_sided: bool = False
     """Stiffened seat: seats on both sides of the support web."""
+    seat_plate_width: Quantity | None = None
+    """Stiffened seat: seat plate width across the beam (default: W + 1 in)."""
+    seat_plate_thickness: Quantity | None = None
+    """Stiffened seat: seat plate thickness (default: 3/8 in)."""
+    seat_plate_weld: Quantity | None = None
+    """Stiffened seat: weld of the seat plate to the stiffener (default: 5/16 in)."""
+    top_angle_leg: Quantity | None = None
+    """Seat: outstanding leg of the stability angle (default: 4 in)."""
+    top_angle_thickness: Quantity | None = None
+    """Seat: thickness of the stability angle (default: 1/4 in)."""
+    top_angle_length: Quantity | None = None
+    """Seat: length of the stability angle along the beam (default: 4 in)."""
+    top_angle_bolts: int = Field(default=2, ge=2)
+    """Seat: bolts through each leg of the stability angle (welded seats use the weld)."""
+    top_angle_weld: Quantity | None = None
+    """Seat: weld of the stability angle to the support (default: 3/16 in)."""
     beam_area: Quantity | None = None
     """Gross area of a generic beam (axial checks of the double angle)."""
 
@@ -215,19 +231,35 @@ def shear_model(project: Project) -> ShearConnection:
             plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t, support_Fu=sp.Fu,
             FEXX=FEXX, deformation_considered=sc.deformation_considered, **common)
     elif kind is ShearType.SEATED:
+        top = {}
+        for name, unit in (("top_angle_leg", L), ("top_angle_thickness", T),
+                           ("top_angle_length", L), ("top_angle_weld", T)):
+            value = getattr(sc, name)
+            if value is not None:
+                top[name] = q(value, unit)
         el = SeatedAngle(
             length=q(sc.length), thickness=q(sc.thickness, T), leg=q(sc.leg), Fy=plate.Fy,
             bolt=bolt, bolts=sc.bolts, support_t=support_t, support_Fu=sp.Fu,
             angle_Fu=plate.Fu, beam_d=beam.d, beam_tw=beam.tw, beam_tf=beam.tf,
             beam_kdes=beam.k_des, beam_Fy=bm.Fy, support_weld=q(sc.support_weld, T),
-            vertical_leg=q(sc.vertical_leg), FEXX=FEXX,
-            bearing_length=None if sc.bearing_length is None else q(sc.bearing_length))
+            vertical_leg=q(sc.vertical_leg), FEXX=FEXX, top_angle_bolts=sc.top_angle_bolts,
+            bearing_length=None if sc.bearing_length is None else q(sc.bearing_length),
+            **top)
     else:
+        extra = {}
+        for name, unit in (("seat_plate_width", L), ("seat_plate_thickness", T),
+                           ("seat_plate_weld", T), ("top_angle_leg", L),
+                           ("top_angle_thickness", T), ("top_angle_length", L),
+                           ("top_angle_weld", T)):
+            value = getattr(sc, name)
+            if value is not None:
+                extra[name] = q(value, unit)
         el = StiffenedSeat(
             width=q(sc.width), length=q(sc.length), thickness=q(sc.thickness, T),
             stiffener_Fy=plate.Fy, weld=q(sc.weld, T), beam_d=beam.d, beam_tw=beam.tw,
             beam_tf=beam.tf, beam_kdes=beam.k_des, beam_Fy=bm.Fy, support_t=support_t,
-            support_Fu=sp.Fu, two_sided=sc.two_sided, FEXX=FEXX)
+            support_Fu=sp.Fu, two_sided=sc.two_sided, FEXX=FEXX,
+            top_angle_bolts=sc.top_angle_bolts, **extra)
     cope = None
     if sc.cope is not None:
         bolted = kind in {ShearType.SINGLE_PLATE, ShearType.EXTENDED_SINGLE_PLATE} or (

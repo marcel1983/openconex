@@ -22,7 +22,7 @@ from openconex.connections.shear.end_plate import EndPlate
 from openconex.connections.shear.extended_single_plate import ExtendedSinglePlate
 from openconex.connections.shear.seated import SeatedAngle
 from openconex.connections.shear.single_plate import SinglePlate
-from openconex.connections.shear.stiffened_seat import StiffenedSeat
+from openconex.connections.shear.stiffened_seat import StiffenedSeat, seat_plate_width
 from openconex.i18n import tr
 from openconex.units import Kind, UnitSystem, format_value, to_internal
 
@@ -151,7 +151,12 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
         t = el.thickness
         lay.beam_start = el.setback - INCH / 4
         lay.plates += [(0.0, -t, el.leg, 0.0, "seat"),
-                       (0.0, -(el.vertical_leg or el.leg + 2 * INCH), t, -t, "seat")]
+                       (0.0, -(el.vertical_leg or el.leg + 2 * INCH), t, -t, "seat"),
+                       (el.setback - INCH / 4, el.beam_d, el.setback - INCH / 4
+                        + el.top_angle_length, el.beam_d + el.top_angle_thickness,
+                        "top_angle"),
+                       (0.0, el.beam_d, el.top_angle_thickness, el.beam_d + el.top_angle_leg,
+                        "top_angle")]
         lay.plate_thickness = el.length
         if el.support_weld > 0:
             lay.welds.append((0.0, -(el.vertical_leg or el.leg), 0.0, 0.0))
@@ -160,10 +165,14 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
                 -t - 1.5 * INCH, -t - 4.5 * INCH]
             lay.support_bolt_end = t
     elif isinstance(el, StiffenedSeat):
-        seat = 3 * INCH / 8
+        seat = el.seat_plate_thickness
         lay.beam_start = el.setback
         lay.plates += [(0.0, -seat, el.width, 0.0, "seat"),
-                       (0.0, -seat - el.length, el.width, -seat, "stiffener")]
+                       (0.0, -seat - el.length, el.width, -seat, "stiffener"),
+                       (el.setback, el.beam_d, el.setback + el.top_angle_length,
+                        el.beam_d + el.top_angle_thickness, "top_angle"),
+                       (0.0, el.beam_d, el.top_angle_thickness,
+                        el.beam_d + el.top_angle_leg, "top_angle")]
         lay.plate_thickness = el.thickness
         lay.welds.append((0.0, -seat - el.length, 0.0, 0.0))
     return lay
@@ -212,12 +221,25 @@ def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ..
         mass = (el.leg + vertical - el.thickness) * el.thickness * el.length * STEEL_DENSITY
         add(1, f"L {s.label(el.leg)} x {s.label(vertical)} x {s.label(el.thickness)}",
             _steel(s, el.Fy), mass)
+        top_mass = ((2 * el.top_angle_leg - el.top_angle_thickness)
+                    * el.top_angle_thickness * el.top_angle_length * STEEL_DENSITY)
+        add(1, f"L {s.label(el.top_angle_leg)} x {s.label(el.top_angle_leg)} x "
+               f"{s.label(el.top_angle_thickness)} x {s.label(el.top_angle_length)}",
+            _steel(s, el.Fy), top_mass)
     elif isinstance(el, StiffenedSeat):
         add(1, f"{t('stiffener')} {s.label(el.width)} x {s.label(el.length)} x "
                f"{s.label(el.thickness)}", _steel(s, el.stiffener_Fy),
             el.width * el.length * el.thickness * STEEL_DENSITY)
-        add(1, f"{t('seat_plate')} {s.label(el.width)} x {s.label(3 * INCH / 8)}",
-            _steel(s, el.stiffener_Fy))
+        plate_width = seat_plate_width(el)
+        add(1, f"{t('seat_plate')} {s.label(el.seat_plate_thickness)} x "
+               f"{s.label(el.width)} x {s.label(plate_width)}",
+            _steel(s, el.stiffener_Fy),
+            el.width * plate_width * el.seat_plate_thickness * STEEL_DENSITY)
+        top_mass = ((2 * el.top_angle_leg - el.top_angle_thickness)
+                    * el.top_angle_thickness * el.top_angle_length * STEEL_DENSITY)
+        add(1, f"L {s.label(el.top_angle_leg)} x {s.label(el.top_angle_leg)} x "
+               f"{s.label(el.top_angle_thickness)} x {s.label(el.top_angle_length)}",
+            _steel(s, el.stiffener_Fy), top_mass)
 
     bolt = getattr(el, "bolt", None)
     count = 0

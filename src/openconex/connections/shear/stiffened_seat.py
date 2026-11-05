@@ -14,9 +14,14 @@ welded to the support. Limit states for the beam end reaction R:
 * stiffener thickness t ≥ max(1.5 w, F_y,beam t_w / F_y,stiffener) (Manual Part
   10; the 1.5 w rule is for 50 ksi plates with 70 ksi electrodes);
 * support thickness that develops the welds, 3.09 D/F_u, or 6.19 D/F_u when
-  both sides of a web carry a seat (Manual Eq. 9-6, 9-7).
+  both sides of a web carry a seat (Manual Eq. 9-6, 9-7);
+* seat plate bearing on the stiffener, 1.8 F_y W t (§J7.1);
+* seat plate detail: 3/8 in. thick, at least 1 in. wider than the stiffener,
+  3/16 in. weld and a weld length of at least 0.2 l (Manual Part 10 and
+  Design Example II.A-14).
 
-The seat plate and its welds and the top angle are not designed.
+The top angle is the standard stability detail shared with the unstiffened
+seat; it carries no part of the reaction.
 """
 
 from __future__ import annotations
@@ -27,13 +32,29 @@ from dataclasses import dataclass
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
 from openconex.core.materials import E_STEEL
-from openconex.kernel.design import Calc
+from openconex.kernel.design import Calc, Resistance
 from openconex.kernel.welds import fillet_weld_per_length
 from openconex.units import Kind, from_internal, to_internal
 
-from .seated import PART10, WEB_CRIPPLING, WEB_YIELDING
+from .seated import (
+    PART10,
+    TOP_ANGLE_BOLTS,
+    TOP_ANGLE_LEG,
+    TOP_ANGLE_LENGTH,
+    TOP_ANGLE_THICKNESS,
+    TOP_ANGLE_WELD,
+    WEB_CRIPPLING,
+    WEB_YIELDING,
+    top_angle_checks,
+)
 
-__all__ = ["StiffenedSeat", "check_stiffened_seat"]
+__all__ = ["StiffenedSeat", "check_stiffened_seat", "seat_plate_width"]
+
+BEARING = Resistance(0.75, 2.00)
+SEAT_PLATE_THICKNESS = to_internal(0.375, "in", Kind.THICKNESS)
+SEAT_PLATE_WELD = to_internal(0.3125, "in", Kind.THICKNESS)
+SEAT_PLATE_EDGE = to_internal(0.5, "in", Kind.LENGTH)
+"""Minimum extension of the seat plate beyond each side of the stiffener."""
 
 
 @dataclass(frozen=True)
@@ -59,6 +80,15 @@ class StiffenedSeat:
     setback: float = to_internal(0.5, "in", Kind.LENGTH)
     underrun: float = to_internal(0.25, "in", Kind.LENGTH)
     FEXX: float = to_internal(70.0, "ksi", Kind.STRESS)
+    seat_plate_width: float = 0.0
+    """Seat plate width across the beam; 0 uses the stiffener width plus 1 in."""
+    seat_plate_thickness: float = SEAT_PLATE_THICKNESS
+    seat_plate_weld: float = SEAT_PLATE_WELD
+    top_angle_leg: float = TOP_ANGLE_LEG
+    top_angle_thickness: float = TOP_ANGLE_THICKNESS
+    top_angle_length: float = TOP_ANGLE_LENGTH
+    top_angle_bolts: int = TOP_ANGLE_BOLTS
+    top_angle_weld: float = TOP_ANGLE_WELD
 
 
 def _available(method: Method, nominal: float, r) -> float:
@@ -95,6 +125,38 @@ def _width(ss: StiffenedSeat, R: float, method: Method, combo: str) -> CheckResu
     return c.result("stiffened_seat.width", clause, w_min, ss.width, Kind.LENGTH)
 
 
+def seat_plate_width(ss: StiffenedSeat) -> float:
+    """Seat plate width; the default extends 1/2 in. beyond each stiffener edge."""
+    return ss.seat_plate_width or ss.width + 2 * SEAT_PLATE_EDGE
+
+
+def _seat_plate(ss: StiffenedSeat, R: float, method: Method,
+                combo: str) -> list[CheckResult]:
+    """Bearing on the stiffener and the standard seat-plate detail."""
+    c = Calc(method, combo)
+    clause = "AISC 360-22 §J7.1; AISC Manual 16th ed., Part 10"
+    area = ss.width * ss.thickness
+    bearing = c.result("stiffened_seat.seat_plate_bearing", clause, R,
+                       c.available(1.8 * ss.stiffener_Fy * area, BEARING, Kind.FORCE,
+                                   clause), Kind.FORCE)
+
+    checks = [bearing]
+    clause = f"{PART10}, seat plate detail"
+    for check_id, required, actual, kind in (
+            ("stiffened_seat.seat_plate_width", ss.width + 2 * SEAT_PLATE_EDGE,
+             seat_plate_width(ss), Kind.LENGTH),
+            ("stiffened_seat.seat_plate_thickness", SEAT_PLATE_THICKNESS,
+             ss.seat_plate_thickness, Kind.THICKNESS),
+            ("stiffened_seat.seat_plate_weld", SEAT_PLATE_WELD,
+             ss.seat_plate_weld, Kind.THICKNESS),
+            ("stiffened_seat.seat_plate_weld_length", 0.2 * ss.length,
+             ss.width, Kind.LENGTH)):
+        c = Calc(method, combo)
+        c.step("required", "", required, kind, clause)
+        checks.append(c.result(check_id, clause, required, actual, kind))
+    return checks
+
+
 def check_stiffened_seat(ss: StiffenedSeat, R: float, method: Method,
                          combo: str = "") -> list[CheckResult]:
     """All limit states of the stiffened seat for the beam end reaction ``R``."""
@@ -124,4 +186,9 @@ def check_stiffened_seat(ss: StiffenedSeat, R: float, method: Method,
                                "in", Kind.LENGTH), Kind.THICKNESS, clause)
     support = c.result("stiffened_seat.support_thickness", clause, t_sup, ss.support_t,
                        Kind.THICKNESS)
-    return [_width(ss, R, method, combo), weld, stiffener, support]
+    return [_width(ss, R, method, combo), weld, stiffener,
+            *_seat_plate(ss, R, method, combo),
+            *top_angle_checks(method, combo, leg=ss.top_angle_leg,
+                              thickness=ss.top_angle_thickness,
+                              length=ss.top_angle_length, bolts=ss.top_angle_bolts,
+                              weld=ss.top_angle_weld, welded=True), support]

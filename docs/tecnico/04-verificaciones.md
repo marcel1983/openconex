@@ -150,7 +150,7 @@ Placa soldada al extremo del alma de la viga y apernada al apoyo con dos pernos 
 
 ## Asiento no rigidizado apernado (`connections/shear/seated.py`)
 
-La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC Parte 10). La holgura incluye la tolerancia de longitud (¾ in por defecto). No se diseña el ángulo superior de estabilidad.
+La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC Parte 10). La holgura incluye la tolerancia de longitud (¾ in por defecto). El ángulo superior es el detalle estándar de estabilidad L4×4×1/4 con dos pernos de 3/4 in por ala (o soldadura de 3/16 in); se comprueban sus dimensiones mínimas, no su resistencia, porque no toma parte de la reacción.
 
 | `id` | Verificación | Norma |
 |---|---|---|
@@ -159,10 +159,15 @@ La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC 
 | `seated.flexural_yielding` | R_n = (F_y L t²/4)/e_c, e_c = holgura + l_b/2 − t − 3/8 in | Manual Parte 10 |
 | `seated.bolts` | n · mín(corte del perno, aplastamiento en el ángulo y en el apoyo) | §J3.7, §J3.11 |
 | `seated.weld` | Con `support_weld` > 0 (asiento soldado): R_n = 2 r_w l_v²/√(l_v² + 20,25 e²), e = holgura + (ala − holgura)/2. Reemplaza `seated.bolts` | Manual Tabla 10-6 |
+| `seated.top_angle_leg` | Ala del ángulo superior ≥ 4 in | Manual Parte 10, detalle estándar |
+| `seated.top_angle_thickness` | Espesor ≥ 1/4 in | Manual Parte 10, detalle estándar |
+| `seated.top_angle_length` | Largo ≥ 4 in | Manual Parte 10, detalle estándar |
+| `seated.top_angle_bolts` | Pernos por ala ≥ 2 (asiento apernado) | Manual Parte 10, detalle estándar |
+| `seated.top_angle_weld` | Soldadura ≥ 3/16 in (asiento soldado) | Manual Parte 10, detalle estándar |
 
 ## Asiento rigidizado soldado (`connections/shear/stiffened_seat.py`)
 
-Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al apoyo (Manual AISC Parte 10). No se diseñan la placa de asiento ni el ángulo superior.
+Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al apoyo (Manual AISC Parte 10). La placa de asiento es el detalle estándar de 3/8 in de espesor, 1 in más ancha que el rigidizador y soldada con filete de 5/16 in; el ángulo superior es el mismo detalle de estabilidad L4×4×1/4 del asiento no rigidizado.
 
 | `id` | Verificación | Norma |
 |---|---|---|
@@ -170,6 +175,12 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 | `stiffened_seat.weld` | R_n = 2 r_w · 1,2 l²/√(l² + 16 e²), e = 0,8 W | Manual Tabla 10-8 |
 | `stiffened_seat.stiffener_thickness` | t ≥ máx(1,5 w, F_y,viga t_w / F_y,rigidizador); 1,5 w vale para placas de 50 ksi y electrodos E70 | Manual Parte 10 |
 | `stiffened_seat.support_thickness` | t ≥ 3,09 D/F_u, o 6,19 D/F_u con asientos a ambos lados del alma | Manual Ec. 9-6, 9-7 |
+| `stiffened_seat.seat_plate_bearing` | Aplastamiento de la placa de asiento sobre el rigidizador, φ 1,8 F_y W t | §J7.1 |
+| `stiffened_seat.seat_plate_width` | Ancho de la placa ≥ W + 1 in | Manual Parte 10, detalle de II.A-14 |
+| `stiffened_seat.seat_plate_thickness` | Espesor ≥ 3/8 in | Manual Parte 10, detalle de II.A-14 |
+| `stiffened_seat.seat_plate_weld` | Soldadura ≥ 5/16 in | Manual Parte 10, detalle de II.A-14 |
+| `stiffened_seat.seat_plate_weld_length` | Largo de soldadura (W) ≥ 0,2 l | Manual Parte 10, detalle de II.A-14 |
+| `seated.top_angle_*` | Mínimos del ángulo superior de estabilidad, iguales que en el asiento no rigidizado | Manual Parte 10, detalle estándar |
 
 ## Conexión de corte: resultados comunes (`connections/shear/check.py`)
 

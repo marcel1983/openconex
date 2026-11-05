@@ -155,3 +155,37 @@ def test_3d_model(name, tmp_path):
     parts = shear_parts(load_project(EXAMPLES / f"{name}.ocnx").shear_model())
     assert {"beam", "support"} <= {p.name for p in parts}
     assert write_step(parts, tmp_path / "x.step").stat().st_size > 0
+
+
+@pytest.mark.parametrize(("kind", "expected"), [
+    ("seated", "L 4 in x 4 in x 0.25 in x 4 in"),
+    ("stiffened_seat", "Placa de asiento 0.375 in x 7 in x 8 in"),
+])
+def test_seat_details_are_in_the_bill_of_materials(kind, expected, tmp_path):
+    from openconex.drawing.shear import write_shear_dxf
+    fields = {
+        "seated": {"leg": "4 in", "thickness": "5/8 in", "length": "8 in"},
+        "stiffened_seat": {"width": "7 in", "length": "15 in", "thickness": "5/8 in",
+                           "weld": "5/16 in"},
+    }[kind]
+    project = Project.model_validate(_data(connection={"type": kind, **fields}))
+    path = write_shear_dxf(project.shear_model(), tmp_path / "x.dxf",
+                           project.info.unit_system())
+    texts = [entity.dxf.text for entity in ezdxf.readfile(path).modelspace().query("TEXT")]
+    assert any(expected in text for text in texts)
+
+
+@pytest.mark.parametrize("kind", ["seated", "stiffened_seat"])
+def test_3d_seats_include_the_stability_angle(kind):
+    pytest.importorskip("OCP")
+    from openconex.geometry3d.shear import shear_parts
+    fields = {
+        "seated": {"leg": "4 in", "thickness": "5/8 in", "length": "8 in"},
+        "stiffened_seat": {"width": "7 in", "length": "15 in", "thickness": "5/8 in",
+                           "weld": "5/16 in"},
+    }[kind]
+    project = Project.model_validate(_data(connection={"type": kind, **fields}))
+    names = {p.name for p in shear_parts(project.shear_model())}
+    assert {"beam", "support", "top_angle"} <= names
+    if kind == "stiffened_seat":
+        assert "seat" in names

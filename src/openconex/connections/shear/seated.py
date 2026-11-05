@@ -22,7 +22,10 @@ fillet weld along each end (Design Examples II.A-13, II.A-16) instead of
 bolted: R_n = 2 r_w l_v^2 / sqrt(l_v^2 + 20.25 e^2) (elastic method of Manual
 Part 10, Table 10-6), l_v the vertical leg and e = setback + (leg − setback)/2.
 
-The top (stability) angle is not designed.
+The top (stability) angle is a standard detail of Manual Part 10: an L4×4×1/4
+with two 3/4-in. bolts through each leg (or a 3/16-in. fillet weld along the
+supported leg). It carries no part of the beam end reaction; the checks only
+verify that the specified angle meets the standard minimums.
 """
 
 from __future__ import annotations
@@ -41,11 +44,18 @@ from openconex.units import Kind, to_internal
 
 from .double_angle import SPEC
 
-__all__ = ["SeatedAngle", "check_seated"]
+__all__ = ["SeatedAngle", "check_seated", "top_angle_checks"]
 
 PART10 = "AISC Manual 16th ed., Part 10"
 WEB_YIELDING = Resistance(1.00, 1.50)
 WEB_CRIPPLING = Resistance(0.75, 2.00)
+
+# Standard stability angle of Manual Part 10 (Design Examples II.A-12A, II.A-14).
+TOP_ANGLE_LEG = to_internal(4.0, "in", Kind.LENGTH)
+TOP_ANGLE_THICKNESS = to_internal(0.25, "in", Kind.THICKNESS)
+TOP_ANGLE_LENGTH = to_internal(4.0, "in", Kind.LENGTH)
+TOP_ANGLE_BOLTS = 2
+TOP_ANGLE_WELD = to_internal(0.1875, "in", Kind.THICKNESS)
 
 
 @dataclass(frozen=True)
@@ -75,6 +85,15 @@ class SeatedAngle:
     FEXX: float = to_internal(70.0, "ksi", Kind.STRESS)
     bearing_length: float | None = None
     """Bearing length used for the leg flexure; defaults to the required l_b,min."""
+    top_angle_leg: float = TOP_ANGLE_LEG
+    """Outstanding leg of the stability angle."""
+    top_angle_thickness: float = TOP_ANGLE_THICKNESS
+    top_angle_length: float = TOP_ANGLE_LENGTH
+    """Length of the stability angle along the beam."""
+    top_angle_bolts: int = TOP_ANGLE_BOLTS
+    """Bolts through each leg of the stability angle (welded seats use the weld)."""
+    top_angle_weld: float = TOP_ANGLE_WELD
+    """Fillet weld of the stability angle to the support (welded seats)."""
 
 
 def _factor(method: Method, r: Resistance) -> float:
@@ -110,6 +129,31 @@ def _bearing_length(sa: SeatedAngle, R: float, method: Method, combo: str) -> Ch
     return c.result("seated.bearing_length", clause, required, available, Kind.LENGTH)
 
 
+def top_angle_checks(method: Method, combo: str, *, leg: float, thickness: float,
+                     length: float, bolts: int, weld: float,
+                     welded: bool) -> list[CheckResult]:
+    """Standard stability angle: minimum leg, thickness, length, bolts or weld."""
+    clause = f"{PART10}, stability angle detail"
+    checks = []
+    for check_id, required, actual, kind in (
+            ("seated.top_angle_leg", TOP_ANGLE_LEG, leg, Kind.LENGTH),
+            ("seated.top_angle_thickness", TOP_ANGLE_THICKNESS, thickness, Kind.THICKNESS),
+            ("seated.top_angle_length", TOP_ANGLE_LENGTH, length, Kind.LENGTH)):
+        c = Calc(method, combo)
+        c.step("required", "", required, kind, clause)
+        checks.append(c.result(check_id, clause, required, actual, kind))
+    c = Calc(method, combo)
+    if welded:
+        c.step("w_{min}", "", TOP_ANGLE_WELD, Kind.THICKNESS, clause)
+        checks.append(c.result("seated.top_angle_weld", clause, TOP_ANGLE_WELD, weld,
+                               Kind.THICKNESS))
+    else:
+        c.step("n_{min}", "", TOP_ANGLE_BOLTS, Kind.DIMENSIONLESS, clause)
+        checks.append(c.result("seated.top_angle_bolts", clause, TOP_ANGLE_BOLTS, bolts,
+                               Kind.DIMENSIONLESS))
+    return checks
+
+
 def check_seated(sa: SeatedAngle, R: float, method: Method,
                  combo: str = "") -> list[CheckResult]:
     """All limit states of the seat for the beam end reaction ``R``."""
@@ -132,7 +176,10 @@ def check_seated(sa: SeatedAngle, R: float, method: Method,
         shear = elements.shear_yielding(sa.length * t, sa.Fy, R, method, combo)
         shear = shear.model_copy(update={"id": "seated.shear_yielding",
                                          "text_id": "check.seated.shear_yielding"})
-        return [bearing, shear, flexure, bolt_check]
+        return [bearing, shear, flexure, bolt_check, *top_angle_checks(
+            method, combo, leg=sa.top_angle_leg, thickness=sa.top_angle_thickness,
+            length=sa.top_angle_length, bolts=sa.top_angle_bolts,
+            weld=sa.top_angle_weld, welded=True)]
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11"
     b = sa.bolt
@@ -147,7 +194,10 @@ def check_seated(sa: SeatedAngle, R: float, method: Method,
     shear = elements.shear_yielding(sa.length * t, sa.Fy, R, method, combo)
     shear = shear.model_copy(update={"id": "seated.shear_yielding",
                                      "text_id": "check.seated.shear_yielding"})
-    return [bearing, shear, flexure, bolt_check]
+    return [bearing, shear, flexure, bolt_check, *top_angle_checks(
+        method, combo, leg=sa.top_angle_leg, thickness=sa.top_angle_thickness,
+        length=sa.top_angle_length, bolts=sa.top_angle_bolts, weld=sa.top_angle_weld,
+        welded=False)]
 
 
 def _welds(sa: SeatedAngle, R: float, method: Method, combo: str) -> CheckResult:

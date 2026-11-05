@@ -47,7 +47,19 @@ def test_example_ii_a_14_15(method, R, col):
                                                                                   rel=0.01)
     assert results["stiffened_seat.support_thickness"].demand == pytest.approx(inch(0.238),
                                                                                 rel=0.01)
+    assert results["stiffened_seat.seat_plate_bearing"].capacity == pytest.approx(
+        kip((295, 197)[col]), rel=0.01)
+    assert results["stiffened_seat.seat_plate_width"].demand == pytest.approx(inch(8))
+    assert results["stiffened_seat.seat_plate_thickness"].demand == pytest.approx(inch(3 / 8))
+    assert results["stiffened_seat.seat_plate_weld_length"].demand == pytest.approx(inch(3))
+    assert results["seated.top_angle_thickness"].demand == pytest.approx(inch(1 / 4))
     assert all(r.status.value == "ok" for r in results.values())
+
+
+def test_seat_plate_below_the_standard_detail_fails():
+    small = dataclasses.replace(EX, seat_plate_thickness=inch(1 / 4))
+    results = {r.id: r for r in check_stiffened_seat(small, kip(125), Method.LRFD)}
+    assert results["stiffened_seat.seat_plate_thickness"].status.value == "ng"
 
 
 def test_two_sided_web_is_too_thin():
