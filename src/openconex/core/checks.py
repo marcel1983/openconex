@@ -59,7 +59,7 @@ class CheckResult(BaseModel):
     applicable: bool = True
     ratio_limit: float = 1.0
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def ratio(self) -> float:
         if not self.applicable:
@@ -68,7 +68,7 @@ class CheckResult(BaseModel):
             return float("inf") if self.demand > 0.0 else 0.0
         return abs(self.demand) / self.capacity
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def status(self) -> Status:
         if not self.applicable:

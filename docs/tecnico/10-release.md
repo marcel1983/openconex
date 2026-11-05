@@ -10,7 +10,8 @@ OpenConex se publica con tres paquetes portables y los paquetes de Python. El fl
 
 ```bash
 ruff check .
-python -m pytest
+python -m mypy
+python -m pytest --cov=openconex --cov-fail-under=55
 python -m pytest tests/outputs -ra
 python tools/check_licenses.py
 ```

@@ -9,7 +9,7 @@ Sign convention of :class:`Forces` (local axes of the connection):
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from enum import StrEnum
 from itertools import product
 
@@ -119,7 +119,9 @@ def combine(combo: LoadCombination, forces: Mapping[str, Forces]) -> Forces:
 # case with either sign ("W or W_T"), "W only" one wind case (no tornado),
 # and "L*" the live load whose factor ASCE 7 allows to reduce to 0.5.
 # A combination whose required variable load does not exist is skipped.
-_LRFD = [
+CombinationTerm = tuple[str, float | tuple[float, float]]
+CombinationSpec = tuple[str, str | None, list[CombinationTerm]]
+_LRFD: list[CombinationSpec] = [
     ("2.3.1 (1)", None, [("D", 1.4)]),
     ("2.3.1 (2)", None, [("D", 1.2), ("L", 1.6), ("roof", (0.5, 0.3))]),
     ("2.3.1 (3)", "roof", [("D", 1.2), ("roof", (1.6, 1.0)), ("L*", 1.0)]),
@@ -127,7 +129,7 @@ _LRFD = [
     ("2.3.1 (4)", "wind", [("D", 1.2), ("wind", 1.0), ("L*", 1.0), ("roof", (0.5, 0.3))]),
     ("2.3.1 (5)", "wind", [("D", 0.9), ("wind", 1.0)]),
 ]
-_ASD = [
+_ASD: list[CombinationSpec] = [
     ("2.4.1 (1)", None, [("D", 1.0)]),
     ("2.4.1 (2)", None, [("D", 1.0), ("L", 1.0)]),
     ("2.4.1 (3)", "roof", [("D", 1.0), ("roof", (1.0, 0.7))]),
@@ -195,7 +197,9 @@ def asce7_combinations(
         types = {t for t, _ in terms}
         if (required == "roof" and not roofs) or (required == "wind" and not winds):
             continue
-        roof_options = roofs if "roof" in types and roofs else [None]
+        roof_options: Sequence[tuple[str, str] | None] = (
+            roofs if "roof" in types and roofs else [None])
+        wind_options: Sequence[tuple[str, float] | None]
         if "wind" in types:
             wind_options = winds
         elif "W only" in types and winds_only:
@@ -207,21 +211,22 @@ def asce7_combinations(
             tags: list[str] = []
             for kind, factor in terms:
                 if kind == "roof":
-                    if roof:
+                    if roof and isinstance(factor, tuple):
                         name, roof_type = roof
                         other, snow = factor
                         put(factors, [name], snow if roof_type == "S" else other)
                         tags.append(name)
                 elif kind in ("wind", "W only"):
-                    if wind is None:
+                    if wind is None or not isinstance(factor, float):
                         continue
                     name, sign = wind
                     put(factors, [name], sign * factor)
                     tags.append(("+" if sign > 0 else "-") + name)
-                elif kind == "L*":
-                    put(factors, by_type["L"], factor * live_factor)
-                else:
-                    put(factors, by_type[kind], factor)
+                elif isinstance(factor, float):
+                    if kind == "L*":
+                        put(factors, by_type["L"], factor * live_factor)
+                    else:
+                        put(factors, by_type[kind], factor)
             add(clause, factors, tags)
 
     if seismic is not None and quakes:
