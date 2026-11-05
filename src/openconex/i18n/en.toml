@@ -186,6 +186,7 @@ panel_zone = "Web panel-zone shear"
 [check.double_angle]
 bolts_beam = "Shear transfer at bolt holes, beam side"
 bolts_support = "Shear transfer at bolt holes, support side"
+bolts_support_shared = "Support bolt row shared by two offset beams (II.A-9)"
 angle_shear_yielding = "Shear yielding of the angles"
 angle_shear_rupture = "Shear rupture of the angles"
 block_shear_beam = "Block shear of the angles, beam side"

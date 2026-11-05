@@ -46,7 +46,7 @@ from openconex.kernel.design import Calc
 from openconex.kernel.weld_group import WeldLine, weld_group_eccentric
 from openconex.units import Kind, from_internal, to_internal
 
-__all__ = ["DoubleAngle", "check_double_angle"]
+__all__ = ["DoubleAngle", "check_double_angle", "check_shared_support_bolts"]
 
 MANUAL = "AISC Manual 16th ed., Part 10"
 SPEC = "AISC 360-22"
@@ -145,6 +145,32 @@ def _block_shear(da: DoubleAngle, leh: float, R: float, method: Method,
     ant = 2 * (leh - 0.5 * hole) * t
     return _renamed(elements.block_shear(agv, anv, ant, da.angle_Fy, da.angle_Fu, R, method,
                                          Ubs=1.0, combo=combo), key)
+
+
+def check_shared_support_bolts(da: DoubleAngle, R: float, method: Method,
+                               combo: str = "") -> CheckResult:
+    """Shared support bolt row for two offset back-to-back beams (II.A-9).
+
+    The two connections share one vertical row through the girder web. Each
+    bolt passes through both angle legs and the girder web (double shear), and
+    the row has two bolts per row (one per connection). The angle and beam
+    checks do not change; only the shared bolt group is checked for ``2R``.
+    """
+    c = Calc(method, combo)
+    clause = f"{SPEC} §J3.7, §J3.11; {MANUAL}"
+    b = da.bolt
+    shear = c.step(r"2 r_{n,bolt}", "", 2 * bolts.bolt_shear(b, 0.0, method).capacity,
+                   Kind.FORCE, f"{SPEC} §J3.7")
+    bearing = c.step(r"r_{n,support}", r"\min(2.4dtF_u, 1.2l_ctF_u)",
+                     bolts.bolt_bearing(b, da.support_t, da.support_Fu, 0.0, method,
+                                        deformation_considered=da.deformation_considered)
+                     .capacity, Kind.FORCE, f"{SPEC} §J3.11",
+                     t=(da.support_t, Kind.THICKNESS))
+    per_bolt = c.step(r"r_n", r"\min", min(shear, bearing), Kind.FORCE, clause)
+    n = 2 * da.rows
+    return c.result("double_angle.bolts_support_shared", clause, 2 * R,
+                    c.step(r"n r_n", "", n * per_bolt, Kind.FORCE, clause,
+                           n=(n, Kind.DIMENSIONLESS)), Kind.FORCE)
 
 
 def check_double_angle(da: DoubleAngle, R: float, method: Method,

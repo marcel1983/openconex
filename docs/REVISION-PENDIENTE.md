@@ -99,7 +99,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [ ] Compresión axial en el extremo de la viga.
 - [ ] Flexión de la viga y corte del alma sin destaje.
 
-- [ ] Doble destaje viga-viga con placa simple y conexiones desplazadas o en ángulo (II.A-9, II.A-10).
+- [ ] Conexiones en ángulo con placa doblada (II.A-10).
 - [ ] Importar reacciones de vigas desde SAP2000/ETABS para crear proyectos de corte.
 - [ ] Editor gráfico 2D de la ventana de corte.
 
@@ -110,6 +110,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [x] Placa simple con destaje superior validada contra II.A-18.
 - [x] Placa simple extendida con carga axial (II.A-19B): pernos, placa, bloque de corte e interacción; sin comprobar la viga ni la línea de fluencia del alma de la columna.
 - [x] Refuerzo de destajes (II.A-6 C y D): placa doble y rigidizador longitudinal en el cálculo, el proyecto, la memoria, el DXF, el 3D y la GUI.
+- [x] Doble ángulo desplazado con fila de pernos compartida (II.A-9): comprobación de la fila compartida para 2R; el desplazamiento no se dibuja todavía en planta.
 - [x] Ángulo superior de los asientos: detalle estándar L4×4×1/4, dos pernos por ala o soldadura de 3/16 in, incluido en DXF, BOM y 3D. No se le asigna carga porque el asiento toma toda la reacción.
 - [x] Placa de asiento del asiento rigidizado: PL 3/8 in × W × (W + 1 in), soldadura de 5/16 in y longitud mínima 0,2 l; comprobación de aplastamiento sobre el rigidizador.
 - [x] II.A-16: el reparto queda aclarado: el asiento toma toda la carga, el ángulo superior solo estabiliza y la soldadura del asiento se verifica con el método elástico de la Tabla 10-6.

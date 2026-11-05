@@ -361,7 +361,8 @@ Conexión del extremo de una viga a una columna o a una viga principal (Manual A
 | `beam_weld` | — | Doble ángulo: soldaduras al alma de la viga (soldaduras A). |
 | `beam_leg` | — | Doble ángulo: ancho del ala sobre el alma de la viga (con `beam_weld`). |
 | `outstanding_leg` | — | Doble ángulo: ancho de las alas salientes (soldaduras B y tracción). |
-| `beam_leh` | — | Distancia del extremo de la viga a los pernos, para el desgarro del alma con tracción. |
+| `beam_leh` | - | Distancia del extremo de la viga a los pernos, para el desgarro del alma con tracción. |
+| `offset` | - | Doble ángulo: desplazamiento entre los ejes de dos vigas que comparten la fila de pernos del apoyo (II.A-9). |
 | `leg` | — | Asiento: ala horizontal. |
 | `vertical_leg` | — | Asiento soldado: ala vertical. |
 | `bolts` | `4` | Asiento apernado: pernos del ala vertical. |

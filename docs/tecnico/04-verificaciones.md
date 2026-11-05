@@ -45,6 +45,7 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Integrada en el proy
 |---|---|---|
 | `double_angle.bolts_beam` | Transferencia de corte en los agujeros, lado de la viga: Σ mín(2 r_n,perno, 2 r_n,ángulo, r_n,alma) | §J3.7 (nota), §J3.11 |
 | `double_angle.bolts_support` | Transferencia de corte en los agujeros, lado del apoyo: Σ mín(2 r_n,perno, 2 r_n,ángulo, 2 r_n,apoyo) | §J3.7 (nota), §J3.11 |
+| `double_angle.bolts_support_shared` | Fila de pernos compartida por dos vigas desplazadas: doble cortante y aplastamiento en el alma del apoyo para 2R | §J3.7, §J3.11; Manual II.A-9 |
 | `double_angle.angle_shear_yielding` | Fluencia por corte de los ángulos, A_gv = 2 l t | §J4.2(a) |
 | `double_angle.angle_shear_rupture` | Rotura por corte de los ángulos, A_nv = 2 (l − n(d_h + 1/16 in)) t | §J4.2(b), §B4.3b |
 | `double_angle.block_shear_beam` | Bloque de corte de los ángulos, lado de la viga (U_bs = 1) | §J4.3 |
