@@ -48,10 +48,10 @@ def test_report_figures(project):
     assert html.count("data:image/svg+xml;base64") == len(r.figures)
 
 
-def test_hss_moment_report_declares_the_approximation():
+def test_hss_moment_report_declares_the_validation_reference():
     project = load_project(EXAMPLES / "base_plate_hss_square.ocnx")
     r = build_base_plate_report(project, TODAY)
-    assert any("HSS con momento" in assumption for assumption in r.assumptions)
+    assert any("Steel Tube Institute" in assumption for assumption in r.assumptions)
 
 
 def test_embedded_report_uses_its_own_inputs_and_codes():
@@ -143,6 +143,10 @@ def test_factor_expression():
 def test_hss_column_report(project, shape, grade, text):
     project.base_plate.column = HSSSectionInput(
         type="HSS", shape=shape, d="12 in", t="0.5 in", grade=grade)
+    if shape == "round":
+        for case in project.cases:
+            case.M = "0 kip*in"
+            case.M_weak = "0 kip*in"
     r = build_base_plate_report(project, TODAY)
     assert r.inputs[0].cells[1].startswith("HSS ")
     assert any("HSS" in assumption and text in assumption for assumption in r.assumptions)

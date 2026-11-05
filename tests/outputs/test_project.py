@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from openconex.connections.base_plate.check import BearingAreaModel, PressureModel
+from openconex.connections.base_plate.check import (
+    BearingAreaModel,
+    PressureModel,
+    check_base_plate,
+)
 from openconex.core.loads import Method
 from openconex.core.model import HSSKind, HSSShape, IShape
 from openconex.io.project import (
@@ -173,8 +177,12 @@ def test_duplicate_custom_combination_names_are_rejected(project):
         project.load_combinations()
 
 
-def _project_with_column(column) -> Project:
+def _project_with_column(column, *, moments: bool = True) -> Project:
     data = json.loads(EXAMPLE.read_text())
+    if not moments:
+        for case in data["cases"]:
+            case["M"] = "0 kip*in"
+            case["M_weak"] = "0 kip*in"
     data["base_plate"]["column"] = column
     return Project.model_validate(data)
 
@@ -203,7 +211,7 @@ def test_generic_hss_columns(shape, bf, kind, grade):
               "grade": grade}
     if bf is not None:
         column["bf"] = bf
-    section = _project_with_column(column).column_model()
+    section = _project_with_column(column, moments=shape != "round").column_model()
     assert isinstance(section, HSSShape)
     assert section.kind is kind
     assert section.d == pytest.approx(304.8)
@@ -237,7 +245,8 @@ def test_generic_section_dimensions_are_validated():
                               "tw": "0.5 in", "grade": "ASTM A992"}).column_model()
     with pytest.raises(ValueError, match="wall thickness"):
         _project_with_column({"type": "HSS", "shape": "round", "d": "12 in",
-                              "t": "7 in", "grade": "ASTM A500 Gr. C (round)"}).column_model()
+                              "t": "7 in", "grade": "ASTM A500 Gr. C (round)"},
+                             moments=False).column_model()
 
 
 @pytest.mark.parametrize(("filename", "kind"), [
@@ -299,6 +308,9 @@ def test_pressure_model_options_are_parsed():
     project = Project.model_validate(data)
     assert project.base_plate_model().pressure_model is PressureModel.TRIANGULAR
     data = json.loads(EXAMPLE.read_text())
+    for case in data["cases"]:
+        case["M"] = "0 kip*in"
+        case["M_weak"] = "0 kip*in"
     data["base_plate"]["bearing_area_model"] = "effective"
     project = Project.model_validate(data)
     assert project.base_plate_model().bearing_area_model is BearingAreaModel.EFFECTIVE
@@ -461,12 +473,15 @@ def test_effective_area_requires_an_i_shape():
         Project.model_validate(data)
 
 
-def test_triangular_model_rejects_weak_axis_moment():
+def test_triangular_model_accepts_weak_axis_moment():
     data = json.loads(EXAMPLE.read_text())
     data["base_plate"]["pressure_model"] = "triangular"
     data["cases"][0]["M_weak"] = "10 kip*in"
-    with pytest.raises(ValueError, match="weak-axis"):
-        Project.model_validate(data)
+    project = Project.model_validate(data)
+    bp = project.base_plate_model()
+    assert bp.pressure_model is PressureModel.TRIANGULAR
+    results = check_base_plate(bp, project.case_forces()["D"], Method.LRFD)
+    assert any(result.id == "base_plate.bearing_weak" for result in results)
 
 
 def test_custom_material_names_must_be_unique():

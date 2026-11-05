@@ -18,9 +18,9 @@ La llave toma la componente del corte de su orientación: |V2| con `strong`, |V3
 - Perfil I: m = (N − 0,95d)/2 y n = (B − 0,8b_f)/2.
 - HSS rectangular: m = (N - 0,95d)/2 y n = (B - 0,95b)/2.
 - HSS circular: m = n = (N - 0,8D)/2.
-- En HSS con momento, estos cantilevers y el modelo rectangular son una aproximación: no hay un ejemplo publicado que valide el conjunto.
+- En HSS rectangular o cuadrado con momento, estos cantilevers y el modelo rectangular están validados contra el Ejemplo 2 del artículo del Steel Tube Institute (2024). El HSS circular con momento se rechaza porque no hay un ejemplo publicado que valide el conjunto.
 
-Por defecto se usa la distribución rectangular (`plate.rectangular_bending`). La opción `pressure_model = "triangular"` usa `plate.triangular_bending` (DG1 Apéndice B.2) en el eje fuerte; en esta versión no se aplica al eje débil ni a levantamiento. La opción `bearing_area_model = "effective"` usa `plate.effective_area` (DG1 Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica de perfiles I.
+Por defecto se usa la distribución rectangular (`plate.rectangular_bending`). La opción `pressure_model = "triangular"` usa `plate.triangular_bending` (DG1 Apéndice B.2) en cada eje con compresión (`P > 0`); en el eje débil se intercambian `N` y `B`, y `rod_edge = B/2 - rod_spacing/2`. Las combinaciones con levantamiento siguen usando el modelo rectangular. La opción `bearing_area_model = "effective"` usa `plate.effective_area` (DG1 Apéndice B.3) para la capacidad de aplastamiento en compresión concéntrica de perfiles I; se rechaza con momento o levantamiento.
 
 Según la excentricidad e = M/P se clasifica el caso (`plate.rectangular_bending`):
 
@@ -39,7 +39,8 @@ Según la excentricidad e = M/P se clasifica el caso (`plate.rectangular_bending
 Se repite el paso 1 con la placa girada:
 - N y B intercambiados, junto con el peralte y el ancho de la columna: m se mide contra b_f y n contra d.
 - f = `rod_spacing`/2, con dos barras por cara (la barra extrema de cada fila).
-- En la interfaz de tracción, x = rod_spacing/2 − b_f/2 en perfiles I (punta de las alas) y x = rod_spacing/2 − b/2 + t/2 en HSS.
+- En la interfaz de tracción, x = rod_spacing/2 - b_f/2 en perfiles I (punta de las alas) y x = rod_spacing/2 - b/2 + t/2 en HSS.
+- Con `pressure_model = "triangular"` y `P > 0`, se usa el mismo modelo triangular en el eje débil con las dimensiones giradas; en levantamiento se usa el rectangular.
 
 Sin barras fuera del eje (una por fila o `rod_spacing` = 0), el momento débil solo puede resistirse por aplastamiento: M2 ≤ P (B/2 − P/(2 q_max)).
 

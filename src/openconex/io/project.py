@@ -479,15 +479,22 @@ class Project(_Input):
                 ("f", self.base_plate.f)) if value is None]
             if missing:
                 raise ValueError(f"exposed base plate needs {', '.join(missing)}")
+        has_moment = any(
+            self.quantity(case.M, Kind.MOMENT) != 0
+            or self.quantity(case.M_weak, Kind.MOMENT) != 0
+            for case in self.cases)
         if self.base_plate.bearing_area_model is BearingAreaModel.EFFECTIVE:
             if isinstance(column, HSSSectionInput):
                 raise ValueError("effective bearing area is only defined for I-shapes")
             if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
                 raise ValueError("effective bearing area needs the rectangular pressure model")
-        if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
-            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
+            if has_moment:
                 raise ValueError(
-                    "triangular pressure model does not support weak-axis moment yet")
+                    "effective bearing area is only defined for concentric compression")
+        if (isinstance(column, HSSSectionInput) and column.shape is HSSKind.ROUND
+                and has_moment):
+            raise ValueError(
+                "round HSS with moment is not supported; only axial compression is validated")
         weak = self.base_plate.weak_base
         if weak is not None:
             if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
