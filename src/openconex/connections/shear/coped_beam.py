@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
@@ -31,6 +32,9 @@ from openconex.core.materials import E_STEEL
 from openconex.kernel import elements
 from openconex.kernel.design import FLEXURE, Calc
 from openconex.units import Kind, to_internal
+
+if TYPE_CHECKING:
+    from .cope_reinforcement import DoublerPlate, LongitudinalStiffener
 
 __all__ = ["CopedBeam", "check_coped_beam", "tee_properties"]
 
@@ -66,6 +70,8 @@ class CopedBeam:
     hole: float = 0.0
     """Hole width plus 1/16 in. for net areas."""
     underrun: float = to_internal(0.25, "in", Kind.LENGTH)
+    doubler: DoublerPlate | None = None
+    stiffener: LongitudinalStiffener | None = None
 
 
 def tee_properties(cb: CopedBeam) -> tuple[float, float]:
@@ -156,12 +162,16 @@ def check_coped_beam(cb: CopedBeam, R: float, method: Method,
 
     hc = cb.d - cb.dc - cb.dc_bottom
     holes = cb.rows * cb.hole
-    out = [
-        flexure,
-        _rename("shear_yielding", elements.shear_yielding(hc * cb.tw, cb.Fy, R, method, combo)),
-        _rename("shear_rupture", elements.shear_rupture((hc - holes) * cb.tw, cb.Fu, R, method,
-                                                        combo)),
-    ]
+    reinforced = cb.doubler is not None or cb.stiffener is not None
+    out: list[CheckResult] = []
+    if not reinforced:
+        out += [
+            flexure,
+            _rename("shear_yielding", elements.shear_yielding(hc * cb.tw, cb.Fy, R, method,
+                                                              combo)),
+            _rename("shear_rupture", elements.shear_rupture((hc - holes) * cb.tw, cb.Fu,
+                                                              R, method, combo)),
+        ]
     if cb.rows and cb.leh > 0:
         length = cb.lev + (cb.rows - 1) * cb.spacing
         agv = length * cb.tw
@@ -171,4 +181,11 @@ def check_coped_beam(cb: CopedBeam, R: float, method: Method,
         out.append(_rename("block_shear", elements.block_shear(
             agv, anv, ant, cb.Fy, cb.Fu, R, method, Ubs=1.0 if cb.lines == 1 else 0.5,
             combo=combo)))
+    if cb.doubler is not None or cb.stiffener is not None:
+        from .cope_reinforcement import check_doubler_plate, check_longitudinal_stiffener
+
+        if cb.doubler is not None:
+            out += check_doubler_plate(cb, R, method, combo)
+        if cb.stiffener is not None:
+            out += check_longitudinal_stiffener(cb, R, method, combo)
     return out

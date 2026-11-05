@@ -397,12 +397,16 @@ Campos que necesita cada tipo:
 | `dc` | (obligatorio) | Profundidad del destaje del ala superior. |
 | `dc_bottom` | `0` | Profundidad del destaje del ala inferior. |
 | `setback` | `0.5 in` | Holgura entre el apoyo y el extremo de la viga; la reacción actúa a e = c + holgura. |
-| `lev` | — | Del borde del destaje al primer perno; con `leh` activa el bloque de corte del alma. |
-| `leh` | — | Del extremo de la viga a la línea de pernos (sin descontar la tolerancia de ¼ in, que se resta sola). |
+| `lev` | - | Del borde del destaje al primer perno; con `leh` activa el bloque de corte del alma. |
+| `leh` | - | Del extremo de la viga a la línea de pernos (sin descontar la tolerancia de ¼ in, que se resta sola). |
+| `doubler` | - | Placa doble de refuerzo (AISC II.A-6 C): `thickness`, `depth`, `gap`, `weld`. |
+| `stiffener` | - | Rigidizador longitudinal (AISC II.A-6 D): `width`, `thickness`, `weld`, `length`. |
+
+El refuerzo solo se admite en un destaje superior (`dc_bottom = 0`). La placa doble se coloca a `gap` de la línea del destaje; el rigidizador se suelda a lo largo de esa línea. La memoria incluye las comprobaciones de flexión, corte, esbeltez y soldadura.
 
 ### Cargas de una conexión de corte
 
-Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple y en el doble ángulo apernado; en los demás tipos, y la compresión en todos, aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
+Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple, la placa simple extendida y el doble ángulo apernado; en los demás tipos, y la compresión en todos, aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
 
 ## Casos de carga (`cases`)
 

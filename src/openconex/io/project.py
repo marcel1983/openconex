@@ -46,7 +46,13 @@ from openconex.core.materials import (
 )
 from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
-from openconex.io.shear_project import BoltInput, CopeInput, ShearConnectionInput
+from openconex.io.shear_project import (
+    BoltInput,
+    CopeInput,
+    DoublerPlateInput,
+    LongitudinalStiffenerInput,
+    ShearConnectionInput,
+)
 from openconex.kernel.anchors import Edges
 from openconex.units import PRESETS, Kind, UnitSystem, parse
 
@@ -59,11 +65,13 @@ __all__ = [
     "CombinationOptions",
     "CopeInput",
     "CustomCombinationInput",
+    "DoublerPlateInput",
     "ElectrodeInput",
     "EmbeddedBaseInput",
     "EmbeddedRebarInput",
     "HSSSectionInput",
     "LoadCaseInput",
+    "LongitudinalStiffenerInput",
     "MaterialInput",
     "PedestalRebarInput",
     "Project",
@@ -577,6 +585,26 @@ class Project(_Input):
         if any(self.quantity(c.M, Kind.MOMENT) or self.quantity(c.V_weak, Kind.FORCE)
                or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
             raise ValueError("shear connections take only V and P load cases")
+        cope = sc.cope
+        if cope is not None:
+            if (cope.doubler is not None or cope.stiffener is not None) and \
+                    self.quantity(cope.dc_bottom, Kind.LENGTH) != 0:
+                raise ValueError("cope reinforcement is only defined for a top cope")
+            blocks = (
+                (cope.doubler, (("thickness", Kind.THICKNESS), ("depth", Kind.LENGTH),
+                                ("gap", Kind.LENGTH), ("weld", Kind.THICKNESS))),
+                (cope.stiffener, (("width", Kind.LENGTH), ("thickness", Kind.THICKNESS),
+                                  ("weld", Kind.THICKNESS))),
+            )
+            for block, fields in blocks:
+                if block is None:
+                    continue
+                for name, kind in fields:
+                    if self.quantity(getattr(block, name), kind) <= 0:
+                        raise ValueError(f"cope reinforcement {name} must be positive")
+                length = getattr(block, "length", None)
+                if length is not None and self.quantity(length, Kind.LENGTH) <= 0:
+                    raise ValueError("cope reinforcement length must be positive")
         return self
 
     def shear_model(self):
