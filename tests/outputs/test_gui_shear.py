@@ -12,6 +12,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 
 from openconex.gui.app import MainWindow
+from openconex.gui.help import HelpDialog
 from openconex.gui.shear import TYPE_FIELDS, ShearWindow
 from openconex.io.project import Project, load_project
 from openconex.units import Kind, to_internal
@@ -76,6 +77,28 @@ def test_fields_follow_the_type(app):
         shown = {name for name, (_, w) in window._rows.items() if not w.isHidden()}
         kind = window.type.currentData()
         assert shown == set(TYPE_FIELDS[next(k for k in TYPE_FIELDS if k.value == kind)])
+
+
+def test_help_dialog_and_tooltips(app):
+    window = ShearWindow()
+    assert all(widget.toolTip() for widget in window._fields.values())
+    for menu in window.menuBar().actions():
+        submenu = menu.menu()
+        if submenu is None:
+            continue
+        for action in submenu.actions():
+            if action.isSeparator():
+                continue
+            assert action.toolTip(), action.text()
+    dialog = HelpDialog("fields")
+    assert dialog.list.count() > 20
+    dialog.search.setText("perno")
+    assert dialog.list.count() > 0
+    dialog.close()
+    for section in ("menus", "checks", "all"):
+        other = HelpDialog(section)
+        assert other.list.count() > 0
+        other.close()
 
 
 def test_bent_plate_geometry_round_trip(app):

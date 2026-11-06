@@ -42,8 +42,10 @@ from openconex.core.loads import LoadType, Method
 from openconex.core.model import HoleType, Threads
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.help import HelpDialog
 from openconex.gui.quantity import convert_text
 from openconex.gui.viewer3d import Viewer3D
+from openconex.help import help_text
 from openconex.i18n import tr
 from openconex.io.project import Project, load_project, save_project
 from openconex.io.shear_project import REQUIRED
@@ -131,20 +133,23 @@ class ShearWindow(QMainWindow):
 
     # -- construction -----------------------------------------------------------
     def _build_menu(self) -> None:
-        menu = self.menuBar().addMenu("&Archivo")
-        for label, slot, shortcut in (("Nuevo", self.new_project, "Ctrl+N"),
-                                      ("Abrir…", self.open_dialog, "Ctrl+O"),
-                                      ("Guardar", self.save_dialog, "Ctrl+S"),
-                                      ("Guardar como…", lambda: self.save_dialog(True), "")):
-            action = QAction(label, self)
+        def action(label: str, slot, shortcut: str, key: str) -> QAction:
+            item = QAction(label, self)
             if shortcut:
-                action.setShortcut(shortcut)
-            action.triggered.connect(slot)
-            menu.addAction(action)
+                item.setShortcut(shortcut)
+            item.setToolTip(help_text(key))
+            item.setStatusTip(help_text(key))
+            item.triggered.connect(slot)
+            return item
+
+        menu = self.menuBar().addMenu("&Archivo")
+        menu.addAction(action("Nuevo", self.new_project, "Ctrl+N", "menu.file.new"))
+        menu.addAction(action("Abrir…", self.open_dialog, "Ctrl+O", "menu.file.open"))
+        menu.addAction(action("Guardar", self.save_dialog, "Ctrl+S", "menu.file.save"))
+        menu.addAction(action("Guardar como…", lambda: self.save_dialog(True), "",
+                              "menu.file.save_as"))
         calc = self.menuBar().addMenu("&Cálculo")
-        self.calc_action = QAction("Calcular", self)
-        self.calc_action.setShortcut("F5")
-        self.calc_action.triggered.connect(self.calculate)
+        self.calc_action = action("Calcular", self.calculate, "F5", "menu.calc.run")
         calc.addAction(self.calc_action)
         export = self.menuBar().addMenu("&Exportar")
         for key, label, suffix in (("html", "Memoria HTML…", ".html"),
@@ -153,11 +158,46 @@ class ShearWindow(QMainWindow):
                                    ("dxf", "Plano DXF…", ".dxf"),
                                    ("step", "Modelo STEP…", ".step"),
                                    ("stl", "Modelo STL…", ".stl")):
-            action = QAction(label, self)
-            action.setEnabled(False)
-            action.triggered.connect(lambda _c=False, k=key, s=suffix: self.export(k, s))
-            export.addAction(action)
-            self._export_actions.append(action)
+            item = action(label, lambda _c=False, k=key, s=suffix: self.export(k, s),
+                          "", f"menu.export.{key}")
+            item.setEnabled(False)
+            export.addAction(item)
+            self._export_actions.append(item)
+        help_menu = self.menuBar().addMenu("A&yuda")
+        help_menu.addAction(action("Guía rápida", self._show_guide, "F1",
+                                   "menu.help.guide"))
+        help_menu.addAction(action("Referencia de campos",
+                                   lambda: HelpDialog("fields", self).exec(), "",
+                                   "menu.help.fields"))
+        help_menu.addAction(action("Menús y acciones",
+                                   lambda: HelpDialog("menus", self).exec(), "",
+                                   "menu.help.menus"))
+        help_menu.addAction(action("Verificaciones",
+                                   lambda: HelpDialog("checks", self).exec(), "",
+                                   "menu.help.checks"))
+        help_menu.addAction(action("Acerca de", self._show_about, "",
+                                   "menu.help.about"))
+
+    def _show_guide(self) -> None:
+        QMessageBox.information(
+            self, "Guía rápida",
+            "1. Elija el tipo de conexión y las secciones.\n"
+            "2. Complete solo los campos visibles; los obligatorios llevan *.\n"
+            "3. Defina los casos de carga y los métodos LRFD/ASD.\n"
+            "4. Pulse Calcular (F5).\n"
+            "5. Revise Resumen y Verificaciones; exporte la memoria o el plano.\n\n"
+            "Cada campo tiene un tooltip y el menú Ayuda → Referencia de campos "
+            "explica qué es, cómo se usa y cómo afecta al cálculo.")
+
+    def _show_about(self) -> None:
+        from openconex import __version__
+        QMessageBox.about(
+            self, "Acerca de OpenConex",
+            f"OpenConex {__version__}\n\n"
+            "Cálculo de conexiones metálicas según AISC 360-22, "
+            "AISC Design Guide 1 y ACI 318-19.\n\n"
+            "Software libre bajo GPL-3.0-or-later. La responsabilidad del "
+            "diseño corresponde al profesional que lo firma.")
 
     def _build_body(self) -> None:
         form = QWidget()
@@ -169,6 +209,7 @@ class ShearWindow(QMainWindow):
         layout.addWidget(self._build_cases())
         calculate = QPushButton("Calcular")
         calculate.clicked.connect(self.calculate)
+        self._tip(calculate, "action.calculate")
         layout.addWidget(calculate)
         layout.addStretch(1)
         scroll = QScrollArea()
@@ -191,6 +232,8 @@ class ShearWindow(QMainWindow):
         self.tabs.addTab(figure_scroll, "Figuras")
         self.viewer = Viewer3D(lambda: parts_3d(self.project))
         self.tabs.addTab(self.viewer, "3D")
+        for index, key in enumerate(("tab.summary", "tab.details", "tab.figures", "tab.viewer")):
+            self.tabs.setTabToolTip(index, help_text(key))
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(scroll)
         splitter.addWidget(self.tabs)
@@ -207,19 +250,23 @@ class ShearWindow(QMainWindow):
             edit = QLineEdit()
             self._info[key] = edit
             form.addRow(label, edit)
+            self._tip(edit, f"project.{key}")
         self.language = QComboBox()
         self.language.addItems(["es", "en"])
         form.addRow("Idioma", self.language)
+        self._tip(self.language, "ui.language")
         self.units = QComboBox()
         self.units.addItems(sorted(PRESETS))
         self.units.currentTextChanged.connect(self._change_units)
         form.addRow("Unidades", self.units)
+        self._tip(self.units, "ui.units")
         self._methods = {m: QCheckBox(m.value) for m in Method}
         row = QWidget()
         box = QHBoxLayout(row)
         box.setContentsMargins(0, 0, 0, 0)
         for check in self._methods.values():
             box.addWidget(check)
+            self._tip(check, "ui.methods")
         form.addRow("Métodos", row)
         return group
 
@@ -240,32 +287,43 @@ class ShearWindow(QMainWindow):
             self.type.addItem(tr(f"shear.type.{kind.value}", "es"), kind.value)
         self.type.currentIndexChanged.connect(self._update_visible)
         form.addRow("Tipo", self.type)
+        self._tip(self.type, "type")
         self.beam = self._section_combo()
         form.addRow("Viga", self.beam)
+        self._tip(self.beam, "beam")
         self.support = self._section_combo()
         form.addRow("Apoyo", self.support)
+        self._tip(self.support, "support")
         self.support_element = QComboBox()
         self.support_element.addItem("Ala", "flange")
         self.support_element.addItem("Alma", "web")
         form.addRow("Unido al", self.support_element)
+        self._tip(self.support_element, "support_element")
         self.grade = QLineEdit()
         form.addRow("Material de placa o ángulo", self.grade)
+        self._tip(self.grade, "grade")
         self.electrode = QLineEdit()
         form.addRow("Electrodo", self.electrode)
+        self._tip(self.electrode, "electrode")
         self.bolt_diameter = QLineEdit()
         form.addRow("Diámetro de perno", self.bolt_diameter)
+        self._tip(self.bolt_diameter, "bolt.diameter")
         self.bolt_grade = QLineEdit()
         form.addRow("Grado de perno", self.bolt_grade)
+        self._tip(self.bolt_grade, "bolt.grade")
         self.threads = QComboBox()
         for value in Threads:
             self.threads.addItem(value.value, value.value)
         form.addRow("Roscas (N/X)", self.threads)
+        self._tip(self.threads, "bolt.threads")
         self.hole = QComboBox()
         for value in HoleType:
             self.hole.addItem(value.value, value.value)
         form.addRow("Agujero", self.hole)
+        self._tip(self.hole, "bolt.hole")
         self.deformation = QCheckBox("Deformación en el agujero considerada")
         form.addRow(self.deformation)
+        self._tip(self.deformation, "deformation_considered")
         return group
 
     def _build_geometry(self) -> QGroupBox:
@@ -286,6 +344,17 @@ class ShearWindow(QMainWindow):
         form.addRow(label, widget)
         self._fields[name] = widget
         self._rows[name] = (label, widget)
+        help_key = "bolts" if key == "seat_bolts" else key
+        self._tip(label, help_key)
+        self._tip(widget, help_key)
+
+    def _tip(self, widget: QWidget, key: str) -> None:
+        try:
+            text = help_text(key)
+        except KeyError:
+            return
+        widget.setToolTip(text)
+        widget.setStatusTip(text)
 
     def _build_cope(self) -> QGroupBox:
         self.cope_group = QGroupBox("Destaje de la viga")
@@ -298,8 +367,11 @@ class ShearWindow(QMainWindow):
             edit = QLineEdit()
             self._cope[name] = edit
             form.addRow(label, edit)
+            self._tip(edit, f"cope.{name}")
+            self._tip(form.labelForField(edit), f"cope.{name}")
         self.doubler_enabled = QCheckBox("Placa doble (II.A-6 C)")
         form.addRow(self.doubler_enabled)
+        self._tip(self.doubler_enabled, "cope.doubler")
         for name, label, placeholder in (
                 ("thickness", "Espesor t_p", "1/4 in"),
                 ("depth", "Profundidad d_p", "6.5 in"),
@@ -309,8 +381,11 @@ class ShearWindow(QMainWindow):
             edit.setPlaceholderText(placeholder)
             self._cope_reinf[f"doubler_{name}"] = edit
             form.addRow("  " + label, edit)
+            self._tip(edit, f"cope.doubler.{name}")
+            self._tip(form.labelForField(edit), f"cope.doubler.{name}")
         self.stiffener_enabled = QCheckBox("Rigidizador longitudinal (II.A-6 D)")
         form.addRow(self.stiffener_enabled)
+        self._tip(self.stiffener_enabled, "cope.stiffener")
         for name, label, placeholder in (
                 ("width", "Ancho b_s", "4 in"),
                 ("thickness", "Espesor t_s", "1/4 in"),
@@ -320,6 +395,8 @@ class ShearWindow(QMainWindow):
             edit.setPlaceholderText(placeholder)
             self._cope_reinf[f"stiffener_{name}"] = edit
             form.addRow("  " + label, edit)
+            self._tip(edit, f"cope.stiffener.{name}")
+            self._tip(form.labelForField(edit), f"cope.stiffener.{name}")
         return self.cope_group
 
     def _build_cases(self) -> QGroupBox:
@@ -328,11 +405,14 @@ class ShearWindow(QMainWindow):
         self.cases = QTableWidget(0, 4)
         self.cases.setHorizontalHeaderLabels(["Nombre", "Tipo", "V", "P"])
         layout.addWidget(self.cases)
+        self._tip(self.cases, "ui.cases")
         buttons = QHBoxLayout()
         add = QPushButton("Agregar")
         add.clicked.connect(lambda: self._add_case("", "D", "", ""))
         remove = QPushButton("Quitar")
         remove.clicked.connect(lambda: self.cases.removeRow(self.cases.currentRow()))
+        self._tip(add, "ui.cases")
+        self._tip(remove, "ui.cases")
         buttons.addWidget(add)
         buttons.addWidget(remove)
         layout.addLayout(buttons)

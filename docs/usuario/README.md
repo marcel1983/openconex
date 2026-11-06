@@ -15,6 +15,7 @@ OpenConex calcula conexiones metálicas según AISC 360-22, la Guía de Diseño 
 7. [Unidades y materiales](07-unidades-materiales.md)
 8. [Alcance y limitaciones](08-limitaciones.md)
 9. [Interfaz gráfica](09-interfaz.md): todos los bloques de la placa base, editor gráfico de planta y elevación, visor 3D, importación SAP2000/ETABS y Excel/CSV, cálculo por lotes, secciones, materiales, unidades, combinaciones y exportación desde el escritorio.
+10. [Referencia de la conexión de corte](10-referencia-conexion-corte.md): qué es, cómo se usa y cómo afecta al cálculo cada campo, menú y verificación.
 
 ## Flujo de trabajo
 

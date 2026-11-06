@@ -174,6 +174,18 @@ Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exporta
 
 Los números sin unidad usan el sistema elegido en el diálogo; también se puede escribir la unidad en la celda (`"25 kN"`). El proyecto abierto actúa como plantilla (placa, concreto, anclajes y opciones) y se genera un `.ocnx` por apoyo. Las combinaciones se generan con ASCE 7-22; si hay casos sísmicos, la plantilla debe tener `SDS`.
 
+## Ayuda y tooltips
+
+Cada campo de la ventana de conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. El menú **Ayuda** incluye:
+
+- **Guía rápida** (`F1`): flujo de trabajo.
+- **Referencia de campos**: lista buscable de todos los campos.
+- **Menús y acciones**: qué hace cada acción.
+- **Verificaciones**: cómo leer demanda, capacidad, relación y estado.
+- **Acerca de**: versión y licencia.
+
+La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md), generada desde la fuente de ayuda del programa.
+
 ## Conexiones de corte
 
 **Archivo > Nueva conexión de corte…** abre una ventana propia para las conexiones de extremo de viga. Al abrir un `.ocnx` con `shear_connection` desde la ventana principal, se abre también en esa ventana.
