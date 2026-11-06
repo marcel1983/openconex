@@ -98,7 +98,9 @@ def _convert_shear_connection(sc, old: UnitSystem, new: UnitSystem) -> None:
             ("bearing_length", Kind.LENGTH), ("width", Kind.LENGTH),
             ("row_distance", Kind.LENGTH), ("load_offset", Kind.LENGTH),
             ("plate_a_width", Kind.LENGTH), ("plate_b_width", Kind.LENGTH),
-            ("weld_return", Kind.LENGTH), ("weld_offset", Kind.LENGTH),
+            ("plate_a_leg", Kind.LENGTH), ("plate_b_leg", Kind.LENGTH),
+            ("bend_radius", Kind.LENGTH), ("weld_return", Kind.LENGTH),
+            ("weld_offset", Kind.LENGTH),
             ("beam_area", Kind.AREA)):
         _convert_field(sc, field, kind, old, new)
     if sc.cope is not None:

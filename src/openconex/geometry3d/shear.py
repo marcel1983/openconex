@@ -9,6 +9,7 @@ z = 0). Parts are simple prisms and cylinders; welds are not modeled.
 
 from __future__ import annotations
 
+from openconex.connections.shear.bent_plate import SkewedBentPlate, parse_skew
 from openconex.connections.shear.check import ShearConnection
 from openconex.connections.shear.double_angle import DoubleAngle
 from openconex.connections.shear.end_plate import EndPlate
@@ -33,9 +34,66 @@ def _cylinder_z(x, y, z0, r, h):
     return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(x, y, z0), gp_Dir(0, 0, 1)), r, h).Shape()
 
 
+def _rotate_y(shape, angle: float):
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_Transform
+    from OCP.gp import gp_Ax1, gp_Dir, gp_Pnt, gp_Trsf
+    transform = gp_Trsf()
+    transform.SetRotation(gp_Ax1(gp_Pnt(0, 0, 0), gp_Dir(0, 1, 0)), angle)
+    return BRepBuilderAPI_Transform(shape, transform, True).Shape()
+
+
+def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate) -> list[Part]:
+    """Schematic solid model of the skewed double bent plate (phase 2)."""
+    beam, support = conn.beam, conn.support
+    assert beam is not None
+    d, tf, bf, tw = beam.d, beam.tf, beam.bf, beam.tw
+    a, b = el.plate_a, el.plate_b
+    t = a.thickness
+    height = a.length
+    y0 = d / 2 - height / 2
+    alpha = parse_skew(el.skew)
+    leg_a = a.leg_beam or a.width * 0.6
+    leg_b = b.leg_beam or b.width * 0.6
+    length = max(leg_a, leg_b) + 2 * INCH
+    support_t = support.tw if support is not None and conn.support_element == "web" else (
+        support.tf if support is not None else 0.25 * INCH)
+    support_width = max(2 * max(a.width, b.width), 12 * INCH)
+    parts: list[Part] = []
+
+    section = _fuse_all([
+        _box(0.0, 0.0, -bf / 2, length, tf, bf),
+        _box(0.0, d - tf, -bf / 2, length, tf, bf),
+        _box(0.0, tf, -tw / 2, length, d - 2 * tf, tw),
+    ])
+    parts.append(Part("beam", _rotate_y(section, alpha)))
+    parts.append(Part("support", _box(-support_t, 0.0, -support_width / 2, support_t, d,
+                                      support_width)))
+
+    for name, plate, sign, leg in (("a", a, 1, leg_a), ("b", b, -1, leg_b)):
+        z = sign * tw / 2
+        bolted = _box(0.0, y0, z if sign > 0 else z - plate.width, t, height, plate.width)
+        welded = _rotate_y(_box(0.0, y0, z if sign > 0 else z - t, leg, height, t), alpha)
+        parts.append(Part(f"bent_plate_{name}", _fuse_all([bolted, welded])))
+
+    r = a.bolt.diameter / 2
+    row = el.row_distance or 6 * INCH
+    rows = a.rows
+    for name, plate, sign in (("a", a, 1), ("b", b, -1)):
+        z = (1 - el.share_a) * row if sign > 0 else -el.share_a * row
+        for i in range(rows):
+            y = y0 + (height - 2 * plate.lev - (rows - 1) * plate.spacing) / 2 \
+                + plate.lev + i * plate.spacing
+            parts.append(Part(f"bolt_{name}{i + 1}",
+                              _cylinder_x(-support_t - r, y, z, r,
+                                          support_t + t + 2 * r)))
+    return parts
+
+
 def shear_parts(conn: ShearConnection) -> list[Part]:
     """Beam, support, connecting elements and bolts as OCP solids."""
     _require()
+    if isinstance(conn.element, SkewedBentPlate):
+        return _bent_plate_parts(conn, conn.element)
     lay = shear_layout(conn)
     beam, el = conn.beam, conn.element
     d, tf, tw, bf = beam.d, beam.tf, beam.tw, beam.bf

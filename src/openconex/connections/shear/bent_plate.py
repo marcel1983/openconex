@@ -26,6 +26,7 @@ analysis.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from openconex.core.checks import CheckResult
@@ -39,7 +40,8 @@ from openconex.units import Kind, from_internal, to_internal
 
 from .double_angle import MANUAL, SPEC, _bearing_tearout, _hole_net
 
-__all__ = ["BentPlate", "SkewedBentPlate", "check_bent_plate", "check_skewed_bent_plate"]
+__all__ = ["BentPlate", "SkewedBentPlate", "check_bent_plate", "check_skewed_bent_plate",
+           "parse_skew"]
 
 PART8 = "AISC Manual 16th ed., Part 8"
 
@@ -71,6 +73,10 @@ class BentPlate:
     beam_Fu: float
     support_t: float
     support_Fu: float
+    leg_beam: float = 0.0
+    """Welded leg length along the beam web (drawing and 3D)."""
+    bend_radius: float = 0.0
+    """Inside bend radius (informational; the 3D model uses a sharp corner)."""
     deformation_considered: bool = True
 
 
@@ -83,6 +89,8 @@ class SkewedBentPlate:
     share_a: float = 0.375
     skew: str = ""
     """Skew as written in the project (e.g. ``6:12``); informational."""
+    row_distance: float = 0.0
+    """Distance between the two bolt rows (drawing and 3D); 0 if not given."""
 
     def __post_init__(self) -> None:
         if not 0.0 < self.share_a < 1.0:
@@ -91,6 +99,21 @@ class SkewedBentPlate:
     @property
     def share_b(self) -> float:
         return 1.0 - self.share_a
+
+
+def parse_skew(skew: str) -> float:
+    """Skew as an angle in radians from ``6:12``, degrees or radians text."""
+    text = skew.strip().lower().replace(" ", "")
+    if not text:
+        return 0.0
+    if ":" in text:
+        rise, run = text.split(":", 1)
+        return math.atan2(float(rise), float(run))
+    if text.endswith("deg"):
+        return math.radians(float(text[:-3]))
+    if text.endswith("rad"):
+        return float(text[:-3])
+    return math.radians(float(text))
 
 
 def _rename(check: CheckResult, key: str) -> CheckResult:

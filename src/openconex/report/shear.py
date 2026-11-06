@@ -39,6 +39,9 @@ FIELDS: list[tuple[str, str, Kind | None]] = [
     ("load_offset", "load_offset", Kind.LENGTH), ("share_a", "share_a", Kind.DIMENSIONLESS),
     ("plate_a_width", "plate_a_width", Kind.LENGTH),
     ("plate_b_width", "plate_b_width", Kind.LENGTH),
+    ("plate_a_leg", "plate_a_leg", Kind.LENGTH),
+    ("plate_b_leg", "plate_b_leg", Kind.LENGTH),
+    ("bend_radius", "bend_radius", Kind.LENGTH),
     ("weld_return", "weld_return", Kind.LENGTH),
     ("weld_offset", "weld_offset", Kind.LENGTH),
 ]
@@ -90,16 +93,14 @@ def shear_figures(project: Project, lang: str, units: UnitSystem) -> list:
     from openconex.drawing.shear import ShearDrawing, shear_dxf
     from openconex.report.figures import Figure, dxf_to_svg, svg_to_png
 
-    if project.shear_connection is not None and \
-            project.shear_connection.type is ShearType.SKEWED_BENT_PLATE:
-        return []
-
     info = project.info
     options = ShearDrawing(title=info.name, number=info.number, revision=info.revision,
                            date=info.date, bom=False)
     svg = dxf_to_svg(shear_dxf(project.shear_model(), units, lang, options))
-    figures = [Figure("elevation", tr("report.figure_elevation", lang), svg,
-                      png=svg_to_png(svg))]
+    plan = project.shear_connection is not None and \
+        project.shear_connection.type is ShearType.SKEWED_BENT_PLATE
+    key = "plan" if plan else "elevation"
+    figures = [Figure(key, tr(f"report.figure_{key}", lang), svg, png=svg_to_png(svg))]
     from openconex.geometry3d.base_plate import isometric_svg, occ_available
     if occ_available():
         from openconex.geometry3d.shear import shear_parts

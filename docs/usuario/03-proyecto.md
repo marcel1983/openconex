@@ -368,8 +368,11 @@ Conexión del extremo de una viga a una columna o a una viga principal (Manual A
 | `row_distance` | - | Placa doblada: distancia entre las dos filas verticales de pernos. |
 | `load_offset` | - | Placa doblada: distancia de la línea de carga a la fila de pernos de la placa B. |
 | `share_a` | - | Placa doblada: fracción de carga de la placa A; si se omite, se deduce de `load_offset/row_distance`. |
-| `plate_a_width` | - | Placa doblada: ancho de la placa A (informativo en la fase 1). |
-| `plate_b_width` | - | Placa doblada: ancho de la placa B (informativo en la fase 1). |
+| `plate_a_width` | - | Placa doblada: ancho de la placa A (plano y 3D). |
+| `plate_b_width` | - | Placa doblada: ancho de la placa B (plano y 3D). |
+| `plate_a_leg` | - | Placa doblada: ala soldada de la placa A a lo largo del alma de la viga. |
+| `plate_b_leg` | - | Placa doblada: ala soldada de la placa B a lo largo del alma de la viga. |
+| `bend_radius` | - | Placa doblada: radio interior de doblez. |
 | `weld_return` | - | Placa doblada: longitud de los retornos superior e inferior de la soldadura en C. |
 | `weld_offset` | - | Placa doblada: distancia de la soldadura vertical a la línea de carga. |
 | `leg` | — | Asiento: ala horizontal. |

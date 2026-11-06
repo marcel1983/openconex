@@ -33,6 +33,24 @@ def test_parts_and_exports(tmp_path, project):
     assert write_stl(parts, tmp_path / "bp.stl").stat().st_size > 10_000
 
 
+def test_bent_plate_parts():
+    from OCP.BRepGProp import BRepGProp
+    from OCP.GProp import GProp_GProps
+
+    from openconex.geometry3d.shear import shear_parts
+
+    project = load_project(EXAMPLE.with_name("shear_skewed_bent_plate.ocnx"))
+    parts = shear_parts(project.shear_model())
+    names = [part.name for part in parts]
+    assert {"beam", "support", "bent_plate_a", "bent_plate_b"} <= set(names)
+    assert sum(name.startswith("bolt_") for name in names) == 6
+    for name in ("bent_plate_a", "bent_plate_b"):
+        part = next(part for part in parts if part.name == name)
+        props = GProp_GProps()
+        BRepGProp.VolumeProperties_s(part.shape, props)
+        assert props.Mass() > 0.0
+
+
 def test_shear_lug_volume():
     from OCP.BRepGProp import BRepGProp
     from OCP.GProp import GProp_GProps
