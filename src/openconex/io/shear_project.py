@@ -156,6 +156,12 @@ class ShearConnectionInput(_Input):
     """Skewed bent plate: width of plate A (informational in this phase)."""
     plate_b_width: Quantity | None = None
     """Skewed bent plate: width of plate B (informational in this phase)."""
+    plate_a_leg: Quantity | None = None
+    """Skewed bent plate: welded leg length of plate A along the beam web."""
+    plate_b_leg: Quantity | None = None
+    """Skewed bent plate: welded leg length of plate B along the beam web."""
+    bend_radius: Quantity | None = None
+    """Skewed bent plate: inside bend radius (drawing and 3D)."""
     weld_return: Quantity | None = None
     """Skewed bent plate: length of the top and bottom weld returns."""
     weld_offset: Quantity | None = None
@@ -302,9 +308,11 @@ def shear_model(project: Project) -> ShearConnection:
             **common,
         }
         el = SkewedBentPlate(
-            plate_a=BentPlate(width=q(sc.plate_a_width), **bent),
-            plate_b=BentPlate(width=q(sc.plate_b_width), **bent),
-            share_a=share_a, skew=sc.skew or "")
+            plate_a=BentPlate(width=q(sc.plate_a_width), leg_beam=q(sc.plate_a_leg),
+                              bend_radius=q(sc.bend_radius), **bent),
+            plate_b=BentPlate(width=q(sc.plate_b_width), leg_beam=q(sc.plate_b_leg),
+                              bend_radius=q(sc.bend_radius), **bent),
+            share_a=share_a, skew=sc.skew or "", row_distance=q(sc.row_distance))
     elif kind is ShearType.SEATED:
         top = {}
         for name, unit in (("top_angle_leg", L), ("top_angle_thickness", T),

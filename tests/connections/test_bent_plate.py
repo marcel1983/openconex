@@ -12,10 +12,12 @@ from openconex.connections.shear.bent_plate import (
     SkewedBentPlate,
     check_bent_plate,
     check_skewed_bent_plate,
+    parse_skew,
 )
 from openconex.connections.shear.check import ShearType, check_shear_envelope
 from openconex.core.loads import Method
 from openconex.core.model import BoltSpec
+from openconex.drawing.shear import shear_dxf
 from openconex.io.project import Project
 from openconex.report.shear import build_shear_report
 from openconex.units import Kind, to_internal
@@ -108,6 +110,10 @@ def test_project_round_trip_and_envelope():
     assert conn.type is ShearType.SKEWED_BENT_PLATE
     assert conn.element.share_a == pytest.approx(0.375)
     assert conn.element.plate_b.width == pytest.approx(inch(6.75))
+    assert conn.element.plate_a.leg_beam == pytest.approx(inch(4.4375))
+    assert conn.element.plate_b.leg_beam == pytest.approx(inch(3.5625))
+    assert conn.element.plate_a.bend_radius == pytest.approx(inch(0.5625))
+    assert conn.element.row_distance == pytest.approx(inch(6))
     results = check_shear_envelope(conn, project.load_combinations(), project.case_forces())
     assert results
     assert all(result.status.value != "ng" for result in results)
@@ -134,11 +140,34 @@ def test_single_plate_helper():
     assert results["skewed_bent_plate.plate_b.weld"].status.value == "ok"
 
 
-def test_report_without_graphics():
+def test_report_has_plan_figure():
     data = json.loads((EXAMPLES / "shear_skewed_bent_plate.ocnx").read_text(
         encoding="utf-8"))
     report = build_shear_report(Project.model_validate(data))
     assert report.ok
-    assert report.figures == []
+    keys = [figure.key for figure in report.figures]
+    assert keys[0] == "plan"
+    assert set(keys) <= {"plan", "isometric"}
     assert len(report.summary) == 12
+
+
+def test_plan_dxf_contains_the_skew_and_plates():
+    data = json.loads((EXAMPLES / "shear_skewed_bent_plate.ocnx").read_text(
+        encoding="utf-8"))
+    project = Project.model_validate(data)
+    doc = shear_dxf(project.shear_model(), project.info.unit_system(), "es")
+    texts = [entity.dxf.text for entity in doc.modelspace() if entity.dxftype() == "TEXT"]
+    assert "PLANTA" in texts
+    assert any("Placa doblada A" in text for text in texts)
+    assert any("Placa doblada B" in text for text in texts)
+    assert any("6:12" in text for text in texts)
+    assert {layer.dxf.name for layer in doc.layers} >= {"SC-VIGA", "SC-APOYO", "SC-PLACA"}
+
+
+def test_parse_skew():
+    assert parse_skew("6:12") == pytest.approx(0.463647609, rel=1e-6)
+    assert parse_skew("26.565 deg") == pytest.approx(0.463647609, rel=1e-5)
+    assert parse_skew("0.463647609 rad") == pytest.approx(0.463647609, rel=1e-6)
+    assert parse_skew("26.565") == pytest.approx(0.463647609, rel=1e-5)
+    assert parse_skew("") == 0.0
 

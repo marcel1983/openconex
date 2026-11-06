@@ -61,7 +61,7 @@ QUANTITIES = ("spacing", "gage", "length", "thickness", "width", "lev", "leh", "
               "a", "beam_leg", "outstanding_leg", "beam_leh", "leg", "vertical_leg",
               "bearing_length", "weld", "support_weld", "beam_weld", "beam_area",
               "row_distance", "load_offset", "share_a", "plate_a_width", "plate_b_width",
-              "weld_return", "weld_offset")
+              "plate_a_leg", "plate_b_leg", "bend_radius", "weld_return", "weld_offset")
 LABELS = {"beam_area": "beam_area"}
 
 TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
@@ -79,7 +79,8 @@ TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
     ShearType.SKEWED_BENT_PLATE: ("rows", "spacing", "length", "thickness", "lev", "leh",
                                   "weld", "weld_return", "weld_offset", "row_distance",
                                   "load_offset", "share_a", "plate_a_width",
-                                  "plate_b_width", "skew"),
+                                  "plate_b_width", "plate_a_leg", "plate_b_leg",
+                                  "bend_radius", "skew"),
 }
 COPE_FIELDS = ("c", "dc", "dc_bottom", "setback", "lev", "leh")
 DOUBLER_FIELDS = ("thickness", "depth", "gap", "weld")

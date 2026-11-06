@@ -78,6 +78,20 @@ def test_fields_follow_the_type(app):
         assert shown == set(TYPE_FIELDS[next(k for k in TYPE_FIELDS if k.value == kind)])
 
 
+def test_bent_plate_geometry_round_trip(app):
+    path = EXAMPLES / "shear_skewed_bent_plate.ocnx"
+    window = ShearWindow(load_project(path), path)
+    assert window._fields["skew"].text() == "6:12"
+    assert window._fields["plate_a_leg"].text() == "4 7/16 in"
+    assert window._fields["plate_b_leg"].text() == "3 9/16 in"
+    assert window._fields["bend_radius"].text() == "9/16 in"
+    project = window.project_from_form()
+    assert project.shear_connection.plate_a_leg == "4 7/16 in"
+    assert project.shear_connection.bend_radius == "9/16 in"
+    assert window.calculate()
+    assert window.report.ok
+
+
 def test_new_project_calculates(app):
     window = ShearWindow()
     assert window.calculate()

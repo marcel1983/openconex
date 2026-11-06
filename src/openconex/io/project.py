@@ -606,6 +606,10 @@ class Project(_Input):
                 value = getattr(sc, name)
                 if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
                     raise ValueError(f"skewed bent plate {name} must be positive")
+            for name in ("plate_a_leg", "plate_b_leg", "bend_radius"):
+                value = getattr(sc, name)
+                if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
+                    raise ValueError(f"skewed bent plate {name} must be positive")
         cope = sc.cope
         if cope is not None:
             if (cope.doubler is not None or cope.stiffener is not None) and \

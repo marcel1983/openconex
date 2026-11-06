@@ -16,6 +16,7 @@ from pathlib import Path
 
 from ezdxf.enums import TextEntityAlignment
 
+from openconex.connections.shear.bent_plate import SkewedBentPlate, parse_skew
 from openconex.connections.shear.check import ShearConnection, ShearType
 from openconex.connections.shear.double_angle import DoubleAngle
 from openconex.connections.shear.end_plate import EndPlate
@@ -262,6 +263,15 @@ def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ..
         add(1, f"L {s.label(el.top_angle_leg)} x {s.label(el.top_angle_leg)} x "
                f"{s.label(el.top_angle_thickness)} x {s.label(el.top_angle_length)}",
             _steel(s, el.stiffener_Fy), top_mass)
+    elif isinstance(el, SkewedBentPlate):
+        for name, plate, width in (("A", el.plate_a, el.plate_a.width),
+                                   ("B", el.plate_b, el.plate_b.width)):
+            leg = plate.leg_beam or width * 0.6
+            mass = (width + leg - plate.thickness) * plate.thickness * plate.length \
+                * STEEL_DENSITY
+            add(1, f"{t('bent_plate')} {name}: PL {s.label(plate.thickness)} x "
+                   f"{s.label(plate.length)} x {s.label(width)}",
+                _steel(s, plate.plate_Fy), mass)
 
     if conn.cope is not None:
         base_length = conn.cope.c + conn.cope.dc
@@ -289,6 +299,8 @@ def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ..
         count = (0 if el.beam_weld else el.rows) + (0 if el.support_weld else el.rows)
     elif isinstance(el, SeatedAngle):
         count = 0 if el.support_weld else el.bolts
+    elif isinstance(el, SkewedBentPlate):
+        count = 2 * el.plate_a.rows
     if count and bolt is not None:
         add(count, f"{t('bolts')} Ø {s.label(bolt.diameter)}", bolt.grade)
     return rows
@@ -296,6 +308,9 @@ def _bom_rows(conn: ShearConnection, s: _Sheet, lang: str) -> list[tuple[str, ..
 
 def _weld_sizes(conn: ShearConnection) -> list[float]:
     el = conn.element
+    if isinstance(el, SkewedBentPlate):
+        sizes = (el.plate_a.weld, el.plate_b.weld)
+        return [value for value in dict.fromkeys(sizes) if value > 0]
     sizes = (getattr(el, "weld", 0.0), getattr(el, "support_weld", 0.0),
              getattr(el, "beam_weld", 0.0))
     if conn.cope is not None:
@@ -454,6 +469,16 @@ def _description(conn: ShearConnection, s: _Sheet, lang: str) -> list[str]:
     el = conn.element
     q = s.label
     out = []
+    if isinstance(el, SkewedBentPlate):
+        out.append(f"{tr('input.bolts', lang)}: {2 * el.plate_a.rows} × Ø "
+                   f"{q(el.plate_a.bolt.diameter)} {el.plate_a.bolt.grade}")
+        out.append(f"PL A {q(el.plate_a.thickness)} x {q(el.plate_a.length)} x "
+                   f"{q(el.plate_a.width)}; PL B {q(el.plate_b.thickness)} x "
+                   f"{q(el.plate_b.length)} x {q(el.plate_b.width)}")
+        out.append(f"{tr('input.weld', lang)}: {q(el.plate_a.weld)}")
+        if el.skew:
+            out.append(f"{tr('input.skew', lang)}: {el.skew}")
+        return out
     bolt = getattr(el, "bolt", None)
     if bolt is not None and conn.type is not ShearType.STIFFENED_SEAT:
         count = {ShearType.END_PLATE: 2 * getattr(el, "rows", 0),
@@ -484,13 +509,129 @@ def _description(conn: ShearConnection, s: _Sheet, lang: str) -> list[str]:
     return out
 
 
+def _plan_point(alpha: float, x: float, z: float) -> tuple[float, float]:
+    return (x * math.cos(alpha) + z * math.sin(alpha),
+            -x * math.sin(alpha) + z * math.cos(alpha))
+
+
+def _plan_rect(s: _Sheet, alpha: float, x0: float, z0: float, x1: float, z1: float,
+               layer: str) -> None:
+    points = [_plan_point(alpha, x, z) for x, z in ((x0, z0), (x1, z0), (x1, z1), (x0, z1))]
+    s.msp.add_lwpolyline(points, close=True, dxfattribs={"layer": layer})
+
+
+def _plan_hdim(s: _Sheet, x0: float, x1: float, y: float, base_y: float) -> None:
+    s.msp.add_linear_dim(base=(x0, base_y), p1=(x0, y), p2=(x1, y),
+                         dxfattribs={"layer": "SC-COTAS"}).render()
+
+
+def _plan_vdim(s: _Sheet, y0: float, y1: float, x: float, base_x: float) -> None:
+    s.msp.add_linear_dim(base=(base_x, y0), p1=(x, y0), p2=(x, y1), angle=90,
+                         dxfattribs={"layer": "SC-COTAS"}).render()
+
+
+def _draw_bent_plate_plan(s: _Sheet, conn: ShearConnection, opt: ShearDrawing,
+                          lang: str) -> None:
+    el = conn.element
+    assert isinstance(el, SkewedBentPlate)
+    beam, support = conn.beam, conn.support
+    assert beam is not None
+    u = s.u
+    tw = u(beam.tw)
+    tg = u(support.tw if support is not None and conn.support_element == "web" else (
+        support.tf if support is not None else 0.25 * INCH))
+    alpha = parse_skew(el.skew)
+    a, b = el.plate_a, el.plate_b
+    row = u(el.row_distance or 6 * INCH)
+    row_a = (1 - el.share_a) * row
+    row_b = el.share_a * row
+    width = u(max(a.width, b.width))
+    legs = u(max(a.leg_beam or a.width * 0.6, b.leg_beam or b.width * 0.6))
+    span = max(row_a, row_b) + legs + u(2 * INCH)
+    web = max(2 * width, u(12 * INCH))
+    s.setup_dims(max(span, u(12 * INCH)) / 55)
+
+    # Support and beam webs in plan
+    s.rect(-tg, -web / 2, 0.0, web / 2, "SC-APOYO")
+    _plan_rect(s, alpha, 0.0, -tw / 2, span, tw / 2, "SC-VIGA")
+    for z in (-tw / 2, tw / 2):
+        x1, y1 = _plan_point(alpha, span, z)
+        s.msp.add_line((0.0, z), (x1, y1), dxfattribs={"layer": "SC-VIGA"})
+    xc, yc = _plan_point(alpha, span, 0.0)
+    s.msp.add_line((0.0, 0.0), (xc, yc),
+                   dxfattribs={"layer": "SC-VIGA", "linetype": "CENTER"})
+
+    # Bent plates: support leg (along the support web) and welded leg (along the beam)
+    for plate, sign, letter in ((a, 1, "A"), (b, -1, "B")):
+        t = u(plate.thickness)
+        z0 = sign * tw / 2 if sign > 0 else sign * tw / 2 - u(plate.width)
+        s.rect(0.0, z0, t, z0 + u(plate.width), "SC-PLACA")
+        leg = u(plate.leg_beam or plate.width * 0.6)
+        zw = sign * tw / 2 if sign > 0 else sign * tw / 2 - t
+        _plan_rect(s, alpha, 0.0, zw, leg, zw + t, "SC-PLACA")
+        s.text(f"{tr('drawing.bent_plate', lang)} {letter}", t + u(0.4 * INCH),
+               z0 + u(plate.width) / 2, 0.8 * s.text_h, layer="SC-TEXTO")
+        s.text(f"PL {s.label(plate.thickness)} x {s.label(plate.length)} x "
+               f"{s.label(plate.width)}", t + u(0.4 * INCH),
+               z0 + u(plate.width) / 2 - s.text_h, 0.65 * s.text_h, layer="SC-TEXTO")
+
+    # Bolt rows and load line
+    r = u(a.bolt.diameter / 2)
+    for z, letter in ((row_a, "A"), (-row_b, "B")):
+        s.msp.add_circle((0.0, z), r, dxfattribs={"layer": "SC-PERNO"})
+        s.text(f"3 Ø {s.label(a.bolt.diameter)} ({letter})", -tg - u(2 * INCH), z,
+               0.65 * s.text_h, layer="SC-TEXTO", align=TextEntityAlignment.RIGHT)
+    s.msp.add_circle((0.0, 0.0), u(0.25 * INCH), dxfattribs={"layer": "SC-COTAS"})
+    s.msp.add_line((-u(0.5 * INCH), 0.0), (u(0.5 * INCH), 0.0),
+                   dxfattribs={"layer": "SC-COTAS"})
+    s.msp.add_line((0.0, -u(0.5 * INCH)), (0.0, u(0.5 * INCH)),
+                   dxfattribs={"layer": "SC-COTAS"})
+    s.text("R", u(0.7 * INCH), u(0.4 * INCH), 0.9 * s.text_h, layer="SC-TEXTO")
+
+    # Dimensions
+    base_x = -tg - 5 * s.text_h
+    _plan_vdim(s, -row_b, row_a, 0.0, base_x)
+    _plan_vdim(s, -row_b, 0.0, 0.0, base_x + 2.5 * s.text_h)
+    _plan_hdim(s, 0.0, u(a.thickness), -web / 2 + u(2 * INCH),
+               -web / 2 + u(0.5 * INCH))
+    if el.skew:
+        s.text(f"{tr('input.skew', lang)}: {el.skew}", span * 0.55,
+               tw / 2 + u(1.0 * INCH), 0.9 * s.text_h, layer="SC-TEXTO")
+    s.text(tr("drawing.plan", lang), -tg, web / 2 + 3 * s.text_h,
+           1.4 * s.text_h, layer="SC-TEXTO")
+
+    lines = [tr(f"shear.type.{conn.type.value}", lang)]
+    if conn.beam is not None:
+        lines.append(f"{tr('input.beam', lang)}: {conn.beam.name}")
+    if conn.support is not None:
+        lines.append(f"{tr('input.support', lang)}: {conn.support.name} "
+                     f"({tr(f'input.support_{conn.support_element}', lang)})")
+    lines += _description(conn, s, lang)
+    y = -web / 2 - 4 * s.text_h
+    for line in lines:
+        s.text(line, -tg, y, layer="SC-TEXTO")
+        y -= 1.6 * s.text_h
+    title = " · ".join(v for v in (opt.title, opt.number, f"Rev. {opt.revision}", opt.date) if v)
+    if title:
+        s.text(title, -tg, y - s.text_h, 1.2 * s.text_h, layer="SC-TEXTO")
+
+    if opt.bom:
+        lay = ShearLayout(beam_d=beam.d, beam_tf=beam.tf, beam_start=0.0, beam_length=span,
+                          support_t=tg)
+        lay.welds = [(0.0, 0.0, 2 * (a.length + 2 * a.weld_return), 0.0)]
+        _draw_bom(s, conn, lay, span + 6 * s.text_h, web / 2, lang)
+
+
 def shear_dxf(conn: ShearConnection, units: UnitSystem, lang: str = "es",
               options: ShearDrawing | None = None):
-    """DXF document with the elevation of the connection."""
+    """DXF document with the elevation or plan of the connection."""
     s = _Sheet(units, lang)
     for name, (color, ltype) in LAYERS.items():
         if name not in s.doc.layers:
             s.doc.layers.add(name, color=color, linetype=ltype)
+    if conn.type is ShearType.SKEWED_BENT_PLATE:
+        _draw_bent_plate_plan(s, conn, options or ShearDrawing(), lang)
+        return s.doc
     lay = shear_layout(conn)
     s.setup_dims(s.u(max(lay.beam_d, 300.0)) / 60)
     _draw(s, conn, lay, options or ShearDrawing(), lang)

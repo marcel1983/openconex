@@ -30,6 +30,9 @@
     "load_offset": "2 1/4 in",
     "plate_a_width": "7 1/4 in",
     "plate_b_width": "6 3/4 in",
+    "plate_a_leg": "4 7/16 in",
+    "plate_b_leg": "3 9/16 in",
+    "bend_radius": "9/16 in",
     "skew": "6:12"
   },
   "cases": [
