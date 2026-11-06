@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from openconex.geometry3d.base_plate import Part
 from openconex.geometry3d.mesh import MeshPart, tessellate_parts
+from openconex.help import help_text
 
 __all__ = ["Viewer3D", "part_color"]
 
@@ -239,6 +240,8 @@ class Viewer3D(QWidget):
         refresh = QPushButton("Actualizar")
         refresh.clicked.connect(self.load_model)
         reset = QPushButton("Ajustar vista")
+        refresh.setToolTip(help_text("viewer.refresh"))
+        reset.setToolTip(help_text("viewer.reset"))
         bar.addWidget(refresh)
         bar.addWidget(reset)
         self._status = QLabel("Seleccione un proyecto y pulse Actualizar.")

@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.help import help_text
 from openconex.units import Kind, UnitSystem, format_value
 
 __all__ = ["GeometryEditor", "GeometryValues"]
@@ -131,6 +132,8 @@ class GeometryEditor(QWidget):
         self._redo_button = QPushButton("Rehacer")
         self._redo_button.setShortcut("Ctrl+Y")
         self._redo_button.clicked.connect(self.redo)
+        self._undo_button.setToolTip(help_text("geometry.undo"))
+        self._redo_button.setToolTip(help_text("geometry.redo"))
         bar.addWidget(self._undo_button)
         bar.addWidget(self._redo_button)
         hint = QLabel("Arrastre los bordes de la placa, los anclajes o los hitos de "

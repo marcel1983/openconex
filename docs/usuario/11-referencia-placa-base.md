@@ -166,6 +166,10 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `comb.omega0` | Factor de sobrerresistencia sísmica. | Escriba Ω0 si aplica. | Afecta las combinaciones sísmicas. | — | PB |
 | `base.ui.geometry` | Editor gráfico de planta y elevación. | Arrastre los bordes o edite los campos. | Cambia N, B, tp y la posición de anclajes. | — | PB |
 | `base.ui.viewer` | Visor 3D del conjunto. | Gire, haga zoom o seleccione piezas. | No cambia el cálculo. | — | PB |
+| `geometry.undo` | Deshace el último cambio del editor gráfico. | Pulse Deshacer o Ctrl+Z. | Restaura la geometría anterior; no cambia el cálculo hasta Calcular. | — | PB |
+| `geometry.redo` | Rehace el cambio deshecho. | Pulse Rehacer o Ctrl+Y. | Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular. | — | PB |
+| `viewer.refresh` | Recarga el modelo 3D con el proyecto actual. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | PB |
+| `viewer.reset` | Restablece la cámara del visor 3D. | Pulse Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
 | `dialog.import_csi.file` | Archivo Excel exportado de SAP2000 o ETABS. | Elija el archivo con Examinar. | Es la fuente de apoyos, reacciones y casos. | — | todas |
 | `dialog.import_csi.output` | Carpeta donde se escribirán los proyectos. | Elija la carpeta con Carpeta. | No cambia el cálculo; determina dónde se guardan los .ocnx. | — | todas |
 | `dialog.import_csi.group` | Criterio para crear proyectos: por apoyo o por sección de columna. | Seleccione Joint o Column. | Cambia el número de proyectos y su agrupación. | joint | todas |
