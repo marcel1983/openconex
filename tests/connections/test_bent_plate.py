@@ -110,6 +110,7 @@ def test_project_round_trip_and_envelope():
     assert conn.type is ShearType.SKEWED_BENT_PLATE
     assert conn.element.share_a == pytest.approx(0.34)
     assert conn.element.plate_b.width == pytest.approx(inch(6.75))
+    assert conn.element.plate_b.thickness == pytest.approx(inch(7 / 16))
     assert conn.element.plate_a.leg_beam == pytest.approx(inch(4.4375))
     assert conn.element.plate_b.leg_beam == pytest.approx(inch(3.5625))
     assert conn.element.plate_a.bend_radius == pytest.approx(inch(0.5625))
@@ -118,6 +119,10 @@ def test_project_round_trip_and_envelope():
     assert results
     assert all(result.status.value != "ng" for result in results)
     assert {result.combo.split("-")[0] for result in results} == {"LRFD", "ASD"}
+    rupture = max((result for result in results
+                   if result.id == "skewed_bent_plate.plate_b.shear_rupture"),
+                  key=lambda result: result.ratio)
+    assert rupture.ratio == pytest.approx(0.84, abs=0.01)
 
 
 def test_project_needs_the_load_split():
