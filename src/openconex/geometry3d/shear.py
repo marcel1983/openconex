@@ -77,9 +77,13 @@ def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate) -> list[Part]:
 
     r = a.bolt.diameter / 2
     row = el.row_distance or 6 * INCH
+    if el.load_offset > 0:
+        row_a, row_b = row - el.load_offset, el.load_offset
+    else:
+        row_a, row_b = (1 - el.share_a) * row, el.share_a * row
     rows = a.rows
     for name, plate, sign in (("a", a, 1), ("b", b, -1)):
-        z = (1 - el.share_a) * row if sign > 0 else -el.share_a * row
+        z = row_a if sign > 0 else -row_b
         for i in range(rows):
             y = y0 + (height - 2 * plate.lev - (rows - 1) * plate.spacing) / 2 \
                 + plate.lev + i * plate.spacing

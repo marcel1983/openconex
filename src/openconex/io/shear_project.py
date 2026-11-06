@@ -320,7 +320,8 @@ def shear_model(project: Project) -> ShearConnection:
                               bend_radius=q(sc.bend_radius), **bent),
             plate_b=BentPlate(width=q(sc.plate_b_width), leg_beam=q(sc.plate_b_leg),
                               bend_radius=q(sc.bend_radius), **bent),
-            share_a=share_a, skew=sc.skew or "", row_distance=q(sc.row_distance))
+            share_a=share_a, skew=sc.skew or "", row_distance=q(sc.row_distance),
+            load_offset=q(sc.load_offset))
     elif kind is ShearType.SEATED:
         top = {}
         for name, unit in (("top_angle_leg", L), ("top_angle_thickness", T),

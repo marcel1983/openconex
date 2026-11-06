@@ -91,6 +91,8 @@ class SkewedBentPlate:
     """Skew as written in the project (e.g. ``6:12``); informational."""
     row_distance: float = 0.0
     """Distance between the two bolt rows (drawing and 3D); 0 if not given."""
+    load_offset: float = 0.0
+    """Load line to row B (drawing and 3D); 0 falls back to the design share."""
 
     def __post_init__(self) -> None:
         if not 0.0 < self.share_a < 1.0:

@@ -543,8 +543,10 @@ def _draw_bent_plate_plan(s: _Sheet, conn: ShearConnection, opt: ShearDrawing,
     alpha = parse_skew(el.skew)
     a, b = el.plate_a, el.plate_b
     row = u(el.row_distance or 6 * INCH)
-    row_a = (1 - el.share_a) * row
-    row_b = el.share_a * row
+    if el.load_offset > 0:
+        row_a, row_b = row - u(el.load_offset), u(el.load_offset)
+    else:
+        row_a, row_b = (1 - el.share_a) * row, el.share_a * row
     width = u(max(a.width, b.width))
     legs = u(max(a.leg_beam or a.width * 0.6, b.leg_beam or b.width * 0.6))
     span = max(row_a, row_b) + legs + u(2 * INCH)

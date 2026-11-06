@@ -28,6 +28,7 @@
     "weld_offset": "3 5/8 in",
     "row_distance": "6 in",
     "load_offset": "2 1/4 in",
+    "share_b": 0.66,
     "plate_a_width": "7 1/4 in",
     "plate_b_width": "6 3/4 in",
     "plate_a_leg": "4 7/16 in",

@@ -108,7 +108,7 @@ def test_project_round_trip_and_envelope():
     project = Project.model_validate(data)
     conn = project.shear_model()
     assert conn.type is ShearType.SKEWED_BENT_PLATE
-    assert conn.element.share_a == pytest.approx(0.375)
+    assert conn.element.share_a == pytest.approx(0.34)
     assert conn.element.plate_b.width == pytest.approx(inch(6.75))
     assert conn.element.plate_a.leg_beam == pytest.approx(inch(4.4375))
     assert conn.element.plate_b.leg_beam == pytest.approx(inch(3.5625))
@@ -124,6 +124,7 @@ def test_project_needs_the_load_split():
     data = json.loads((EXAMPLES / "shear_skewed_bent_plate.ocnx").read_text(
         encoding="utf-8"))
     del data["shear_connection"]["row_distance"]
+    del data["shear_connection"]["share_b"]
     with pytest.raises(ValueError, match="row_distance"):
         Project.model_validate(data)
 
