@@ -15,7 +15,9 @@ from PySide6.QtWidgets import QApplication, QDialog
 
 from openconex.core.loads import Method
 from openconex.core.model import HSSKind
+from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.app import MainWindow
+from openconex.gui.help import HelpDialog
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.library import MaterialLibraryDialog, SectionLibraryDialog
 from openconex.gui.units import UnitDialog
@@ -58,6 +60,29 @@ def test_gui_uses_section_and_material_combos(qapp):
     assert window._material_combos["column_grade"].currentText() == "ASTM A992"
     assert window._material_combos["plate_grade"].currentText() == "ASTM A572 Gr. 50"
     assert window._material_combos["rod_grade"].currentText() == "ASTM F1554 Gr. 36"
+    window.close()
+
+
+def test_base_plate_help_and_tooltips(qapp):
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    assert all(edit.toolTip() for edit, _unit, _kind in window._quantity_fields.values())
+    assert all(combo.toolTip() for combo in window._material_combos.values())
+    assert all(box.toolTip() for box in window._plate_boxes.values())
+    assert window._plain_edits["A2_over_A1"].toolTip()
+    assert window._plain_edits["rods_per_side"].toolTip()
+    for menu in window.menuBar().actions():
+        submenu = menu.menu()
+        if submenu is None:
+            continue
+        for action in submenu.actions():
+            if not action.isSeparator():
+                assert action.toolTip(), action.text()
+    form = BasePlateAdvancedForm()
+    assert all(field.edit.toolTip() for field in form._fields.values())
+    dialog = HelpDialog("fields")
+    assert dialog.list.count() > 50
+    dialog.close()
     window.close()
 
 

@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from openconex.connections.base_plate.check import BearingAreaModel, PressureModel
 from openconex.core.materials import ELECTRODES, STEELS
 from openconex.gui.quantity import convert_text, format_quantity, unit_label
+from openconex.help import help_text
 from openconex.io.project import (
     EmbeddedBaseInput,
     EmbeddedRebarInput,
@@ -95,6 +96,17 @@ class BasePlateAdvancedForm(QWidget):
         self.set_embedded(False)
 
     # -- construction -----------------------------------------------------------
+    def _tip(self, widget: QWidget, key: str) -> None:
+        if widget is None:
+            return
+        normalized = key.replace(".ca2.0", ".ca2").replace(".ca2.1", ".ca2")
+        try:
+            text = help_text(normalized)
+        except KeyError:
+            return
+        widget.setToolTip(text)
+        widget.setStatusTip(text)
+
     def _add(self, layout: QFormLayout, key: str, label: str, kind: Kind,
              required: bool = True) -> QLineEdit:
         edit = QLineEdit()
@@ -102,7 +114,10 @@ class BasePlateAdvancedForm(QWidget):
             edit.setPlaceholderText("opcional")
         unit = QLabel(unit_label(self._units, kind))
         unit.setMinimumWidth(42)
-        layout.addRow(label, _quantity_row(edit, unit))
+        row = _quantity_row(edit, unit)
+        layout.addRow(label, row)
+        self._tip(edit, key)
+        self._tip(row, key)
         self._fields[key] = _Field(_path(key), label, edit, unit, kind, required)
         return edit
 
@@ -115,6 +130,7 @@ class BasePlateAdvancedForm(QWidget):
                                PressureModel.TRIANGULAR.value)
         self._pressure.setToolTip("La distribución triangular solo se aplica al eje fuerte "
                                   "y a combinaciones con compresión.")
+        self._tip(self._pressure, "pressure_model")
         layout.addRow("Modelo de presión", self._pressure)
 
         self._bearing = QComboBox()
@@ -123,11 +139,13 @@ class BasePlateAdvancedForm(QWidget):
                               BearingAreaModel.EFFECTIVE.value)
         self._bearing.setToolTip("El área efectiva solo se define para perfiles I en "
                                  "compresión concéntrica.")
+        self._tip(self._bearing, "bearing_area_model")
         layout.addRow("Área de apoyo", self._bearing)
 
         self._electrode = QComboBox()
         self._electrode.addItems(sorted(ELECTRODES))
         layout.addRow("Electrodo", self._electrode)
+        self._tip(self._electrode, "electrode")
         self._add(layout, "rod_bending_lever", "Brazo de flexión de placa",
                   Kind.LENGTH, required=False)
         self._add(layout, "bearing_area", "Área de apoyo del anclaje", Kind.AREA,
@@ -139,6 +157,7 @@ class BasePlateAdvancedForm(QWidget):
 
         self._friction = QLineEdit("0.4")
         self._friction.setToolTip("Coeficiente de fricción placa-concreto (0.4 por defecto).")
+        self._tip(self._friction, "friction_mu")
         layout.addRow("Coef. de fricción", self._friction)
 
         for key, label in (("edges.left", "Borde izquierdo"),
@@ -166,11 +185,14 @@ class BasePlateAdvancedForm(QWidget):
         self._rebar_table.horizontalHeader().setStretchLastSection(True)
         self._rebar_table.setMaximumHeight(140)
         layout.addWidget(self._rebar_table)
+        self._tip(self._rebar_table, "pedestal_rebars")
         buttons = QHBoxLayout()
         add = QPushButton("Añadir barra")
         add.clicked.connect(self._add_rebar)
         remove = QPushButton("Eliminar")
         remove.clicked.connect(self._remove_rebar)
+        self._tip(add, "pedestal_rebars")
+        self._tip(remove, "pedestal_rebars")
         buttons.addWidget(add)
         buttons.addWidget(remove)
         buttons.addStretch(1)
@@ -195,12 +217,15 @@ class BasePlateAdvancedForm(QWidget):
         self._shear_direction.addItem("Débil (B)", "weak")
         self._shear_direction.addItem("Cruz (N y B)", "both")
         layout.addRow("Dirección", self._shear_direction)
+        self._tip(self._shear_direction, "shear_lug.direction")
         self._shear_grade = QComboBox()
         self._shear_grade.addItems(sorted(STEELS))
         layout.addRow("Acero", self._shear_grade)
+        self._tip(self._shear_grade, "shear_lug.grade")
         self._lug_electrode = QComboBox()
         self._lug_electrode.addItems(sorted(ELECTRODES))
         layout.addRow("Electrodo", self._lug_electrode)
+        self._tip(self._lug_electrode, "shear_lug.electrode")
         self._add(layout, "shear_lug.ca1", "Borde c_a1", Kind.LENGTH, required=False)
         self._add(layout, "shear_lug.ca2.0", "Borde c_a2 izquierdo", Kind.LENGTH,
                   required=False)
@@ -216,6 +241,7 @@ class BasePlateAdvancedForm(QWidget):
         self._bars = QLineEdit()
         self._bars.setPlaceholderText("Por ejemplo 4 #6")
         layout.addRow("Barras", self._bars)
+        self._tip(self._bars, "reinforcement.bars")
         self._add(layout, "reinforcement.area", "Área total", Kind.AREA)
         self._add(layout, "reinforcement.fy", "fy", Kind.STRESS)
         self._add(layout, "reinforcement.db", "Diámetro db", Kind.LENGTH)
@@ -234,6 +260,7 @@ class BasePlateAdvancedForm(QWidget):
                   Kind.LENGTH)
         self._rt = QLineEdit("1.2")
         self._rt.setToolTip("Relación de sobre-resistencia Rt (DG1 §6.4).")
+        self._tip(self._rt, "weak_base.Rt")
         layout.addRow("Rt", self._rt)
         self._weak_group = group
         return group
@@ -248,6 +275,7 @@ class BasePlateAdvancedForm(QWidget):
                   "Espesor de placa frontal", Kind.THICKNESS)
         self._beta1 = QLineEdit("0.85")
         self._beta1.setToolTip("Factor del bloque de compresión del concreto (0 < β1 ≤ 1).")
+        self._tip(self._beta1, "embedded_base.beta1")
         layout.addRow("β1", self._beta1)
         self._add(layout, "embedded_base.base_plate_width", "Ancho de placa embebida",
                   Kind.LENGTH, required=False)
@@ -255,6 +283,7 @@ class BasePlateAdvancedForm(QWidget):
                   "Espesor de placa embebida", Kind.THICKNESS, required=False)
         self._damage = QCheckBox()
         self._damage.setToolTip("Aplica el factor 0.8 de limitación de daño.")
+        self._tip(self._damage, "embedded_base.damage_limit")
         layout.addRow("Límite de daño", self._damage)
         self._layer_top = self._build_layer("Refuerzo horizontal superior", "rebar_top")
         self._layer_bottom = self._build_layer("Refuerzo horizontal inferior",

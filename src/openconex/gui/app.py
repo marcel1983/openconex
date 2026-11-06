@@ -45,6 +45,7 @@ from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
 from openconex.gui.branding import app_icon, show_splash, splash_pixmap
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
 from openconex.gui.geometry import GeometryEditor, GeometryValues
+from openconex.gui.help import HelpDialog
 from openconex.gui.import_supports import ImportSupportsDialog
 from openconex.gui.import_table import TableImportDialog
 from openconex.gui.library import (
@@ -61,6 +62,7 @@ from openconex.gui.quantity import (
 )
 from openconex.gui.units import UnitDialog
 from openconex.gui.viewer3d import Viewer3D
+from openconex.help import help_text
 from openconex.io.csi import import_supports
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
@@ -177,70 +179,65 @@ class MainWindow(QMainWindow):
                                      "SAP2000/ETABS.")
 
     def _build_menu(self) -> None:
+        def action(label: str, slot, shortcut: str, key: str) -> QAction:
+            item = QAction(label, self)
+            if shortcut:
+                item.setShortcut(shortcut)
+            item.triggered.connect(slot)
+            self._tip(item, key)
+            return item
+
         file_menu = self.menuBar().addMenu("&Archivo")
-        open_action = QAction("Abrir…", self)
-        open_action.setShortcut("Ctrl+O")
-        open_action.triggered.connect(self.open_project_dialog)
-        file_menu.addAction(open_action)
-        save_action = QAction("Guardar", self)
-        save_action.setShortcut("Ctrl+S")
-        save_action.triggered.connect(self.save_project_dialog)
-        file_menu.addAction(save_action)
-        save_as = QAction("Guardar como…", self)
-        save_as.triggered.connect(lambda: self.save_project_dialog(save_as=True))
-        file_menu.addAction(save_as)
-        shear_action = QAction("Nueva conexión de corte…", self)
-        shear_action.triggered.connect(lambda: self.open_shear_window())
-        file_menu.addAction(shear_action)
+        file_menu.addAction(action("Abrir…", self.open_project_dialog, "Ctrl+O",
+                                   "main.file.open"))
+        file_menu.addAction(action("Guardar", self.save_project_dialog, "Ctrl+S",
+                                   "main.file.save"))
+        file_menu.addAction(action("Guardar como…",
+                                   lambda: self.save_project_dialog(save_as=True), "",
+                                   "main.file.save_as"))
+        file_menu.addAction(action("Nueva conexión de corte…",
+                                   lambda: self.open_shear_window(), "",
+                                   "main.file.shear"))
         file_menu.addSeparator()
-        import_action = QAction("Importar SAP2000 / ETABS…", self)
-        import_action.triggered.connect(self.import_csi_dialog)
-        file_menu.addAction(import_action)
-        table_action = QAction("Importar Excel / CSV…", self)
-        table_action.triggered.connect(self.import_table_dialog)
-        file_menu.addAction(table_action)
+        file_menu.addAction(action("Importar SAP2000 / ETABS…", self.import_csi_dialog,
+                                   "", "main.file.import_csi"))
+        file_menu.addAction(action("Importar Excel / CSV…", self.import_table_dialog,
+                                   "", "main.file.import_table"))
         file_menu.addSeparator()
-        exit_action = QAction("Salir", self)
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
+        file_menu.addAction(action("Salir", self.close, "", "main.file.exit"))
 
         library_menu = self.menuBar().addMenu("&Bibliotecas")
-        sections_action = QAction("Secciones…", self)
-        sections_action.triggered.connect(self.open_section_library)
-        library_menu.addAction(sections_action)
-        materials_action = QAction("Materiales…", self)
-        materials_action.triggered.connect(self.open_material_library)
-        library_menu.addAction(materials_action)
+        library_menu.addAction(action("Secciones…", self.open_section_library, "",
+                                      "main.library.sections"))
+        library_menu.addAction(action("Materiales…", self.open_material_library, "",
+                                      "main.library.materials"))
 
         units_menu = self.menuBar().addMenu("&Unidades")
         self._unit_group = QActionGroup(self)
         self._unit_group.setExclusive(True)
         for name in ("SI_kN_m", "SI_N_mm", "MKS", "US"):
-            action = QAction(UNIT_PRESET_LABELS[name], self)
-            action.setCheckable(True)
-            action.triggered.connect(
+            item = QAction(UNIT_PRESET_LABELS[name], self)
+            item.setCheckable(True)
+            item.triggered.connect(
                 lambda _checked=False, preset=name: self.set_unit_system(preset))
-            self._unit_group.addAction(action)
-            units_menu.addAction(action)
-            self._unit_actions[name] = action
+            self._unit_group.addAction(item)
+            units_menu.addAction(item)
+            self._unit_actions[name] = item
+            self._tip(item, "main.units.presets")
         units_menu.addSeparator()
-        configure = QAction("Configurar por magnitud…", self)
-        configure.triggered.connect(self.configure_units)
-        units_menu.addAction(configure)
+        units_menu.addAction(action("Configurar por magnitud…", self.configure_units,
+                                    "", "main.units.configure"))
         self._check_unit_action(self._units.name)
 
         calc_menu = self.menuBar().addMenu("&Cálculo")
-        self.calc_action = QAction("Calcular", self)
-        self.calc_action.setShortcut("F5")
-        self.calc_action.triggered.connect(self.calculate)
+        self.calc_action = action("Calcular", self.calculate, "F5", "main.calc.run")
         calc_menu.addAction(self.calc_action)
-        self.opt_action = QAction("Optimizar N, B y tp", self)
-        self.opt_action.triggered.connect(self.optimize)
+        self.opt_action = action("Optimizar N, B y tp", self.optimize, "",
+                                 "main.calc.optimize")
         calc_menu.addAction(self.opt_action)
         calc_menu.addSeparator()
-        batch_action = QAction("Calcular lote…", self)
-        batch_action.triggered.connect(self.calculate_batch_dialog)
-        calc_menu.addAction(batch_action)
+        calc_menu.addAction(action("Calcular lote…", self.calculate_batch_dialog, "",
+                                   "main.calc.batch"))
 
         export_menu = self.menuBar().addMenu("&Exportar")
         for key, label, suffix in (
@@ -250,11 +247,48 @@ class MainWindow(QMainWindow):
                 ("dxf", "Plano DXF…", ".dxf"),
                 ("step", "Modelo STEP…", ".step"),
                 ("stl", "Modelo STL…", ".stl")):
-            action = QAction(label, self)
-            action.triggered.connect(lambda _checked=False, k=key, s=suffix: self.export(k, s))
-            action.setEnabled(False)
-            export_menu.addAction(action)
-            self._export_actions.append(action)
+            item = action(label,
+                          lambda _checked=False, k=key, s=suffix: self.export(k, s),
+                          "", f"main.export.{key}")
+            item.setEnabled(False)
+            export_menu.addAction(item)
+            self._export_actions.append(item)
+
+        help_menu = self.menuBar().addMenu("A&yuda")
+        help_menu.addAction(action("Guía rápida", self._show_guide, "F1",
+                                   "main.help.guide"))
+        help_menu.addAction(action("Referencia de campos",
+                                   lambda: HelpDialog("fields", self).exec(), "",
+                                   "main.help.fields"))
+        help_menu.addAction(action("Menús y acciones",
+                                   lambda: HelpDialog("menus", self).exec(), "",
+                                   "main.help.menus"))
+        help_menu.addAction(action("Verificaciones",
+                                   lambda: HelpDialog("checks", self).exec(), "",
+                                   "main.help.checks"))
+        help_menu.addAction(action("Acerca de", self._show_about, "",
+                                   "main.help.about"))
+
+    def _show_guide(self) -> None:
+        QMessageBox.information(
+            self, "Guía rápida",
+            "1. Elija el tipo de base y la columna.\n"
+            "2. Complete dimensiones, anclajes, concreto y bloques opcionales.\n"
+            "3. Defina casos y combinaciones LRFD/ASD.\n"
+            "4. Pulse Calcular (F5).\n"
+            "5. Revise Resumen, Verificaciones y Figuras; exporte la memoria o el plano.\n\n"
+            "Cada campo tiene un tooltip y el menú Ayuda → Referencia de campos "
+            "explica qué es, cómo se usa y cómo afecta al cálculo.")
+
+    def _show_about(self) -> None:
+        from openconex import __version__
+        QMessageBox.about(
+            self, "Acerca de OpenConex",
+            f"OpenConex {__version__}\n\n"
+            "Cálculo de conexiones metálicas según AISC 360-22, "
+            "AISC Design Guide 1 y ACI 318-19.\n\n"
+            "Software libre bajo GPL-3.0-or-later. La responsabilidad del "
+            "diseño corresponde al profesional que lo firma.")
 
     def _build_body(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -308,24 +342,40 @@ class MainWindow(QMainWindow):
             edit = QLineEdit()
             self._info_edits[key] = edit
             layout.addRow(label, edit)
+            self._tip(edit, f"project.{key}")
         self.language = QComboBox()
         self.language.addItems(["es", "en"])
         layout.addRow("Idioma", self.language)
+        self._tip(self.language, "ui.language")
         return group
 
     def _material_combo(self, key: str, names: list[str]) -> QComboBox:
         combo = QComboBox()
         combo.addItems(names)
         self._material_combos[key] = combo
+        self._tip(combo, key)
         return combo
+
+    def _tip(self, widget: QWidget, key: str) -> None:
+        if widget is None:
+            return
+        try:
+            text = help_text(key)
+        except KeyError:
+            return
+        widget.setToolTip(text)
+        widget.setStatusTip(text)
 
     def _add_quantity(self, layout: QFormLayout, key: str, label: str,
                       kind: Kind) -> None:
         edit = QLineEdit()
         unit = QLabel(unit_label(self._units, kind))
         unit.setMinimumWidth(42)
-        layout.addRow(label, _quantity_row(edit, unit))
+        row = _quantity_row(edit, unit)
+        layout.addRow(label, row)
         self._quantity_fields[key] = (edit, unit, kind)
+        self._tip(edit, key)
+        self._tip(row, key)
 
     def _build_connection_group(self) -> QGroupBox:
         group = QGroupBox("Conexión")
@@ -335,6 +385,7 @@ class MainWindow(QMainWindow):
         self._connection_combo.addItem("Placa base expuesta", "exposed")
         self._connection_combo.addItem("Base empotrada Tipo I", "embedded")
         layout.addRow("Tipo", self._connection_combo)
+        self._tip(self._connection_combo, "connection_type")
 
         section_row = QWidget()
         section_layout = QHBoxLayout(section_row)
@@ -348,10 +399,12 @@ class MainWindow(QMainWindow):
             completer.setFilterMode(Qt.MatchFlag.MatchContains)
         section_layout.addWidget(self._section_combo, 1)
         self._section_combo.currentTextChanged.connect(self._on_section_changed)
+        self._tip(self._section_combo, "column")
         library = QPushButton("…")
         library.setFixedWidth(30)
         library.setToolTip("Abrir la biblioteca de secciones")
         library.clicked.connect(self.open_section_library)
+        self._tip(library, "main.library.sections")
         section_layout.addWidget(library)
         layout.addRow("Columna", section_row)
         layout.addRow("Grado de columna",
@@ -371,6 +424,7 @@ class MainWindow(QMainWindow):
         a2 = QLineEdit()
         self._plain_edits["A2_over_A1"] = a2
         layout.addRow("A2/A1", a2)
+        self._tip(a2, "A2_over_A1")
         self._add_quantity(layout, "pedestal_N", "Pedestal N", Kind.LENGTH)
         self._add_quantity(layout, "pedestal_B", "Pedestal B", Kind.LENGTH)
         self._add_quantity(layout, "grout", "Mortero", Kind.LENGTH)
@@ -380,6 +434,7 @@ class MainWindow(QMainWindow):
         rods = QLineEdit()
         self._plain_edits["rods_per_side"] = rods
         layout.addRow("Barras por lado", rods)
+        self._tip(rods, "rods_per_side")
         self._add_quantity(layout, "f", "Distancia f", Kind.LENGTH)
         self._add_quantity(layout, "rod_spacing", "Separación de barras", Kind.LENGTH)
         self._add_quantity(layout, "hef", "Empotramiento hef", Kind.LENGTH)
@@ -389,6 +444,7 @@ class MainWindow(QMainWindow):
             box = QCheckBox()
             self._plate_boxes[key] = box
             layout.addRow(label, box)
+            self._tip(box, key)
         return group
 
     def _build_cases_group(self) -> QGroupBox:
@@ -398,11 +454,14 @@ class MainWindow(QMainWindow):
         self.cases.setHorizontalHeaderLabels(self._case_headers())
         self.cases.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.cases)
+        self._tip(self.cases, "base.ui.cases")
         buttons = QHBoxLayout()
         add = QPushButton("Añadir caso")
         add.clicked.connect(self._add_case)
         remove = QPushButton("Eliminar")
         remove.clicked.connect(self._remove_case)
+        self._tip(add, "base.ui.cases")
+        self._tip(remove, "base.ui.cases")
         buttons.addWidget(add)
         buttons.addWidget(remove)
         buttons.addStretch(1)
@@ -419,10 +478,12 @@ class MainWindow(QMainWindow):
             box = QCheckBox(label)
             self._method_boxes[method] = box
             methods_layout.addWidget(box)
+            self._tip(box, "base.ui.methods")
         methods_layout.addStretch(1)
         layout.addRow("Métodos", methods_widget)
         self._include_code = QCheckBox("Generar combinaciones ASCE 7-22")
         layout.addRow("", self._include_code)
+        self._tip(self._include_code, "base.ui.combinations")
         for key, label, default in (
                 ("live_factor", "Factor de carga viva", "1.0"),
                 ("SDS", "SDS (g)", ""),
@@ -431,6 +492,7 @@ class MainWindow(QMainWindow):
             edit = QLineEdit(default)
             self._combination_edits[key] = edit
             layout.addRow(label, edit)
+            self._tip(edit, f"comb.{key}")
         note = QLabel("SDS es obligatorio si hay casos sísmicos y se generan "
                       "combinaciones del código.")
         note.setWordWrap(True)
@@ -448,6 +510,7 @@ class MainWindow(QMainWindow):
         self._custom_table.horizontalHeader().setStretchLastSection(True)
         self._custom_table.setMaximumHeight(150)
         layout.addRow("Propias", self._custom_table)
+        self._tip(self._custom_table, "base.ui.combinations")
         buttons = QHBoxLayout()
         add = QPushButton("Añadir")
         add.clicked.connect(self._add_custom_combination)
@@ -455,6 +518,8 @@ class MainWindow(QMainWindow):
         duplicate.clicked.connect(self._duplicate_custom_combination)
         remove = QPushButton("Eliminar")
         remove.clicked.connect(self._remove_custom_combination)
+        for button in (add, duplicate, remove):
+            self._tip(button, "base.ui.combinations")
         buttons.addWidget(add)
         buttons.addWidget(duplicate)
         buttons.addWidget(remove)

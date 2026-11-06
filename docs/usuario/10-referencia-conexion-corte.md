@@ -2,7 +2,7 @@
 
 Esta página se genera desde `src/openconex/help.py`. Cada entrada responde qué es, cómo se usa y cómo afecta al cálculo. Si añade un campo o una acción, actualice la fuente y vuelva a generar la página.
 
-**Tipos:** DA: doble ángulo; PS: placa simple; PSE: placa simple extendida; PE: placa de extremo; AS: asiento; AR: asiento rigidizado; PD: placa doblada; todas: cualquier tipo.
+**Tipos:** DA: doble ángulo; PS: placa simple; PSE: placa simple extendida; PE: placa de extremo; AS: asiento; AR: asiento rigidizado; PD: placa doblada; PB: placa base; todas: cualquier tipo.
 
 ## Campos del proyecto y de la conexión
 
