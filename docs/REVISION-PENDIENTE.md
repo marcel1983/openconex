@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-06, sobre `main`, versión 0.5.2. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-06, sobre `main`, versión 0.5.3. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -13,7 +13,9 @@ Estado al 2026-11-06, sobre `main`, versión 0.5.2. Cada tarea indica qué hay q
 - [x] Release 0.5.0.
 - [x] Release 0.5.1.
 - [x] Ejemplo de II.A-10 con reparto conservador `share_b = 0,66`; placa B en 0,98 por rotura.
+- [x] Ejemplo de II.A-10 con placas de 7/16 in; placa B en 0,84 por rotura.
 - [x] Release 0.5.2.
+- [x] Release 0.5.3.
 
 ## 0. Completado en 0.4.2
 
