@@ -4,17 +4,32 @@
 
 from pathlib import Path
 
-from openconex.help import HELP_ITEMS, render_shear_help_markdown, shear_fields, shear_menus
-from openconex.io.shear_project import (
+from openconex.help import (
+    HELP_ITEMS,
+    render_base_help_markdown,
+    render_shear_help_markdown,
+    shear_fields,
+    shear_menus,
+)
+from openconex.help_base import BASE_ITEMS
+from openconex.io.project import (
+    BasePlateInput,
     BoltInput,
     CopeInput,
     DoublerPlateInput,
+    EmbeddedBaseInput,
+    EmbeddedRebarInput,
     LongitudinalStiffenerInput,
+    PedestalRebarInput,
+    ReinforcementInput,
     ShearConnectionInput,
+    ShearLugInput,
+    WeakBaseInput,
 )
 
 ROOT = Path(__file__).parents[1]
 DOC = ROOT / "docs" / "usuario" / "10-referencia-conexion-corte.md"
+BASE_DOC = ROOT / "docs" / "usuario" / "11-referencia-placa-base.md"
 
 
 def test_every_shear_field_has_help():
@@ -44,6 +59,35 @@ def test_menus_and_checks_have_help():
 
 def test_generated_document_is_current():
     assert DOC.read_text(encoding="utf-8") == render_shear_help_markdown()
+    assert BASE_DOC.read_text(encoding="utf-8") == render_base_help_markdown()
+
+
+def test_every_base_plate_field_has_help():
+    keys = set(BasePlateInput.model_fields)
+    for model, prefix in (
+            (PedestalRebarInput, "pedestal_rebars"),
+            (ReinforcementInput, "reinforcement"),
+            (WeakBaseInput, "weak_base"),
+            (EmbeddedBaseInput, "embedded_base"),
+            (ShearLugInput, "shear_lug")):
+        keys |= {f"{prefix}.{name}" for name in model.model_fields}
+    keys |= {f"embedded_base.rebar_top.{name}" for name in EmbeddedRebarInput.model_fields}
+    keys |= {f"embedded_base.rebar_bottom.{name}" for name in EmbeddedRebarInput.model_fields}
+    keys |= {f"edges.{name}" for name in ("left", "right", "bottom", "top")}
+    missing = sorted(keys - set(HELP_ITEMS))
+    assert not missing, f"base fields without help: {missing}"
+
+
+def test_main_menu_help():
+    keys = {item.key for item in HELP_ITEMS.values()}
+    assert {"main.file.open", "main.calc.run", "main.export.dxf",
+            "main.help.fields", "base.ui.geometry"} <= keys
+
+
+def test_base_fields_are_in_the_document():
+    text = BASE_DOC.read_text(encoding="utf-8")
+    for item in BASE_ITEMS.values():
+        assert f"`{item.key}`" in text, item.key
 
 
 def test_all_fields_are_in_the_document():

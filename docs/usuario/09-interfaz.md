@@ -176,7 +176,7 @@ Los números sin unidad usan el sistema elegido en el diálogo; también se pued
 
 ## Ayuda y tooltips
 
-Cada campo de la ventana de conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. El menú **Ayuda** incluye:
+Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. El menú **Ayuda** incluye:
 
 - **Guía rápida** (`F1`): flujo de trabajo.
 - **Referencia de campos**: lista buscable de todos los campos.
@@ -184,7 +184,7 @@ Cada campo de la ventana de conexión de corte tiene un **tooltip** con tres dat
 - **Verificaciones**: cómo leer demanda, capacidad, relación y estado.
 - **Acerca de**: versión y licencia.
 
-La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md), generada desde la fuente de ayuda del programa.
+La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md) y [Referencia de la placa base](11-referencia-placa-base.md), generadas desde la fuente de ayuda del programa.
 
 ## Conexiones de corte
 

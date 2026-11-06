@@ -12,44 +12,32 @@ without PySide6.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from openconex.help_core import (
+    HELP_TYPE_LEGEND,
+    HelpItem,
+)
+from openconex.help_core import (
+    field_item as _f,
+)
+from openconex.help_core import (
+    table as _table,
+)
+from openconex.help_core import (
+    ui_item as _ui,
+)
 
 __all__ = [
     "HELP_ITEMS",
     "HelpItem",
     "help_item",
+    "help_text",
+    "render_base_help_markdown",
     "render_shear_help_markdown",
     "shear_fields",
     "shear_menus",
 ]
 
-TYPE_LEGEND = (
-    "DA: doble ángulo; PS: placa simple; PSE: placa simple extendida; "
-    "PE: placa de extremo; AS: asiento; AR: asiento rigidizado; "
-    "PD: placa doblada; todas: cualquier tipo."
-)
-
-
-@dataclass(frozen=True)
-class HelpItem:
-    key: str
-    label: str
-    group: str
-    what: str
-    how: str
-    effect: str
-    default: str = "—"
-    types: str = "todas"
-
-
-def _f(key: str, label: str, group: str, what: str, how: str, effect: str,
-       default: str = "—", types: str = "todas") -> HelpItem:
-    return HelpItem(key, label, group, what, how, effect, default, types)
-
-
-def _ui(key: str, label: str, group: str, what: str, how: str, effect: str,
-        default: str = "—", types: str = "todas") -> HelpItem:
-    return HelpItem(key, label, group, what, how, effect, default, types)
+TYPE_LEGEND = HELP_TYPE_LEGEND
 
 
 # Project information ---------------------------------------------------------
@@ -617,6 +605,10 @@ HELP_ITEMS: dict[str, HelpItem] = {
     item.key: item for item in _FIELDS + _MENUS + _CHECKS
 }
 
+from openconex.help_base import BASE_ITEMS, render_base_help_markdown  # noqa: E402
+
+HELP_ITEMS.update(BASE_ITEMS)
+
 
 def help_item(key: str) -> HelpItem:
     """Help entry for a field, menu or UI key; raises if it is missing."""
@@ -637,15 +629,6 @@ def shear_fields() -> list[HelpItem]:
 
 def shear_menus() -> list[HelpItem]:
     return [item for item in _MENUS if item.key in HELP_ITEMS]
-
-
-def _table(items: list[HelpItem]) -> str:
-    lines = ["| Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |",
-             "|---|---|---|---|---|---|"]
-    for item in items:
-        lines.append(f"| `{item.key}` | {item.what} | {item.how} | {item.effect} | "
-                     f"{item.default} | {item.types} |")
-    return "\n".join(lines)
 
 
 def render_shear_help_markdown() -> str:
