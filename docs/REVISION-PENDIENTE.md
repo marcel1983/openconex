@@ -1,6 +1,15 @@
 # Revisión pendiente
 
-Estado al 2026-11-05, sobre `main` (`d937ff3`, versión 0.4.4). Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-06, sobre `main`, versión 0.5.0. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+
+## 0 ter. Completado en 0.5.0
+
+- [x] Doble ángulo desplazado con fila de pernos compartida (II.A-9).
+- [x] Conexión sesgada de doble placa doblada (II.A-10), fase 1: cálculo, proyecto, memoria y validación.
+- [x] II.A-10, fase 2: plano en planta, 3D de las placas dobladas, GUI y lista de materiales.
+- [x] Benchmark FE de II.A-10; corrección de las filas de pernos y reparto conservador configurable con `share_b`.
+- [x] Sistema de ayuda único: tooltips, menú Ayuda y referencias generadas para corte y placa base.
+- [x] Release 0.5.0.
 
 ## 0. Completado en 0.4.2
 
