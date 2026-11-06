@@ -57,8 +57,8 @@ class HelpDialog(QDialog):
                      "Acciones", "Controles", "Verificaciones")]
         if self.section == "menus":
             return [item for item in items if item.group in
-                    ("Menú Archivo", "Menú Cálculo", "Menú Exportar", "Menú Ayuda",
-                     "Acciones", "Controles")]
+                    ("Menú Archivo", "Menú Cálculo", "Menú Exportar", "Menú Principal",
+                     "Menú Ayuda", "Acciones", "Controles", "Diálogos")]
         if self.section == "checks":
             return [item for item in items if item.group == "Verificaciones"]
         return items

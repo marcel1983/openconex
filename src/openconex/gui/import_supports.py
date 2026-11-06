@@ -22,6 +22,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.help import help_text
+
 __all__ = ["ImportSupportsDialog"]
 
 
@@ -33,6 +35,10 @@ class ImportSupportsDialog(QDialog):
         self.setWindowTitle("Importar SAP2000 / ETABS")
         self._build_ui(template_name)
 
+    def _tip(self, widget: QWidget, key: str) -> None:
+        widget.setToolTip(help_text(key))
+        widget.setStatusTip(help_text(key))
+
     def _build_ui(self, template_name: str) -> None:
         layout = QVBoxLayout(self)
         form = QFormLayout()
@@ -42,9 +48,11 @@ class ImportSupportsDialog(QDialog):
         file_layout.setContentsMargins(0, 0, 0, 0)
         self._file = QLineEdit()
         self._file.setPlaceholderText("Exportación de tablas a Excel (.xlsx)")
+        self._tip(self._file, "dialog.import_csi.file")
         file_layout.addWidget(self._file, 1)
         browse = QPushButton("Examinar…")
         browse.clicked.connect(self._browse_file)
+        self._tip(browse, "dialog.import_csi.file")
         file_layout.addWidget(browse)
         form.addRow("Archivo CSI", file_row)
 
@@ -53,9 +61,11 @@ class ImportSupportsDialog(QDialog):
         output_layout.setContentsMargins(0, 0, 0, 0)
         self._output = QLineEdit()
         self._output.setPlaceholderText("Carpeta donde escribir los proyectos .ocnx")
+        self._tip(self._output, "dialog.import_csi.output")
         output_layout.addWidget(self._output, 1)
         folder = QPushButton("Carpeta…")
         folder.clicked.connect(self._browse_output)
+        self._tip(folder, "dialog.import_csi.output")
         output_layout.addWidget(folder)
         form.addRow("Salida", output_row)
 
@@ -67,26 +77,31 @@ class ImportSupportsDialog(QDialog):
         self._group.addItem("Un proyecto por apoyo", "joint")
         self._group.addItem("Un proyecto por sección de columna", "column")
         form.addRow("Agrupación", self._group)
+        self._tip(self._group, "dialog.import_csi.group")
 
         self._loads = QComboBox()
         self._loads.addItem("Casos de carga (OpenConex genera combinaciones)", "cases")
         self._loads.addItem("Combinaciones del programa (ya factorizadas)",
                             "combinations")
         form.addRow("Cargas", self._loads)
+        self._tip(self._loads, "dialog.import_csi.loads")
 
         self._include = QLineEdit()
         self._include.setPlaceholderText("opcional: expresión regular, por ejemplo ^CU")
         form.addRow("Incluir", self._include)
+        self._tip(self._include, "dialog.import_csi.include")
 
         self._envelopes = QCheckBox("Incluir envolventes Max/Min")
         self._envelopes.setEnabled(False)
         form.addRow("", self._envelopes)
+        self._tip(self._envelopes, "dialog.import_csi.envelopes")
 
         self._method = QComboBox()
         self._method.addItem("Según la plantilla", "")
         self._method.addItem("LRFD", "LRFD")
         self._method.addItem("ASD", "ASD")
         form.addRow("Método", self._method)
+        self._tip(self._method, "dialog.import_csi.method")
 
         note = QLabel("La plantilla es el proyecto abierto: aporta la placa, el concreto, "
                       "los anclajes y las opciones. Cada apoyo recibe su columna y sus "
@@ -102,6 +117,8 @@ class ImportSupportsDialog(QDialog):
         accept = QPushButton("Importar")
         accept.setDefault(True)
         accept.clicked.connect(self.accept)
+        self._tip(cancel, "dialog.import_csi.accept")
+        self._tip(accept, "dialog.import_csi.accept")
         buttons.addWidget(cancel)
         buttons.addWidget(accept)
         layout.addLayout(buttons)

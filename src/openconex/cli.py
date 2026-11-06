@@ -248,16 +248,19 @@ def _create_projects(args: argparse.Namespace, data) -> int:
 def build_parser() -> argparse.ArgumentParser:
     """Command-line parser; also read by the documentation tests."""
     parser = argparse.ArgumentParser(prog="openconex", description=__doc__)
-    parser.add_argument("--version", action="version", version=f"OpenConex {__version__}")
+    parser.add_argument("--version", action="version", version=f"OpenConex {__version__}",
+                        help="show the version and exit")
     sub = parser.add_subparsers(dest="command")
 
     conv = sub.add_parser("convert", help="convert a quantity between units")
     conv.add_argument("value", help='quantity with unit, e.g. "3/4 in" or "25 kN"')
-    conv.add_argument("kind", choices=[k.value for k in Kind])
+    conv.add_argument("kind", choices=[k.value for k in Kind],
+                      help="quantity kind (length, force, stress, moment...)")
     target = conv.add_mutually_exclusive_group(required=True)
     target.add_argument("--to", help="target unit, e.g. mm")
     target.add_argument("--system", choices=sorted(PRESETS), help="target preset")
-    conv.add_argument("--precision", type=int, default=4)
+    conv.add_argument("--precision", type=int, default=4,
+                      help="significant digits of the result (default: 4)")
     conv.set_defaults(func=_convert)
 
     units = sub.add_parser("units", help="list the units offered for each kind")
@@ -293,7 +296,8 @@ def build_parser() -> argparse.ArgumentParser:
     sup = sub.add_parser("supports",
                          help="list supports and reactions exported from SAP2000 / ETABS (.xlsx)")
     sup.add_argument("file", help="Excel file with the exported database tables")
-    sup.add_argument("--units", choices=sorted(PRESETS), default="SI_kN_m")
+    sup.add_argument("--units", choices=sorted(PRESETS), default="SI_kN_m",
+                     help="unit system of the exported reactions (default: SI_kN_m)")
     sup.add_argument("--all-cases", action="store_true",
                      help="include unfactored load cases (default: combinations and envelopes)")
     sup.add_argument("--create", metavar="DIR",

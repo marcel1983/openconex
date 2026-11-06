@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.help import help_text
 from openconex.units import CHOICES, Kind, UnitSystem
 
 __all__ = ["UnitDialog"]
@@ -56,6 +57,7 @@ class UnitDialog(QDialog):
             combo.addItems(choices)
             combo.setCurrentText(current)
             self._combos[kind] = combo
+            combo.setToolTip(help_text("dialog.units.kind"))
             form.addRow(LABELS[kind], combo)
         layout.addLayout(form)
         note = QLabel("Al aceptar se convierten el formulario, los casos, las secciones "
@@ -70,6 +72,8 @@ class UnitDialog(QDialog):
         accept = QPushButton("Aplicar")
         accept.setDefault(True)
         accept.clicked.connect(self.accept)
+        cancel.setToolTip(help_text("dialog.units.apply"))
+        accept.setToolTip(help_text("dialog.units.apply"))
         buttons.addWidget(cancel)
         buttons.addWidget(accept)
         layout.addLayout(buttons)

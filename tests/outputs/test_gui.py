@@ -11,15 +11,25 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 pytest.importorskip("PySide6")
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QDialog
+from PySide6.QtWidgets import QApplication, QCheckBox, QComboBox, QDialog, QLineEdit, QPushButton
 
 from openconex.core.loads import Method
+from openconex.core.materials import STEELS
 from openconex.core.model import HSSKind
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.app import MainWindow
+from openconex.gui.batch import BatchDialog
 from openconex.gui.help import HelpDialog
 from openconex.gui.import_supports import ImportSupportsDialog
-from openconex.gui.library import MaterialLibraryDialog, SectionLibraryDialog
+from openconex.gui.import_table import TableImportDialog
+from openconex.gui.library import (
+    MaterialLibraryDialog,
+    NewBoltDialog,
+    NewElectrodeDialog,
+    NewMaterialDialog,
+    NewSectionDialog,
+    SectionLibraryDialog,
+)
 from openconex.gui.units import UnitDialog
 from openconex.io.project import (
     BoltGradeInput,
@@ -84,6 +94,32 @@ def test_base_plate_help_and_tooltips(qapp):
     assert dialog.list.count() > 50
     dialog.close()
     window.close()
+
+
+def _assert_dialog_tooltips(dialog):
+    for kind in (QLineEdit, QComboBox, QCheckBox, QPushButton):
+        for widget in dialog.findChildren(kind):
+            assert widget.toolTip(), f"{dialog.windowTitle()}: {widget}"
+
+
+def test_auxiliary_dialogs_have_tooltips(qapp):
+    project = load_project(EXAMPLE)
+    system = project.info.unit_system()
+    dialogs = [
+        ImportSupportsDialog(None, "plantilla.ocnx"),
+        TableImportDialog(None, "US"),
+        UnitDialog(None, system),
+        BatchDialog(None),
+        SectionLibraryDialog(None, system, {}),
+        MaterialLibraryDialog(None, system, project.materials),
+        NewSectionDialog(None, system, sorted(STEELS)),
+        NewMaterialDialog(None, system, []),
+        NewBoltDialog(None, system, []),
+        NewElectrodeDialog(None, system, []),
+    ]
+    for dialog in dialogs:
+        _assert_dialog_tooltips(dialog)
+        dialog.close()
 
 
 def test_gui_converts_units_from_menu(qapp):

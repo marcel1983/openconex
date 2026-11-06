@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from openconex.gui.exporting import write_3d, write_dxf
+from openconex.help import help_text
 from openconex.io.project import Project, load_project
 from openconex.report.builder import Report, build_report
 from openconex.report.docx import write_docx
@@ -203,14 +204,20 @@ class BatchDialog(QDialog):
         layout = QVBoxLayout(self)
         form = QFormLayout()
 
+        def tip(widget: QWidget, key: str) -> None:
+            widget.setToolTip(help_text(key))
+            widget.setStatusTip(help_text(key))
+
         folder_row = QWidget()
         folder_layout = QHBoxLayout(folder_row)
         folder_layout.setContentsMargins(0, 0, 0, 0)
         self._folder = QLineEdit()
         self._folder.setPlaceholderText("Carpeta con archivos .ocnx")
+        tip(self._folder, "dialog.batch.folder")
         folder_layout.addWidget(self._folder, 1)
         browse = QPushButton("Carpeta…")
         browse.clicked.connect(self._browse_folder)
+        tip(browse, "dialog.batch.folder")
         folder_layout.addWidget(browse)
         form.addRow("Proyectos", folder_row)
 
@@ -219,14 +226,17 @@ class BatchDialog(QDialog):
         output_layout.setContentsMargins(0, 0, 0, 0)
         self._output = QLineEdit()
         self._output.setPlaceholderText("Si se deja vacío, se usa la carpeta de entrada")
+        tip(self._output, "dialog.batch.output")
         output_layout.addWidget(self._output, 1)
         output_browse = QPushButton("Carpeta…")
         output_browse.clicked.connect(self._browse_output)
+        tip(output_browse, "dialog.batch.output")
         output_layout.addWidget(output_browse)
         form.addRow("Salida", output_row)
 
         self._recursive = QCheckBox("Incluir subcarpetas")
         form.addRow("", self._recursive)
+        tip(self._recursive, "dialog.batch.recursive")
         layout.addLayout(form)
 
         format_group = QWidget()
@@ -242,6 +252,7 @@ class BatchDialog(QDialog):
             box = QCheckBox(label)
             box.setChecked(checked)
             self._formats[key] = box
+            tip(box, "dialog.batch.formats")
             checks.addWidget(box)
         checks.addStretch(1)
         format_layout.addLayout(checks)
@@ -259,6 +270,8 @@ class BatchDialog(QDialog):
         accept = QPushButton("Calcular")
         accept.setDefault(True)
         accept.clicked.connect(self.accept)
+        tip(cancel, "dialog.batch.accept")
+        tip(accept, "dialog.batch.accept")
         buttons.addWidget(cancel)
         buttons.addWidget(accept)
         layout.addLayout(buttons)

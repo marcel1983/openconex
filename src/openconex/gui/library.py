@@ -28,6 +28,7 @@ from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.model import HSSKind
 from openconex.core.shapes import Section, aisc_shapes
 from openconex.gui.quantity import format_quantity, stored_quantity, unit_label
+from openconex.help import help_text
 from openconex.io.project import (
     BoltGradeInput,
     ElectrodeInput,
@@ -45,6 +46,12 @@ __all__ = [
     "NewSectionDialog",
     "SectionLibraryDialog",
 ]
+
+
+def _tip(widget: QWidget, key: str) -> None:
+    text = help_text(key)
+    widget.setToolTip(text)
+    widget.setStatusTip(text)
 
 SectionInput = WSectionInput | HSSSectionInput
 
@@ -124,11 +131,13 @@ class SectionLibraryDialog(QDialog):
         self._type = QComboBox()
         self._type.addItems(["Todas", "Personalizadas", *SECTION_TYPES])
         filters.addWidget(self._type)
+        _tip(self._type, "dialog.library.sections.type")
         filters.addWidget(QLabel("Buscar"))
         self._search = QLineEdit()
         self._search.setPlaceholderText("Etiqueta, por ejemplo W12X96")
         self._search.setClearButtonEnabled(True)
         filters.addWidget(self._search, 1)
+        _tip(self._search, "dialog.library.sections.search")
         self._count = QLabel()
         filters.addWidget(self._count)
         layout.addLayout(filters)
@@ -141,17 +150,21 @@ class SectionLibraryDialog(QDialog):
         self._table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch)
         layout.addWidget(self._table, 1)
+        _tip(self._table, "dialog.library.sections.use")
 
         buttons = QHBoxLayout()
         self._new = QPushButton("Nueva sección…")
         self._new.setEnabled(self._on_created is not None)
         buttons.addWidget(self._new)
+        _tip(self._new, "dialog.library.sections.new")
         buttons.addStretch(1)
         self._use = QPushButton("Usar sección")
         self._use.setEnabled(False)
         buttons.addWidget(self._use)
+        _tip(self._use, "dialog.library.sections.use")
         close = QPushButton("Cerrar")
         buttons.addWidget(close)
+        _tip(close, "main.library.sections")
         layout.addLayout(buttons)
 
         self._type.currentTextChanged.connect(self._reload)
@@ -265,10 +278,12 @@ class NewSectionDialog(QDialog):
         self._type = QComboBox()
         self._type.addItems(["W", "HSS rectangular", "HSS cuadrada", "HSS redonda"])
         form.addRow("Tipo", self._type)
+        _tip(self._type, "dialog.library.sections.new")
 
         self._name = QLineEdit()
         self._name.setPlaceholderText("Por ejemplo BP-COL-1")
         form.addRow("Nombre", self._name)
+        _tip(self._name, "dialog.library.sections.new")
 
         for key, label, kind, hint in (
                 ("d", "Peralte d", LENGTH, "12"),
@@ -282,10 +297,12 @@ class NewSectionDialog(QDialog):
             self._fields[key] = (edit, unit, kind)
             self._rows[key] = form.rowCount()
             form.addRow(label, _quantity_row(edit, unit))
+            _tip(edit, "dialog.library.sections.new")
 
         self._grade = QComboBox()
         self._grade.addItems(material_names)
         form.addRow("Material", self._grade)
+        _tip(self._grade, "dialog.library.sections.new")
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
@@ -293,6 +310,8 @@ class NewSectionDialog(QDialog):
         cancel = QPushButton("Cancelar")
         create = QPushButton("Crear")
         create.setDefault(True)
+        _tip(cancel, "dialog.library.sections.new")
+        _tip(create, "dialog.library.sections.new")
         buttons.addWidget(cancel)
         buttons.addWidget(create)
         layout.addLayout(buttons)
@@ -386,6 +405,7 @@ class MaterialLibraryDialog(QDialog):
         layout = QVBoxLayout(self)
         self._tabs = QTabWidget()
         layout.addWidget(self._tabs, 1)
+        _tip(self._tabs, "dialog.library.materials.tabs")
 
         steels = QWidget()
         steel_layout = QVBoxLayout(steels)
@@ -401,6 +421,7 @@ class MaterialLibraryDialog(QDialog):
         self._new = QPushButton("Nuevo material…")
         self._new.setEnabled(self._on_created is not None)
         buttons.addWidget(self._new)
+        _tip(self._new, "dialog.library.materials.new")
         buttons.addStretch(1)
         steel_layout.addLayout(buttons)
         self._tabs.addTab(steels, "Columnas y placas")
@@ -419,6 +440,7 @@ class MaterialLibraryDialog(QDialog):
         self._new_bolt = QPushButton("Nuevo perno…")
         self._new_bolt.setEnabled(self._on_bolt is not None)
         bolt_buttons.addWidget(self._new_bolt)
+        _tip(self._new_bolt, "dialog.library.materials.new")
         bolt_buttons.addStretch(1)
         bolt_layout.addLayout(bolt_buttons)
         self._tabs.addTab(bolts, "Pernos y anclajes")
@@ -435,6 +457,7 @@ class MaterialLibraryDialog(QDialog):
         self._new_electrode = QPushButton("Nuevo electrodo…")
         self._new_electrode.setEnabled(self._on_electrode is not None)
         weld_buttons.addWidget(self._new_electrode)
+        _tip(self._new_electrode, "dialog.library.materials.new")
         weld_buttons.addStretch(1)
         weld_layout.addLayout(weld_buttons)
         self._tabs.addTab(welds, "Soldadura")
@@ -447,6 +470,7 @@ class MaterialLibraryDialog(QDialog):
         footer.addStretch(1)
         close = QPushButton("Cerrar")
         footer.addWidget(close)
+        _tip(close, "dialog.library.materials.tabs")
         layout.addLayout(footer)
 
         self._new.clicked.connect(self._new_material)
@@ -579,12 +603,14 @@ class NewMaterialDialog(QDialog):
         self._name = QLineEdit()
         self._name.setPlaceholderText("Por ejemplo Acero del proyecto")
         form.addRow("Nombre", self._name)
+        _tip(self._name, "dialog.library.materials.new")
         self._fields: dict[str, tuple[QLineEdit, Kind]] = {}
         for key, label, value in (
                 ("Fy", "Fy", base.Fy), ("Fu", "Fu", base.Fu), ("E", "E", base.E)):
             edit = QLineEdit(format_quantity(value, STRESS, self._system))
             self._fields[key] = (edit, STRESS)
             form.addRow(label, _quantity_row(edit, QLabel(unit_label(self._system, STRESS))))
+            _tip(edit, "dialog.library.materials.new")
         layout.addLayout(form)
 
         buttons = QHBoxLayout()
@@ -592,6 +618,8 @@ class NewMaterialDialog(QDialog):
         cancel = QPushButton("Cancelar")
         create = QPushButton("Crear")
         create.setDefault(True)
+        _tip(cancel, "dialog.library.materials.new")
+        _tip(create, "dialog.library.materials.new")
         buttons.addWidget(cancel)
         buttons.addWidget(create)
         layout.addLayout(buttons)
@@ -647,6 +675,7 @@ class NewBoltDialog(QDialog):
         self._name = QLineEdit()
         self._name.setPlaceholderText("Por ejemplo A325 del proyecto")
         form.addRow("Nombre", self._name)
+        _tip(self._name, "dialog.library.materials.new")
         for key, label, value, required in (
                 ("Fnt", "Fnt", base.Fnt, True),
                 ("Fnv_N", "Fnv (rosca incluida)", base.Fnv_N, True),
@@ -658,12 +687,15 @@ class NewBoltDialog(QDialog):
             self._fields[key] = (edit, required)
             form.addRow(label, _quantity_row(edit,
                                              QLabel(unit_label(self._system, STRESS))))
+            _tip(edit, "dialog.library.materials.new")
         layout.addLayout(form)
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         cancel = QPushButton("Cancelar")
         create = QPushButton("Crear")
         create.setDefault(True)
+        _tip(cancel, "dialog.library.materials.new")
+        _tip(create, "dialog.library.materials.new")
         buttons.addWidget(cancel)
         buttons.addWidget(create)
         layout.addLayout(buttons)
@@ -723,16 +755,20 @@ class NewElectrodeDialog(QDialog):
         self._name = QLineEdit()
         self._name.setPlaceholderText("Por ejemplo E90XX")
         form.addRow("Nombre", self._name)
+        _tip(self._name, "dialog.library.materials.new")
         self._fexx = QLineEdit(
             format_quantity(ELECTRODES["E70XX"].FEXX, STRESS, self._system))
         form.addRow("FEXX", _quantity_row(self._fexx,
                                           QLabel(unit_label(self._system, STRESS))))
+        _tip(self._fexx, "dialog.library.materials.new")
         layout.addLayout(form)
         buttons = QHBoxLayout()
         buttons.addStretch(1)
         cancel = QPushButton("Cancelar")
         create = QPushButton("Crear")
         create.setDefault(True)
+        _tip(cancel, "dialog.library.materials.new")
+        _tip(create, "dialog.library.materials.new")
         buttons.addWidget(cancel)
         buttons.addWidget(create)
         layout.addLayout(buttons)
