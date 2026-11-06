@@ -152,6 +152,8 @@ class ShearConnectionInput(_Input):
     """Skewed bent plate: load line to the bolt row of plate B."""
     share_a: Quantity | None = None
     """Skewed bent plate: direct load share of plate A; overrides row_distance/load_offset."""
+    share_b: Quantity | None = None
+    """Skewed bent plate: direct load share of plate B; alternative to share_a."""
     plate_a_width: Quantity | None = None
     """Skewed bent plate: width of plate A (informational in this phase)."""
     plate_b_width: Quantity | None = None
@@ -213,7 +215,8 @@ class ShearConnectionInput(_Input):
         if self.type is ShearType.SEATED and self.support_weld is not None \
                 and self.vertical_leg is None:
             missing.append("vertical_leg")
-        if self.type is ShearType.SKEWED_BENT_PLATE and self.share_a is None:
+        if self.type is ShearType.SKEWED_BENT_PLATE and self.share_a is None \
+                and self.share_b is None:
             if self.row_distance is None:
                 missing.append("row_distance")
             if self.load_offset is None:
@@ -289,7 +292,12 @@ def shear_model(project: Project) -> ShearConnection:
             plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t, support_Fu=sp.Fu,
             FEXX=FEXX, deformation_considered=sc.deformation_considered, **common)
     elif kind is ShearType.SKEWED_BENT_PLATE:
-        if sc.share_a is not None:
+        if sc.share_a is not None and sc.share_b is not None:
+            raise ValueError("use share_a or share_b, not both")
+        if sc.share_b is not None:
+            share_b = project.quantity(sc.share_b, Kind.DIMENSIONLESS)
+            share_a = 1.0 - share_b
+        elif sc.share_a is not None:
             share_a = project.quantity(sc.share_a, Kind.DIMENSIONLESS)
         else:
             row_distance = q(sc.row_distance)

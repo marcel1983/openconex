@@ -593,7 +593,13 @@ class Project(_Input):
                                ("weld_return", Kind.LENGTH), ("weld_offset", Kind.LENGTH)):
                 if self.quantity(getattr(sc, name), kind) <= 0:
                     raise ValueError(f"skewed bent plate {name} must be positive")
-            if sc.share_a is not None:
+            if sc.share_a is not None and sc.share_b is not None:
+                raise ValueError("use share_a or share_b, not both")
+            if sc.share_b is not None:
+                share = self.quantity(sc.share_b, Kind.DIMENSIONLESS)
+                if not 0.0 < share < 1.0:
+                    raise ValueError("share_b must be between 0 and 1")
+            elif sc.share_a is not None:
                 share = self.quantity(sc.share_a, Kind.DIMENSIONLESS)
                 if not 0.0 < share < 1.0:
                     raise ValueError("share_a must be between 0 and 1")

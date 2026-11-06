@@ -99,6 +99,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [ ] Compresión axial en el extremo de la viga.
 - [ ] Flexión de la viga y corte del alma sin destaje.
 
+- [ ] Validar el reparto de carga de II.A-10 con un FE de contacto y pretensión; mientras tanto, revisar la placa B con `share_b` ≥ 0,66.
 - [ ] Importar reacciones de vigas desde SAP2000/ETABS para crear proyectos de corte.
 - [ ] Editor gráfico 2D de la ventana de corte.
 

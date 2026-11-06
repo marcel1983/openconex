@@ -37,6 +37,7 @@ FIELDS: list[tuple[str, str, Kind | None]] = [
     ("beam_weld", "beam_weld", Kind.THICKNESS), ("beam_area", "beam_area", Kind.AREA),
     ("skew", "skew", None), ("row_distance", "row_distance", Kind.LENGTH),
     ("load_offset", "load_offset", Kind.LENGTH), ("share_a", "share_a", Kind.DIMENSIONLESS),
+    ("share_b", "share_b", Kind.DIMENSIONLESS),
     ("plate_a_width", "plate_a_width", Kind.LENGTH),
     ("plate_b_width", "plate_b_width", Kind.LENGTH),
     ("plate_a_leg", "plate_a_leg", Kind.LENGTH),
@@ -145,6 +146,12 @@ def build_shear_report(project: Project, today: dt.date | None = None) -> Report
         assumptions.append(tr("report.assumption_shear_deformation", lang))
     if sc.type is ShearType.SKEWED_BENT_PLATE:
         assumptions.append(tr("report.assumption_shear_bent_plate", lang))
+        share_b = 1.0 - conn.element.share_a
+        if share_b < 0.66:
+            assumptions.append(tr("report.assumption_shear_bent_plate_warning", lang))
+        else:
+            assumptions.append(tr("report.assumption_shear_bent_plate_conservative", lang,
+                                  share=share_b))
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),
