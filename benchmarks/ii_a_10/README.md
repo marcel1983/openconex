@@ -79,8 +79,24 @@ La placa B queda prácticamente en el límite de fluencia por corte (20.86 frent
 
 Para una fase posterior: modelo con alma del apoyo, vástagos, contacto y pretensión; submodelo del pie de soldadura y de la doblez; comparación con el método de punto caliente o con las fuerzas por línea de soldadura.
 
+## Sensibilidad de flexibilidad de pernos
+
+El modelo base usa parches de pernos rígidos. Para acotar el efecto de la flexibilidad perno-apoyo se sustituyen los parches por cilindros elásticos de 3/4 in de radio y 0,1 in de espesor, con módulo `E_pad` variable. La rigidez equivalente de cada apoyo es `k = G A / t`, con `G = E_pad / (2(1+ν))`.
+
+| `E_pad` [ksi] | `k` equivalente [kip/in] | Placa B [kip] | Reparto B |
+|---:|---:|---:|---:|
+| 50 | 340 | 53.55 | 0.669 |
+| 150 | 1 019 | 54.71 | 0.684 |
+| 500 | 3 398 | 56.95 | 0.712 |
+| 1 500 | 10 194 | 59.35 | 0.742 |
+
+La rigidez real de un perno de 7/8 in más la flexibilidad local del alma está probablemente entre 1 000 y 3 400 kip/in, lo que sitúa el reparto de B entre **0.68 y 0.71**. El ejemplo de 7/16 in admite hasta un reparto de B de aproximadamente **0.78** por rotura por corte; el de 3/8 in solo llegaba a **0.67**. Eso explica por qué se aumentó el espesor del ejemplo.
+
+Esta sensibilidad **no es un modelo de contacto ni de pretensión**: los cilindros están unidos al modelo y no hay deslizamiento ni separación. Sirve para acotar la influencia de la rigidez, no para sustituir el FE detallado.
+
 ## Archivos
 
 - `benchmark.py`: geometría, malla, archivo de CalculiX, ejecución y extracción de reacciones.
-- `results/coarse.json`, `results/fine.json`: resultados de las dos mallas.
+- `benchmark_flexible.py`: sensibilidad con apoyos elásticos en lugar de parches rígidos.
+- `results/coarse.json`, `results/fine.json`, `results/flexible.json`: resultados de las mallas y de la sensibilidad.
 - `out/`: archivos generados, no versionados.
