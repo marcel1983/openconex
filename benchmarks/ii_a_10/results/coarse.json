@@ -1,7 +1,7 @@
 {
   "mesh": {"hmax": 0.30, "hmin": 0.08},
   "node_counts": {"FIX_A": 74, "FIX_B": 74, "LOAD": 388},
-  "reactions_kip": {"FIX_A": -30.91617, "FIX_B": -49.08383},
-  "share": {"FIX_A": 0.386452125, "FIX_B": 0.613547875},
+  "reactions_kip": {"FIX_A": -14.62482, "FIX_B": -65.37518},
+  "share": {"FIX_A": 0.18281, "FIX_B": 0.81719},
   "nominal_statics_kip": {"FIX_A": 30.0, "FIX_B": 50.0}
 }

@@ -11,7 +11,7 @@ No sustituye las comprobaciones de `openconex.connections.shear.bent_plate`. Sir
   - placa A: ancho 7 1/4 in, ala soldada 4 7/16 in;
   - placa B: ancho 6 3/4 in, ala soldada 3 9/16 in.
 - Esviaje 6:12 (26.565°).
-- Tres filas de pernos a 3 in, separadas 6.00 in entre las dos placas (el brazo de palanca de II.A-10).
+- Tres filas de pernos a 3 in; la fila A está a 3.75 in y la fila B a 2.25 in de la línea de carga, con 6.00 in entre filas (Manual II.A-10). La carga queda entre las dos filas.
 - Pernos representados por parches circulares fijos de radio 3/4 in en la cara de la placa contra el apoyo. No se modelan el alma del apoyo ni el vástago del perno: el grupo de pernos es rígido.
 - Carga: 80 kip repartidos como flujo cortante uniforme a lo largo de la interfaz de soldadura de cada placa.
 - Material: acero elástico lineal, `E = 29 000 ksi`, `ν = 0.3`.
@@ -45,35 +45,37 @@ Malla gruesa y fina, reacción vertical en cada grupo de pernos:
 
 | Malla | `hmax` / `hmin` [in] | Placa A [kip] | Placa B [kip] | Reparto A/B |
 |---|---|---|---|---|
-| Gruesa | 0.30 / 0.08 | 30.92 | 49.08 | 38.6 / 61.4 % |
-| Fina | 0.18 / 0.05 | **30.25** | **49.75** | **37.8 / 62.2 %** |
+| Gruesa | 0.30 / 0.08 | 14.62 | 65.38 | 18.3 / 81.7 % |
+| Fina | 0.18 / 0.05 | **13.50** | **66.50** | **16.9 / 83.1 %** |
 | Analogía de viga simple | — | 30.00 | 50.00 | 37.5 / 62.5 % |
 
-La malla fina reproduce el reparto de la analogía de viga simple dentro de **0.3 kip** (0.8 % en A, 0.5 % en B). El reparto es estable al refinar.
+Con las filas en su posición real, el modelo de pernos rígidos **no reproduce** la analogía de viga simple: la placa B toma unos 66.5 kip, un 33 % más que los 50 kip del método normativo.
 
 Tensiones nominales y representativas de la malla fina:
 
 | Magnitud | Placa A | Placa B |
 |---|---:|---:|
-| Corte nominal `V/(h t)` | 9.49 ksi | 15.61 ksi |
-| von Mises en el centro del ala soldada | 9.05 ksi | 18.67 ksi |
+| Corte nominal `V/(h t)` | 4.24 ksi | 20.86 ksi |
+| von Mises en el centro del ala soldada | 7.83 ksi | 11.85 ksi |
 | `0.6 F_y` de la placa A36 | 21.6 ksi | 21.6 ksi |
 
-Las tensiones nominales y las del ala soldada quedan por debajo de la fluencia. Los máximos locales aparecen en los bordes de los parches de pernos y en las esquinas agudas del modelo; son singularidades de borde y no se usan como criterio de diseño.
+La placa B queda prácticamente en el límite de fluencia por corte (20.86 frente a 21.6 ksi).
 
 ## Interpretación
 
-- El reparto 30/50 kip de II.A-10 queda respaldado para esta geometría y esta posición de pernos.
-- La placa B es la crítica, con una tensión nominal de corte de 15.6 ksi frente a 21.6 ksi de fluencia.
-- La soldadura media de la placa B recibe `49.75/8.5 = 5.85 kip/in`, prácticamente igual a la demanda de la comprobación normativa (`50/8.5 = 5.88 kip/in`).
-- El modelo no incluye contacto, pretensión, holgura de agujeros ni filete de soldadura. No sirve para calcular la tensión local en el pie de soldadura ni para sustituir las comprobaciones AISC.
+- El reparto 30/50 kip de II.A-10 **no queda confirmado** por este modelo. Con las filas en 2.25/3.75 in, la placa B toma 66.5 kip en el modelo de pernos rígidos, frente a 50 kip.
+- La placa B es claramente la crítica: 20.86 ksi de corte nominal frente a 21.6 ksi de fluencia.
+- La soldadura media de la placa B recibe `66.5/8.5 = 7.82 kip/in`, por encima de la demanda normativa (`50/8.5 = 5.88 kip/in`).
+- Una variante exploratoria con alma del apoyo y vástagos de perno dio B entre 53 y 63 kip, pero no convergió con la malla; el modelo de pernos rígidos es el límite superior de la rigidez de los apoyos.
+- El resultado es una **señal de alarma**, no una demostración de fallo: el modelo no tiene contacto, pretensión, holgura de agujeros ni filete de soldadura.
 
 ## Limitaciones y siguiente paso
 
-- Los pernos son parches rígidos; no hay contacto ni pretensión. Un modelo con vástagos y contacto dará una distribución más realista, pero también más sensible a la malla.
+- Los pernos son parches rígidos; no hay contacto ni pretensión. Esto maximiza la diferencia de rigidez entre las placas y probablemente exagera la carga de B.
 - La soldadura es una unión solidaria; para el pie de soldadura hace falta un submodelo con filete, radio de doblez y malla de convergencia.
 - La doblez es una esquina aguda; el modelo no evalúa la concentración real del radio de 9/16 in.
-- El alma del apoyo no se modela. La sensibilidad a modelar el alma y los vástagos ya se comprobó: el reparto puede moverse varios puntos porcentuales, por lo que la conclusión 30/50 debe tomarse como una validación de la hipótesis global, no como un valor exacto.
+- El alma del apoyo no se modela en el caso base. La variante con alma y vástagos muestra una sensibilidad grande; hace falta un modelo con contacto, pretensión y malla convergida antes de cambiar el reparto normativo.
+- Mientras no exista ese modelo, el cálculo de OpenConex mantiene el reparto 30/50 de II.A-10, pero conviene revisar la placa B con un reparto más conservador o aumentar su margen.
 
 Para una fase posterior: modelo con alma del apoyo, vástagos, contacto y pretensión; submodelo del pie de soldadura y de la doblez; comparación con el método de punto caliente o con las fuerzas por línea de soldadura.
 

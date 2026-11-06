@@ -14,8 +14,8 @@ Geometry (inches, kip, ksi):
 * two bent plates, ``t = 3/8``, height ``8 1/2``, widths ``7 1/4`` and
   ``6 3/4``, welded legs ``4 7/16`` and ``3 9/16``;
 * skew ``6:12`` (26.565°);
-* three bolt rows at 3 in, with the rows 6.00 in apart (the statics lever
-  arm of II.A-10);
+* three bolt rows at 3 in, with row A at 3.75 in and row B at 2.25 in from
+  the load line (6.00 in between rows, as in II.A-10);
 * the bolts are represented by fixed circular patches of radius 3/4 in on
   the girder face of each plate. The girder web and the bolt shanks are not
   modelled, so the bolt group is rigid. This is the baseline model.
@@ -59,7 +59,8 @@ H_BEAM = 12.0
 SKEW = math.atan(6 / 12)
 R = 80.0
 BOLT_R = 0.75
-BOLT_ROW = 3.0
+BOLT_ROW_A = 3.75
+BOLT_ROW_B = -2.25
 BOLT_Y = (-3.0, 0.0, 3.0)
 
 
@@ -96,7 +97,7 @@ def build_mesh(out: Path, hmax: float, hmin: float) -> Path:
 
 
 def _bolt_nodes(points: np.ndarray, sign: int) -> np.ndarray:
-    z0 = sign * BOLT_ROW
+    z0 = BOLT_ROW_A if sign > 0 else BOLT_ROW_B
     ids = []
     for y0 in BOLT_Y:
         d2 = (points[:, 0]) ** 2 + (points[:, 1] - y0) ** 2 + (points[:, 2] - z0) ** 2

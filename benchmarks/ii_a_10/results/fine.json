@@ -1,13 +1,13 @@
 {
   "mesh": {"hmax": 0.18, "hmin": 0.05},
   "node_counts": {"FIX_A": 183, "FIX_B": 185, "LOAD": 951},
-  "reactions_kip": {"FIX_A": -30.25128, "FIX_B": -49.74872},
-  "share": {"FIX_A": 0.378141, "FIX_B": 0.621859},
+  "reactions_kip": {"FIX_A": -13.50388, "FIX_B": -66.49612},
+  "share": {"FIX_A": 0.168798, "FIX_B": 0.831202},
   "nominal_statics_kip": {"FIX_A": 30.0, "FIX_B": 50.0},
   "stress": {
-    "A_nominal_shear_ksi": 9.490597647,
-    "A_welded_leg_vm_ksi": 9.046538860,
-    "B_nominal_shear_ksi": 15.607441569,
-    "B_welded_leg_vm_ksi": 18.673570169
+    "A_nominal_shear_ksi": 4.236511373,
+    "A_welded_leg_vm_ksi": 7.828876392,
+    "B_nominal_shear_ksi": 20.861527843,
+    "B_welded_leg_vm_ksi": 11.851395009
   }
 }
