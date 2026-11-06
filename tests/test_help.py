@@ -94,3 +94,20 @@ def test_all_fields_are_in_the_document():
     text = DOC.read_text(encoding="utf-8")
     for item in shear_fields():
         assert f"`{item.key}`" in text, item.key
+
+
+def test_every_cli_argument_has_help():
+    from openconex.cli import build_parser
+
+    parser = build_parser()
+    for action in parser._actions:
+        if action.dest == "help" or action.__class__.__name__ == "_SubParsersAction":
+            continue
+        assert action.help, action.dest
+    sub = next(action for action in parser._actions
+               if action.__class__.__name__ == "_SubParsersAction")
+    for name, command in sub.choices.items():
+        for action in command._actions:
+            if action.dest == "help":
+                continue
+            assert action.help, f"{name}: {action.dest}"

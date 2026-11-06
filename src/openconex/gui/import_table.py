@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.help import help_text
 from openconex.units import PRESETS
 
 __all__ = ["TableImportDialog"]
@@ -41,6 +42,10 @@ class TableImportDialog(QDialog):
         self.resize(560, 360)
         self._build(default_units if default_units in PRESETS else "US")
 
+    def _tip(self, widget: QWidget, key: str) -> None:
+        widget.setToolTip(help_text(key))
+        widget.setStatusTip(help_text(key))
+
     def _build(self, default_units: str) -> None:
         layout = QVBoxLayout(self)
         form = QFormLayout()
@@ -50,9 +55,11 @@ class TableImportDialog(QDialog):
         file_layout.setContentsMargins(0, 0, 0, 0)
         self._file = QLineEdit()
         self._file.setPlaceholderText("Tabla .xlsx o .csv")
+        self._tip(self._file, "dialog.import_table.file")
         file_layout.addWidget(self._file, 1)
         browse = QPushButton("Examinar…")
         browse.clicked.connect(self._browse_file)
+        self._tip(browse, "dialog.import_table.file")
         file_layout.addWidget(browse)
         form.addRow("Archivo", file_row)
 
@@ -61,9 +68,11 @@ class TableImportDialog(QDialog):
         output_layout.setContentsMargins(0, 0, 0, 0)
         self._output = QLineEdit()
         self._output.setPlaceholderText("Carpeta de los proyectos .ocnx")
+        self._tip(self._output, "dialog.import_table.output")
         output_layout.addWidget(self._output, 1)
         folder = QPushButton("Carpeta…")
         folder.clicked.connect(self._browse_output)
+        self._tip(folder, "dialog.import_table.output")
         output_layout.addWidget(folder)
         form.addRow("Salida", output_row)
 
@@ -72,6 +81,7 @@ class TableImportDialog(QDialog):
             self._units.addItem(label, key)
         self._units.setCurrentIndex(self._units.findData(default_units))
         form.addRow("Unidades de números", self._units)
+        self._tip(self._units, "dialog.import_table.units")
         layout.addLayout(form)
 
         note = QLabel(
@@ -89,6 +99,8 @@ class TableImportDialog(QDialog):
         accept = QPushButton("Importar")
         accept.setDefault(True)
         accept.clicked.connect(self.accept)
+        self._tip(cancel, "dialog.import_table.accept")
+        self._tip(accept, "dialog.import_table.accept")
         buttons.addWidget(cancel)
         buttons.addWidget(accept)
         layout.addLayout(buttons)

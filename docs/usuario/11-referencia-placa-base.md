@@ -166,6 +166,35 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `comb.omega0` | Factor de sobrerresistencia sísmica. | Escriba Ω0 si aplica. | Afecta las combinaciones sísmicas. | — | PB |
 | `base.ui.geometry` | Editor gráfico de planta y elevación. | Arrastre los bordes o edite los campos. | Cambia N, B, tp y la posición de anclajes. | — | PB |
 | `base.ui.viewer` | Visor 3D del conjunto. | Gire, haga zoom o seleccione piezas. | No cambia el cálculo. | — | PB |
+| `geometry.undo` | Deshace el último cambio del editor gráfico. | Pulse Deshacer o Ctrl+Z. | Restaura la geometría anterior; no cambia el cálculo hasta Calcular. | — | PB |
+| `geometry.redo` | Rehace el cambio deshecho. | Pulse Rehacer o Ctrl+Y. | Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular. | — | PB |
+| `viewer.refresh` | Recarga el modelo 3D con el proyecto actual. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | PB |
+| `viewer.reset` | Restablece la cámara del visor 3D. | Pulse Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
+| `dialog.import_csi.file` | Archivo Excel exportado de SAP2000 o ETABS. | Elija el archivo con Examinar. | Es la fuente de apoyos, reacciones y casos. | — | todas |
+| `dialog.import_csi.output` | Carpeta donde se escribirán los proyectos. | Elija la carpeta con Carpeta. | No cambia el cálculo; determina dónde se guardan los .ocnx. | — | todas |
+| `dialog.import_csi.group` | Criterio para crear proyectos: por apoyo o por sección de columna. | Seleccione Joint o Column. | Cambia el número de proyectos y su agrupación. | joint | todas |
+| `dialog.import_csi.loads` | Usar casos de carga o combinaciones del programa. | Seleccione Casos o Combinaciones. | Cambia qué reacciones se importan y si OpenConex vuelve a combinar. | cases | todas |
+| `dialog.import_csi.include` | Expresión regular para filtrar casos o combinaciones. | Escriba un patrón, por ejemplo ^CU. | Limita los casos importados. | — | todas |
+| `dialog.import_csi.envelopes` | Incluir envolventes Max/Min al importar combinaciones. | Marque la casilla si existen envolventes. | Añade casos de demanda extrema. | false | todas |
+| `dialog.import_csi.method` | Método de las combinaciones importadas. | Elija LRFD, ASD o el del proyecto. | Cambia los factores de las combinaciones importadas. | — | todas |
+| `dialog.import_csi.accept` | Acciones del diálogo de importación CSI. | Pulse Importar para escribir los proyectos o Cancelar para salir. | Importar crea los .ocnx; Cancelar no escribe nada. | — | todas |
+| `dialog.import_table.file` | Tabla Excel o CSV con reacciones. | Elija el archivo con Examinar. | Es la fuente de los proyectos. | — | todas |
+| `dialog.import_table.output` | Carpeta donde se escribirán los proyectos. | Elija la carpeta con Carpeta. | Determina dónde se guardan los .ocnx. | — | todas |
+| `dialog.import_table.units` | Unidades de los valores de la tabla. | Seleccione el sistema de la tabla. | Convierte las reacciones importadas. | — | todas |
+| `dialog.import_table.accept` | Acciones del diálogo de importación de tabla. | Pulse Importar para escribir los proyectos o Cancelar para salir. | Importar crea los .ocnx; Cancelar no escribe nada. | — | todas |
+| `dialog.units.kind` | Unidad de presentación de una magnitud. | Elija la unidad para longitud, fuerza, tensión, etc. | Convierte el formulario y el proyecto; no cambia el cálculo interno. | — | todas |
+| `dialog.units.apply` | Acciones del diálogo de unidades. | Pulse Aplicar para convertir o Cancelar para salir. | Aplicar convierte los valores del formulario y del proyecto. | — | todas |
+| `dialog.batch.folder` | Carpeta con archivos .ocnx. | Elija la carpeta con Carpeta. | Define los proyectos del lote. | — | todas |
+| `dialog.batch.output` | Carpeta de reportes del lote. | Elija la carpeta con Carpeta. | Determina dónde se escriben los reportes. | — | todas |
+| `dialog.batch.recursive` | Incluir proyectos en subcarpetas. | Marque la casilla si corresponde. | Amplía el conjunto de proyectos del lote. | false | todas |
+| `dialog.batch.formats` | Formatos de reporte que se generan. | Marque HTML, DOCX, PDF, DXF, STEP o STL. | Cada formato añade archivos al lote. | — | todas |
+| `dialog.batch.accept` | Acciones del diálogo de lote. | Pulse Calcular para procesar la carpeta o Cancelar para salir. | Calcular escribe los reportes; Cancelar detiene el lote. | — | todas |
+| `dialog.library.sections.type` | Filtro por familia de sección. | Elija Todas, Personalizadas o una familia AISC. | Filtra la tabla de secciones. | Todas | todas |
+| `dialog.library.sections.search` | Texto de búsqueda por etiqueta. | Escriba parte de la etiqueta, por ejemplo W12. | Filtra la tabla de secciones. | — | todas |
+| `dialog.library.sections.new` | Crea una sección genérica para el proyecto. | Pulse Nueva sección y defina tipo, nombre y dimensiones. | Añade la sección a la biblioteca del proyecto. | — | todas |
+| `dialog.library.sections.use` | Selecciona la sección para el proyecto. | Elija una fila y pulse Usar sección. | Cambia la columna y sus propiedades. | — | todas |
+| `dialog.library.materials.tabs` | Aceros, pernos y electrodos. | Cambie de pestaña para consultar cada biblioteca. | No cambia el cálculo; permite elegir materiales. | — | todas |
+| `dialog.library.materials.new` | Crea un acero, perno o electrodo propio. | Pulse Nuevo en la pestaña correspondiente. | Añade el material a la biblioteca del proyecto. | — | todas |
 
 ## Cómo leer una verificación
 

@@ -184,7 +184,7 @@ Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip
 - **Verificaciones**: cómo leer demanda, capacidad, relación y estado.
 - **Acerca de**: versión y licencia.
 
-La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md) y [Referencia de la placa base](11-referencia-placa-base.md), generadas desde la fuente de ayuda del programa.
+La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md) y [Referencia de la placa base](11-referencia-placa-base.md), generadas desde la fuente de ayuda del programa. La referencia de placa base incluye además los diálogos auxiliares (importación, unidades, bibliotecas y lote).
 
 ## Conexiones de corte
 
