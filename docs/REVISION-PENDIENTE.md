@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-06, sobre `main`, versión 0.5.3. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-06, sobre `main`, versión 0.5.4. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -16,6 +16,8 @@ Estado al 2026-11-06, sobre `main`, versión 0.5.3. Cada tarea indica qué hay q
 - [x] Ejemplo de II.A-10 con placas de 7/16 in; placa B en 0,84 por rotura.
 - [x] Release 0.5.2.
 - [x] Release 0.5.3.
+- [x] Sensibilidad de flexibilidad de pernos: B entre 0,669 y 0,742 para rigideces plausibles.
+- [x] Release 0.5.4.
 
 ## 0. Completado en 0.4.2
 
