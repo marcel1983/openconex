@@ -23,6 +23,7 @@ Ejemplos completos en `examples/`:
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
+| `examples/shear_skewed_bent_plate.ocnx` | conexión de corte: doble placa doblada en esviaje (AISC II.A-10) |
 
 ## Datos generales (`info`)
 
@@ -335,7 +336,7 @@ Conexión del extremo de una viga a una columna o a una viga principal (Manual A
 
 | Campo | Por defecto | Significado |
 |---|---|---|
-| `type` | (obligatorio) | `double_angle`, `single_plate`, `extended_single_plate`, `end_plate`, `seated` o `stiffened_seat`. |
+| `type` | (obligatorio) | `double_angle`, `single_plate`, `extended_single_plate`, `end_plate`, `seated`, `stiffened_seat` o `skewed_bent_plate`. |
 | `beam` | (obligatorio) | Viga: etiqueta W del catálogo AISC o sección W genérica (como la columna W genérica). |
 | `beam_grade` | `ASTM A992` | Acero de la viga del catálogo. |
 | `support` | (obligatorio) | Columna o viga principal: etiqueta del catálogo o sección W genérica. |
@@ -363,6 +364,14 @@ Conexión del extremo de una viga a una columna o a una viga principal (Manual A
 | `outstanding_leg` | — | Doble ángulo: ancho de las alas salientes (soldaduras B y tracción). |
 | `beam_leh` | - | Distancia del extremo de la viga a los pernos, para el desgarro del alma con tracción. |
 | `offset` | - | Doble ángulo: desplazamiento entre los ejes de dos vigas que comparten la fila de pernos del apoyo (II.A-9). |
+| `skew` | - | Placa doblada: esviaje tal como se escribe en el plano (por ejemplo, `6:12`); informativo. |
+| `row_distance` | - | Placa doblada: distancia entre las dos filas verticales de pernos. |
+| `load_offset` | - | Placa doblada: distancia de la línea de carga a la fila de pernos de la placa B. |
+| `share_a` | - | Placa doblada: fracción de carga de la placa A; si se omite, se deduce de `load_offset/row_distance`. |
+| `plate_a_width` | - | Placa doblada: ancho de la placa A (informativo en la fase 1). |
+| `plate_b_width` | - | Placa doblada: ancho de la placa B (informativo en la fase 1). |
+| `weld_return` | - | Placa doblada: longitud de los retornos superior e inferior de la soldadura en C. |
+| `weld_offset` | - | Placa doblada: distancia de la soldadura vertical a la línea de carga. |
 | `leg` | — | Asiento: ala horizontal. |
 | `vertical_leg` | — | Asiento soldado: ala vertical. |
 | `bolts` | `4` | Asiento apernado: pernos del ala vertical. |
@@ -389,6 +398,7 @@ Campos que necesita cada tipo:
 | `end_plate` | `rows`, `spacing`, `length`, `thickness`, `lev`, `leh`, `weld` |
 | `seated` | `length`, `thickness`, `leg`; con `support_weld`, también `vertical_leg` |
 | `stiffened_seat` | `width`, `length`, `thickness`, `weld` |
+| `skewed_bent_plate` | `rows`, `spacing`, `length`, `thickness`, `lev`, `leh`, `weld`, `weld_return`, `weld_offset`, y `share_a` o (`row_distance` + `load_offset`) |
 
 ### Destaje de la viga (`cope`)
 

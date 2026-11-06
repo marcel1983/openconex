@@ -59,7 +59,9 @@ __all__ = ["TYPE_FIELDS", "ShearWindow"]
 # Quantity fields of ``ShearConnectionInput`` with their label; integers apart.
 QUANTITIES = ("spacing", "gage", "length", "thickness", "width", "lev", "leh", "leh_support",
               "a", "beam_leg", "outstanding_leg", "beam_leh", "leg", "vertical_leg",
-              "bearing_length", "weld", "support_weld", "beam_weld", "beam_area")
+              "bearing_length", "weld", "support_weld", "beam_weld", "beam_area",
+              "row_distance", "load_offset", "share_a", "plate_a_width", "plate_b_width",
+              "weld_return", "weld_offset")
 LABELS = {"beam_area": "beam_area"}
 
 TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
@@ -74,6 +76,10 @@ TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
     ShearType.SEATED: ("length", "thickness", "leg", "vertical_leg", "bolts", "support_weld",
                        "bearing_length"),
     ShearType.STIFFENED_SEAT: ("width", "length", "thickness", "weld", "two_sided"),
+    ShearType.SKEWED_BENT_PLATE: ("rows", "spacing", "length", "thickness", "lev", "leh",
+                                  "weld", "weld_return", "weld_offset", "row_distance",
+                                  "load_offset", "share_a", "plate_a_width",
+                                  "plate_b_width", "skew"),
 }
 COPE_FIELDS = ("c", "dc", "dc_bottom", "setback", "lev", "leh")
 DOUBLER_FIELDS = ("thickness", "depth", "gap", "weld")
@@ -270,6 +276,7 @@ class ShearWindow(QMainWindow):
             self._add_row(form, name, spin, "seat_bolts" if name == "bolts" else name)
         for name in QUANTITIES:
             self._add_row(form, name, QLineEdit(), LABELS.get(name, name))
+        self._add_row(form, "skew", QLineEdit(), "skew")
         self._add_row(form, "two_sided", QCheckBox(), "two_sided")
         return group
 
@@ -385,7 +392,8 @@ class ShearWindow(QMainWindow):
         case_lines: list[tuple[QTableWidgetItem, str]] = []
         for name in ("spacing", "gage", "length", "width", "lev", "leh", "leh_support",
                      "a", "beam_leg", "outstanding_leg", "beam_leh", "leg",
-                     "vertical_leg", "bearing_length"):
+                     "vertical_leg", "bearing_length", "row_distance", "load_offset",
+                     "plate_a_width", "plate_b_width", "weld_return", "weld_offset"):
             self._collect_line(lines, self._fields.get(name), Kind.LENGTH, old, new)
         for name in ("thickness", "weld", "support_weld", "beam_weld"):
             self._collect_line(lines, self._fields.get(name), Kind.THICKNESS, old, new)

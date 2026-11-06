@@ -72,6 +72,25 @@ Primera conexión de corte de la F5 (Manual AISC Parte 10). Integrada en el proy
 | `double_angle.beam_tension_rupture` | Con `beam`: rotura por tracción, U = (d − 2t_f) t_w / A_g | §J4.1(b), §D3 |
 | `double_angle.beam_block_shear` | Con `beam`: bloque de corte axial del alma (forma U) | §J4.3 |
 
+## Conexión sesgada de doble placa doblada (`connections/shear/bent_plate.py`)
+
+Manual AISC Parte 10, ejemplo II.A-10. Dos placas dobladas soldadas al alma de la viga y apernadas al alma del apoyo; el reparto de la reacción entre las placas A y B se hace por estática simple. Integrada en el proyecto, el comando `openconex shear` y la memoria; el DXF, el 3D y la GUI quedan para la fase 2.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `skewed_bent_plate.plate_a.bolts` | Pernos de la placa A: corte simple, aplastamiento y desgarro en la placa y aplastamiento en el alma del apoyo | §J3.7, §J3.11 |
+| `skewed_bent_plate.plate_a.shear_yielding` | Fluencia por corte de la placa A, A_gv = l t | §J4.2(a) |
+| `skewed_bent_plate.plate_a.shear_rupture` | Rotura por corte de la placa A, A_nv = (l − n d_h) t | §J4.2(b), §B4.3b |
+| `skewed_bent_plate.plate_a.block_shear` | Bloque de corte de la placa A con U_bs = 1 | §J4.3 |
+| `skewed_bent_plate.plate_a.weld` | Soldadura en C de la placa A al alma de la viga, centro instantáneo; C de la Tabla 8-8 | §J2.4(c); Manual Parte 8 |
+| `skewed_bent_plate.plate_b.bolts` | Pernos de la placa B: corte simple, aplastamiento y desgarro en la placa y aplastamiento en el alma del apoyo | §J3.7, §J3.11 |
+| `skewed_bent_plate.plate_b.shear_yielding` | Fluencia por corte de la placa B, A_gv = l t | §J4.2(a) |
+| `skewed_bent_plate.plate_b.shear_rupture` | Rotura por corte de la placa B, A_nv = (l − n d_h) t | §J4.2(b), §B4.3b |
+| `skewed_bent_plate.plate_b.block_shear` | Bloque de corte de la placa B con U_bs = 1 | §J4.3 |
+| `skewed_bent_plate.plate_b.weld` | Soldadura en C de la placa B al alma de la viga, centro instantáneo; C de la Tabla 8-8 | §J2.4(c); Manual Parte 8 |
+| `skewed_bent_plate.beam_web_thickness` | t_w ≥ 6,19 D/F_u del alma de la viga | Manual Ec. 9-3 |
+| `skewed_bent_plate.plate_thickness` | t_p ≥ w + 1/16 in para el tamaño máximo de soldadura | §J2.2b |
+
 ## Placa simple convencional (`connections/shear/single_plate.py`)
 
 Manual AISC Parte 10, configuración convencional, con pernos en una fila. Integrada en el proyecto, el comando `openconex shear`, la memoria, el DXF, el modelo 3D y la GUI; validada contra II.A-17A y II.A-17B.

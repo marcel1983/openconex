@@ -7,7 +7,7 @@ from __future__ import annotations
 import datetime as dt
 
 from openconex import __version__
-from openconex.connections.shear.check import check_shear_envelope
+from openconex.connections.shear.check import ShearType, check_shear_envelope
 from openconex.core.checks import CheckResult, Status
 from openconex.i18n import tr
 from openconex.io.project import Project
@@ -35,6 +35,12 @@ FIELDS: list[tuple[str, str, Kind | None]] = [
     ("bearing_length", "bearing_length", Kind.LENGTH), ("weld", "weld", Kind.THICKNESS),
     ("support_weld", "support_weld", Kind.THICKNESS),
     ("beam_weld", "beam_weld", Kind.THICKNESS), ("beam_area", "beam_area", Kind.AREA),
+    ("skew", "skew", None), ("row_distance", "row_distance", Kind.LENGTH),
+    ("load_offset", "load_offset", Kind.LENGTH), ("share_a", "share_a", Kind.DIMENSIONLESS),
+    ("plate_a_width", "plate_a_width", Kind.LENGTH),
+    ("plate_b_width", "plate_b_width", Kind.LENGTH),
+    ("weld_return", "weld_return", Kind.LENGTH),
+    ("weld_offset", "weld_offset", Kind.LENGTH),
 ]
 
 
@@ -84,6 +90,10 @@ def shear_figures(project: Project, lang: str, units: UnitSystem) -> list:
     from openconex.drawing.shear import ShearDrawing, shear_dxf
     from openconex.report.figures import Figure, dxf_to_svg, svg_to_png
 
+    if project.shear_connection is not None and \
+            project.shear_connection.type is ShearType.SKEWED_BENT_PLATE:
+        return []
+
     info = project.info
     options = ShearDrawing(title=info.name, number=info.number, revision=info.revision,
                            date=info.date, bom=False)
@@ -132,6 +142,8 @@ def build_shear_report(project: Project, today: dt.date | None = None) -> Report
         assumptions.append(tr("report.assumption_shear_cope", lang))
     if not sc.deformation_considered:
         assumptions.append(tr("report.assumption_shear_deformation", lang))
+    if sc.type is ShearType.SKEWED_BENT_PLATE:
+        assumptions.append(tr("report.assumption_shear_bent_plate", lang))
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),

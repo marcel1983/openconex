@@ -127,6 +127,11 @@ def _shear(args: argparse.Namespace) -> int:
         print("error: this project has no shear connection; use 'openconex baseplate'",
               file=sys.stderr)
         return 2
+    if project.shear_connection.type.value == "skewed_bent_plate" and \
+            (args.dxf or args.step or args.stl):
+        print("error: the DXF and 3D outputs of the skewed bent-plate connection are phase 2",
+              file=sys.stderr)
+        return 2
     if args.lang:
         project.info.language = args.lang
     if args.units:

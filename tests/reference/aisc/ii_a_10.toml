@@ -1,0 +1,78 @@
+id = "II.A-10"
+title = "Conexion sesgada de doble placa doblada (viga a alma de viga principal)"
+source = "AISC Design Examples v15.1, Example II.A-10, pp. IIA-99 a IIA-104"
+status = "reference"
+tolerance = 0.01
+notes = """
+Las cotas de la figura II.A-10-1 se transcriben en la documentacion tecnica.
+El ejemplo reparte la reaccion entre las placas A y B por una analogia de viga
+simple: 30/20 kip para A y 50/33,3 kip para B en LRFD/ASD.
+Los pernos son de 7/8 in (Tabla 7-1: 24,3 kip/perno en corte simple).
+La placa se tantea con 5/16 in y se aumenta a 3/8 in por rotura por corte.
+"""
+
+[given]
+beam = "W16X77"
+girder = "W27X94"
+beam_tw = "0.455 in"
+girder_tw = "0.490 in"
+plate_grade = "ASTM A36"
+plate_Fy = "36 ksi"
+plate_Fu = "58 ksi"
+electrode = "E70XX"
+bolt_diameter = "7/8 in"
+bolt_group = "A325-N"
+bolt_hole = "standard in girder, short-slotted in plates"
+bolt_rows = 3
+bolt_spacing = "3 in"
+bolt_lev = "1 1/4 in"
+bolt_leh = "1 1/4 in"
+skew = "6:12"
+RD = "13.3 kip"
+RL = "40 kip"
+Ru = "80.0 kip"
+Ra = "53.3 kip"
+load_share_A = 0.375
+load_share_B = 0.625
+row_distance = "6.00 in"
+load_offset_B = "2 1/4 in"
+plate_A_width = "7 1/4 in"
+plate_B_width = "6 3/4 in"
+plate_length = "8 1/2 in"
+plate_thickness_initial = "5/16 in"
+plate_thickness_final = "3/8 in"
+weld_length = "8 1/2 in"
+weld_return = "2 1/2 in"
+weld_k = 0.294
+weld_a = 0.373
+weld_C = 2.52
+weld_offset = "3 5/8 in"
+weld_required = "3.11/16 in"
+weld_used = "1/4 in"
+
+[expected.lrfd]
+bolt_shear_per_bolt = "24.3 kip"
+bolt_bearing_plate_edge = "12.8 kip"
+bolt_bearing_plate_inner = "28.6 kip"
+bolt_group = "61.4 kip"
+support_bearing = "150 kip"
+plate_shear_yielding = "57.5 kip"
+plate_shear_rupture_initial = "44.9 kip"
+plate_shear_rupture_final = "53.8 kip"
+plate_block_shear = "56.1 kip"
+beam_web_t_min = "0.296 in"
+weld_C = 2.52
+weld_required_sixteenths = 3.11
+
+[expected.asd]
+bolt_shear_per_bolt = "16.2 kip"
+bolt_bearing_plate_edge = "8.50 kip"
+bolt_bearing_plate_inner = "19.0 kip"
+bolt_group = "40.9 kip"
+support_bearing = "100 kip"
+plate_shear_yielding = "38.3 kip"
+plate_shear_rupture_initial = "30.0 kip"
+plate_shear_rupture_final = "35.9 kip"
+plate_block_shear = "37.5 kip"
+weld_C = 2.52
+weld_required_sixteenths = 3.11
