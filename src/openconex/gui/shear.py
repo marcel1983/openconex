@@ -60,7 +60,7 @@ __all__ = ["TYPE_FIELDS", "ShearWindow"]
 QUANTITIES = ("spacing", "gage", "length", "thickness", "width", "lev", "leh", "leh_support",
               "a", "beam_leg", "outstanding_leg", "beam_leh", "leg", "vertical_leg",
               "bearing_length", "weld", "support_weld", "beam_weld", "beam_area",
-              "row_distance", "load_offset", "share_a", "plate_a_width", "plate_b_width",
+              "row_distance", "load_offset", "share_a", "share_b", "plate_a_width", "plate_b_width",
               "plate_a_leg", "plate_b_leg", "bend_radius", "weld_return", "weld_offset")
 LABELS = {"beam_area": "beam_area"}
 
@@ -78,7 +78,7 @@ TYPE_FIELDS: dict[ShearType, tuple[str, ...]] = {
     ShearType.STIFFENED_SEAT: ("width", "length", "thickness", "weld", "two_sided"),
     ShearType.SKEWED_BENT_PLATE: ("rows", "spacing", "length", "thickness", "lev", "leh",
                                   "weld", "weld_return", "weld_offset", "row_distance",
-                                  "load_offset", "share_a", "plate_a_width",
+                                  "load_offset", "share_a", "share_b", "plate_a_width",
                                   "plate_b_width", "plate_a_leg", "plate_b_leg",
                                   "bend_radius", "skew"),
 }

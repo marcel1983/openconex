@@ -149,6 +149,32 @@ def test_report_has_plan_figure():
     assert keys[0] == "plan"
     assert set(keys) <= {"plan", "isometric"}
     assert len(report.summary) == 12
+    assert any("benchmark FE" in assumption for assumption in report.assumptions)
+
+
+def test_conservative_share_b():
+    data = json.loads((EXAMPLES / "shear_skewed_bent_plate.ocnx").read_text(
+        encoding="utf-8"))
+    data["shear_connection"]["share_b"] = 0.66
+    project = Project.model_validate(data)
+    conn = project.shear_model()
+    assert conn.element.share_a == pytest.approx(0.34)
+    results = list(check_shear_envelope(conn, project.load_combinations(), project.case_forces()))
+    bolt = max((result for result in results
+                if result.id == "skewed_bent_plate.plate_b.bolts"),
+               key=lambda result: result.demand)
+    assert bolt.demand == pytest.approx(kip(80 * 0.66), rel=1e-3)
+    report = build_shear_report(project)
+    assert any("reparto conservador" in assumption for assumption in report.assumptions)
+
+
+def test_share_a_and_share_b_are_exclusive():
+    data = json.loads((EXAMPLES / "shear_skewed_bent_plate.ocnx").read_text(
+        encoding="utf-8"))
+    data["shear_connection"]["share_a"] = 0.375
+    data["shear_connection"]["share_b"] = 0.625
+    with pytest.raises(ValueError, match="not both"):
+        Project.model_validate(data)
 
 
 def test_plan_dxf_contains_the_skew_and_plates():
