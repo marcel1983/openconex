@@ -151,6 +151,10 @@ INDEPENDENT = {
     "single_plate.shear_yielding": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
     "single_plate.shear_rupture": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
     "single_plate.block_shear": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "base_plate.bearing": "docs/verificacion/calculos/placa_base.py",
+    "base_plate.thickness_compression": "docs/verificacion/calculos/placa_base.py",
+    "base_plate.thickness_tension": "docs/verificacion/calculos/placa_base.py",
+    "base_plate.biaxial": "docs/verificacion/calculos/placa_base.py",
 }
 
 NOTES = {
