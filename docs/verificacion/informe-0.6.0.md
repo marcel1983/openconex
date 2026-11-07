@@ -30,9 +30,9 @@ La tolerancia general es del 1 %, salvo que la referencia publique valores redon
 
 | Estado | N.º | Significado |
 |---|---:|---|
-| `validado` | 175 | Contraste con ejemplo o tabla publicada, dentro de tolerancia |
+| `validado` | 181 | Contraste con ejemplo, tabla o cálculo manual, dentro de tolerancia |
 | `diferencia aceptada` | 3 | Diferencia documentada y conservadora o despreciable |
-| `parcial` | 6 | Solo una parte de los casos tiene evidencia |
+| `parcial` | 0 | Sin verificaciones parciales |
 | `no aplica` | 2 | Función no implementada; se informa como no cumple |
 
 Las 3 diferencias aceptadas son:
@@ -41,7 +41,7 @@ Las 3 diferencias aceptadas son:
 - **II.A-1B:** la interacción del bloque de corte usa la forma U (0,054) en vez de la forma L (0,0531); es algo más conservadora.
 - **II.A-19A:** `Z_net` calculado 12,75 in³ frente a 12,8 in³ de la Tabla 15-2.
 
-Las 6 verificaciones parciales son las cinco de `kernel/local.py` (solo biblioteca, sin integración en las rutas actuales) y la rama λ > 2λ_p de la viga destajada. El bloque de corte de la viga destajada quedó validado con II.A-4; el doble destaje de II.A-18 no cambia la geometría de esa fórmula.
+No quedan verificaciones parciales: las cinco de `kernel/local.py` se contrastaron con valores manuales de §J10 y la rama λ > 2λ_p de la viga destajada se contrastó con un caso sintético de alma delgada. Las cinco de `local.*` siguen siendo solo biblioteca, sin integración en las rutas de diseño actuales.
 
 ## 4. Discrepancias cerradas
 
@@ -149,7 +149,7 @@ El ejemplo 4.7-4 usa el corte del perno de AISC 360 (φ = 0,75) para el acero de
 
 El coeficiente de centro instantáneo de II.A-19A se resuelve por búsqueda en rejilla y refinamiento, independiente del Newton amortiguado del programa, y da C = 2,318.
 
-Todas las familias principales tienen ya un cálculo independiente. Las 6 verificaciones parciales restantes son las cinco de `kernel/local.py` (solo biblioteca) y la rama λ > 2λ_p de la viga destajada.
+Todas las familias principales tienen ya un cálculo independiente. Las cinco de `kernel/local.py` se contrastaron con valores manuales de §J10 y la rama λ > 2λ_p con un caso sintético de alma delgada; no quedan verificaciones parciales.
 
 ## 6. Comparación externa
 
@@ -188,7 +188,7 @@ La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, 
 - [x] Fórmulas de asientos confirmadas.
 - [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A), placa base (DG1 4.7-1/10/14), anclajes (DG1 4.7-4/9/15) y placa extendida/viga destajada (II.A-4/6/7 y II.A-19A).
 - [ ] Comparación externa de los 26 casos de `casos.csv`.
-- [ ] Cierre de las 7 verificaciones parciales o declaración de impacto.
+- [x] Cierre de las verificaciones parciales: 0 parciales (181 validadas, 3 diferencias aceptadas, 2 no aplican).
 - [ ] Revisión manual de DXF/STEP/PDF en CAD/visor independiente.
 - [ ] Revisión por un ingeniero independiente.
 - [ ] Informe final sin el carácter de borrador.

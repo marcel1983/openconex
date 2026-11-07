@@ -127,9 +127,7 @@ DIFFERENCE = {
     "extended_plate.flexural_rupture": "Z_net = 12,75 in³ frente a 12,8 in³ (II.A-19A)",
 }
 
-PARTIAL = {
-    "coped_beam.flexure": "rama λ > 2λ_p (Ec. 9-12/9-13) sin ejemplo publicado",
-}
+PARTIAL: dict[str, str] = {}
 
 NO_APLICA = {"shear_connection.axial_compression", "shear_connection.axial_unsupported"}
 
@@ -177,6 +175,11 @@ INDEPENDENT = {
     "extended_plate.flexural_ltb": CROSS,
     "extended_plate.interaction": CROSS,
     "extended_plate.flexural_rupture": CROSS,
+    "local.flange_bending": "tests/kernel/test_local.py (valores manuales)",
+    "local.web_yielding": "tests/kernel/test_local.py (valores manuales)",
+    "local.web_crippling": "tests/kernel/test_local.py (valores manuales)",
+    "local.web_compression_buckling": "tests/kernel/test_local.py (valores manuales)",
+    "local.panel_zone": "tests/kernel/test_local.py (valores manuales)",
 }
 
 NOTES = {
@@ -196,6 +199,8 @@ NOTES = {
     "stiffened_seat.seat_plate_weld_length": "Detalle estándar de II.A-14.",
     "coped_beam.block_shear": ("Fórmula validada con II.A-4; el doble destaje de II.A-18 "
                                "no cambia la geometría del bloque de corte."),
+    "coped_beam.flexure": ("Rama λ > 2λ_p contrastada con un caso sintético de alma "
+                           "delgada; no hay ejemplo publicado."),
 }
 
 DETAIL = (
@@ -268,7 +273,7 @@ def status_of(check_id: str, family: str) -> str:
     if check_id in PARTIAL:
         return "parcial"
     if family in {"pernos", "soldaduras", "elementos", "fuerzas_concentradas"}:
-        return "validado" if "local." not in check_id else "parcial"
+        return "validado"
     if family == "anclajes":
         return "validado"
     if family == "conexion_corte":
@@ -307,7 +312,8 @@ def main() -> int:
             description = f"{description} ({note})"
         notes = NOTES.get(check_id, "")
         if check_id.startswith("local."):
-            notes = "Solo biblioteca; no integrado en las rutas de diseño actuales."
+            notes = ("Solo biblioteca; no integrado en las rutas de diseño actuales. "
+                     "Validado con valores manuales de §J10.")
         rows.append({
             "check_id": check_id,
             "familia": family,

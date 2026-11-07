@@ -57,6 +57,17 @@ def test_design_examples(cb, expected, method, col):
         assert got == pytest.approx(kip(values[col]), rel=0.01), key
 
 
+def test_thin_web_uses_the_elastic_buckling_branch():
+    # An artificial thin web reaches lambda > 2 lambda_p; the expected values
+    # are the hand calculation of Manual Eq. 9-12/9-13.
+    thin = beam(21.0, 0.25, 8.24, 0.615, c=inch(9), dc=inch(1))
+    flexure = {r.id: r for r in check_coped_beam(thin, kip(10), Method.LRFD)}[
+        "coped_beam.flexure"]
+    fcr = next(s.value for s in flexure.steps if s.symbol == r"F_{cr}")
+    assert fcr == pytest.approx(ksi(28.81), rel=0.01)
+    assert flexure.capacity == pytest.approx(kip(73.69), rel=0.01)
+
+
 @pytest.mark.parametrize(("cb", "S", "Z"), [(W21X62, 17.8, 32.2), (W18X50, 23.4, 42.5)])
 def test_tee_properties_match_table_9_2(cb, S, Z):
     s, z = tee_properties(cb)
