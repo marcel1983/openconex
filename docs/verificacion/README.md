@@ -12,6 +12,31 @@ La lista completa de verificaciones, con su ecuación y su cláusula, está en [
 - Las tolerancias de las pruebas son del **1 %** salvo que el archivo de referencia indique otra cosa y su motivo.
 - Las pruebas se ejecutan en Windows, macOS y Linux en cada pull request.
 
+## 1.1 Matriz de trazabilidad
+
+`docs/verificacion/matriz-verificacion.csv` contiene una fila por cada verificación publicada en el catálogo (186 identificadores). Columnas:
+
+| Columna | Contenido |
+|---|---|
+| `check_id` | identificador estable del `CheckResult` |
+| `familia` | placa base, doble ángulo, placa simple, asiento, anclajes, pernos… |
+| `clausula` | cláusula o tabla de AISC 360-22, ACI 318-19 o del Manual |
+| `formula` | descripción de la comprobación |
+| `referencia_publicada` | ejemplo o tabla que sirve de contraste |
+| `test` | archivo de prueba automatizada |
+| `calculo_independiente` | script o hoja que no importa `openconex` |
+| `software_externo` | comparación con RAM, RISA, SkyCiv u otro programa |
+| `estado` | `validado`, `diferencia aceptada`, `parcial`, `pendiente` o `no aplica` |
+| `riesgo` | `alto`, `medio` o `bajo` |
+
+La matriz se genera desde el catálogo con:
+
+```bash
+python tools/generate_verification_matrix.py
+```
+
+Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas; el cálculo independiente solo existe, por ahora, para los asientos (`docs/verificacion/calculos/asientos.py`, con `--check` para comparar los seis valores publicados de II.A-12A, II.A-13 y II.A-14). El estado y el riesgo son una foto honesta, no una declaración de cierre.
+
 ## 2. Referencias publicadas
 
 | Referencia | Uso | Prueba |
@@ -41,7 +66,7 @@ Los datos numéricos de las referencias se usan con su cita; no se copian texto,
 
 ## 4. Comparación cruzada
 
-La comparación con un programa comercial (RAM Connection, RISAConnection o SkyCiv) se documenta en `casos.csv`. El archivo contiene 20 casos de placa base con su archivo de entrada y columnas vacías para el resultado externo.
+La comparación con un programa comercial (RAM Connection, RISAConnection o SkyCiv) se documenta en `casos.csv`. El archivo contiene 20 casos de placa base y 6 de conexiones de corte, con su archivo de entrada. La columna `resultado_openconex` ya está rellena para los 6 casos de corte; la columna `resultado_externo` sigue vacía porque no hay licencia de software comercial en el entorno de pruebas.
 
 Protocolo:
 
@@ -59,11 +84,11 @@ Las diferencias aceptadas de la validación están en [Revisión pendiente](../R
 
 - Centro instantáneo de II.A-17A/17B: 3,556 y 4,06 frente a 3,54 y 4,07 interpolados.
 - II.A-1B: bloque de corte con forma U en lugar de L.
-- II.A-12A: longitud de apoyo y número de pernos del ejemplo.
 - II.A-19A: `Z_net` calculado 12,75 in³ frente a 12,8 in³ de la Tabla 15-2.
-- Asientos: fórmulas elásticas reconstruidas de las Tablas 10-6 y 10-8.
 - Viga destajada con λ > 2λ_p: Ec. 9-12/9-13 sin ejemplo publicado.
 - II.A-18: doble destaje y conexiones desplazadas o en ángulo pendientes.
+
+II.A-12A quedó aclarado: el ejemplo usa cuatro pernos y entra a la Tabla 10-5 con `l_b = 1 1/16 in` (redondeo de `k_des = 1,03 in`); con A36 la flexión da 90,0/59,9 kip. Las fórmulas de asientos se confirmaron con la Ec. 10-2a/b del Manual (Tabla 10-6) y con II.A-14/15 (Tabla 10-8).
 
 ## 6. Limitaciones declaradas
 

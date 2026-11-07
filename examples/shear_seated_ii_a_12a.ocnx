@@ -1,0 +1,36 @@
+{
+  "format_version": 10,
+  "info": {
+    "name": "Ejemplo: asiento no rigidizado apernado (AISC II.A-12A)",
+    "number": "OC-0106",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-07",
+    "language": "es",
+    "units": "US"
+  },
+  "shear_connection": {
+    "type": "seated",
+    "beam": "W16X50",
+    "beam_grade": "ASTM A992",
+    "support": "W14X90",
+    "support_grade": "ASTM A992",
+    "support_element": "web",
+    "grade": "ASTM A36",
+    "bolt": {"diameter": "3/4 in", "grade": "ASTM F3125 Gr. A325", "threads": "N"},
+    "length": "8 in",
+    "thickness": "5/8 in",
+    "leg": "4 in",
+    "bolts": 4,
+    "bearing_length": "1-1/16 in",
+    "top_angle_leg": "4 in",
+    "top_angle_thickness": "1/4 in",
+    "top_angle_length": "4 in",
+    "top_angle_bolts": 2
+  },
+  "cases": [
+    {"name": "D", "type": "D", "V": "9 kip"},
+    {"name": "L", "type": "L", "V": "27.5 kip"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}

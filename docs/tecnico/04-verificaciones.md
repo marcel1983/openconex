@@ -216,6 +216,8 @@ La viga apoya en el ala horizontal de un ángulo apernado al apoyo (Manual AISC 
 | `seated.top_angle_bolts` | Pernos por ala ≥ 2 (asiento apernado) | Manual Parte 10, detalle estándar |
 | `seated.top_angle_weld` | Soldadura ≥ 3/16 in (asiento soldado) | Manual Parte 10, detalle estándar |
 
+La Tabla 10-5 entra con `l_b,req` redondeado al siguiente 1/16 in. El programa usa por defecto la `l_b,min` exacta (nunca menor que `k_des`) y permite fijar `bearing_length` para reproducir el valor tabulado. En II.A-12A, `k_des = 1,03 in` se redondea a 1 1/16 in; con el ángulo A36, la flexión da 90,0/59,9 kip frente a 95,5/63,6 kip con la longitud exacta.
+
 ## Asiento rigidizado soldado (`connections/shear/stiffened_seat.py`)
 
 Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al apoyo (Manual AISC Parte 10). La placa de asiento es el detalle estándar de 3/8 in de espesor, 1 in más ancha que el rigidizador y soldada con filete de 5/16 in; el ángulo superior es el mismo detalle de estabilidad L4×4×1/4 del asiento no rigidizado.

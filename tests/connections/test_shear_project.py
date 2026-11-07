@@ -46,6 +46,23 @@ def test_coped_double_angle_example_matches_ii_a_4():
     assert results["double_angle.bolts_beam"].demand == pytest.approx(kip(60))
 
 
+def test_seated_example_matches_ii_a_12a():
+    project = load_project(EXAMPLES / "shear_seated_ii_a_12a.ocnx")
+    checks = list(check_shear_envelope(project.shear_model(), project.load_combinations(),
+                                       project.case_forces()))
+
+    def find(check_id, method):
+        return next(r for r in checks if r.id == check_id and r.combo.startswith(method))
+
+    assert find("seated.flexural_yielding", "LRFD").capacity == pytest.approx(
+        kip(90.0), rel=0.01)
+    assert find("seated.shear_yielding", "LRFD").capacity == pytest.approx(
+        kip(108.0), rel=0.01)
+    assert find("seated.bolts", "LRFD").capacity == pytest.approx(kip(71.6), rel=0.01)
+    assert find("seated.bearing_length", "LRFD").demand == pytest.approx(
+        to_internal(1.03, "in", Kind.LENGTH), rel=1e-3)
+
+
 def test_single_plate_coped_example_matches_ii_a_18():
     results = governing(load_project(EXAMPLES / "shear_single_plate_coped.ocnx"))
     bolts = results["single_plate.bolts"]

@@ -24,11 +24,11 @@ def ksi(v):
     return to_internal(v, "ksi", Kind.STRESS)
 
 
-# W16x50 beam on an 8 in. long L6x4x5/8 seat (4 in. outstanding leg), A572 Gr. 50,
+# W16x50 beam on an 8 in. long L6x4x5/8 seat (4 in. outstanding leg), A36 angle,
 # bolted to a W14x90 column web (tw = 0.440 in.) with 3/4 in. Group 120-N bolts
-EX = SeatedAngle(length=inch(8), thickness=inch(0.625), leg=inch(4), Fy=ksi(50),
+EX = SeatedAngle(length=inch(8), thickness=inch(0.625), leg=inch(4), Fy=ksi(36),
                  bolt=BoltSpec(diameter=inch(0.75)), bolts=4, support_t=inch(0.440),
-                 support_Fu=ksi(65), angle_Fu=ksi(65), beam_d=inch(16.3), beam_tw=inch(0.380),
+                 support_Fu=ksi(65), angle_Fu=ksi(58), beam_d=inch(16.3), beam_tw=inch(0.380),
                  beam_tf=inch(0.630), beam_kdes=inch(1.03), beam_Fy=ksi(50))
 
 
@@ -44,8 +44,12 @@ def test_example_ii_a_12a(method, R, col):
     assert step(bearing, r"l_{b,crippling}") < 0  # negative: k_des governs
     assert bearing.demand == pytest.approx(inch(1.03))
     assert bearing.capacity == pytest.approx(inch(3.25))
-    assert results["seated.shear_yielding"].capacity == pytest.approx(kip((150, 100)[col]),
+    assert results["seated.shear_yielding"].capacity == pytest.approx(kip((108, 72)[col]),
                                                                        rel=0.01)
+    # With the exact k_des the arm is 0.265 in. and the flexural capacity is
+    # 95.5/63.6 kip; the example rounds lb to the 1-1/16 in. table entry (90.0/59.9).
+    assert results["seated.flexural_yielding"].capacity == pytest.approx(
+        kip((95.5, 63.6)[col]), rel=0.01)
     assert results["seated.top_angle_leg"].demand == pytest.approx(inch(4))
     assert results["seated.top_angle_thickness"].demand == pytest.approx(inch(1 / 4))
     assert results["seated.top_angle_bolts"].demand == 2
@@ -53,9 +57,10 @@ def test_example_ii_a_12a(method, R, col):
 
 
 def test_flexure_matches_table_10_5():
-    # the example enters Manual Table 10-5 with lb = 1-1/8 in.: 113 / 74.9 kips
-    seat = dataclasses.replace(EX, bearing_length=inch(1.125))
-    for method, expected in ((Method.LRFD, 113), (Method.ASD, 74.9)):
+    # II.A-12A rounds lb,min = 1.03 in. up to the 1-1/16 in. table entry.  With
+    # the A36 L6x4x5/8 angle, Table 10-5 gives 90.0 / 59.9 kip.
+    seat = dataclasses.replace(EX, bearing_length=inch(1.0625))
+    for method, expected in ((Method.LRFD, 90.0), (Method.ASD, 59.9)):
         flexure = {r.id: r for r in check_seated(seat, kip(30), method)}["seated.flexural_yielding"]
         assert flexure.capacity == pytest.approx(kip(expected), rel=0.01)
 
