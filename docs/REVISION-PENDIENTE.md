@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-07, sobre `main`, versión 0.5.5. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-07, sobre `main`, versión 0.5.6. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -25,6 +25,7 @@ Estado al 2026-11-07, sobre `main`, versión 0.5.5. Cada tarea indica qué hay q
 - [x] Cálculo independiente de II.A-1A y II.A-17A (18 valores); C = 3,556 por bisección.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
+- [x] Release 0.5.6.
 
 ## 0. Completado en 0.4.2
 
