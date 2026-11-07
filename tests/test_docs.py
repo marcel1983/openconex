@@ -97,8 +97,9 @@ def test_verification_matrix_covers_every_check():
     assert all(row["test"] and row["estado"] for row in rows)
 
 
-def test_independent_seated_calculation_matches_published_values():
-    script = DOCS / "verificacion" / "calculos" / "asientos.py"
+@pytest.mark.parametrize("name", ["asientos.py", "doble_angulo_placa_simple.py"])
+def test_independent_calculations_match_published_values(name):
+    script = DOCS / "verificacion" / "calculos" / name
     result = subprocess.run([sys.executable, str(script), "--check"],
                             capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stdout + result.stderr

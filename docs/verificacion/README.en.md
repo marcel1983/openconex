@@ -20,7 +20,7 @@ The complete list of checks, with equations and clauses, is in the [technical ca
 python tools/generate_verification_matrix.py
 ```
 
-Today **174** checks are validated against published examples or tables, **3** have an accepted and documented difference, **7** are partial and **2** do not apply (axial compression and unsupported axial tension). Commercial-software comparison is still pending for every row; the only independent calculation so far is the seated-connection script (`docs/verificacion/calculos/asientos.py`, with `--check`). The status and risk columns are an honest snapshot, not a closure statement.
+Today **174** checks are validated against published examples or tables, **3** have an accepted and documented difference, **7** are partial and **2** do not apply (axial compression and unsupported axial tension). Commercial-software comparison is still pending for every row. **16** checks have an independent calculation: seats (`docs/verificacion/calculos/asientos.py`, six values from II.A-12A, II.A-13 and II.A-14) and double angle/single plate (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 values from II.A-1A and II.A-17A). Both scripts support `--check`. The status and risk columns are an honest snapshot, not a closure statement.
 
 ## 2. Published references
 
@@ -91,6 +91,8 @@ Scope limitations are in [Scope and limitations](../usuario/08-limitaciones.md).
 pip install -e ".[dev]"
 python -m pytest
 ruff check .
+python docs/verificacion/calculos/asientos.py --check
+python docs/verificacion/calculos/doble_angulo_placa_simple.py --check
 ```
 
 For the complete outputs:

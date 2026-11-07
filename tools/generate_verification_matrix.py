@@ -121,7 +121,8 @@ TEST_OVERRIDE = {
 
 # Checks with a documented difference or a partial reference.
 DIFFERENCE = {
-    "single_plate.bolts": "C = 3,556/4,06 frente a 3,54/4,07 interpolado (II.A-17A/17B)",
+    "single_plate.bolts": ("C = 3,556/4,06 frente a 3,54/4,07 interpolado (II.A-17A/17B); "
+                           "el cálculo independiente de II.A-17A da C = 3,556 y 58,7/39,1 kip"),
     "double_angle.block_shear_axial": "forma U en vez de L (II.A-1B), algo conservador",
     "extended_plate.flexural_rupture": "Z_net = 12,75 in³ frente a 12,8 in³ (II.A-19A)",
 }
@@ -140,6 +141,16 @@ INDEPENDENT = {
     "seated.bolts": "docs/verificacion/calculos/asientos.py",
     "seated.weld": "docs/verificacion/calculos/asientos.py",
     "stiffened_seat.weld": "docs/verificacion/calculos/asientos.py",
+    "double_angle.bolts_beam": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "double_angle.bolts_support": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "double_angle.angle_shear_yielding": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "double_angle.angle_shear_rupture": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "double_angle.block_shear_beam": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "double_angle.block_shear_support": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "single_plate.bolts": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "single_plate.shear_yielding": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "single_plate.shear_rupture": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
+    "single_plate.block_shear": "docs/verificacion/calculos/doble_angulo_placa_simple.py",
 }
 
 NOTES = {

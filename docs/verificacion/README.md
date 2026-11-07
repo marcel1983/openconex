@@ -35,7 +35,7 @@ La matriz se genera desde el catálogo con:
 python tools/generate_verification_matrix.py
 ```
 
-Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas; el cálculo independiente solo existe, por ahora, para los asientos (`docs/verificacion/calculos/asientos.py`, con `--check` para comparar los seis valores publicados de II.A-12A, II.A-13 y II.A-14). El estado y el riesgo son una foto honesta, no una declaración de cierre.
+Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **16** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14) y doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A). Ambos scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
 
 ## 2. Referencias publicadas
 
@@ -106,6 +106,8 @@ Las limitaciones de alcance están en [Alcance y limitaciones](../usuario/08-lim
 pip install -e ".[dev]"
 python -m pytest
 ruff check .
+python docs/verificacion/calculos/asientos.py --check
+python docs/verificacion/calculos/doble_angulo_placa_simple.py --check
 ```
 
 Para las salidas completas:
