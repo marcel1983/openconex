@@ -5,6 +5,8 @@
 import argparse
 import csv
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -77,6 +79,29 @@ def test_every_material_is_listed():
     text = _text(USER / "07-unidades-materiales.md")
     missing = [g for g in (*STEELS, *BOLTS, *ELECTRODES) if f"`{g}`" not in text]
     assert not missing, f"materials missing in docs/usuario/07-unidades-materiales.md: {missing}"
+
+
+def test_verification_matrix_covers_every_check():
+    path = DOCS / "verificacion" / "matriz-verificacion.csv"
+    with path.open(encoding="utf-8-sig", newline="") as fh:
+        rows = list(csv.DictReader(fh))
+    required = {"check_id", "familia", "clausula", "formula", "referencia_publicada",
+                "test", "calculo_independiente", "software_externo", "estado", "riesgo",
+                "notas"}
+    assert required <= set(rows[0])
+    expected = {key.removeprefix("check.") for key in catalog("es")
+                if key.startswith("check.")}
+    ids = {row["check_id"] for row in rows}
+    assert ids == expected
+    assert len(ids) == len(rows)
+    assert all(row["test"] and row["estado"] for row in rows)
+
+
+def test_independent_seated_calculation_matches_published_values():
+    script = DOCS / "verificacion" / "calculos" / "asientos.py"
+    result = subprocess.run([sys.executable, str(script), "--check"],
+                            capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_verification_case_matrix_is_complete():

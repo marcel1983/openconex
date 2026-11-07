@@ -23,6 +23,7 @@ Ejemplos completos en `examples/`:
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
+| `examples/shear_seated_ii_a_12a.ocnx` | conexión de corte: asiento no rigidizado apernado (AISC II.A-12A) |
 | `examples/shear_skewed_bent_plate.ocnx` | conexión de corte: doble placa doblada en esviaje (AISC II.A-10) |
 
 ## Datos generales (`info`)

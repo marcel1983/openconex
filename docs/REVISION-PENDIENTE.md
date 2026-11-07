@@ -18,6 +18,9 @@ Estado al 2026-11-06, sobre `main`, versión 0.5.4. Cada tarea indica qué hay q
 - [x] Release 0.5.3.
 - [x] Sensibilidad de flexibilidad de pernos: B entre 0,669 y 0,742 para rigideces plausibles.
 - [x] Release 0.5.4.
+- [x] II.A-12A: el ejemplo entra a la Tabla 10-5 con l_b = 1 1/16 in (redondeo de k_des = 1,03 in al siguiente 1/16). Con A36 y l_b = 1,13 in la flexión da 90,0/59,9 kip; el programa usa k_des por defecto (95,5/63,6) y admite el valor tabulado.
+- [x] II.A-12A: el ejemplo usa cuatro pernos (Connection Type B, 71,6/47,7 kip). Los 107 kip son la columna Type C de la Tabla 10-5, no la conexión del ejemplo.
+- [x] Asientos: la Ec. 10-2a/b del Manual confirma la fórmula de la Tabla 10-6 (2 r_w l²/√(l² + 20,25 e²)); la Tabla 10-8 se contrasta con II.A-14/15 (139/93,0 kip).
 
 ## 0. Completado en 0.4.2
 
@@ -104,10 +107,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 
 - [ ] II.A-17A y II.A-17B: C del centro instantáneo (3,556 y 4,06) contra el interpolado de las tablas (3,54 y 4,07).
 - [ ] II.A-1B: la interacción del bloque de corte usa la forma U (0,054); el ejemplo usa la forma L (0,0531).
-- [ ] II.A-12A: el ejemplo entra a la Tabla 10-5 con l_b = 1⅛ in; el programa usa la mínima requerida (k_des). Con k_des la flexión del ala da unos 133 kip contra 113.
-- [ ] II.A-12A: la resistencia de pernos del ejemplo (107/71,6 kip) corresponde a seis pernos, no a los cuatro que indica el ejemplo.
 - [ ] II.A-19A: Z_net calculado (12,75 in³) contra el de la Tabla 15-2 (12,8 in³).
-- [ ] Asientos (Tablas 10-6 y 10-8): las fórmulas elásticas se reconstruyeron a partir de los valores tabulados; confirmarlas con el texto del Manual Parte 10.
 - [ ] Viga destajada con λ > 2λ_p: la Ec. 9-12/9-13 (F_cr = 0,903 E k₁ (t_w/h_c)²) no está validada con un ejemplo.
 - [ ] II.A-18: la placa simple con destaje superior está validada; falta contrastar el doble destaje y las conexiones desplazadas/en ángulo.
 

@@ -12,6 +12,16 @@ The complete list of checks, with equations and clauses, is in the [technical ca
 - Test tolerances are **1 %** unless the reference file states otherwise and explains why.
 - Tests run on Windows, macOS and Linux on every pull request.
 
+## 1.1 Traceability matrix
+
+`docs/verificacion/matriz-verificacion.csv` has one row per check in the catalog (186 identifiers). Columns: `check_id`, `familia`, `clausula`, `formula`, `referencia_publicada`, `test`, `calculo_independiente`, `software_externo`, `estado`, `riesgo` and `notas`. It is generated with:
+
+```bash
+python tools/generate_verification_matrix.py
+```
+
+Today **174** checks are validated against published examples or tables, **3** have an accepted and documented difference, **7** are partial and **2** do not apply (axial compression and unsupported axial tension). Commercial-software comparison is still pending for every row; the only independent calculation so far is the seated-connection script (`docs/verificacion/calculos/asientos.py`, with `--check`). The status and risk columns are an honest snapshot, not a closure statement.
+
 ## 2. Published references
 
 | Reference | Use | Test |
@@ -41,7 +51,7 @@ Only numerical data is used, with its citation; no text, tables or figures are c
 
 ## 4. Cross-comparison
 
-The comparison against commercial software (RAM Connection, RISAConnection or SkyCiv) is documented in `casos.csv`. The file contains 20 base plate cases with their input file and empty columns for the external result.
+The comparison against commercial software (RAM Connection, RISAConnection or SkyCiv) is documented in `casos.csv`. The file contains 20 base plate cases and 6 shear-connection cases with their input file. The `resultado_openconex` column is filled for the shear cases; the `resultado_externo` column is still empty because no commercial licence is available in the test environment.
 
 Protocol:
 
@@ -59,11 +69,11 @@ Accepted validation differences are listed in [Pending review](../REVISION-PENDI
 
 - Instantaneous centre of II.A-17A/17B: 3.556 and 4.06 versus 3.54 and 4.07 interpolated.
 - II.A-1B: U-shaped block shear instead of L-shaped.
-- II.A-12A: bearing length and number of bolts in the example.
 - II.A-19A: computed `Z_net` 12.75 in³ versus 12.8 in³ from Table 15-2.
-- Seats: elastic formulas reconstructed from Tables 10-6 and 10-8.
 - Coped beam with λ > 2λ_p: Eq. 9-12/9-13 without a published example.
 - II.A-18: double cope and offset or skewed connections pending.
+
+II.A-12A is now clarified: the example uses four bolts and enters Table 10-5 with `l_b = 1 1/16 in` (rounding `k_des = 1.03 in`); with A36 steel the flexural strength is 90.0/59.9 kip. The seat formulas were confirmed with Manual Eq. 10-2a/b (Table 10-6) and with II.A-14/15 (Table 10-8).
 
 ## 6. Declared limitations
 
