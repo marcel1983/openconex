@@ -25,6 +25,7 @@ Estado al 2026-11-07, sobre `main`, versión 0.5.8. Cada tarea indica qué hay q
 - [x] Cálculo independiente de II.A-1A y II.A-17A (18 valores); C = 3,556 por bisección.
 - [x] Cálculo independiente de placa base DG1 4.7-1, 4.7-10 y 4.7-14 (59 valores).
 - [x] Cálculo independiente de anclajes DG1 4.7-4, 4.7-9 y 4.7-15 (39 valores).
+- [x] Cálculo independiente de placa extendida y viga destajada II.A-4/6/7 y II.A-19A (29 valores).
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.

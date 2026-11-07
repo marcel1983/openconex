@@ -35,7 +35,7 @@ La matriz se genera desde el catálogo con:
 python tools/generate_verification_matrix.py
 ```
 
-Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **28** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14), doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A), placa base (`docs/verificacion/calculos/placa_base.py`, 59 valores de DG1 4.7-1, 4.7-10 y 4.7-14) y anclajes (`docs/verificacion/calculos/anclajes.py`, 39 valores de DG1 4.7-4, 4.7-9 y 4.7-15). Los cuatro scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
+Hoy **175** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **6** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **41** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14), doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A), placa base (`docs/verificacion/calculos/placa_base.py`, 59 valores de DG1 4.7-1, 4.7-10 y 4.7-14), anclajes (`docs/verificacion/calculos/anclajes.py`, 39 valores de DG1 4.7-4, 4.7-9 y 4.7-15) y placa extendida/viga destajada (`docs/verificacion/calculos/placa_extendida_viga_destajada.py`, 29 valores de II.A-4/6/7 y II.A-19A). Los cinco scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
 
 ## 2. Referencias publicadas
 
@@ -110,6 +110,7 @@ python docs/verificacion/calculos/asientos.py --check
 python docs/verificacion/calculos/doble_angulo_placa_simple.py --check
 python docs/verificacion/calculos/placa_base.py --check
 python docs/verificacion/calculos/anclajes.py --check
+python docs/verificacion/calculos/placa_extendida_viga_destajada.py --check
 ```
 
 Para las salidas completas:
