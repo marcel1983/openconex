@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-06, sobre `main`, versión 0.5.4. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-07, sobre `main`, versión 0.5.5. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -21,6 +21,9 @@ Estado al 2026-11-06, sobre `main`, versión 0.5.4. Cada tarea indica qué hay q
 - [x] II.A-12A: el ejemplo entra a la Tabla 10-5 con l_b = 1 1/16 in (redondeo de k_des = 1,03 in al siguiente 1/16). Con A36 y l_b = 1,13 in la flexión da 90,0/59,9 kip; el programa usa k_des por defecto (95,5/63,6) y admite el valor tabulado.
 - [x] II.A-12A: el ejemplo usa cuatro pernos (Connection Type B, 71,6/47,7 kip). Los 107 kip son la columna Type C de la Tabla 10-5, no la conexión del ejemplo.
 - [x] Asientos: la Ec. 10-2a/b del Manual confirma la fórmula de la Tabla 10-6 (2 r_w l²/√(l² + 20,25 e²)); la Tabla 10-8 se contrasta con II.A-14/15 (139/93,0 kip).
+- [x] Matriz de trazabilidad de 186 verificaciones y cálculo independiente de asientos.
+- [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
+- [x] Release 0.5.5.
 
 ## 0. Completado en 0.4.2
 
