@@ -24,6 +24,7 @@ Estado al 2026-11-07, sobre `main`, versión 0.5.7. Cada tarea indica qué hay q
 - [x] Matriz de trazabilidad de 186 verificaciones y cálculo independiente de asientos.
 - [x] Cálculo independiente de II.A-1A y II.A-17A (18 valores); C = 3,556 por bisección.
 - [x] Cálculo independiente de placa base DG1 4.7-1, 4.7-10 y 4.7-14 (59 valores).
+- [x] Cálculo independiente de anclajes DG1 4.7-4, 4.7-9 y 4.7-15 (39 valores).
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.

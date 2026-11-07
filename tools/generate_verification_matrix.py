@@ -155,6 +155,14 @@ INDEPENDENT = {
     "base_plate.thickness_compression": "docs/verificacion/calculos/placa_base.py",
     "base_plate.thickness_tension": "docs/verificacion/calculos/placa_base.py",
     "base_plate.biaxial": "docs/verificacion/calculos/placa_base.py",
+    "anchor.steel_tension": "docs/verificacion/calculos/anclajes.py",
+    "anchor.concrete_breakout_tension": "docs/verificacion/calculos/anclajes.py",
+    "anchor.pullout": "docs/verificacion/calculos/anclajes.py",
+    "anchor.concrete_breakout_shear": "docs/verificacion/calculos/anclajes.py",
+    "anchor.reinforcement": "docs/verificacion/calculos/anclajes.py",
+    "anchor.reinforcement_development": "docs/verificacion/calculos/anclajes.py",
+    "anchor.reinforcement_straight_development": "docs/verificacion/calculos/anclajes.py",
+    "anchor.reinforcement_embedment": "docs/verificacion/calculos/anclajes.py",
 }
 
 NOTES = {
