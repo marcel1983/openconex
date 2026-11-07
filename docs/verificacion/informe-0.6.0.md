@@ -66,9 +66,13 @@ que es equivalente a `2 r_w l² / √(l² + 20,25 e²)` usada en el código. La 
 
 ## 5. Cálculo independiente
 
-Hoy existe un cálculo independiente completo para asientos. Reproduce:
+Hay dos scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
 
-| Caso | OpenConex / cálculo | Publicado |
+### 5.1 Asientos
+
+`docs/verificacion/calculos/asientos.py --check` reproduce seis valores:
+
+| Caso | Cálculo independiente | Publicado |
 |---|---:|---:|
 | II.A-12A flexión, LRFD | 90,0 kip | 90,0 kip |
 | II.A-12A flexión, ASD | 59,9 kip | 59,9 kip |
@@ -77,7 +81,24 @@ Hoy existe un cálculo independiente completo para asientos. Reproduce:
 | II.A-14 soldadura, LRFD | 139,4 kip | 139 kip |
 | II.A-14 soldadura, ASD | 92,9 kip | 93,0 kip |
 
-Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa base, doble ángulo, placa simple, placa extendida, viga destajada y anclajes.
+### 5.2 Doble ángulo y placa simple
+
+`docs/verificacion/calculos/doble_angulo_placa_simple.py --check` reproduce 18 valores de II.A-1A y II.A-17A:
+
+| Caso | Cálculo independiente | Publicado |
+|---|---:|---:|
+| II.A-1A pernos, lado viga, LRFD/ASD | 281,3 / 187,6 kip | 282 / 187 kip |
+| II.A-1A fluencia por corte, LRFD/ASD | 440,6 / 293,8 kip | 441 / 294 kip |
+| II.A-1A rotura por corte, LRFD/ASD | 301,6 / 201,1 kip | 302 / 201 kip |
+| II.A-1A bloque de corte, LRFD/ASD | 315,4 / 210,2 kip | 315 / 210 kip |
+| II.A-17A pernos, LRFD/ASD | 58,7 / 39,1 kip | 58,5 / 38,9 kip |
+| II.A-17A fluencia por corte, LRFD/ASD | 86,3 / 57,5 kip | 86,4 / 57,6 kip |
+| II.A-17A rotura por corte, LRFD/ASD | 58,5 / 39,0 kip | 58,5 / 39,0 kip |
+| II.A-17A bloque de corte, LRFD/ASD | 65,5 / 43,7 kip | 65,3 / 43,6 kip |
+
+El coeficiente de centro instantáneo de II.A-17A se resuelve por bisección independiente y da C = 3,556, frente a 3,54 interpolado de la Tabla 10-9 (0,5 %).
+
+Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa base, placa extendida, viga destajada y anclajes.
 
 ## 6. Comparación externa
 
@@ -114,7 +135,8 @@ La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, 
 - [x] Matriz de trazabilidad completa (186/186).
 - [x] II.A-12A aclarado y corregido.
 - [x] Fórmulas de asientos confirmadas.
-- [ ] Cálculo independiente de placa base, doble ángulo, placa simple, placa extendida y viga destajada.
+- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A) y placa simple (II.A-17A).
+- [ ] Cálculo independiente de placa base, placa extendida y viga destajada.
 - [ ] Comparación externa de los 26 casos de `casos.csv`.
 - [ ] Cierre de las 7 verificaciones parciales o declaración de impacto.
 - [ ] Revisión manual de DXF/STEP/PDF en CAD/visor independiente.
