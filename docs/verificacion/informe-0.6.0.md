@@ -30,9 +30,9 @@ La tolerancia general es del 1 %, salvo que la referencia publique valores redon
 
 | Estado | N.º | Significado |
 |---|---:|---|
-| `validado` | 174 | Contraste con ejemplo o tabla publicada, dentro de tolerancia |
+| `validado` | 175 | Contraste con ejemplo o tabla publicada, dentro de tolerancia |
 | `diferencia aceptada` | 3 | Diferencia documentada y conservadora o despreciable |
-| `parcial` | 7 | Solo una parte de los casos tiene evidencia |
+| `parcial` | 6 | Solo una parte de los casos tiene evidencia |
 | `no aplica` | 2 | Función no implementada; se informa como no cumple |
 
 Las 3 diferencias aceptadas son:
@@ -41,7 +41,7 @@ Las 3 diferencias aceptadas son:
 - **II.A-1B:** la interacción del bloque de corte usa la forma U (0,054) en vez de la forma L (0,0531); es algo más conservadora.
 - **II.A-19A:** `Z_net` calculado 12,75 in³ frente a 12,8 in³ de la Tabla 15-2.
 
-Las 7 verificaciones parciales son las cinco de `kernel/local.py` (solo biblioteca, sin integración en las rutas actuales) y las dos de viga destajada con λ > 2λ_p y doble destaje de II.A-18.
+Las 6 verificaciones parciales son las cinco de `kernel/local.py` (solo biblioteca, sin integración en las rutas actuales) y la rama λ > 2λ_p de la viga destajada. El bloque de corte de la viga destajada quedó validado con II.A-4; el doble destaje de II.A-18 no cambia la geometría de esa fórmula.
 
 ## 4. Discrepancias cerradas
 
@@ -66,7 +66,7 @@ que es equivalente a `2 r_w l² / √(l² + 20,25 e²)` usada en el código. La 
 
 ## 5. Cálculo independiente
 
-Hay cuatro scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
+Hay cinco scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
 
 ### 5.1 Asientos
 
@@ -131,7 +131,25 @@ Las diferencias de 4.7-14 son las que la propia DG1 documenta al redondear Y; el
 
 El ejemplo 4.7-4 usa el corte del perno de AISC 360 (φ = 0,75) para el acero del anclaje; la comprobación ACI §17.7.1 (`anchor.steel_shear`, φ = 0,65) es un estado límite distinto y no se contabiliza en este ejemplo. Se deja constancia para no mezclar ambas resistencias.
 
-Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa extendida y viga destajada.
+### 5.5 Placa extendida y viga destajada
+
+`docs/verificacion/calculos/placa_extendida_viga_destajada.py --check` reproduce 29 valores de II.A-4/6/7 y II.A-19A:
+
+| Caso | Cálculo independiente | Publicado |
+|---|---:|---:|
+| II.A-6 A flexión, LRFD/ASD | 116,8 / 77,7 kip | 116 / 77,2 |
+| II.A-6 B flexión, LRFD/ASD | 150,2 / 99,9 kip | 150 / 100 |
+| II.A-4 flexión, LRFD/ASD | 373,2 / 248,3 kip | 374 / 249 |
+| II.A-7 doble destaje, LRFD/ASD | 37,8 / 25,2 kip | 37,9 / 25,2 |
+| II.A-4 bloque de corte, LRFD/ASD | 68,8 / 45,9 kip | 68,6 / 45,8 |
+| II.A-19A pernos, C / capacidad | 2,318 / 41,5 kip | 41,7 |
+| II.A-19A t_max | 0,575 in | 0,575 |
+| II.A-19A flexión / LTB / rotura | 810 / 810 / 621,6 kip·in | 810 / 810 / 624 |
+| II.A-19A interacción | 0,200 | 0,200 |
+
+El coeficiente de centro instantáneo de II.A-19A se resuelve por búsqueda en rejilla y refinamiento, independiente del Newton amortiguado del programa, y da C = 2,318.
+
+Todas las familias principales tienen ya un cálculo independiente. Las 6 verificaciones parciales restantes son las cinco de `kernel/local.py` (solo biblioteca) y la rama λ > 2λ_p de la viga destajada.
 
 ## 6. Comparación externa
 
@@ -168,8 +186,7 @@ La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, 
 - [x] Matriz de trazabilidad completa (186/186).
 - [x] II.A-12A aclarado y corregido.
 - [x] Fórmulas de asientos confirmadas.
-- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A), placa base (DG1 4.7-1/10/14) y anclajes (DG1 4.7-4/9/15).
-- [ ] Cálculo independiente de placa extendida y viga destajada.
+- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A), placa base (DG1 4.7-1/10/14), anclajes (DG1 4.7-4/9/15) y placa extendida/viga destajada (II.A-4/6/7 y II.A-19A).
 - [ ] Comparación externa de los 26 casos de `casos.csv`.
 - [ ] Cierre de las 7 verificaciones parciales o declaración de impacto.
 - [ ] Revisión manual de DXF/STEP/PDF en CAD/visor independiente.

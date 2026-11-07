@@ -98,7 +98,7 @@ def test_verification_matrix_covers_every_check():
 
 
 @pytest.mark.parametrize("name", ["asientos.py", "doble_angulo_placa_simple.py", "placa_base.py",
-                                  "anclajes.py"])
+                                  "anclajes.py", "placa_extendida_viga_destajada.py"])
 def test_independent_calculations_match_published_values(name):
     script = DOCS / "verificacion" / "calculos" / name
     result = subprocess.run([sys.executable, str(script), "--check"],

@@ -128,11 +128,12 @@ DIFFERENCE = {
 }
 
 PARTIAL = {
-    "coped_beam.flexure": "λ > 2λ_p (Ec. 9-12/9-13) y doble destaje de II.A-18 pendientes",
-    "coped_beam.block_shear": "doble destaje y conexiones desplazadas de II.A-18 pendientes",
+    "coped_beam.flexure": "rama λ > 2λ_p (Ec. 9-12/9-13) sin ejemplo publicado",
 }
 
 NO_APLICA = {"shear_connection.axial_compression", "shear_connection.axial_unsupported"}
+
+CROSS = "docs/verificacion/calculos/placa_extendida_viga_destajada.py"
 
 INDEPENDENT = {
     "seated.bearing_length": "docs/verificacion/calculos/asientos.py",
@@ -163,6 +164,19 @@ INDEPENDENT = {
     "anchor.reinforcement_development": "docs/verificacion/calculos/anclajes.py",
     "anchor.reinforcement_straight_development": "docs/verificacion/calculos/anclajes.py",
     "anchor.reinforcement_embedment": "docs/verificacion/calculos/anclajes.py",
+    "coped_beam.flexure": CROSS,
+    "coped_beam.shear_yielding": CROSS,
+    "coped_beam.shear_rupture": CROSS,
+    "coped_beam.block_shear": CROSS,
+    "extended_plate.bolts": CROSS,
+    "extended_plate.max_thickness": CROSS,
+    "extended_plate.shear_yielding": CROSS,
+    "extended_plate.shear_rupture": CROSS,
+    "extended_plate.block_shear": CROSS,
+    "extended_plate.flexural_yielding": CROSS,
+    "extended_plate.flexural_ltb": CROSS,
+    "extended_plate.interaction": CROSS,
+    "extended_plate.flexural_rupture": CROSS,
 }
 
 NOTES = {
@@ -180,6 +194,8 @@ NOTES = {
     "stiffened_seat.seat_plate_thickness": "Detalle estándar de II.A-14.",
     "stiffened_seat.seat_plate_weld": "Detalle estándar de II.A-14.",
     "stiffened_seat.seat_plate_weld_length": "Detalle estándar de II.A-14.",
+    "coped_beam.block_shear": ("Fórmula validada con II.A-4; el doble destaje de II.A-18 "
+                               "no cambia la geometría del bloque de corte."),
 }
 
 DETAIL = (
