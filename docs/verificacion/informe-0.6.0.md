@@ -66,7 +66,7 @@ que es equivalente a `2 r_w l² / √(l² + 20,25 e²)` usada en el código. La 
 
 ## 5. Cálculo independiente
 
-Hay dos scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
+Hay tres scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
 
 ### 5.1 Asientos
 
@@ -98,7 +98,22 @@ Hay dos scripts que no importan `openconex` y comparan sus resultados con los ej
 
 El coeficiente de centro instantáneo de II.A-17A se resuelve por bisección independiente y da C = 3,556, frente a 3,54 interpolado de la Tabla 10-9 (0,5 %).
 
-Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa base, placa extendida, viga destajada y anclajes.
+### 5.3 Placa base
+
+`docs/verificacion/calculos/placa_base.py --check` reproduce 59 valores de DG1:
+
+| Caso | Cálculo independiente | Publicado |
+|---|---:|---:|
+| 4.7-1 compresión, φPp / Pp/Ω | 729 / 486 kip | 729 / 486 kip |
+| 4.7-1 X, λ, t_p,req | 0,959 / 1,000 / 1,361 in | 0,960 / 1,000 / 1,36 in |
+| 4.7-10 Y, q, t_p,req | 14,0 in, 26,9 kip/in, 1,16 in | 14,0 in, 26,9 kip/in, 1,16 in |
+| 4.7-10 f_p,max / q_max | 2,21 ksi / 42,0 kip/in | 2,21 ksi / 42,0 kip/in |
+| 4.7-14 Y / T | 1,65 in / 12,4 kip | 1,70 in / 15,2 kip |
+| 4.7-14 interacción | 0,981 | 0,988 |
+
+Las diferencias de 4.7-14 son las que la propia DG1 documenta al redondear Y; el script usa 5 % en Y, 25 % en T y 12 % en el espesor de tracción, y 1 % en el resto.
+
+Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa extendida, viga destajada y anclajes.
 
 ## 6. Comparación externa
 
@@ -135,8 +150,8 @@ La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, 
 - [x] Matriz de trazabilidad completa (186/186).
 - [x] II.A-12A aclarado y corregido.
 - [x] Fórmulas de asientos confirmadas.
-- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A) y placa simple (II.A-17A).
-- [ ] Cálculo independiente de placa base, placa extendida y viga destajada.
+- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A) y placa base (DG1 4.7-1/10/14).
+- [ ] Cálculo independiente de placa extendida y viga destajada.
 - [ ] Comparación externa de los 26 casos de `casos.csv`.
 - [ ] Cierre de las 7 verificaciones parciales o declaración de impacto.
 - [ ] Revisión manual de DXF/STEP/PDF en CAD/visor independiente.

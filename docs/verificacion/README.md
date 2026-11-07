@@ -35,7 +35,7 @@ La matriz se genera desde el catálogo con:
 python tools/generate_verification_matrix.py
 ```
 
-Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **16** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14) y doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A). Ambos scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
+Hoy **174** verificaciones están validadas contra ejemplos o tablas publicadas, **3** tienen una diferencia aceptada y documentada, **7** son parciales y **2** no aplican (compresión axial y tracción no soportadas). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **20** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14), doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A) y placa base (`docs/verificacion/calculos/placa_base.py`, 59 valores de DG1 4.7-1, 4.7-10 y 4.7-14). Los tres scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
 
 ## 2. Referencias publicadas
 
@@ -108,6 +108,7 @@ python -m pytest
 ruff check .
 python docs/verificacion/calculos/asientos.py --check
 python docs/verificacion/calculos/doble_angulo_placa_simple.py --check
+python docs/verificacion/calculos/placa_base.py --check
 ```
 
 Para las salidas completas:
