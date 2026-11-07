@@ -26,6 +26,7 @@ Estado al 2026-11-07, sobre `main`, versión 0.5.9. Cada tarea indica qué hay q
 - [x] Cálculo independiente de placa base DG1 4.7-1, 4.7-10 y 4.7-14 (59 valores).
 - [x] Cálculo independiente de anclajes DG1 4.7-4, 4.7-9 y 4.7-15 (39 valores).
 - [x] Cálculo independiente de placa extendida y viga destajada II.A-4/6/7 y II.A-19A (29 valores).
+- [x] Cierre de las parciales: `local.*` con valores manuales de §J10 y λ > 2λ_p con un caso sintético.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.
@@ -119,7 +120,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [ ] II.A-17A y II.A-17B: C del centro instantáneo (3,556 y 4,06) contra el interpolado de las tablas (3,54 y 4,07).
 - [ ] II.A-1B: la interacción del bloque de corte usa la forma U (0,054); el ejemplo usa la forma L (0,0531).
 - [ ] II.A-19A: Z_net calculado (12,75 in³) contra el de la Tabla 15-2 (12,8 in³).
-- [ ] Viga destajada con λ > 2λ_p: la Ec. 9-12/9-13 (F_cr = 0,903 E k₁ (t_w/h_c)²) no está validada con un ejemplo.
+- [x] Viga destajada con λ > 2λ_p: rama contrastada con un caso sintético de alma delgada; no hay ejemplo publicado.
 - [ ] II.A-18: la placa simple con destaje superior está validada; falta contrastar el doble destaje y las conexiones desplazadas/en ángulo.
 
 ### 2.3 Funciones que faltan — B
