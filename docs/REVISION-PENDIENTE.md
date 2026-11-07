@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-07, sobre `main`, versión 0.5.6. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-07, sobre `main`, versión 0.5.7. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -27,6 +27,7 @@ Estado al 2026-11-07, sobre `main`, versión 0.5.6. Cada tarea indica qué hay q
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.
+- [x] Release 0.5.7.
 
 ## 0. Completado en 0.4.2
 
