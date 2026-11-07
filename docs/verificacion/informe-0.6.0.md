@@ -66,7 +66,7 @@ que es equivalente a `2 r_w l² / √(l² + 20,25 e²)` usada en el código. La 
 
 ## 5. Cálculo independiente
 
-Hay tres scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
+Hay cuatro scripts que no importan `openconex` y comparan sus resultados con los ejemplos publicados.
 
 ### 5.1 Asientos
 
@@ -113,7 +113,25 @@ El coeficiente de centro instantáneo de II.A-17A se resuelve por bisección ind
 
 Las diferencias de 4.7-14 son las que la propia DG1 documenta al redondear Y; el script usa 5 % en Y, 25 % en T y 12 % en el espesor de tracción, y 1 % en el resto.
 
-Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa extendida, viga destajada y anclajes.
+### 5.4 Anclajes
+
+`docs/verificacion/calculos/anclajes.py --check` reproduce 39 valores de DG1:
+
+| Caso | Cálculo independiente | Publicado |
+|---|---:|---:|
+| 4.7-4 A_Vc / A_Vco / V_b | 720 / 648 in² / 23,7 kip | 720 / 648 / 23,7 |
+| 4.7-4 V_cbg / φV_cbg | 26,3 / 18,4 kip | 26,3 / 18,4 |
+| 4.7-4 perno AISC, φR_nv / grupo | 8,63 / 17,3 kip | 8,63 / 17,3 |
+| 4.7-9 N_sa / φN_sa | 35,1 / 26,3 kip | 35,1 / 26,3 |
+| 4.7-9 A_Nc / A_Nco / N_b | 1512 / 1296 in² / 63,6 kip | 1510 / 1300 / 63,6 |
+| 4.7-9 N_cbg / φN_cbg | 74,3 / 52,0 kip | 73,9 / 51,7 |
+| 4.7-9 N_p / φN_pn | 48,0 / 33,6 kip | 48,0 / 33,6 |
+| 4.7-15 h_ef' / A_Nc / N_cbg | 5,33 in / 400 in² / 29,2 kip | 5,33 / 400 / 29,2 |
+| 4.7-15 l_dh / l_d / h_ef,req | 9,71 / 17,1 / 13,6 in | 9,71 / 17,1 / 13,6 |
+
+El ejemplo 4.7-4 usa el corte del perno de AISC 360 (φ = 0,75) para el acero del anclaje; la comprobación ACI §17.7.1 (`anchor.steel_shear`, φ = 0,65) es un estado límite distinto y no se contabiliza en este ejemplo. Se deja constancia para no mezclar ambas resistencias.
+
+Las demás familias se apoyan por ahora en los ejemplos publicados y en las pruebas de regresión; falta un segundo cálculo independiente para placa extendida y viga destajada.
 
 ## 6. Comparación externa
 
@@ -150,7 +168,7 @@ La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, 
 - [x] Matriz de trazabilidad completa (186/186).
 - [x] II.A-12A aclarado y corregido.
 - [x] Fórmulas de asientos confirmadas.
-- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A) y placa base (DG1 4.7-1/10/14).
+- [x] Cálculo independiente de asientos, doble ángulo (II.A-1A), placa simple (II.A-17A), placa base (DG1 4.7-1/10/14) y anclajes (DG1 4.7-4/9/15).
 - [ ] Cálculo independiente de placa extendida y viga destajada.
 - [ ] Comparación externa de los 26 casos de `casos.csv`.
 - [ ] Cierre de las 7 verificaciones parciales o declaración de impacto.
