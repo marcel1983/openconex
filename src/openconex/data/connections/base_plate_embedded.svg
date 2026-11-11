@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
+<g transform="translate(26.31,-25.78) scale(0.8356)">
+<polygon points="250.93,222.50 160.00,275.00 160.00,250.00 250.93,197.50" fill="#c0b8af" stroke="#8d6e63" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="69.07,222.50 160.00,275.00 160.00,250.00 69.07,197.50" fill="#e0d6cc" stroke="#8d6e63" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="160.00,145.00 250.93,197.50 160.00,250.00 69.07,197.50" fill="#f1e7dc" stroke="#8d6e63" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="207.63,197.50 160.00,225.00 160.00,105.00 207.63,77.50" fill="#bac2ca" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="112.37,197.50 160.00,225.00 160.00,105.00 112.37,77.50" fill="#d9e2ec" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="160.00,50.00 207.63,77.50 160.00,105.00 112.37,77.50" fill="#eaf4fe" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="229.28,223.00 160.00,263.00 160.00,238.00 229.28,198.00" fill="#a0bed7" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="90.72,223.00 160.00,263.00 160.00,238.00 90.72,198.00" fill="#bbdefb" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="160.00,158.00 229.28,198.00 160.00,238.00 90.72,198.00" fill="#c9efff" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<circle cx="160.00" cy="168.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="211.96" cy="198.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="108.04" cy="198.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="160.00" cy="228.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<line x1="207.63" y1="222.50" x2="207.63" y2="197.50" stroke="#ef6c00" stroke-width="2.0" stroke-linecap="round"/>
+<line x1="112.37" y1="222.50" x2="112.37" y2="197.50" stroke="#ef6c00" stroke-width="2.0" stroke-linecap="round"/>
+</g>
+</svg>

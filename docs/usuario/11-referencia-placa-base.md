@@ -130,6 +130,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
+| `main.file.new` | Abre la galería para crear una conexión. | Archivo → Nueva conexión (Ctrl+N). | Crea un proyecto de placa base o de corte con valores iniciales. | — | todas |
 | `main.file.open` | Abre un proyecto .ocnx. | Archivo → Abrir (Ctrl+O). | Carga el proyecto y actualiza la ventana. | — | todas |
 | `main.file.save` | Guarda el proyecto actual. | Archivo → Guardar (Ctrl+S). | Escribe el archivo .ocnx. | — | todas |
 | `main.file.save_as` | Guarda con otro nombre. | Archivo → Guardar como. | Crea un archivo nuevo. | — | todas |
