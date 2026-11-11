@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from openconex.core.model import HSSKind, HSSShape
 from openconex.core.shapes import ShapeDatabase, ShapeDatabaseError, normalize_label
 from openconex.units import Kind, from_internal
 
@@ -90,6 +91,31 @@ def test_to_ishape(db):
     assert shape.k_des == pytest.approx(1.31 * 25.4)
     with pytest.raises(ShapeDatabaseError):
         db.get("L4X4X1/2").to_ishape()
+
+
+def test_to_column_for_hss_and_pipe():
+    from openconex.core.shapes import aisc_shapes
+
+    try:
+        db = aisc_shapes()
+    except ShapeDatabaseError:
+        pytest.skip("aisc_v16.sql not generated")
+    square = db.get("HSS20X20X1/2").to_column()
+    assert isinstance(square, HSSShape)
+    assert square.kind is HSSKind.SQUARE
+    assert square.d == pytest.approx(20 * 25.4)
+    assert square.width == pytest.approx(20 * 25.4)
+    assert square.t == pytest.approx(db.get("HSS20X20X1/2")["tdes"])
+    rectangular = db.get("HSS34X10X1").to_column()
+    assert rectangular.kind is HSSKind.RECTANGULAR
+    assert rectangular.d == pytest.approx(34 * 25.4)
+    assert rectangular.width == pytest.approx(10 * 25.4)
+    pipe = db.get("Pipe12STD").to_column()
+    assert pipe.kind is HSSKind.ROUND
+    assert pipe.d == pytest.approx(db.get("Pipe12STD")["OD"])
+    assert pipe.width is None
+    with pytest.raises(ShapeDatabaseError):
+        db.get("L4X4X1/2").to_column()
 
 
 def test_normalize_label():

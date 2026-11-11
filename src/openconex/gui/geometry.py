@@ -58,6 +58,7 @@ class GeometryValues:
     lug_width: float | None
     lug_direction: str
     units: UnitSystem
+    column_round: bool = False
 
 
 class _FitView(QGraphicsView):
@@ -304,8 +305,12 @@ class GeometryEditor(QWidget):
         else:
             pedestal_handles = ()
         scene.addRect(-B / 2, -N / 2, B, N, _pen(PLATE_PEN), QBrush(PLATE_BRUSH))
-        scene.addRect(-column_b / 2, -column_d / 2, column_b, column_d,
-                      _pen(COLUMN_PEN), QBrush(COLUMN_BRUSH))
+        if values.column_round:
+            scene.addEllipse(-column_b / 2, -column_d / 2, column_b, column_d,
+                             _pen(COLUMN_PEN), QBrush(COLUMN_BRUSH))
+        else:
+            scene.addRect(-column_b / 2, -column_d / 2, column_b, column_d,
+                          _pen(COLUMN_PEN), QBrush(COLUMN_BRUSH))
 
         if values.f and values.rod_spacing:
             spacing = float(values.rod_spacing)

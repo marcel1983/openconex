@@ -708,7 +708,7 @@ class Project(_Input):
         section = self.base_plate.column
         L = Kind.LENGTH
         if isinstance(section, str):
-            return aisc_shapes().get(section).to_ishape(self.base_plate.column_grade,
+            return aisc_shapes().get(section).to_column(self.base_plate.column_grade,
                                                         materials=library)
         if isinstance(section, WSectionInput):
             return IShape(
