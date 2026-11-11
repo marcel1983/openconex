@@ -21,6 +21,15 @@ def app():
     return QApplication.instance() or QApplication([])
 
 
+@pytest.fixture
+def dialog(app):
+    window = ConnectionStartDialog()
+    yield window
+    window.close()
+    window.deleteLater()
+    app.processEvents()
+
+
 def test_families_and_subtypes():
     by_id = {family.id: family for family in FAMILIES}
     assert {"base_plate", "shear_column", "shear_beam", "moment", "splice"} <= set(by_id)
@@ -63,8 +72,7 @@ def test_every_card_has_an_isometric_asset(family, app):
         assert not connection_pixmap(subtype.asset, QSize(220, 130)).isNull()
 
 
-def test_dialog_returns_a_selection(app):
-    dialog = ConnectionStartDialog()
+def test_dialog_returns_a_base_plate_selection(dialog):
     base = next(family for family in FAMILIES if family.id == "base_plate")
     dialog._show_family(base)
     assert dialog._stack.currentIndex() == 1
@@ -72,12 +80,11 @@ def test_dialog_returns_a_selection(app):
     assert dialog.selection is not None
     assert dialog.selection.kind == "base_plate"
     assert dialog.selection.project is not None
-    dialog.close()
 
-    dialog = ConnectionStartDialog()
+
+def test_dialog_returns_a_shear_selection(dialog):
     shear = next(family for family in FAMILIES if family.id == "shear_column")
     dialog._show_family(shear)
     dialog._select_subtype(shear.subtypes[0])
     assert dialog.selection is not None
     assert dialog.selection.kind == "shear"
-    dialog.close()
