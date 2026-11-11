@@ -66,6 +66,16 @@ def test_beam_to_beam_sets_the_support_web():
     assert connection.support == "W21X62"
 
 
+def test_beam_family_has_its_own_thumbnails():
+    column = next(family for family in FAMILIES if family.id == "shear_column")
+    beam = next(family for family in FAMILIES if family.id == "shear_beam")
+    column_assets = {subtype.asset for subtype in column.subtypes}
+    beam_assets = {subtype.asset for subtype in beam.subtypes}
+    assert not column_assets & beam_assets
+    assert "shear_beam_single_plate" in beam_assets
+    assert "shear_beam_skewed_bent_plate" in beam_assets
+
+
 def test_shear_viewer_swaps_y_and_z():
     mesh = MeshPart("beam", (((0.0, 1.0, 2.0), (0.0, 0.0, 0.0),
                               (1.0, 0.0, 0.0)),))
@@ -75,12 +85,26 @@ def test_shear_viewer_swaps_y_and_z():
 
 def test_3d_thumbnails_are_packaged():
     for asset in ("base_plate_exposed", "base_plate_embedded", "base_plate_weak",
-                  "family_base_plate", "shear_double_angle", "shear_end_plate",
-                  "shear_seated", "shear_stiffened_seat",
-                  "shear_skewed_bent_plate"):
+                  "family_base_plate", "family_shear_column", "family_shear_beam",
+                  "shear_double_angle", "shear_single_plate",
+                  "shear_extended_plate", "shear_end_plate", "shear_seated",
+                  "shear_stiffened_seat", "shear_beam_double_angle",
+                  "shear_beam_single_plate", "shear_beam_extended_single_plate",
+                  "shear_beam_end_plate", "shear_beam_seated",
+                  "shear_beam_stiffened_seat"):
         path = resources.files("openconex.data").joinpath(
             "connections", "thumbs", f"{asset}.png")
         assert path.is_file(), asset
+
+
+@pytest.mark.parametrize("family", [f for f in FAMILIES],
+                         ids=lambda f: f.id)
+def test_every_card_asset_is_packaged(family):
+    pack = resources.files("openconex.data").joinpath("connections")
+    for subtype in family.subtypes:
+        png = pack.joinpath("thumbs", f"{subtype.asset}.png")
+        svg = pack.joinpath(f"{subtype.asset}.svg")
+        assert png.is_file() or svg.is_file(), subtype.asset
 
 
 @pytest.mark.parametrize("family", [f for f in FAMILIES],

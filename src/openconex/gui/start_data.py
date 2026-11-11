@@ -189,6 +189,12 @@ SHEAR_SUBTYPES = _subtypes((
      "shear_skewed_bent_plate"),
 ))
 
+SHEAR_BEAM_SUBTYPES = tuple(
+    Subtype(subtype.id, subtype.label, subtype.description,
+            f"shear_beam_{subtype.id}")
+    for subtype in SHEAR_SUBTYPES
+)
+
 FAMILIES = (
     Family("base_plate", "Placa base",
            "Columna apoyada en concreto, con anclajes y placa de acero.",
@@ -198,7 +204,7 @@ FAMILIES = (
            "family_shear_column", SHEAR_SUBTYPES),
     Family("shear_beam", "Corte viga-viga",
            "El extremo de una viga llega al alma de una viga de apoyo.",
-           "family_shear_beam", SHEAR_SUBTYPES),
+           "family_shear_beam", SHEAR_BEAM_SUBTYPES),
     Family("moment", "Momento viga-columna",
            "Unión a momento entre viga y columna.", "family_moment",
            enabled=False, badge="Próximamente"),

@@ -196,15 +196,20 @@ class _ViewCanvas(QWidget):
 
 def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
     """Map the shear model's y-up axes to the viewer's z-up axes."""
-    return [MeshPart(mesh.name, tuple(
-        tuple((point[0], point[2], point[1]) for point in triangle)
-        for triangle in mesh.triangles)) for mesh in meshes]
+    swapped: list[MeshPart] = []
+    for mesh in meshes:
+        triangles = [((p0[0], p0[2], p0[1]),
+                      (p1[0], p1[2], p1[1]),
+                      (p2[0], p2[2], p2[1]))
+                     for p0, p1, p2 in mesh.triangles]
+        swapped.append(MeshPart(mesh.name, tuple(triangles)))
+    return swapped
 
 
 def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
                  pitch: float = 25.0, zoom: float = 1.0, margin: float = 1.8,
-                 hide: tuple[str, ...] = ("beam", "support", "column", "pedestal",
-                                          "foundation"),
+                 hide: tuple[str, ...] = ("beam", "support", "support_context", "column",
+                                          "pedestal", "foundation"),
                  highlight: tuple[str, ...] = (),
                  highlight_color: str = "#1565c0",
                  swap_yz: bool = False,
@@ -227,10 +232,11 @@ def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
                 moved.append(mesh)
                 continue
             dx, dy, dz = shift
-            moved.append(MeshPart(mesh.name, tuple(
-                tuple((point[0] + dx, point[1] + dy, point[2] + dz)
-                      for point in triangle)
-                for triangle in mesh.triangles)))
+            triangles = [((p0[0] + dx, p0[1] + dy, p0[2] + dz),
+                          (p1[0] + dx, p1[1] + dy, p1[2] + dz),
+                          (p2[0] + dx, p2[1] + dy, p2[2] + dz))
+                         for p0, p1, p2 in mesh.triangles]
+            moved.append(MeshPart(mesh.name, tuple(triangles)))
         meshes = moved
     canvas = _ViewCanvas()
     canvas.resize(size)

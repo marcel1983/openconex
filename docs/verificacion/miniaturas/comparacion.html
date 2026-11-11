@@ -7,20 +7,30 @@ table { border-collapse: collapse; }
 th, td { border-bottom: 1px solid #d6dee8; padding: 10px; text-align: left; }
 th { width: 170px; }
 img { width: 360px; height: 203px; object-fit: contain; background: #fafafa; }
+.none { color: #90a4ae; font-style: italic; }
 </style></head><body>
 <h1>Miniaturas: SVG frente a captura 3D</h1>
-<p>Las capturas 3D de placa base, doble ángulo, placa de extremo, asiento y
-placa doblada se usan en la galería. Placa simple y placa extendida quedan en
-revisión: el modelo actual oculta la placa entre el alma y el apoyo.</p>
+<p>Las capturas 3D de placa base y de las conexiones de corte se usan en la
+galería, con vista explosionada para separar la viga y dejar visible la placa,
+el asiento o los ángulos. Las tarjetas viga-columna añaden una columna de
+contexto; las viga-viga muestran el alma del apoyo. La placa doblada queda en
+revisión: el modelo actual no representa con claridad el apoyo en esviaje, así
+que la galería mantiene su isométrico SVG.</p>
 <table><thead><tr><th>Tipo</th><th>SVG</th><th>3D</th></tr></thead>
 <tbody><tr><th>Placa base expuesta</th><td><img src="../../../src/openconex/data/connections/base_plate_exposed.svg" alt="Placa base expuesta SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/base_plate_exposed.png" alt="Placa base expuesta 3D"></td></tr>
 <tr><th>Base empotrada Tipo I</th><td><img src="../../../src/openconex/data/connections/base_plate_embedded.svg" alt="Base empotrada Tipo I SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/base_plate_embedded.png" alt="Base empotrada Tipo I 3D"></td></tr>
 <tr><th>Base débil</th><td><img src="../../../src/openconex/data/connections/base_plate_weak.svg" alt="Base débil SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/base_plate_weak.png" alt="Base débil 3D"></td></tr>
-<tr><th>Placa simple</th><td><img src="../../../src/openconex/data/connections/shear_single_plate.svg" alt="Placa simple SVG"></td><td><img src="3d/shear_single_plate.png" alt="Placa simple 3D"></td></tr>
-<tr><th>Placa extendida</th><td><img src="../../../src/openconex/data/connections/shear_extended_plate.svg" alt="Placa extendida SVG"></td><td><img src="3d/shear_extended_plate.png" alt="Placa extendida 3D"></td></tr>
+<tr><th>Placa simple</th><td><img src="../../../src/openconex/data/connections/shear_single_plate.svg" alt="Placa simple SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_single_plate.png" alt="Placa simple 3D"></td></tr>
+<tr><th>Placa extendida</th><td><img src="../../../src/openconex/data/connections/shear_extended_plate.svg" alt="Placa extendida SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_extended_plate.png" alt="Placa extendida 3D"></td></tr>
 <tr><th>Doble ángulo</th><td><img src="../../../src/openconex/data/connections/shear_double_angle.svg" alt="Doble ángulo SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_double_angle.png" alt="Doble ángulo 3D"></td></tr>
 <tr><th>Placa de extremo</th><td><img src="../../../src/openconex/data/connections/shear_end_plate.svg" alt="Placa de extremo SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_end_plate.png" alt="Placa de extremo 3D"></td></tr>
 <tr><th>Asiento</th><td><img src="../../../src/openconex/data/connections/shear_seated.svg" alt="Asiento SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_seated.png" alt="Asiento 3D"></td></tr>
 <tr><th>Asiento rigidizado</th><td><img src="../../../src/openconex/data/connections/shear_stiffened_seat.svg" alt="Asiento rigidizado SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_stiffened_seat.png" alt="Asiento rigidizado 3D"></td></tr>
-<tr><th>Placa doblada</th><td><img src="../../../src/openconex/data/connections/shear_skewed_bent_plate.svg" alt="Placa doblada SVG"></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_skewed_bent_plate.png" alt="Placa doblada 3D"></td></tr></tbody></table>
+<tr><th>Viga-viga, placa simple</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_single_plate.png" alt="Viga-viga, placa simple 3D"></td></tr>
+<tr><th>Viga-viga, placa extendida</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_extended_single_plate.png" alt="Viga-viga, placa extendida 3D"></td></tr>
+<tr><th>Viga-viga, doble ángulo</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_double_angle.png" alt="Viga-viga, doble ángulo 3D"></td></tr>
+<tr><th>Viga-viga, placa de extremo</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_end_plate.png" alt="Viga-viga, placa de extremo 3D"></td></tr>
+<tr><th>Viga-viga, asiento</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_seated.png" alt="Viga-viga, asiento 3D"></td></tr>
+<tr><th>Viga-viga, asiento rigidizado</th><td><span class="none">Sin SVG propio</span></td><td><img src="../../../src/openconex/data/connections/thumbs/shear_beam_stiffened_seat.png" alt="Viga-viga, asiento rigidizado 3D"></td></tr>
+<tr><th>Placa doblada</th><td><img src="../../../src/openconex/data/connections/shear_skewed_bent_plate.svg" alt="Placa doblada SVG"></td><td><img src="3d/shear_skewed_bent_plate.png" alt="Placa doblada 3D"></td></tr></tbody></table>
 </body></html>

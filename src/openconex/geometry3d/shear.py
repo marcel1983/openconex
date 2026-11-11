@@ -42,7 +42,8 @@ def _rotate_y(shape, angle: float):
     return BRepBuilderAPI_Transform(shape, transform, True).Shape()
 
 
-def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate) -> list[Part]:
+def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate, *,
+                      context: str | None = None) -> list[Part]:
     """Schematic solid model of the skewed double bent plate (phase 2)."""
     beam, support = conn.beam, conn.support
     assert beam is not None
@@ -68,6 +69,11 @@ def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate) -> list[Part]:
     parts.append(Part("beam", _rotate_y(section, alpha)))
     parts.append(Part("support", _box(-support_t, 0.0, -support_width / 2, support_t, d,
                                       support_width)))
+    if context:
+        member = _support_context(conn, -4 * INCH, d + 4 * INCH, support_t,
+                                  support_width, context)
+        if member is not None:
+            parts.append(member)
 
     for name, plate, sign, leg in (("a", a, 1, leg_a), ("b", b, -1, leg_b)):
         z = sign * tw / 2
@@ -93,13 +99,39 @@ def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate) -> list[Part]:
     return parts
 
 
-def shear_parts(conn: ShearConnection) -> list[Part]:
+def _support_context(conn: ShearConnection, lo: float, hi: float, t_sup: float,
+                     sup_w: float, kind: str) -> Part | None:
+    """Supporting member behind the connection face, for gallery art only.
+
+    The shear model draws the support as a thin plate because the calculation
+    only needs the local thickness.  A prism gives the thumbnails the context
+    of a column (``kind="column"``) or of a supporting girder
+    (``kind="beam"``) without changing the exported connection geometry:
+    ``context`` is off by default.
+    """
+    support = conn.support
+    if support is None:
+        return None
+    depth = max(support.bf, 12 * INCH)
+    if kind == "column":
+        return Part("support_context", _box(-depth, lo, -sup_w / 2, depth,
+                                            hi - lo, sup_w))
+    flange = max(support.tf, 0.25 * INCH)
+    length = max(3 * sup_w, 36 * INCH)
+    body = _box(-depth, lo, -length / 2, depth - t_sup, hi - lo, length)
+    top = _box(-depth, hi - flange / 2, -length / 2, depth, flange, length)
+    bottom = _box(-depth, lo - flange / 2, -length / 2, depth, flange, length)
+    return Part("support_context", _fuse_all([body, top, bottom]))
+
+
+def shear_parts(conn: ShearConnection, *, context: str | None = None) -> list[Part]:
     """Beam, support, connecting elements and bolts as OCP solids."""
     _require()
     if isinstance(conn.element, SkewedBentPlate):
-        return _bent_plate_parts(conn, conn.element)
+        return _bent_plate_parts(conn, conn.element, context=context)
     lay = shear_layout(conn)
     beam, el = conn.beam, conn.element
+    assert beam is not None
     d, tf, tw, bf = beam.d, beam.tf, beam.tw, beam.bf
     x0, length = lay.beam_start, lay.beam_length
     parts: list[Part] = []
@@ -122,6 +154,10 @@ def shear_parts(conn: ShearConnection) -> list[Part]:
         else max(bf, 12 * INCH)
     t_sup = max(lay.support_t, INCH / 4)
     parts.append(Part("support", _box(-t_sup, lo, -sup_w / 2, t_sup, hi - lo, sup_w)))
+    if context:
+        member = _support_context(conn, lo, hi, t_sup, sup_w, context)
+        if member is not None:
+            parts.append(member)
     # connecting elements
     t = lay.plate_thickness
     side = tw / 2
@@ -152,15 +188,18 @@ def shear_parts(conn: ShearConnection) -> list[Part]:
                 parts.append(Part(name, _box(x_0, y_0, -t / 2, w, h, t)))
         else:
             parts.append(Part(name, _box(x_0, y_0, side, w, h, t)))
-    if conn.cope is not None and lay.cope_doubler is not None:
-        x_0, y_0, x_1, y_1 = lay.cope_doubler
-        parts.append(Part("doubler", _box(x_0, y_0, side, x_1 - x_0, y_1 - y_0,
-                                          conn.cope.doubler.thickness)))
-    if conn.cope is not None and lay.cope_stiffener is not None:
-        x_0, y_0, x_1, y_1 = lay.cope_stiffener
-        width = conn.cope.stiffener.width
-        parts.append(Part("stiffener", _box(x_0, y_0, -width / 2, x_1 - x_0,
-                                            y_1 - y_0, width)))
+    if conn.cope is not None:
+        doubler = conn.cope.doubler
+        if lay.cope_doubler is not None and doubler is not None:
+            x_0, y_0, x_1, y_1 = lay.cope_doubler
+            parts.append(Part("doubler", _box(x_0, y_0, side, x_1 - x_0,
+                                              y_1 - y_0, doubler.thickness)))
+        stiffener = conn.cope.stiffener
+        if lay.cope_stiffener is not None and stiffener is not None:
+            x_0, y_0, x_1, y_1 = lay.cope_stiffener
+            width = stiffener.width
+            parts.append(Part("stiffener", _box(x_0, y_0, -width / 2, x_1 - x_0,
+                                                y_1 - y_0, width)))
     # bolts
     r = lay.bolt_diameter / 2 if lay.bolt_diameter else 0.375 * INCH
     grip = tw + 2 * t + 2 * r

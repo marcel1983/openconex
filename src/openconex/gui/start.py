@@ -97,6 +97,7 @@ class ConnectionCard(QFrame):
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(5)
         image = QLabel()
+        image.setObjectName("cardImage")
         image.setAlignment(Qt.AlignmentFlag.AlignCenter)
         image.setPixmap(connection_pixmap(asset, QSize(228, 132)))
         layout.addWidget(image)
@@ -274,6 +275,7 @@ QFrame#connectionCard[disabled="true"] {
     background: #f0f2f4;
     border-color: #e0e4e8;
 }
+QLabel#cardImage { background: #fafafa; border-radius: 6px; }
 QLabel#cardTitle { font-size: 14px; font-weight: 600; color: #1f2d3d; }
 QLabel#cardText { font-size: 11px; color: #5d6d7e; }
 QLabel#cardBadge {
