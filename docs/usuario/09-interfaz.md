@@ -33,7 +33,7 @@ Al abrir OpenConex sin un proyecto, aparece una galería visual:
 - **Corte viga-viga**: los mismos tipos, con la viga de apoyo en lugar de la columna.
 - **Momento viga-columna** y **Empalmes**: se muestran como *Próximamente*.
 
-Cada tarjeta tiene un isométrico y una descripción. Las tarjetas de **placa base** usan una captura del modelo 3D; las de **corte** mantienen el isométrico SVG. Al elegir una, se abre el editor correspondiente con un proyecto inicial válido y valores habituales.
+Cada tarjeta tiene un isométrico y una descripción. Las tarjetas de **placa base**, **doble ángulo**, **placa de extremo**, **asiento**, **asiento rigidizado** y **placa doblada** usan una captura del modelo 3D. **Placa simple** y **placa extendida** mantienen el isométrico SVG porque el modelo 3D oculta la placa entre el alma y el apoyo. Al elegir una, se abre el editor correspondiente con un proyecto inicial válido y valores habituales.
 
 La comparación entre los isométricos SVG y las capturas 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente.
 

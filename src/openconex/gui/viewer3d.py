@@ -199,7 +199,10 @@ def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
                  hide: tuple[str, ...] = ("beam", "support", "column", "pedestal",
                                           "foundation"),
                  highlight: tuple[str, ...] = (),
-                 highlight_color: str = "#1565c0") -> QPixmap:
+                 highlight_color: str = "#1565c0",
+                 swap_yz: bool = False,
+                 omit: tuple[str, ...] = (),
+                 explode: dict[str, tuple[float, float, float]] | None = None) -> QPixmap:
     """Render a static connection thumbnail with the viewer's painter.
 
     The camera is centred on the connection parts (everything except the main
@@ -207,10 +210,29 @@ def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
     remains visible.  It is used by the gallery thumbnail generator.
     """
     meshes = tessellate_parts(parts)
+    if swap_yz:
+        meshes = [MeshPart(mesh.name, tuple(
+            tuple((point[0], point[2], point[1]) for point in triangle)
+            for triangle in mesh.triangles)) for mesh in meshes]
+    if explode:
+        moved = []
+        for mesh in meshes:
+            shift = explode.get(mesh.name)
+            if shift is None:
+                moved.append(mesh)
+                continue
+            dx, dy, dz = shift
+            moved.append(MeshPart(mesh.name, tuple(
+                tuple((point[0] + dx, point[1] + dy, point[2] + dz)
+                      for point in triangle)
+                for triangle in mesh.triangles)))
+        meshes = moved
     canvas = _ViewCanvas()
     canvas.resize(size)
     canvas.set_meshes(meshes)
-    focus = [mesh for mesh in meshes if mesh.name not in hide] or meshes
+    hidden = set(hide) | set(omit)
+    canvas._hidden = set(omit)
+    focus = [mesh for mesh in meshes if mesh.name not in hidden] or meshes
     points = [point for mesh in focus for tri in mesh.triangles for point in tri]
     if points:
         xs, ys, zs = zip(*points, strict=False)
