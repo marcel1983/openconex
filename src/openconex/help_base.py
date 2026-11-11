@@ -31,12 +31,14 @@ _FIELDS = [
        "exposed", "PB"),
     _f("column", "Columna", "Conexión",
        "Columna que apoya en la placa.",
-       "Elija una etiqueta AISC o escriba una sección genérica W/HSS.",
+       "Elija una etiqueta AISC (W, M, S, HP, HSS o PIPE) o escriba una sección "
+       "genérica W/HSS.",
        "Aporta d, bf, tf, tw y el material; afecta presiones, anclajes y rigidizadores.",
        "—", "PB"),
     _f("column_grade", "Grado de columna", "Conexión",
        "Acero de la columna del catálogo.",
-       "Elija un acero de la biblioteca.",
+       "Elija un acero de la biblioteca. Para HSS y PIPE use ASTM A500 Gr. C "
+       "(rectangular) o (round).",
        "Define Fy y Fu de la columna para las comprobaciones de placa y soldadura.",
        "ASTM A992", "PB"),
     _f("N", "Largo N", "Placa base",
@@ -481,7 +483,9 @@ _UI = [
         "Selector de placa base expuesta o empotrada.", "Seleccione el tipo.",
         "Muestra solo los bloques aplicables.", "exposed", "PB"),
     _ui("base.ui.column", "Selector de columna", "Controles",
-        "Columna del proyecto.", "Elija una sección del catálogo o escriba una genérica.",
+        "Columna del proyecto.",
+        "Elija una sección del catálogo (W, M, S, HP, HSS o PIPE) o escriba una "
+        "genérica.",
         "Aporta la geometría y el material.", "—", "PB"),
     _ui("base.ui.methods", "Métodos", "Controles",
         "Métodos LRFD/ASD.", "Marque uno o ambos.",

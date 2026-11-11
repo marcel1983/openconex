@@ -144,6 +144,7 @@ class MainWindow(QMainWindow):
         self._material_combos: dict[str, QComboBox] = {}
         self._custom_sections: dict[str, SectionInput] = {}
         self._section_labels: list[str] | None = None
+        self._suspend_grade_sync = False
         self._method_boxes: dict[Method, QCheckBox] = {}
         self._combination_edits: dict[str, QLineEdit] = {}
         self.advanced: BasePlateAdvancedForm | None = None
@@ -890,18 +891,28 @@ class MainWindow(QMainWindow):
         length, thickness = Kind.LENGTH, Kind.THICKNESS
         label = self._section_combo.currentText().strip()
         column_d = column_bf = None
+        column_round = False
         custom = self._custom_sections.get(label)
         try:
             if custom is not None:
                 column_d = parse(str(custom.d), length, self._units)
                 width = custom.bf if custom.bf is not None else custom.d
                 column_bf = parse(str(width), length, self._units)
+                column_round = (isinstance(custom, HSSSectionInput)
+                                and str(custom.shape) == "round")
             elif label:
                 section = aisc_shapes().get(label)
-                column_d = section.properties.get("d")
-                column_bf = section.properties.get("bf")
+                props = section.properties
+                if section.type in {"HSS", "PIPE"}:
+                    column_d = props.get("Ht") or props.get("OD")
+                    column_bf = props.get("B") or props.get("OD")
+                    column_round = props.get("OD") is not None
+                else:
+                    column_d = props.get("d")
+                    column_bf = props.get("bf")
         except (ShapeDatabaseError, ValueError):
             column_d = column_bf = None
+            column_round = False
 
         rods_text = self._plain_edits["rods_per_side"].text().strip()
         try:
@@ -923,6 +934,7 @@ class MainWindow(QMainWindow):
             f=quantity("f", length), rod_spacing=quantity("rod_spacing", length),
             hef=quantity("hef", length), rods_per_side=rods,
             column_d=column_d, column_bf=column_bf, column_label=label,
+            column_round=column_round,
             pedestal_N=quantity("pedestal_N", length),
             pedestal_B=quantity("pedestal_B", length),
             lug_width=lug_width, lug_direction=lug_direction, units=self._units)
@@ -1079,10 +1091,30 @@ class MainWindow(QMainWindow):
             self.advanced.set_electrodes(self._electrode_names())
 
     def _on_section_changed(self, label: str) -> None:
+        if self._suspend_grade_sync or "column_grade" not in self._material_combos:
+            return
+        combo = self._material_combos["column_grade"]
         section = self._custom_sections.get(label)
-        if section is not None and "column_grade" in self._material_combos:
-            self._fill_combo(self._material_combos["column_grade"],
-                             self._steel_names(), section.grade)
+        if section is not None:
+            self._fill_combo(combo, self._steel_names(), section.grade)
+            return
+        if not label:
+            return
+        try:
+            catalog = aisc_shapes().get(label)
+        except ShapeDatabaseError:
+            return
+        current = combo.currentText()
+        if catalog.type in {"HSS", "PIPE"}:
+            round_ = catalog.properties.get("OD") is not None
+            grade = ("ASTM A500 Gr. C (round)" if round_
+                     else "ASTM A500 Gr. C (rectangular)")
+            if current in {"ASTM A992", "ASTM A500 Gr. C (rectangular)",
+                           "ASTM A500 Gr. C (round)"}:
+                self._fill_combo(combo, self._steel_names(), grade)
+        elif catalog.type in {"W", "M", "S", "HP"} and current in {
+                "ASTM A500 Gr. C (rectangular)", "ASTM A500 Gr. C (round)"}:
+            self._fill_combo(combo, self._steel_names(), "ASTM A992")
 
     def open_section_library(self) -> None:
         callback = self.add_custom_section if self.project is not None else None
@@ -1277,8 +1309,12 @@ class MainWindow(QMainWindow):
             "plate_grade": project.base_plate.plate_grade,
             "rod_grade": project.base_plate.rod_grade,
         })
-        self._section_combo.setCurrentText(column_label)
-        self._on_section_changed(column_label)
+        self._suspend_grade_sync = True
+        try:
+            self._section_combo.setCurrentText(column_label)
+            self._on_section_changed(column_label)
+        finally:
+            self._suspend_grade_sync = False
 
         bp = project.base_plate
         embedded = bp.connection_type == "embedded" or bp.embedded_base is not None

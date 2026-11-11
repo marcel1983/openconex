@@ -55,7 +55,7 @@ def _tip(widget: QWidget, key: str) -> None:
 
 SectionInput = WSectionInput | HSSSectionInput
 
-SECTION_TYPES = ("W", "M", "S", "HP")
+SECTION_TYPES = ("W", "M", "S", "HP", "HSS", "PIPE")
 """Catalog types accepted by the base plate engine as a column label."""
 
 LENGTH = Kind.LENGTH

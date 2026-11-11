@@ -17,7 +17,7 @@ from importlib import resources
 from pathlib import Path
 
 from openconex.core.materials import SteelGrade
-from openconex.core.model import IShape
+from openconex.core.model import HSSKind, HSSShape, IShape
 from openconex.units import ureg
 
 __all__ = ["DEFAULT_SQL", "Section", "ShapeDatabase", "ShapeDatabaseError", "aisc_shapes"]
@@ -84,6 +84,34 @@ class Section:
         return IShape(name=self.label, d=self["d"], bf=self["bf"], tf=self["tf"],
                       tw=self["tw"], k_des=p.get("kdes") or 0.0, grade=grade,
                       materials=materials or {})
+
+    def to_column(self, grade: str = "ASTM A992",
+                  materials: Mapping[str, SteelGrade] | None = None
+                  ) -> IShape | HSSShape:
+        """Column model for any catalog shape accepted by the base plate engine.
+
+        I-shapes keep :meth:`to_ishape`; HSS and PIPE sections become
+        :class:`~openconex.core.model.HSSShape` with outside dimensions and the
+        catalog design wall thickness.
+        """
+        if self.type in _I_SHAPES:
+            return self.to_ishape(grade, materials)
+        p = self.properties
+        if self.type == "PIPE":
+            return HSSShape(name=self.label, kind=HSSKind.ROUND, d=self["OD"],
+                            width=None, t=self["tdes"], grade=grade,
+                            materials=materials or {})
+        if self.type == "HSS":
+            if p.get("OD") is not None:
+                return HSSShape(name=self.label, kind=HSSKind.ROUND, d=self["OD"],
+                                width=None, t=self["tdes"], grade=grade,
+                                materials=materials or {})
+            d, width = self["Ht"], self["B"]
+            kind = (HSSKind.SQUARE if abs(d - width) < 1e-9
+                    else HSSKind.RECTANGULAR)
+            return HSSShape(name=self.label, kind=kind, d=d, width=width,
+                            t=self["tdes"], grade=grade, materials=materials or {})
+        raise ShapeDatabaseError(f"{self.label} ({self.type}) is not a column section")
 
 
 class ShapeDatabase:

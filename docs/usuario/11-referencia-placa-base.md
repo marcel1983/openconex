@@ -11,8 +11,8 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
 | `connection_type` | Tipo de base: placa base expuesta o base empotrada. | Seleccione Placa base expuesta o Base empotrada Tipo I. | Determina qué comprobaciones se ejecutan y qué campos son obligatorios. | exposed | PB |
-| `column` | Columna que apoya en la placa. | Elija una etiqueta AISC o escriba una sección genérica W/HSS. | Aporta d, bf, tf, tw y el material; afecta presiones, anclajes y rigidizadores. | — | PB |
-| `column_grade` | Acero de la columna del catálogo. | Elija un acero de la biblioteca. | Define Fy y Fu de la columna para las comprobaciones de placa y soldadura. | ASTM A992 | PB |
+| `column` | Columna que apoya en la placa. | Elija una etiqueta AISC (W, M, S, HP, HSS o PIPE) o escriba una sección genérica W/HSS. | Aporta d, bf, tf, tw y el material; afecta presiones, anclajes y rigidizadores. | — | PB |
+| `column_grade` | Acero de la columna del catálogo. | Elija un acero de la biblioteca. Para HSS y PIPE use ASTM A500 Gr. C (rectangular) o (round). | Define Fy y Fu de la columna para las comprobaciones de placa y soldadura. | ASTM A992 | PB |
 
 ### Placa base
 
@@ -156,7 +156,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `main.help.checks` | Guía para leer las verificaciones. | Ayuda → Verificaciones. | Explica demanda, capacidad, relación y estado. | — | todas |
 | `main.help.about` | Versión y licencia. | Ayuda → Acerca de. | No calcula. | — | todas |
 | `base.ui.type` | Selector de placa base expuesta o empotrada. | Seleccione el tipo. | Muestra solo los bloques aplicables. | exposed | PB |
-| `base.ui.column` | Columna del proyecto. | Elija una sección del catálogo o escriba una genérica. | Aporta la geometría y el material. | — | PB |
+| `base.ui.column` | Columna del proyecto. | Elija una sección del catálogo (W, M, S, HP, HSS o PIPE) o escriba una genérica. | Aporta la geometría y el material. | — | PB |
 | `base.ui.methods` | Métodos LRFD/ASD. | Marque uno o ambos. | Genera las combinaciones y factores. | LRFD | PB |
 | `base.ui.cases` | Cargas del proyecto. | Agregue filas con nombre, tipo, P, V, M. | Producen la demanda de cada verificación. | — | PB |
 | `base.ui.combinations` | Combinaciones ASCE 7 o propias. | Active las de código o defina factores. | Cada combinación se calcula por separado. | — | PB |
