@@ -24,9 +24,20 @@ o directamente con un proyecto:
 openconex-gui examples/base_plate_dg1_4_7_11.ocnx
 ```
 
+## Pantalla de inicio
+
+Al abrir OpenConex sin un proyecto, aparece una galería visual:
+
+- **Placa base**: expuesta, empotrada Tipo I o base débil sísmica.
+- **Corte viga-columna**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento, asiento rigidizado o placa doblada en esviaje.
+- **Corte viga-viga**: los mismos tipos, con la viga de apoyo en lugar de la columna.
+- **Momento viga-columna** y **Empalmes**: se muestran como *Próximamente*.
+
+Cada tarjeta tiene un isométrico y una descripción. Al elegir una, se abre el editor correspondiente con un proyecto inicial válido y valores habituales. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente.
+
 ## Flujo de trabajo
 
-1. **Archivo > Abrir** para cargar un `.ocnx`.
+1. Elegir una tarjeta en la **pantalla de inicio** o **Archivo > Abrir** para cargar un `.ocnx`.
 2. Elegir el **tipo de conexión**:
    - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
    - **Base empotrada Tipo I**, con el empotramiento, el pedestal y el refuerzo horizontal.

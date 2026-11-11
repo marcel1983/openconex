@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="220" viewBox="0 0 320 220">
+<g transform="translate(-114.00,-28.53) scale(0.9895)">
+<polygon points="402.49,215.00 367.85,235.00 367.85,185.00 402.49,165.00" fill="#bac2ca" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="160.00,115.00 367.85,235.00 367.85,185.00 160.00,65.00" fill="#d9e2ec" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="194.64,45.00 402.49,165.00 367.85,185.00 160.00,65.00" fill="#eaf4fe" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="320.21,182.50 287.31,201.50 287.31,156.50 320.21,137.50" fill="#bac2ca" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="157.40,126.50 287.31,201.50 287.31,156.50 157.40,81.50" fill="#d9e2ec" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="190.31,62.50 320.21,137.50 287.31,156.50 157.40,81.50" fill="#eaf4fe" stroke="#607d8b" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="195.51,115.50 156.54,138.00 156.54,78.00 195.51,55.50" fill="#a0bed7" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="151.34,135.00 156.54,138.00 156.54,78.00 151.34,75.00" fill="#bbdefb" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<polygon points="190.31,52.50 195.51,55.50 156.54,78.00 151.34,75.00" fill="#c9efff" stroke="#1565c0" stroke-width="1.4" opacity="1.0" stroke-linejoin="round"/>
+<circle cx="189.44" cy="110.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="170.39" cy="121.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="189.44" cy="90.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="170.39" cy="101.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="189.44" cy="70.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<circle cx="170.39" cy="81.00" r="3.20" fill="#0d47a1" stroke="#0d47a1" stroke-width="1.0"/>
+<line x1="195.51" y1="110.50" x2="195.51" y2="58.50" stroke="#ef6c00" stroke-width="2.0" stroke-linecap="round"/>
+</g>
+</svg>

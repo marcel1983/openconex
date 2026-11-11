@@ -189,6 +189,8 @@ class MainWindow(QMainWindow):
             return item
 
         file_menu = self.menuBar().addMenu("&Archivo")
+        file_menu.addAction(action("Nueva conexión…", self.new_connection_dialog,
+                                   "Ctrl+N", "main.file.new"))
         file_menu.addAction(action("Abrir…", self.open_project_dialog, "Ctrl+O",
                                    "main.file.open"))
         file_menu.addAction(action("Guardar", self.save_project_dialog, "Ctrl+S",
@@ -1170,6 +1172,38 @@ class MainWindow(QMainWindow):
         self._clear_report()
         self.statusBar().showMessage(f"Proyecto abierto: {self.path}")
 
+    def open_project_model(self, project: Project,
+                           path: str | Path | None = None) -> None:
+        """Load an in-memory project, for example from the connection gallery."""
+        self.project = project
+        self.path = None if path is None else Path(path)
+        self._fill_form(project)
+        self._clear_report()
+        self.statusBar().showMessage(
+            f"Proyecto creado: {project.info.name or 'sin nombre'}")
+
+    def new_connection_dialog(self) -> None:
+        from openconex.gui.start import ConnectionStartDialog
+
+        dialog = ConnectionStartDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted or dialog.selection is None:
+            return
+        selection = dialog.selection
+        if selection.kind == "open" and selection.path is not None:
+            self.open_project(selection.path)
+        elif selection.kind == "base_plate" and selection.project is not None:
+            if self.project is not None:
+                answer = QMessageBox.question(
+                    self, "Nueva conexión",
+                    "Se reemplazará el proyecto de placa base actual. ¿Desea continuar?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                    QMessageBox.StandardButton.No)
+                if answer != QMessageBox.StandardButton.Yes:
+                    return
+            self.open_project_model(selection.project)
+        elif selection.kind == "shear" and selection.project is not None:
+            self.open_shear_window(selection.project)
+
     def open_shear_window(self, project: Project | None = None,
                           path: str | Path | None = None):
         """Open a beam-end shear connection project in its own window."""
@@ -1670,8 +1704,10 @@ class MainWindow(QMainWindow):
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv if argv is None else argv
     no_splash = "--no-splash" in args[1:]
+    no_start = "--no-start" in args[1:]
     check_assets = "--check-assets" in args[1:]
-    qt_args = [arg for arg in args if arg not in {"--no-splash", "--check-assets"}]
+    qt_args = [arg for arg in args
+               if arg not in {"--no-splash", "--check-assets", "--no-start"}]
     if "--version" in qt_args[1:]:
         from openconex import __version__
         if sys.stdout is not None:
@@ -1691,10 +1727,47 @@ def main(argv: list[str] | None = None) -> int:
 
     splash = None if no_splash else show_splash(app)
     try:
-        window = MainWindow()
         projects = [arg for arg in qt_args[1:] if not arg.startswith("-")]
-        if projects:
-            window.open_project(projects[0])
+        if projects or no_start:
+            window = MainWindow()
+            if projects:
+                window.open_project(projects[0])
+            window.show()
+            if splash is not None:
+                splash.finish(window)
+            return app.exec()
+
+        from openconex.gui.start import ConnectionStartDialog
+
+        start = ConnectionStartDialog()
+        if splash is not None:
+            splash.finish(start)
+        if start.exec() != QDialog.DialogCode.Accepted or start.selection is None:
+            return 0
+        selection = start.selection
+        window = None
+        if selection.kind == "open" and selection.path is not None:
+            try:
+                project = load_project(selection.path)
+            except Exception as exc:
+                QMessageBox.critical(None, "Error al abrir", str(exc))
+                return 1
+            if project.shear_connection is not None:
+                from openconex.gui.shear import ShearWindow
+
+                window = ShearWindow(project, selection.path)
+            else:
+                window = MainWindow()
+                window.open_project_model(project, selection.path)
+        elif selection.kind == "base_plate" and selection.project is not None:
+            window = MainWindow()
+            window.open_project_model(selection.project)
+        elif selection.kind == "shear" and selection.project is not None:
+            from openconex.gui.shear import ShearWindow
+
+            window = ShearWindow(selection.project)
+        if window is None:
+            return 0
         window.show()
         if splash is not None:
             splash.finish(window)

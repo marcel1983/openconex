@@ -404,6 +404,11 @@ _FIELDS = [
 ]
 
 _UI = [
+    _ui("main.file.new", "Archivo → Nueva conexión", "Menú principal",
+        "Abre la galería para crear una conexión.",
+        "Archivo → Nueva conexión (Ctrl+N).",
+        "Crea un proyecto de placa base o de corte con valores iniciales.", "—",
+        "todas"),
     _ui("main.file.open", "Archivo → Abrir", "Menú principal",
         "Abre un proyecto .ocnx.", "Archivo → Abrir (Ctrl+O).",
         "Carga el proyecto y actualiza la ventana.", "—", "todas"),
