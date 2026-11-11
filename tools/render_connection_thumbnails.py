@@ -183,7 +183,7 @@ def render_comparison() -> None:
             f"<td><img src=\"{png}\" alt=\"{label} 3D\"></td></tr>")
     html = """<!doctype html>
 <html lang="es"><head><meta charset="utf-8">
-<title>Miniaturas: SVG frente a 3D</title>
+<title>Miniaturas: SVG frente a ilustración 3D</title>
 <style>
 body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: #1f2d3d; }
 table { border-collapse: collapse; }
@@ -192,8 +192,8 @@ th { width: 170px; }
 img { width: 360px; height: 203px; object-fit: contain; background: #fafafa; }
 .none { color: #90a4ae; font-style: italic; }
 </style></head><body>
-<h1>Miniaturas: SVG frente a captura 3D</h1>
-<p>Las capturas 3D de placa base y de las conexiones de corte se usan en la
+<h1>Miniaturas: SVG frente a ilustración 3D</h1>
+<p>Las ilustraciones 3D de placa base y de las conexiones de corte se usan en la
 galería, con vista explosionada para separar la viga y dejar visible la placa,
 el asiento o los ángulos. Las tarjetas viga-columna añaden una columna de
 contexto; las viga-viga muestran el alma del apoyo. La placa doblada queda en
