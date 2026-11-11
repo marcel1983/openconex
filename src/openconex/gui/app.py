@@ -898,7 +898,8 @@ class MainWindow(QMainWindow):
                 column_d = parse(str(custom.d), length, self._units)
                 width = custom.bf if custom.bf is not None else custom.d
                 column_bf = parse(str(width), length, self._units)
-                column_round = str(custom.shape) == "round"
+                column_round = (isinstance(custom, HSSSectionInput)
+                                and str(custom.shape) == "round")
             elif label:
                 section = aisc_shapes().get(label)
                 props = section.properties
