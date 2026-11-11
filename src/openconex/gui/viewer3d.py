@@ -194,6 +194,13 @@ class _ViewCanvas(QWidget):
         self.update()
 
 
+def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
+    """Map the shear model's y-up axes to the viewer's z-up axes."""
+    return [MeshPart(mesh.name, tuple(
+        tuple((point[0], point[2], point[1]) for point in triangle)
+        for triangle in mesh.triangles)) for mesh in meshes]
+
+
 def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
                  pitch: float = 25.0, zoom: float = 1.0, margin: float = 1.8,
                  hide: tuple[str, ...] = ("beam", "support", "column", "pedestal",
@@ -211,9 +218,7 @@ def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
     """
     meshes = tessellate_parts(parts)
     if swap_yz:
-        meshes = [MeshPart(mesh.name, tuple(
-            tuple((point[0], point[2], point[1]) for point in triangle)
-            for triangle in mesh.triangles)) for mesh in meshes]
+        meshes = _swap_yz_meshes(meshes)
     if explode:
         moved = []
         for mesh in meshes:
@@ -284,9 +289,10 @@ class Viewer3D(QWidget):
     """3D tab: asynchronous meshing, part visibility and selection."""
 
     def __init__(self, build: Callable[[], list[Part]],
-                 parent: QWidget | None = None) -> None:
+                 parent: QWidget | None = None, swap_yz: bool = False) -> None:
         super().__init__(parent)
         self._build = build
+        self._swap_yz = swap_yz
         self._generation = 0
         self._signals = _WorkerSignals()
         self._signals.done.connect(self._on_done)
@@ -340,6 +346,8 @@ class Viewer3D(QWidget):
 
     def set_meshes(self, meshes: list[MeshPart], message: str = "") -> None:
         """Populate the viewer synchronously (used by tests and callers)."""
+        if self._swap_yz:
+            meshes = _swap_yz_meshes(meshes)
         self._canvas.set_meshes(meshes, message)
         self._list.blockSignals(True)
         self._list.clear()
