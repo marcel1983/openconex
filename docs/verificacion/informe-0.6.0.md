@@ -4,7 +4,7 @@
 
 ## 1. Alcance
 
-Se revisan las verificaciones implementadas en OpenConex 0.5.10:
+Se revisan las verificaciones implementadas en OpenConex 0.5.11:
 
 - placa base y anclajes (DG1 3.ª ed., ACI 318-19);
 - conexiones de corte de la F5 (Manual AISC Parte 10 y ejemplos II.A-1A a II.A-19B);
