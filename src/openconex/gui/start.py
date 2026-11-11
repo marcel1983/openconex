@@ -47,7 +47,18 @@ class StartSelection:
 
 
 def connection_pixmap(asset: str, size: QSize) -> QPixmap:
-    """Render a packaged SVG into a transparent pixmap."""
+    """Load a packaged thumbnail: a 3D PNG if present, otherwise the SVG."""
+    try:
+        png = resources.files(DATA_PACKAGE).joinpath(
+            "connections", "thumbs", f"{asset}.png")
+        if png.is_file():
+            with resources.as_file(png) as file_path:
+                pixmap = QPixmap(str(file_path))
+            if not pixmap.isNull():
+                return pixmap.scaled(size, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+    except (FileNotFoundError, OSError):
+        pass
     pixmap = QPixmap(size)
     pixmap.fill(Qt.GlobalColor.transparent)
     try:

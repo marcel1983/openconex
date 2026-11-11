@@ -3,6 +3,7 @@
 """Connection gallery: family/subtype data and the starter projects."""
 
 import os
+from importlib import resources
 
 import pytest
 
@@ -61,6 +62,14 @@ def test_beam_to_beam_sets_the_support_web():
     connection = project.shear_connection
     assert connection.support_element == "web"
     assert connection.support == "W21X62"
+
+
+def test_base_plate_thumbnails_are_packaged():
+    for asset in ("base_plate_exposed", "base_plate_embedded", "base_plate_weak",
+                  "family_base_plate"):
+        path = resources.files("openconex.data").joinpath(
+            "connections", "thumbs", f"{asset}.png")
+        assert path.is_file(), asset
 
 
 @pytest.mark.parametrize("family", [f for f in FAMILIES],
