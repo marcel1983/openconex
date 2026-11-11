@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-10, sobre `main`, versión 0.5.11. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-11, sobre `main`, versión 0.5.12. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -28,6 +28,7 @@ Estado al 2026-11-10, sobre `main`, versión 0.5.11. Cada tarea indica qué hay 
 - [x] Cálculo independiente de placa extendida y viga destajada II.A-4/6/7 y II.A-19A (29 valores).
 - [x] Cierre de las parciales: `local.*` con valores manuales de §J10 y λ > 2λ_p con un caso sintético.
 - [x] HSS y PIPE del catálogo AISC en el selector de columna, con `HSSShape`, grado A500 y planta circular.
+- [x] Galería visual de conexiones (fase 1): familias, subtipos, isométricos SVG y proyectos iniciales.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.
@@ -36,6 +37,7 @@ Estado al 2026-11-10, sobre `main`, versión 0.5.11. Cada tarea indica qué hay 
 - [x] Release 0.5.9.
 - [x] Release 0.5.10.
 - [x] Release 0.5.11.
+- [x] Release 0.5.12.
 
 ## 0. Completado en 0.4.2
 
