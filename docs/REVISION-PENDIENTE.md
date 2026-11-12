@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-11, sobre `main`, versión 0.5.14. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-11, sobre `main`, versión 0.5.15. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -31,6 +31,7 @@ Estado al 2026-11-11, sobre `main`, versión 0.5.14. Cada tarea indica qué hay 
 - [x] Galería visual de conexiones (fase 1): familias, subtipos, isométricos SVG y proyectos iniciales.
 - [x] Galería visual (fase 2): ilustraciones 3D de placa base y corte, tarjetas de familia, vista explosionada y corrección de la orientación del visor 3D.
 - [x] Validación de la geometría de pernos: filas dentro de la placa o ángulo, l_ev/l_eh de la Tabla J3.4 y separación mínima; el cálculo se detiene con un mensaje correctivo.
+- [x] Render 3D limpio: caras posteriores ocultas, sin malla de triangulación, caras grandes subdivididas y elementos de conexión resaltados.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.
@@ -42,6 +43,7 @@ Estado al 2026-11-11, sobre `main`, versión 0.5.14. Cada tarea indica qué hay 
 - [x] Release 0.5.12.
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
+- [x] Release 0.5.15.
 
 ## 0. Completado en 0.4.2
 
