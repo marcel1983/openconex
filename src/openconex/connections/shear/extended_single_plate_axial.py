@@ -39,6 +39,7 @@ from .extended_single_plate import (
     _group,
     check_extended_single_plate,
 )
+from .plate_compression import plate_compression
 
 __all__ = ["check_extended_single_plate_axial"]
 
@@ -131,8 +132,14 @@ def _block(check: CheckResult, key: str) -> CheckResult:
 
 def check_extended_single_plate_axial(sp: ExtendedSinglePlate, V: float, N: float,
                                       method: Method, combo: str = "",
-                                      angle: float | None = None) -> list[CheckResult]:
-    """Limit states for the beam shear ``V`` and axial tension ``N`` (both ≥ 0)."""
+                                      angle: float | None = None,
+                                      compression: bool = False) -> list[CheckResult]:
+    """Limit states for the beam shear ``V`` and the axial force ``N`` (both ≥ 0).
+
+    ``N`` is tension unless ``compression`` is true: then the plate is checked
+    for compression buckling (§J4.4, K = 1.2, L = a) instead of tensile
+    yielding and rupture, and the axial block shear does not apply.
+    """
     if N <= 0:
         return check_extended_single_plate(sp, V, method, combo)
     if sp.lines < 1:
@@ -190,6 +197,17 @@ def check_extended_single_plate_axial(sp: ExtendedSinglePlate, V: float, N: floa
     support = _rename(elements.shear_rupture(2 * L * sp.support_t, sp.support_Fu, V,
                                              method, combo), "support_shear_rupture")
     base = {check.id: check for check in check_extended_single_plate(sp, V, method, combo)}
+    if compression:
+        comp = plate_compression("extended_plate", L, t, sp.a, Fy, N, method, combo)
+        return [
+            _bolts(sp, V, N, method, combo, angle),
+            shear_y, comp, flex_y, ltb,
+            _interaction("interaction_yielding", N, comp.capacity, M, flex_cap, V,
+                         shear_y.capacity, method, combo),
+            shear_r, flex_r, block_v, support,
+            base["extended_plate.max_thickness"],
+            base["extended_plate.weld_size"], base["extended_plate.support_thickness"],
+        ]
     return [
         _bolts(sp, V, N, method, combo, angle),
         shear_y, tens_y, flex_y, ltb,

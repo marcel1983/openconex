@@ -228,6 +228,7 @@ block_shear = "Bloque de corte de la placa B"
 weld = "Soldadura en C de la placa B al alma de la viga (centro instantáneo)"
 
 [check.single_plate]
+compression = "Compresión de la placa (pandeo, K = 1,2)"
 bolts = "Transferencia de corte en los agujeros (centro instantáneo)"
 shear_yielding = "Fluencia por corte de la placa"
 shear_rupture = "Rotura por corte de la placa"
@@ -265,6 +266,7 @@ stiffener_weld = "Soldadura del rigidizador longitudinal"
 stiffener_web_shear = "Rotura por corte del alma en el rigidizador"
 
 [check.extended_plate]
+compression = "Compresión de la placa (pandeo, K = 1,2)"
 bolts = "Grupo de pernos excéntrico (centro instantáneo)"
 max_thickness = "Espesor máximo de la placa (fluencia antes del corte de los pernos)"
 shear_yielding = "Fluencia por corte de la placa"
@@ -316,7 +318,7 @@ seat_plate_weld = "Soldadura mínima de la placa de asiento"
 seat_plate_weld_length = "Longitud mínima de la soldadura de la placa de asiento"
 
 [check.shear_connection]
-axial_compression = "Compresión axial (no implementada)"
+axial_compression = "Compresión axial (no implementada para esta conexión)"
 axial_unsupported = "Tracción axial no implementada para esta conexión"
 
 [check.base_plate]

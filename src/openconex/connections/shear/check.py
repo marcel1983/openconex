@@ -62,6 +62,8 @@ ELEMENTS = {
 
 AXIAL_TYPES = {ShearType.DOUBLE_ANGLE, ShearType.SINGLE_PLATE,
                ShearType.EXTENDED_SINGLE_PLATE}
+COMPRESSION_TYPES = {ShearType.SINGLE_PLATE, ShearType.EXTENDED_SINGLE_PLATE}
+"""Types whose plate is checked for axial compression (§J4.4, II.A-19B Comments)."""
 
 
 @dataclass(frozen=True)
@@ -156,9 +158,12 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
     V = abs(forces.V2)
     N = max(-forces.P, 0.0)
     out: list[CheckResult] = []
-    if forces.P > 0:
+    plate = conn.type in COMPRESSION_TYPES
+    C = forces.P if forces.P > 0 and plate else 0.0
+    if forces.P > 0 and not plate:
         out.append(_unsupported("axial_compression", forces.P, method, combo,
-                                "OpenConex (axial compression not implemented)"))
+                                "OpenConex (axial compression not implemented for this "
+                                "connection)"))
     el = conn.element
     if N > 0 and (conn.type not in AXIAL_TYPES or conn.welded_double_angle):
         out.append(_unsupported("axial_unsupported", -N, method, combo,
@@ -174,11 +179,18 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
             if conn.offset > 0 and not conn.welded_double_angle:
                 out.append(check_shared_support_bolts(el, V, method, combo))
     elif conn.type is ShearType.SINGLE_PLATE:
-        out += (check_single_plate_axial(el, V, N, method, combo) if N > 0
-                else check_single_plate(el, V, method, combo))
+        if C > 0:
+            out += check_single_plate_axial(el, V, C, method, combo, compression=True)
+        else:
+            out += (check_single_plate_axial(el, V, N, method, combo) if N > 0
+                    else check_single_plate(el, V, method, combo))
     elif conn.type is ShearType.EXTENDED_SINGLE_PLATE:
-        out += (check_extended_single_plate_axial(el, V, N, method, combo) if N > 0
-                else check_extended_single_plate(el, V, method, combo))
+        if C > 0:
+            out += check_extended_single_plate_axial(el, V, C, method, combo,
+                                                     compression=True)
+        else:
+            out += (check_extended_single_plate_axial(el, V, N, method, combo) if N > 0
+                    else check_extended_single_plate(el, V, method, combo))
     elif conn.type is ShearType.END_PLATE:
         out += check_end_plate(el, V, method, combo)
     elif conn.type is ShearType.SEATED:
