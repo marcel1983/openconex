@@ -39,6 +39,20 @@ def test_example_converts_to_model(project):
     assert names[:2] == ["LRFD-1", "LRFD-2"] and "ASD-2" in names
 
 
+@pytest.mark.parametrize(("label", "kind"), [
+    ("HSS20X20X1/2", HSSKind.SQUARE),
+    ("HSS34X10X1", HSSKind.RECTANGULAR),
+    ("Pipe12STD", HSSKind.ROUND),
+])
+def test_catalog_hss_and_pipe_columns(project, label, kind):
+    project.base_plate.column = label
+    column = project.column_model()
+    assert isinstance(column, HSSShape)
+    assert column.name == label
+    assert column.kind is kind
+    assert project.base_plate_model().column.name == label
+
+
 def test_bare_numbers_use_project_units(project):
     project.base_plate.tp = 2  # project units are "US": inches
     assert project.base_plate_model().tp == pytest.approx(50.8)

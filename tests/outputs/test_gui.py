@@ -67,6 +67,22 @@ def test_gui_uses_section_and_material_combos(qapp):
     window.open_project(EXAMPLE)
     assert window._section_combo.currentText() == "W12X96"
     assert window._section_combo.findText("C15X50") == -1
+    assert window._section_combo.findText("HSS20X20X1/2") >= 0
+    assert window._section_combo.findText("Pipe12STD") >= 0
+    window._section_combo.setCurrentText("HSS20X20X1/2")
+    assert window._material_combos["column_grade"].currentText() == \
+        "ASTM A500 Gr. C (rectangular)"
+    geometry = window._read_geometry()
+    assert geometry is not None
+    assert geometry.column_d == pytest.approx(20 * 25.4)
+    assert not geometry.column_round
+    window._section_combo.setCurrentText("Pipe12STD")
+    assert window._material_combos["column_grade"].currentText() == \
+        "ASTM A500 Gr. C (round)"
+    geometry = window._read_geometry()
+    assert geometry is not None and geometry.column_round
+    window._section_combo.setCurrentText("W12X96")
+    assert window._material_combos["column_grade"].currentText() == "ASTM A992"
     assert window._material_combos["column_grade"].currentText() == "ASTM A992"
     assert window._material_combos["plate_grade"].currentText() == "ASTM A572 Gr. 50"
     assert window._material_combos["rod_grade"].currentText() == "ASTM F1554 Gr. 36"

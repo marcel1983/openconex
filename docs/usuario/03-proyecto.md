@@ -149,7 +149,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 
 ### Columna del catálogo
 
-`"column": "W14X90"` toma las dimensiones de la base de datos de perfiles AISC v16, incluida en el programa. Admite perfiles W, M, S y HP.
+`"column": "W14X90"` toma las dimensiones de la base de datos de perfiles AISC v16, incluida en el programa. Admite perfiles W, M, S, HP, HSS y PIPE. Para HSS y PIPE, seleccione el grado `ASTM A500 Gr. C (rectangular)` o `ASTM A500 Gr. C (round)` en `column_grade`; el grado por defecto `ASTM A992` es solo para perfiles I.
 
 ### Columna W genérica
 

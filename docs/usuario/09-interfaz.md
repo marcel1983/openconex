@@ -24,9 +24,22 @@ o directamente con un proyecto:
 openconex-gui examples/base_plate_dg1_4_7_11.ocnx
 ```
 
+## Pantalla de inicio
+
+Al abrir OpenConex sin un proyecto, aparece una galería visual:
+
+- **Placa base**: expuesta, empotrada Tipo I o base débil sísmica.
+- **Corte viga-columna**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento, asiento rigidizado o placa doblada en esviaje.
+- **Corte viga-viga**: los mismos tipos, con la viga de apoyo en lugar de la columna.
+- **Momento viga-columna** y **Empalmes**: se muestran como *Próximamente*.
+
+Cada tarjeta tiene una imagen y una descripción. Las tarjetas de **placa base** y de **corte** —salvo **placa doblada en esviaje**— usan una ilustración 3D generada con el mismo motor de dibujo del visor: **placa simple**, **placa extendida**, **doble ángulo**, **placa de extremo**, **asiento** y **asiento rigidizado**. Las ilustraciones de corte separan la viga del apoyo para que se vea la placa, el asiento o los ángulos. Las tarjetas de **corte viga-columna** añaden una columna corta de contexto; las de **corte viga-viga** muestran el alma del apoyo. **Placa doblada en esviaje** mantiene el isométrico SVG porque el modelo 3D actual no representa con claridad el apoyo en esviaje. Las tarjetas de las familias disponibles también muestran una ilustración 3D representativa. Al elegir una tarjeta, se abre el editor correspondiente con un proyecto inicial válido y valores habituales.
+
+La comparación entre los isométricos SVG y las ilustraciones 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente.
+
 ## Flujo de trabajo
 
-1. **Archivo > Abrir** para cargar un `.ocnx`.
+1. Elegir una tarjeta en la **pantalla de inicio** o **Archivo > Abrir** para cargar un `.ocnx`.
 2. Elegir el **tipo de conexión**:
    - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
    - **Base empotrada Tipo I**, con el empotramiento, el pedestal y el refuerzo horizontal.
@@ -75,6 +88,8 @@ La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
 - **Arrastrar con el botón central o derecho** para desplazar la vista.
 - **Doble clic** o **Ajustar vista** para volver a la vista isométrica.
 - La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla.
+
+El render oculta las caras posteriores, sombrea cada superficie y no dibuja la triangulación interna. Los elementos de la conexión se resaltan en naranja y los pernos en gris oscuro, para distinguirlos de la viga, el apoyo y la columna.
 
 El modelo se genera en segundo plano al entrar en la pestaña, con las piezas de `geometry3d.base_plate` (`base_plate_parts` o `embedded_base_parts`). Funciona con placa expuesta y base empotrada. La exportación STEP/STL no cambia.
 
@@ -197,6 +212,8 @@ La misma información está en [Referencia de la conexión de corte](10-referenc
 5. Completar los casos de carga con `V` y `P` (tracción negativa) y los métodos LRFD/ASD.
 6. **Calcular** (`F5`): pestañas **Resumen**, **Verificaciones**, **Figuras** (elevación e isométrico) y **3D**.
 7. **Archivo > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
+
+Antes de calcular se revisa la geometría de los pernos. Cada fila debe quedar dentro de la placa, el ángulo o la placa de extremo, con las distancias al borde `l_ev` y `l_eh` de la Tabla J3.4 y una separación mínima de `2⅔d`. Si el grupo no cabe, **Calcular** muestra **Datos no válidos** con el campo y el valor necesario, y no genera figuras ni resultados. Por ejemplo, cuatro filas a 3 in con `l_ev = 1.25 in` necesitan 11.5 in de largo; un ángulo de 8.5 in se rechaza y pide aumentar el largo o reducir filas/separación.
 
 El cálculo por lotes también admite proyectos de conexión de corte; en el resumen, la columna muestra la viga.
 

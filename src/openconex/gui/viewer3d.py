@@ -7,8 +7,8 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 
-from PySide6.QtCore import QObject, QPointF, QRunnable, Qt, QThreadPool, Signal
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPolygonF
+from PySide6.QtCore import QObject, QPointF, QRunnable, QSize, Qt, QThreadPool, Signal
+from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
@@ -25,11 +25,15 @@ from openconex.geometry3d.base_plate import Part
 from openconex.geometry3d.mesh import MeshPart, tessellate_parts
 from openconex.help import help_text
 
-__all__ = ["Viewer3D", "part_color"]
+__all__ = ["Viewer3D", "part_color", "render_parts"]
 
 
 def part_color(name: str) -> QColor:
-    """Stable colour per semantic part name."""
+    """Stable colour per semantic part name.
+
+    Connection elements share a warm highlight so they stand out from the
+    grey-blue beam, support and column; bolts stay dark.
+    """
     lower = name.casefold()
     if "column" in lower:
         return QColor("#1565c0")
@@ -44,8 +48,12 @@ def part_color(name: str) -> QColor:
     if "face_plate" in lower or "embedded" in lower:
         return QColor("#546e7a")
     if "base_plate" in lower:
-        return QColor("#607d8b")
-    return QColor("#78909c")
+        return QColor("#ef6c00")
+    if ("bolt" in lower or "angle" in lower or "seat" in lower
+            or "stiffener" in lower or "bent_plate" in lower
+            or "doubler" in lower or lower == "plate" or "end_plate" in lower):
+        return QColor("#ef6c00")
+    return QColor("#607d8b")
 
 
 class _ViewCanvas(QWidget):
@@ -55,6 +63,8 @@ class _ViewCanvas(QWidget):
         super().__init__(parent)
         self._meshes: list[MeshPart] = []
         self._hidden: set[str] = set()
+        self._highlight: set[str] = set()
+        self._highlight_color = QColor("#1565c0")
         self._selected: str | None = None
         self._yaw = 35.0
         self._pitch = 25.0
@@ -65,6 +75,7 @@ class _ViewCanvas(QWidget):
         self._message = "Sin modelo 3D."
         self._last: QPointF | None = None
         self._mode = ""
+        self._show_hint = True
         self.setMinimumSize(420, 320)
         self.setCursor(Qt.CursorShape.OpenHandCursor)
 
@@ -118,12 +129,21 @@ class _ViewCanvas(QWidget):
         cyaw, syaw = math.cos(yaw), math.sin(yaw)
         cpitch, spitch = math.cos(pitch), math.sin(pitch)
         ox, oy, oz = self._center
-        triangles: list[tuple[float, QPolygonF, QColor, str]] = []
-        for mesh in self._meshes:
+        # Outward normal of a face must point toward the camera; culling the
+        # rest removes hidden surfaces and most painter-order flicker.
+        view = (cpitch * syaw, cpitch * cyaw, spitch)
+        light_dir = (-0.35, 0.45, 0.82)
+        triangles: list[tuple[float, int, QPolygonF, QColor, str]] = []
+        for part_index, mesh in enumerate(self._meshes):
             if mesh.name in self._hidden:
                 continue
-            color = part_color(mesh.name)
+            color = (self._highlight_color if mesh.name in self._highlight
+                     else part_color(mesh.name))
             for p0, p1, p2 in mesh.triangles:
+                normal = _normal(p0, p1, p2)
+                if (normal[0] * view[0] + normal[1] * view[1]
+                        + normal[2] * view[2]) <= 1e-9:
+                    continue
                 points = []
                 for point in (p0, p1, p2):
                     x, y, z = point[0] - ox, point[1] - oy, point[2] - oz
@@ -135,27 +155,30 @@ class _ViewCanvas(QWidget):
                     depth = z1 * spitch + y1 * cpitch
                     points.append((screen_x, screen_y, depth))
                 depth = sum(point[2] for point in points) / 3
-                normal = _normal(p0, p1, p2)
-                light = abs(normal[0] * 0.35 + normal[1] * -0.45 + normal[2] * 0.82)
+                light = max(0.0, normal[0] * light_dir[0]
+                            + normal[1] * light_dir[1]
+                            + normal[2] * light_dir[2])
                 shade = 0.55 + 0.45 * min(light, 1.0)
                 tint = QColor(color)
                 tint = tint.lighter(int(100 + shade * 70)) if self._selected == mesh.name \
                     else tint.darker(int(120 - shade * 40))
                 polygon = QPolygonF([QPointF(point[0], point[1]) for point in points])
-                triangles.append((depth, polygon, tint, mesh.name))
-        triangles.sort(key=lambda item: item[0])
-        painter.setPen(QPen(QColor(30, 35, 40, 90), 0.35))
-        for _depth, polygon, tint, name in triangles:
+                # A tiny part bias keeps coplanar faces from flickering while
+                # the model rotates.
+                triangles.append((depth + part_index * 0.001, part_index,
+                                  polygon, tint, mesh.name))
+        triangles.sort(key=lambda item: (item[0], item[1]))
+        for _depth, _part, polygon, tint, _name in triangles:
             painter.setBrush(QBrush(tint))
-            if name == self._selected:
-                painter.setPen(QPen(QColor("#ff6f00"), 1.4))
-            else:
-                painter.setPen(QPen(QColor(30, 35, 40, 80), 0.35))
+            # Same-colour outline closes antialiasing seams without drawing
+            # the triangulation as a wireframe.
+            painter.setPen(QPen(tint, 1.0))
             painter.drawPolygon(polygon)
-        painter.setPen(QColor("#455a64"))
-        painter.setFont(QFont("Segoe UI", 9))
-        painter.drawText(12, height - 12, "Arrastre para girar · rueda para zoom · "
-                                           "doble clic para ajustar")
+        if self._show_hint:
+            painter.setPen(QColor("#455a64"))
+            painter.setFont(QFont("Segoe UI", 9))
+            painter.drawText(12, height - 12, "Arrastre para girar · rueda para zoom · "
+                                               "doble clic para ajustar")
         painter.end()
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
@@ -187,6 +210,76 @@ class _ViewCanvas(QWidget):
         factor = 1.0015 ** event.angleDelta().y()
         self._zoom = max(0.2, min(8.0, self._zoom * factor))
         self.update()
+
+
+def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
+    """Map the shear model's y-up axes to the viewer's z-up axes.
+
+    Swapping y and z is a reflection: the vertex order is reversed so the
+    outward normals keep their orientation and back-face culling stays valid.
+    """
+    swapped: list[MeshPart] = []
+    for mesh in meshes:
+        triangles = [((p0[0], p0[2], p0[1]),
+                      (p2[0], p2[2], p2[1]),
+                      (p1[0], p1[2], p1[1]))
+                     for p0, p1, p2 in mesh.triangles]
+        swapped.append(MeshPart(mesh.name, tuple(triangles)))
+    return swapped
+
+
+def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
+                 pitch: float = 25.0, zoom: float = 1.0, margin: float = 1.8,
+                 hide: tuple[str, ...] = ("beam", "support", "support_context", "column",
+                                          "pedestal", "foundation"),
+                 highlight: tuple[str, ...] = (),
+                 highlight_color: str = "#1565c0",
+                 swap_yz: bool = False,
+                 omit: tuple[str, ...] = (),
+                 explode: dict[str, tuple[float, float, float]] | None = None) -> QPixmap:
+    """Render a static connection thumbnail with the viewer's painter.
+
+    The camera is centred on the connection parts (everything except the main
+    members in ``hide``) and pulled back by ``margin`` so some member context
+    remains visible.  It is used by the gallery thumbnail generator.
+    """
+    meshes = tessellate_parts(parts, max_edge=25.0)
+    if swap_yz:
+        meshes = _swap_yz_meshes(meshes)
+    if explode:
+        moved = []
+        for mesh in meshes:
+            shift = explode.get(mesh.name)
+            if shift is None:
+                moved.append(mesh)
+                continue
+            dx, dy, dz = shift
+            triangles = [((p0[0] + dx, p0[1] + dy, p0[2] + dz),
+                          (p1[0] + dx, p1[1] + dy, p1[2] + dz),
+                          (p2[0] + dx, p2[1] + dy, p2[2] + dz))
+                         for p0, p1, p2 in mesh.triangles]
+            moved.append(MeshPart(mesh.name, tuple(triangles)))
+        meshes = moved
+    canvas = _ViewCanvas()
+    canvas.resize(size)
+    canvas.set_meshes(meshes)
+    hidden = set(hide) | set(omit)
+    canvas._hidden = set(omit)
+    focus = [mesh for mesh in meshes if mesh.name not in hidden] or meshes
+    points = [point for mesh in focus for tri in mesh.triangles for point in tri]
+    if points:
+        xs, ys, zs = zip(*points, strict=False)
+        canvas._center = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2,
+                          (min(zs) + max(zs)) / 2)
+        radius = max(max(xs) - min(xs), max(ys) - min(ys), max(zs) - min(zs)) / 2
+        canvas._radius = max(radius * margin, 1.0)
+    canvas._yaw = yaw
+    canvas._pitch = pitch
+    canvas._zoom = zoom
+    canvas._highlight = set(highlight)
+    canvas._highlight_color = QColor(highlight_color)
+    canvas._show_hint = False
+    return canvas.grab()
 
 
 def _normal(p0: tuple[float, float, float], p1: tuple[float, float, float],
@@ -224,9 +317,10 @@ class Viewer3D(QWidget):
     """3D tab: asynchronous meshing, part visibility and selection."""
 
     def __init__(self, build: Callable[[], list[Part]],
-                 parent: QWidget | None = None) -> None:
+                 parent: QWidget | None = None, swap_yz: bool = False) -> None:
         super().__init__(parent)
         self._build = build
+        self._swap_yz = swap_yz
         self._generation = 0
         self._signals = _WorkerSignals()
         self._signals.done.connect(self._on_done)
@@ -280,6 +374,8 @@ class Viewer3D(QWidget):
 
     def set_meshes(self, meshes: list[MeshPart], message: str = "") -> None:
         """Populate the viewer synchronously (used by tests and callers)."""
+        if self._swap_yz:
+            meshes = _swap_yz_meshes(meshes)
         self._canvas.set_meshes(meshes, message)
         self._list.blockSignals(True)
         self._list.clear()
