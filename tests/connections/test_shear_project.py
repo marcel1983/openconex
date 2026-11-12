@@ -89,8 +89,17 @@ def test_axial_tension_uses_the_part_12_checks():
     assert {"single_plate.tension_yielding", "single_plate.interaction_rupture"} <= ids
 
 
-def test_axial_compression_is_reported_as_not_verified():
+def test_axial_compression_on_a_single_plate_is_checked():
     data = _data(cases=[{"name": "D", "type": "D", "V": "8 kip", "P": "5 kip"}])
+    results = governing(Project.model_validate(data))
+    assert "shear_connection.axial_compression" not in results
+    assert results["single_plate.compression"].status.value == "ok"
+
+
+def test_axial_compression_on_a_seat_is_reported_as_not_verified():
+    data = _data(connection={"type": "seated", "length": "8 in", "thickness": "5/8 in",
+                             "leg": "4 in"},
+                 cases=[{"name": "D", "type": "D", "V": "8 kip", "P": "5 kip"}])
     check = governing(Project.model_validate(data))["shear_connection.axial_compression"]
     assert check.status.value == "ng"
 

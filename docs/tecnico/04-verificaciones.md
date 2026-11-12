@@ -114,6 +114,7 @@ Manual AISC Parte 10, configuración convencional, con pernos en una fila. Integ
 | `id` | Verificación | Norma |
 |---|---|---|
 | `single_plate.tension_yielding` | Fluencia por tracción de la placa | §J4.1(a) |
+| `single_plate.compression` | Con `P` > 0 (compresión): pandeo de la placa como voladizo desde la soldadura, K = 1,2, L = a, r = t/√12; reemplaza la tracción y los bloques de corte axiales, y su capacidad entra en la interacción de fluencia | §J4.4; Comentario Tabla C-A-7.1(d); II.A-19B (comentarios) |
 | `single_plate.tension_rupture` | Rotura por tracción, A_e = A_n | §J4.1(b) |
 | `single_plate.flexural_yielding` | M_n = mín(F_y Z, 1,5 F_y S) | §F11.1 |
 | `single_plate.flexural_ltb` | Pandeo lateral-torsional con L_b = a y C_b = 1,84 | §F11.2 |
@@ -179,6 +180,7 @@ La placa extendida con tracción axial añade los estados límite de la placa y 
 | `id` | Verificación | Norma |
 |---|---|---|
 | `extended_plate.tension_yielding` | Fluencia por tracción de la placa, A_g = l t | §J4.1(a) |
+| `extended_plate.compression` | Con `P` > 0 (compresión): pandeo de la placa, K = 1,2, L = a, r = t/√12; reemplaza la tracción y los bloques de corte axiales, y su capacidad entra en la interacción de fluencia | §J4.4; Comentario Tabla C-A-7.1(d); II.A-19B (comentarios) |
 | `extended_plate.tension_rupture` | Rotura por tracción, A_n = (l − n d_h') t, U = 1 | §J4.1(b) |
 | `extended_plate.interaction_yielding` | Interacción axial, flexión y corte (fluencia), Ec. 12-2 o 12-3 | Manual Parte 12 |
 | `extended_plate.interaction_rupture` | Interacción axial, flexión y corte (rotura) | Manual Parte 12 |
@@ -239,7 +241,7 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 
 | `id` | Verificación | Norma |
 |---|---|---|
-| `shear_connection.axial_compression` | Compresión axial en el extremo de la viga: no está implementada y se informa con capacidad 0 (no cumple) | — |
+| `shear_connection.axial_compression` | Compresión axial en un tipo sin procedimiento de compresión (todos salvo la placa simple y la placa extendida): se informa con capacidad 0 (no cumple) | — |
 | `shear_connection.axial_unsupported` | Tracción axial en un tipo sin procedimiento axial (placa extendida, placa de extremo, asientos, doble ángulo soldado): capacidad 0 | — |
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)

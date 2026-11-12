@@ -422,7 +422,7 @@ El refuerzo solo se admite en un destaje superior (`dc_bottom = 0`). La placa do
 
 ### Cargas de una conexión de corte
 
-Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple, la placa simple extendida y el doble ángulo apernado; en los demás tipos, y la compresión en todos, aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
+Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple, la placa simple extendida y el doble ángulo apernado. La compresión (`P` > 0) se verifica en la placa simple y la placa extendida: la placa se comprueba a pandeo como voladizo desde la soldadura (K = 1,2, L = `a`) en lugar de la tracción. En los demás tipos aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
 
 ## Casos de carga (`cases`)
 

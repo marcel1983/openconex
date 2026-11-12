@@ -136,7 +136,9 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 
 ### 2.3 Funciones que faltan — B
 
-- [ ] Compresión axial en el extremo de la viga.
+- [x] Compresión axial en la placa simple y la placa extendida (§J4.4, K = 1,2; comentarios de II.A-19B, 410/272 kip).
+- [x] II.A-19B: el ejemplo y la prueba usaban una geometría distinta de la publicada (placa de 14½ in, l_ev = 1¼ in, l_eh = 1¾ in); corregidos, los valores coinciden dentro del 1 %.
+- [ ] Compresión axial en el doble ángulo, la placa de extremo y los asientos.
 - [ ] Flexión de la viga y corte del alma sin destaje.
 
 - [ ] Validar el reparto de carga de II.A-10 con un FE de contacto y pretensión; mientras tanto, revisar la placa B con `share_b` ≥ 0,66.

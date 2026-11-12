@@ -37,6 +37,7 @@ from openconex.kernel.design import FLEXURE, Calc, Resistance
 from openconex.units import Kind, to_internal
 
 from .double_angle import SPEC, _hole_net
+from .plate_compression import plate_compression
 from .single_plate import SinglePlate, check_single_plate
 
 __all__ = ["check_single_plate_axial"]
@@ -128,8 +129,13 @@ def _interaction(key: str, N: float, Nc: float, M: float, Mc: float, V: float, V
 
 def check_single_plate_axial(sp: SinglePlate, V: float, N: float, method: Method,
                              combo: str = "", underrun: float | None = None,
-                             angle: float | None = None) -> list[CheckResult]:
-    """Limit states for the beam shear ``V`` and axial tension ``N`` (both ≥ 0).
+                             angle: float | None = None,
+                             compression: bool = False) -> list[CheckResult]:
+    """Limit states for the beam shear ``V`` and the axial force ``N`` (both ≥ 0).
+
+    ``N`` is tension unless ``compression`` is true: then the plate is checked
+    for compression buckling (§J4.4) instead of tensile yielding and rupture,
+    and the axial block shear does not apply.
 
     ``underrun`` is the beam length tolerance subtracted from the web edge
     distance (default 1/4 in.). ``angle`` overrides the load angle used for C
@@ -182,6 +188,16 @@ def check_single_plate_axial(sp: SinglePlate, V: float, N: float, method: Method
     support = _rename("support_shear_rupture", elements.shear_rupture(
         2 * L * sp.support_t, sp.support_Fu, V, method, combo))
     dims = {r.id: r for r in check_single_plate(sp, V, method, combo)}
+    if compression:
+        comp = plate_compression("single_plate", L, t, sp.a, Fy, N, method, combo)
+        return [
+            _bolts(sp, V, N, method, combo, underrun, angle),
+            shear_y, comp, flex_y, ltb,
+            _interaction("interaction_yielding", N, comp.capacity, M, flex_cap, V,
+                         shear_y.capacity, method, combo),
+            shear_r, flex_r, block_v, support,
+            dims["single_plate.weld_size"], dims["single_plate.support_thickness"],
+        ]
     return [
         _bolts(sp, V, N, method, combo, underrun, angle),
         shear_y, tens_y, flex_y, ltb,

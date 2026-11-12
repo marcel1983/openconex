@@ -228,6 +228,7 @@ block_shear = "Block shear of plate B"
 weld = "C-shaped weld of plate B to the beam web (instantaneous center)"
 
 [check.single_plate]
+compression = "Compression of the plate (buckling, K = 1.2)"
 bolts = "Shear transfer at bolt holes (instantaneous center)"
 shear_yielding = "Shear yielding of the plate"
 shear_rupture = "Shear rupture of the plate"
@@ -265,6 +266,7 @@ stiffener_weld = "Longitudinal stiffener weld"
 stiffener_web_shear = "Web shear rupture at the stiffener"
 
 [check.extended_plate]
+compression = "Compression of the plate (buckling, K = 1.2)"
 bolts = "Eccentric bolt group (instantaneous center)"
 max_thickness = "Maximum plate thickness (yielding before bolt shear)"
 shear_yielding = "Shear yielding of the plate"
@@ -316,7 +318,7 @@ seat_plate_weld = "Minimum seat plate weld"
 seat_plate_weld_length = "Minimum seat plate weld length"
 
 [check.shear_connection]
-axial_compression = "Axial compression (not implemented)"
+axial_compression = "Axial compression (not implemented for this connection)"
 axial_unsupported = "Axial tension not implemented for this connection"
 
 [check.base_plate]
