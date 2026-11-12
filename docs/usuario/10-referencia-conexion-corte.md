@@ -47,15 +47,15 @@ Esta página se genera desde `src/openconex/help.py`. Cada entrada responde qué
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
-| `rows` | Número de pernos por línea vertical. | Escriba un entero positivo; en la placa de extremo son filas de dos pernos. | Afecta el grupo de pernos, el área neta y el bloque de corte. | — | todas |
+| `rows` | Número de pernos por línea vertical. | Escriba un entero positivo; en la placa de extremo son filas de dos pernos. Debe cumplirse 2 l_ev + (filas - 1) s ≤ largo. | Afecta el grupo de pernos, el área neta y el bloque de corte. | — | todas |
 | `lines` | Número de líneas verticales de la placa simple extendida. | Use 1 o 2; con 2 debe definir el gramil. | Duplica el grupo de pernos y cambia el bloque de corte. | 1 | PSE |
-| `spacing` | Distancia vertical entre pernos. | Escriba la separación; debe ser positiva. | Afecta aplastamiento interior, desgarro y bloque de corte. | — | todas |
+| `spacing` | Distancia vertical entre pernos. | Escriba la separación; el mínimo es 2⅔d y el grupo debe caber en el largo. | Afecta aplastamiento interior, desgarro y bloque de corte. | — | todas |
 | `gage` | Separación entre líneas de pernos o gramil de los ángulos. | En placa extendida con dos líneas, escriba la separación; en doble ángulo con tracción, el gramil de las alas. | Cambia el grupo de pernos y el brazo de palanca de la tracción. | — | PSE, DA |
-| `length` | Largo de la placa, ángulo, asiento o rigidizador. | Escriba el largo; debe ser positivo. | Afecta corte, bloque de corte, soldadura y peso. | — | todas |
+| `length` | Largo de la placa, ángulo, asiento o rigidizador. | Escriba el largo; debe alojar el grupo de pernos: largo ≥ 2 l_ev + (filas - 1) s. | Afecta corte, bloque de corte, soldadura y peso. | — | todas |
 | `thickness` | Espesor de la placa, ángulo, asiento o rigidizador. | Escriba el espesor; debe ser positivo. | Afecta todas las capacidades de la placa y el tamaño máximo de soldadura. | — | todas |
-| `lev` | Distancia vertical del perno extremo al borde. | Escriba la distancia al borde superior o inferior. | Afecta el desgarro del perno de borde. | — | todas |
-| `leh` | Distancia horizontal al borde de la placa. | En el doble ángulo, es la distancia en el ala sobre el alma de la viga. | Afecta el desgarro y el bloque de corte. | — | todas |
-| `leh_support` | Distancia horizontal al borde en las alas salientes del ángulo. | Escriba l_eh del lado del apoyo. | Afecta el desgarro del ángulo en el apoyo. | — | DA |
+| `lev` | Distancia vertical del perno extremo al borde. | Escriba la distancia al borde superior o inferior; el mínimo es la Tabla J3.4. | Afecta el desgarro del perno de borde y el espacio disponible. | — | todas |
+| `leh` | Distancia horizontal al borde de la placa. | En el doble ángulo, es la distancia en el ala sobre el alma de la viga; el mínimo es la Tabla J3.4. | Afecta el desgarro y el bloque de corte. | — | todas |
+| `leh_support` | Distancia horizontal al borde en las alas salientes del ángulo. | Escriba l_eh del lado del apoyo; el mínimo es la Tabla J3.4. | Afecta el desgarro del ángulo en el apoyo. | — | DA |
 | `a` | Distancia de la soldadura a la primera línea de pernos. | Escriba a; debe ser positiva. | Genera el momento excéntrico V·a y cambia el grupo de pernos. | — | PS, PSE |
 | `weld` | Tamaño del filete de soldadura. | Escriba el tamaño; debe ser positivo. | Afecta la capacidad de soldadura y el espesor mínimo del apoyo. | — | todas |
 | `support_weld` | Soldadura de los ángulos o del asiento al apoyo. | Escriba el tamaño; si existe, reemplaza los pernos del apoyo. | Activa la comprobación de soldadura y desactiva los pernos del apoyo. | — | DA, AS |

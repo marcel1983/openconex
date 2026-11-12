@@ -211,6 +211,8 @@ La misma información está en [Referencia de la conexión de corte](10-referenc
 6. **Calcular** (`F5`): pestañas **Resumen**, **Verificaciones**, **Figuras** (elevación e isométrico) y **3D**.
 7. **Archivo > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
 
+Antes de calcular se revisa la geometría de los pernos. Cada fila debe quedar dentro de la placa, el ángulo o la placa de extremo, con las distancias al borde `l_ev` y `l_eh` de la Tabla J3.4 y una separación mínima de `2⅔d`. Si el grupo no cabe, **Calcular** muestra **Datos no válidos** con el campo y el valor necesario, y no genera figuras ni resultados. Por ejemplo, cuatro filas a 3 in con `l_ev = 1.25 in` necesitan 11.5 in de largo; un ángulo de 8.5 in se rechaza y pide aumentar el largo o reducir filas/separación.
+
 El cálculo por lotes también admite proyectos de conexión de corte; en el resumen, la columna muestra la viga.
 
 ## Cálculo por lotes

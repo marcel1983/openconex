@@ -24,6 +24,7 @@ from openconex.kernel.design import Calc
 from openconex.units import Kind
 
 from .bent_plate import SkewedBentPlate, check_skewed_bent_plate
+from .bolts_fit import check_edge, check_rows, check_spacing, fail, fmt_length
 from .coped_beam import CopedBeam, check_coped_beam
 from .double_angle import DoubleAngle, check_double_angle, check_shared_support_bolts
 from .double_angle_axial import AxialBeam, check_double_angle_axial
@@ -35,7 +36,8 @@ from .single_plate import SinglePlate, check_single_plate
 from .single_plate_axial import check_single_plate_axial
 from .stiffened_seat import StiffenedSeat, check_stiffened_seat
 
-__all__ = ["ShearConnection", "ShearType", "check_shear_connection", "check_shear_envelope"]
+__all__ = ["ShearConnection", "ShearType", "check_shear_connection",
+           "check_shear_envelope", "validate_shear_connection"]
 
 
 class ShearType(StrEnum):
@@ -93,6 +95,53 @@ class ShearConnection:
         return isinstance(da, DoubleAngle) and (da.support_weld > 0 or da.beam_weld > 0)
 
 
+def validate_shear_connection(conn: ShearConnection) -> None:
+    """Reject bolt groups that do not fit the connected element.
+
+    The drawing and the 3D model are generated from these fields; a bolt row
+    outside the plate or angle, or an edge distance below AISC 360-22
+    Table J3.4, must stop the calculation with a message that says what to
+    correct.  Welded legs have no holes and are not checked.
+    """
+    el = conn.element
+    if isinstance(el, DoubleAngle):
+        beam_bolted = el.beam_weld <= 0.0
+        support_bolted = el.support_weld <= 0.0
+        if beam_bolted or support_bolted:
+            check_rows("el ángulo doble", el.bolt, el.length, el.rows,
+                       el.spacing, el.lev)
+            if beam_bolted:
+                check_edge("l_eh en el ala de la viga", el.leh_beam, el.bolt)
+            if support_bolted:
+                check_edge("l_eh en el ala del apoyo", el.leh_support, el.bolt)
+        if conn.beam_leh is not None:
+            check_edge("l_eh del alma de la viga", conn.beam_leh, el.bolt)
+    elif isinstance(el, SinglePlate):
+        check_rows("la placa simple", el.bolt, el.length, el.rows, el.spacing, el.lev)
+        check_edge("l_eh de la placa", el.leh, el.bolt)
+        if el.beam_leh is not None:
+            check_edge("l_eh del alma de la viga", el.beam_leh, el.bolt)
+    elif isinstance(el, ExtendedSinglePlate):
+        check_rows("la placa extendida", el.bolt, el.length, el.rows, el.spacing, el.lev)
+        check_edge("l_eh de la placa", el.leh, el.bolt)
+        if el.lines > 1:
+            check_spacing("g", el.gage, el.bolt)
+        if el.beam_leh is not None:
+            check_edge("l_eh del alma de la viga", el.beam_leh, el.bolt)
+    elif isinstance(el, EndPlate):
+        check_rows("la placa de extremo", el.bolt, el.length, el.rows, el.spacing, el.lev)
+        check_edge("l_eh de la placa", el.leh, el.bolt)
+    elif isinstance(el, SkewedBentPlate):
+        for label, plate in (("A", el.plate_a), ("B", el.plate_b)):
+            check_rows(f"la placa doblada {label}", plate.bolt, plate.length,
+                       plate.rows, plate.spacing, plate.lev)
+            check_edge(f"l_eh de la placa doblada {label}", plate.leh, plate.bolt)
+            if plate.width > 0.0 and plate.width + 1e-3 < plate.leh:
+                fail(f"el ancho de la placa doblada {label} "
+                     f"({fmt_length(plate.width)}) es menor que l_eh "
+                     f"({fmt_length(plate.leh)}). Aumente el ancho de la placa.")
+
+
 def _unsupported(key: str, value: float, method: Method, combo: str,
                  clause: str) -> CheckResult:
     c = Calc(method, combo)
@@ -103,6 +152,7 @@ def _unsupported(key: str, value: float, method: Method, combo: str,
 def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method,
                            combo: str = "") -> list[CheckResult]:
     """All limit states for the end forces of one combination."""
+    validate_shear_connection(conn)
     V = abs(forces.V2)
     N = max(-forces.P, 0.0)
     out: list[CheckResult] = []
