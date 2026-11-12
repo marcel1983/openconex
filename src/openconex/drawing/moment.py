@@ -63,6 +63,10 @@ class MomentLayout:
     """End-plate stiffeners in elevation (closed polygons)."""
     beam_x0: float = 0.0
     """x of the beam end (setback, or the end-plate thickness)."""
+    column_web: bool = False
+    """Beam framing to the column web: x = 0 is the face of the web."""
+    column_bf: float = 0.0
+    column_tw: float = 0.0
 
 
 def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
@@ -116,22 +120,28 @@ def moment_layout(mc: MomentConnection) -> MomentLayout:
         _end_plate_layout(mc, lay)
         return lay
     lay.beam_x0 = SETBACK if mc.detail is not FlangeDetail.WELDED_FLANGE else 0.0
+    off = 0.0
+    if mc.support.value == "web":  # connection plates past the column flange tips
+        lay.column_web, lay.column_bf, lay.column_tw = True, col.bf, col.tw
+        off = (col.bf - col.tw) / 2 + mc.plate_extension
+        lay.beam_x0 += off
     w = mc.web
     mid = d / 2
     top_y = mid + w.length / 2
-    web_width = w.leh + 2 * INCH
+    web_width = off + w.leh + 2 * INCH
     lay.plates.append((0.0, top_y - w.length, web_width, top_y, "web_plate"))
     bottom_bolt = top_y - w.length + w.lev
     lay.web_bolts = [(web_width - w.leh, bottom_bolt + i * w.spacing) for i in range(w.rows)]
     lay.bolt_diameter = w.bolt.diameter
     lay.welds.append((0.0, top_y - w.length, 0.0, top_y))
     if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
-        length = SETBACK + (mc.beam_lev) + (mc.rows - 1) * mc.spacing + mc.plate_lev
+        length = off + SETBACK + (mc.beam_lev) + (mc.rows - 1) * mc.spacing + mc.plate_lev
         t_top = mc.top.thickness
         t_bot = (mc.bottom or mc.top).thickness
         lay.plates += [(0.0, d, length, d + t_top, "top_plate"),
                        (0.0, -t_bot, length, 0.0, "bottom_plate")]
-        lay.flange_bolts = [SETBACK + mc.beam_lev + i * mc.spacing for i in range(mc.rows)]
+        lay.flange_bolts = [off + SETBACK + mc.beam_lev + i * mc.spacing
+                            for i in range(mc.rows)]
         lay.welds += [(0.0, d, 0.0, d + t_top), (0.0, -t_bot, 0.0, 0.0)]
     elif mc.detail is FlangeDetail.WELDED_FLANGE_PLATE:
         top, bottom = mc.top, mc.bottom
@@ -144,6 +154,13 @@ def moment_layout(mc: MomentConnection) -> MomentLayout:
                        d + top.thickness),
                       (bot_len - bottom.weld_length, -bottom.thickness, bot_len,
                        -bottom.thickness)]
+    elif off:  # directly welded flanges to connection plates (DG13 Appendix D, Fig. 1)
+        t_top, t_bot = mc.top.thickness, (mc.bottom or mc.top).thickness
+        y_top = d - beam.tf  # bottom of the top plate at the underside of the top flange
+        y_bot = beam.tf / 2 - t_bot / 2
+        lay.plates += [(0.0, y_top, off, y_top + t_top, "top_plate"),
+                       (0.0, y_bot, off, y_bot + t_bot, "bottom_plate")]
+        lay.welds += [(off, d - beam.tf, off, d), (off, 0.0, off, beam.tf)]
     else:
         lay.welds += [(0.0, d - beam.tf, 0.0, d), (0.0, 0.0, 0.0, beam.tf)]
     return lay
@@ -156,9 +173,15 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     ys = [y for p in lay.plates for y in (p[1], p[3])] + [0.0, lay.beam_d]
     lo, hi = u(min(ys)) - u(6 * INCH), u(max(ys)) + u(6 * INCH)
     cd, ctf = u(lay.column_d), u(lay.column_tf)
-    # column: two flanges and web line (side view of the column)
-    s.rect(-ctf, lo, 0.0, hi, "MC-COLUMNA")
-    s.rect(-cd, lo, -cd + ctf, hi, "MC-COLUMNA")
+    if lay.column_web:
+        # column web in section and the near column flange behind the beam
+        ctw, cbf = u(lay.column_tw), u(lay.column_bf)
+        s.rect(-ctw, lo, 0.0, hi, "MC-COLUMNA")
+        s.rect(-ctw / 2 - cbf / 2, lo, -ctw / 2 + cbf / 2, hi, "MC-COLUMNA")
+    else:
+        # column: two flanges and web line (side view of the column)
+        s.rect(-ctf, lo, 0.0, hi, "MC-COLUMNA")
+        s.rect(-cd, lo, -cd + ctf, hi, "MC-COLUMNA")
     # beam
     x0, xe = u(lay.beam_x0), u(lay.beam_length)
     s.rect(x0, 0.0, xe, d, "MC-VIGA")

@@ -25,6 +25,7 @@ Ejemplos completos en `examples/`:
 | `examples/moment_end_plate_extended.ocnx` | placa de extremo extendida de cuatro pernos 4E (AISC DG16, Ej. 4.2.1) |
 | `examples/moment_end_plate_flush.ocnx` | placa de extremo enrasada de cuatro pernos (AISC DG16, Ej. 3.2.2) |
 | `examples/moment_end_plate_8es.ocnx` | placa de extremo 8ES con placas de continuidad (AISC DG4, Ej. 4.4) |
+| `examples/moment_column_web.ocnx` | alas soldadas a placas de conexión en el alma de la columna (AISC DG13, Ap. D) |
 | `examples/moment_welded_flange_stiffened.ocnx` | alas soldadas con rigidizadores de altura parcial, doble placa y zona de panel (AISC DG13, Ej. 6-3) |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
@@ -457,6 +458,8 @@ Conexión de momento totalmente restringida de una viga al ala de una columna (M
 | `deformation_considered` | `true` | Aplastamiento con deformación en servicio considerada. |
 | `column_near_end` | `false` | Fuerza de ala cerca del extremo de la columna (§J10, resistencias reducidas). |
 | `two_sided` | `false` | Vigas a ambos lados de la columna (pandeo del alma, §J10.5). |
+| `support` | `flange` | Cara de la columna: `flange` (ala, eje fuerte) o `web` (alma, eje débil; solo `welded_flange`, con `top` y `bottom` como placas de conexión, o `bolted_flange_plate`; sin zona de panel ni rigidizadores). |
+| `plate_extension` | `3/4 in` | Alma de la columna: prolongación de las placas más allá de las puntas de las alas. |
 | `panel_zone` | `false` | Verifica la zona de panel de la columna (§J10.6) con `column_V` y `column_P` de los casos. La demanda es la fuerza de ala (de las dos vigas con `two_sided`) menos el corte de piso. |
 | `panel_zone_inelastic` | `false` | El análisis de estabilidad considera la deformación de la zona de panel (Ec. J10-11 y J10-12). |
 | `doubler_plate` | — | Espesor total de las dobles placas del alma en la zona de panel (acero `grade`): suma 0,60 F_y d_c t_d a la resistencia. |

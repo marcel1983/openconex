@@ -50,12 +50,18 @@ from .column_stiffening import doubler_checks, stiffener_checks
 from .end_plate import EndPlate, end_plate_checks, end_plate_column_checks
 from .panel_zone import panel_zone_check
 
-__all__ = ["EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
+__all__ = ["ColumnFace", "EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
            "check_moment_connection", "check_moment_envelope"]
 
 SPEC = "AISC 360-22"
 MANUAL = "AISC Manual 16th ed."
 INCH = to_internal(1.0, "in", Kind.LENGTH)
+
+
+class ColumnFace(StrEnum):
+    FLANGE = "flange"
+    WEB = "web"
+    """Beam framing to the column web (weak axis); AISC Design Guide 13, Appendix D."""
 
 
 class FlangeDetail(StrEnum):
@@ -148,6 +154,11 @@ class MomentConnection:
     """Double-sided fillet weld of the stiffeners to the column flanges; 0: CJP."""
     continuity_plate_web_weld: float = 0.0
     """Double-sided fillet weld of the stiffeners to the column web; 0: not checked."""
+    support: ColumnFace = ColumnFace.FLANGE
+    """Column face the beam frames to."""
+    plate_extension: float = to_internal(0.75, "in", Kind.LENGTH)
+    """Column web connections: extension of the connection plates past the column flange
+    tips."""
     doubler_weld: float = 0.0
     """Fillet weld of the doubler plate to the column flanges (bevel = thickness); 0: CJP."""
 
@@ -206,7 +217,9 @@ def _web_checks(mc: MomentConnection, V: float, method: Method, combo: str) -> l
     rn = c.step("R_n", "2 r_w l", 2 * rw * w.length, Kind.FORCE, clause,
                 w=(w.weld, Kind.THICKNESS), l=(w.length, Kind.LENGTH))
     out.append(c.result("moment.web_weld", clause, V, rn, Kind.FORCE))
-    out.append(_rename(elements.shear_rupture(2 * w.length * mc.column.tf,
+    # base metal at the welds: the column flange, or the column web for weak-axis framing
+    t_support = mc.column.tw if mc.support is ColumnFace.WEB else mc.column.tf
+    out.append(_rename(elements.shear_rupture(2 * w.length * t_support,
                                               mc.column.material.Fu, V, method, combo),
                        "web_support_rupture"))
     return out
@@ -392,6 +405,67 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
     return out
 
 
+def _column_web_connection(mc: MomentConnection, M: float, method: Method,
+                           combo: str) -> list[CheckResult]:
+    """Moment connection to the column web (AISC Design Guide 13, Appendix D; Ferrell, 1998).
+
+    The flange forces reach the column through connection plates fitted between the column
+    flanges and fillet-welded to them; the welds are designed for shear only (the force
+    is not transferred through the column web). Directly welded flanges: plates of
+    thickness t_f + 1/4 in. (tension flange) and t_f + 3/8 in. (compression flange), CJP
+    welded to the beam flanges. Bolted flange plates: the flange plates themselves.
+    """
+    col, beam = mc.column, mc.beam
+    out: list[CheckResult] = []
+    if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
+        flange, P = _bolted(mc, M, method, combo)
+        out += [r for r in flange if r.id != "moment.flange_plate_weld"]
+    else:
+        c = Calc(method, combo)
+        P = _flange_force(c, M, beam.d - beam.tf, "d - t_f")
+    clear = col.d - 2 * col.tf
+    clause_d = "AISC Design Guide 13, Appendix D"
+    for key, plate in (("top", mc.top), ("bottom", mc.bottom or mc.top)):
+        c = Calc(method, combo)
+        clause = f"{SPEC} §J4.1(a); {clause_d}"
+        b = c.step("b_p", "d_c - 2t_{fc}", clear, Kind.LENGTH, clause)
+        if mc.detail is FlangeDetail.WELDED_FLANGE:
+            out.append(_rename(elements.tension_yielding(b * plate.thickness, mc.plate_Fy, P,
+                                                         method, combo),
+                               f"web_connection_plate_yielding_{key}"))
+            c = Calc(method, combo)
+            extra = 0.25 if key == "top" else 0.375
+            need = c.step("t_{p,min}", rf"t_f + {extra:g}\,in",
+                          beam.tf + to_internal(extra, "in", Kind.LENGTH), Kind.THICKNESS,
+                          f"{clause_d} (Ferrell, 1998)")
+            out.append(c.result(f"moment.web_connection_plate_thickness_{key}",
+                                f"{clause_d} (Ferrell, 1998)", need, plate.thickness,
+                                Kind.THICKNESS))
+        c = Calc(method, combo)
+        clause = f"{SPEC} §J2.4; {clause_d}"
+        w = plate.weld_to_column
+        lw = c.step("l_w", r"\frac{b_{fc} - t_{wc}}{2} - clip - 2w",
+                    (col.bf - col.tw) / 2 - mc.continuity_plate_clip - 2 * w, Kind.LENGTH,
+                    clause, w=(w, Kind.THICKNESS))
+        rw = fillet_weld_per_length(w, mc.FEXX, 0.0, method).capacity
+        rn = c.step("R_n", "4 r_w l_w", 4 * rw * max(lw, 0.0), Kind.FORCE, clause)
+        out.append(c.result(f"moment.web_connection_weld_{key}", clause, P, rn, Kind.FORCE))
+        if mc.bottom is None and mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
+            break
+    c = Calc(method, combo)
+    clause = f"{clause_d} (Driscoll et al., 1983)"
+    need = c.step("e_{min}", r"3/4\,in", to_internal(0.75, "in", Kind.LENGTH), Kind.LENGTH,
+                  clause)
+    out.append(c.result("moment.web_connection_plate_extension", clause, need,
+                        mc.plate_extension, Kind.LENGTH))
+    c = Calc(method, combo)
+    clause = clause_d
+    width = mc.top.width if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE else beam.bf
+    c.step("d_c - 2t_{fc}", "", clear, Kind.LENGTH, clause)
+    out.append(c.result("moment.web_connection_fit", clause, width, clear, Kind.LENGTH))
+    return out
+
+
 def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Method,
                             combo: str = "", column_shear: float | None = None,
                             column_axial: float = 0.0, P: float = 0.0) -> list[CheckResult]:
@@ -407,6 +481,8 @@ def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Me
         return out + end_plate_column_checks(mc, Pf, N, method, combo, column_shear,
                                              column_axial)
     out = _web_checks(mc, V, method, combo)
+    if mc.support is ColumnFace.WEB:
+        return out + _column_web_connection(mc, M, method, combo)
     if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
         flange, P = _bolted(mc, M, method, combo)
         lb = mc.top.thickness
