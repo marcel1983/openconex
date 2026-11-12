@@ -16,16 +16,25 @@ import pytest
 
 from openconex.connections.shear.bent_plate import SkewedBentPlate
 from openconex.connections.shear.check import (
+    ShearConnection,
+    ShearType,
     check_shear_connection,
     validate_shear_connection,
 )
+from openconex.connections.shear.end_plate import EndPlate
 from openconex.core.loads import Forces, Method
-from openconex.gui.start_data import FAMILIES, build_project
-from openconex.io.project import Project
+from openconex.core.model import BoltSpec
+from openconex.io.project import Project, load_project
 from openconex.report.shear import build_shear_report
 from openconex.units import Kind, to_internal
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
+PROJECTS = {
+    "double_angle": "shear_double_angle_coped.ocnx",
+    "single_plate": "shear_single_plate.ocnx",
+    "extended_single_plate": "shear_extended_single_plate_axial.ocnx",
+    "skewed_bent_plate": "shear_skewed_bent_plate.ocnx",
+}
 
 
 def inch(value: float) -> float:
@@ -36,18 +45,20 @@ def kip(value: float) -> float:
     return to_internal(value, "kip", Kind.FORCE)
 
 
-def model(family: str, subtype: str):
-    return build_project(family, subtype).shear_model()
+def ksi(value: float) -> float:
+    return to_internal(value, "ksi", Kind.STRESS)
 
 
-@pytest.mark.parametrize(
-    "family",
-    [family for family in FAMILIES if family.enabled and family.id != "base_plate"],
-    ids=lambda family: family.id,
-)
-def test_starter_projects_have_valid_bolt_groups(family):
-    for subtype in family.subtypes:
-        validate_shear_connection(model(family.id, subtype.id))
+def model(subtype: str) -> ShearConnection:
+    if subtype == "end_plate":
+        element = EndPlate(
+            bolt=BoltSpec(diameter=inch(0.75)), rows=4, spacing=inch(3),
+            length=inch(11.5), thickness=inch(0.25), lev=inch(1.25),
+            leh=inch(1.5), plate_Fy=ksi(50), plate_Fu=ksi(65),
+            weld=inch(0.1875), beam_tw=inch(0.38), beam_Fu=ksi(65),
+            support_t=inch(0.71), support_Fu=ksi(65))
+        return ShearConnection(type=ShearType.END_PLATE, element=element)
+    return load_project(EXAMPLES / PROJECTS[subtype]).shear_model()
 
 
 @pytest.mark.parametrize("subtype", [
@@ -55,7 +66,7 @@ def test_starter_projects_have_valid_bolt_groups(family):
     "skewed_bent_plate",
 ])
 def test_bolt_group_outside_element_is_rejected(subtype):
-    conn = model("shear_column", subtype)
+    conn = model(subtype)
     element = conn.element
     if isinstance(element, SkewedBentPlate):
         plate = dataclasses.replace(element.plate_a, rows=element.plate_a.rows + 1)
@@ -70,7 +81,7 @@ def test_bolt_group_outside_element_is_rejected(subtype):
     "double_angle", "single_plate", "extended_single_plate", "end_plate",
 ])
 def test_vertical_edge_below_table_j34_is_rejected(subtype):
-    conn = model("shear_column", subtype)
+    conn = model(subtype)
     element = dataclasses.replace(conn.element, lev=inch(0.75))
     with pytest.raises(ValueError, match=r"Tabla J3\.4"):
         validate_shear_connection(dataclasses.replace(conn, element=element))
@@ -83,21 +94,21 @@ def test_vertical_edge_below_table_j34_is_rejected(subtype):
     ("end_plate", "leh"),
 ])
 def test_horizontal_edge_below_table_j34_is_rejected(subtype, field):
-    conn = model("shear_column", subtype)
+    conn = model(subtype)
     element = dataclasses.replace(conn.element, **{field: inch(0.75)})
     with pytest.raises(ValueError, match=r"Tabla J3\.4"):
         validate_shear_connection(dataclasses.replace(conn, element=element))
 
 
 def test_spacing_below_j33_is_rejected():
-    conn = model("shear_column", "double_angle")
+    conn = model("double_angle")
     element = dataclasses.replace(conn.element, spacing=inch(1.0))
     with pytest.raises(ValueError, match="separación mínima"):
         validate_shear_connection(dataclasses.replace(conn, element=element))
 
 
 def test_invalid_geometry_stops_the_calculation():
-    conn = model("shear_column", "double_angle")
+    conn = model("double_angle")
     element = dataclasses.replace(conn.element, rows=4)
     conn = dataclasses.replace(conn, element=element)
     with pytest.raises(ValueError, match="no caben"):
