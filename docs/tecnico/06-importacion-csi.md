@@ -1,6 +1,6 @@
 # 6. Importación desde SAP2000 / ETABS
 
-Código: `io/csi.py` (lectura) e `io/csi_projects.py` (proyectos).
+Código: `io/csi.py` (lectura), `io/csi_projects.py` (proyectos de placa base), `io/csi_beams.py` e `io/csi_shear_projects.py` (extremos de viga y proyectos de conexión de corte).
 
 ## Lectura de tablas
 
@@ -65,3 +65,14 @@ En perfiles I, el eje fuerte es el local 3: `M` del proyecto = M3, `M_weak` = M2
 - **Agrupación por columna (`Grouping.COLUMN`):** primero se crean los proyectos por apoyo y después se unen por sección. Los casos llevan el prefijo `"<nodo>: "`, y las combinaciones de cada apoyo (ya expandidas con `load_combinations`) se copian como combinaciones propias con los nombres prefijados. Así ninguna combinación mezcla apoyos.
 - Las cantidades se escriben en N y N·mm con 10 cifras significativas.
 - Los avisos que se repiten en varios nodos se juntan en uno.
+
+## Extremos de viga para conexiones de corte (`io/csi_beams.py`, `io/csi_shear_projects.py`)
+
+1. **Barras:** con `Connectivity - Frame` y las coordenadas, una barra es vertical (columna) si su proyección horizontal es ≤ 0,001 L, y horizontal (viga) si |Δz| ≤ 0,001 L. Las inclinadas se ignoran.
+2. **Extremos articulados:** `Frame Release Assignments 1 - General`, M3I y M3J. Sin la tabla se toman todos los extremos y se avisa.
+3. **Apoyo:** en el nodo del extremo, la primera columna; si no hay, la primera viga horizontal que forma con la viga un ángulo de más de 45°.
+4. **Ala o alma de una columna I:** con el ángulo θ de sus ejes locales, el eje 2 es (cos θ, sin θ). El alma de una I está en el plano 1-2, así que la viga paralela al eje 2 llega al ala y la paralela al eje 3, al alma. En una viga principal es siempre el alma.
+5. **Fuerzas:** `Element Forces - Frames`, filas de la primera y la última estación de cada viga. `Forces.V2` = V2 y `Forces.P` = −P (compresión positiva, como en la placa base). Los pasos que no son Max/Min se descartan, como en los apoyos.
+6. **Proyectos:** `shear_projects` copia la plantilla (`shear_connection`), pone la viga, el apoyo (perfiles I: etiqueta del catálogo o `WSectionInput`), `support_element` y los casos (solo `V` y `P`) con las mismas fuentes de carga que la placa base (`_loads`). Con `ShearGrouping.SECTION`, los extremos con igual viga, apoyo y elemento comparten proyecto; cada caso lleva el prefijo del extremo y las combinaciones se forman extremo por extremo.
+
+Pruebas: `tests/test_csi_beams.py`, con un modelo sintético (columnas a 0° y 90°, viga articulada, viga sobre viga principal y un extremo sin apoyo). Aún no hay una exportación real de SAP2000 con `Element Forces - Frames` en las pruebas. ETABS no está implementado.
