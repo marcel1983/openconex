@@ -548,8 +548,9 @@ _MENUS = [
         "Revise la pestaña Figuras después de calcular.",
         "Muestra el DXF convertido a imagen y el isométrico si está disponible.", "—", "todas"),
     _ui("tab.viewer", "Pestaña 3D", "Acciones",
-        "Visor 3D interactivo.",
-        "Gire, haga zoom o seleccione piezas en la pestaña 3D.",
+        "Visor 3D interactivo con caras ocultas y superficies sombreadas.",
+        "Gire, haga zoom o seleccione piezas; los elementos de conexión se "
+        "resaltan en naranja y los pernos en gris oscuro.",
         "Muestra el modelo 3D; no cambia el cálculo.", "—", "todas"),
     _ui("ui.type", "Selector de tipo", "Controles",
         "Elige la tipología de conexión.",

@@ -89,6 +89,8 @@ La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
 - **Doble clic** o **Ajustar vista** para volver a la vista isométrica.
 - La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla.
 
+El render oculta las caras posteriores, sombrea cada superficie y no dibuja la triangulación interna. Los elementos de la conexión se resaltan en naranja y los pernos en gris oscuro, para distinguirlos de la viga, el apoyo y la columna.
+
 El modelo se genera en segundo plano al entrar en la pestaña, con las piezas de `geometry3d.base_plate` (`base_plate_parts` o `embedded_base_parts`). Funciona con placa expuesta y base empotrada. La exportación STEP/STL no cambia.
 
 ## Tipos de conexión

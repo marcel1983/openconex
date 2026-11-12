@@ -29,7 +29,11 @@ __all__ = ["Viewer3D", "part_color", "render_parts"]
 
 
 def part_color(name: str) -> QColor:
-    """Stable colour per semantic part name."""
+    """Stable colour per semantic part name.
+
+    Connection elements share a warm highlight so they stand out from the
+    grey-blue beam, support and column; bolts stay dark.
+    """
     lower = name.casefold()
     if "column" in lower:
         return QColor("#1565c0")
@@ -44,8 +48,12 @@ def part_color(name: str) -> QColor:
     if "face_plate" in lower or "embedded" in lower:
         return QColor("#546e7a")
     if "base_plate" in lower:
-        return QColor("#607d8b")
-    return QColor("#78909c")
+        return QColor("#ef6c00")
+    if ("bolt" in lower or "angle" in lower or "seat" in lower
+            or "stiffener" in lower or "bent_plate" in lower
+            or "doubler" in lower or lower == "plate" or "end_plate" in lower):
+        return QColor("#ef6c00")
+    return QColor("#607d8b")
 
 
 class _ViewCanvas(QWidget):
@@ -121,13 +129,21 @@ class _ViewCanvas(QWidget):
         cyaw, syaw = math.cos(yaw), math.sin(yaw)
         cpitch, spitch = math.cos(pitch), math.sin(pitch)
         ox, oy, oz = self._center
-        triangles: list[tuple[float, QPolygonF, QColor, str]] = []
-        for mesh in self._meshes:
+        # Outward normal of a face must point toward the camera; culling the
+        # rest removes hidden surfaces and most painter-order flicker.
+        view = (cpitch * syaw, cpitch * cyaw, spitch)
+        light_dir = (-0.35, 0.45, 0.82)
+        triangles: list[tuple[float, int, QPolygonF, QColor, str]] = []
+        for part_index, mesh in enumerate(self._meshes):
             if mesh.name in self._hidden:
                 continue
             color = (self._highlight_color if mesh.name in self._highlight
                      else part_color(mesh.name))
             for p0, p1, p2 in mesh.triangles:
+                normal = _normal(p0, p1, p2)
+                if (normal[0] * view[0] + normal[1] * view[1]
+                        + normal[2] * view[2]) <= 1e-9:
+                    continue
                 points = []
                 for point in (p0, p1, p2):
                     x, y, z = point[0] - ox, point[1] - oy, point[2] - oz
@@ -139,22 +155,24 @@ class _ViewCanvas(QWidget):
                     depth = z1 * spitch + y1 * cpitch
                     points.append((screen_x, screen_y, depth))
                 depth = sum(point[2] for point in points) / 3
-                normal = _normal(p0, p1, p2)
-                light = abs(normal[0] * 0.35 + normal[1] * -0.45 + normal[2] * 0.82)
+                light = max(0.0, normal[0] * light_dir[0]
+                            + normal[1] * light_dir[1]
+                            + normal[2] * light_dir[2])
                 shade = 0.55 + 0.45 * min(light, 1.0)
                 tint = QColor(color)
                 tint = tint.lighter(int(100 + shade * 70)) if self._selected == mesh.name \
                     else tint.darker(int(120 - shade * 40))
                 polygon = QPolygonF([QPointF(point[0], point[1]) for point in points])
-                triangles.append((depth, polygon, tint, mesh.name))
-        triangles.sort(key=lambda item: item[0])
-        painter.setPen(QPen(QColor(30, 35, 40, 90), 0.35))
-        for _depth, polygon, tint, name in triangles:
+                # A tiny part bias keeps coplanar faces from flickering while
+                # the model rotates.
+                triangles.append((depth + part_index * 0.001, part_index,
+                                  polygon, tint, mesh.name))
+        triangles.sort(key=lambda item: (item[0], item[1]))
+        for _depth, _part, polygon, tint, _name in triangles:
             painter.setBrush(QBrush(tint))
-            if name == self._selected:
-                painter.setPen(QPen(QColor("#ff6f00"), 1.4))
-            else:
-                painter.setPen(QPen(QColor(30, 35, 40, 80), 0.35))
+            # Same-colour outline closes antialiasing seams without drawing
+            # the triangulation as a wireframe.
+            painter.setPen(QPen(tint, 1.0))
             painter.drawPolygon(polygon)
         if self._show_hint:
             painter.setPen(QColor("#455a64"))
@@ -195,12 +213,16 @@ class _ViewCanvas(QWidget):
 
 
 def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
-    """Map the shear model's y-up axes to the viewer's z-up axes."""
+    """Map the shear model's y-up axes to the viewer's z-up axes.
+
+    Swapping y and z is a reflection: the vertex order is reversed so the
+    outward normals keep their orientation and back-face culling stays valid.
+    """
     swapped: list[MeshPart] = []
     for mesh in meshes:
         triangles = [((p0[0], p0[2], p0[1]),
-                      (p1[0], p1[2], p1[1]),
-                      (p2[0], p2[2], p2[1]))
+                      (p2[0], p2[2], p2[1]),
+                      (p1[0], p1[2], p1[1]))
                      for p0, p1, p2 in mesh.triangles]
         swapped.append(MeshPart(mesh.name, tuple(triangles)))
     return swapped
@@ -221,7 +243,7 @@ def render_parts(parts: list[Part], size: QSize, *, yaw: float = 35.0,
     members in ``hide``) and pulled back by ``margin`` so some member context
     remains visible.  It is used by the gallery thumbnail generator.
     """
-    meshes = tessellate_parts(parts)
+    meshes = tessellate_parts(parts, max_edge=25.0)
     if swap_yz:
         meshes = _swap_yz_meshes(meshes)
     if explode:
