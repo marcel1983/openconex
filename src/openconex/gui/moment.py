@@ -43,6 +43,7 @@ from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
 from openconex.gui.viewer3d import Viewer3D
 from openconex.i18n import tr
+from openconex.io.moment_project import MomentConnectionInput
 from openconex.io.project import Project, load_project, save_project
 from openconex.report.builder import Report
 from openconex.report.docx import write_docx
@@ -87,6 +88,15 @@ END_PLATE_FIELDS = (("width", "Ancho b_p"), ("thickness", "Espesor t_p"), ("gage
                     ("web_weld", "Filete del alma (vacío: CJP)"),
                     ("flange_weld", "Filete de las alas (vacío: CJP)"),
                     ("weld_reinforcement", "Refuerzo de la soldadura CJP (DG4: N)"))
+STIFFENING_FIELDS = (
+    ("continuity_plate", "Rigidizadores: espesor t_s (vacío: sin rigidizadores)"),
+    ("continuity_plate_width", "Ancho b_s (vacío: (b_fc − t_wc)/2)"),
+    ("continuity_plate_clip", "Recorte de esquina"),
+    ("continuity_plate_length", "Largo (vacío: altura libre o la mitad)"),
+    ("continuity_plate_weld", "Filete a las alas (vacío: CJP)"),
+    ("continuity_plate_web_weld", "Filete al alma (vacío: no se verifica)"),
+    ("doubler_plate", "Doble placa del alma: espesor total"),
+    ("doubler_weld", "Filete de la doble placa a las alas (vacío: CJP)"))
 FLANGE_BOLT_FIELDS = (("spacing", "Separación s"), ("gage", "Gramil g"),
                       ("plate_lev", "l_ev de la placa"), ("beam_lev", "l_ev de la viga"))
 
@@ -196,9 +206,19 @@ class MomentWindow(QMainWindow):
         form.addRow(self.near_end)
         self.two_sided = QCheckBox("Vigas a ambos lados de la columna")
         form.addRow(self.two_sided)
-        self.continuity_plate = self._line(
-            form, "Placas de continuidad, espesor (placa de extremo; vacío: sin placas)")
         layout.addWidget(conn)
+
+        stiff = QGroupBox("Rigidización de la columna (AISC DG13)")
+        form = QFormLayout(stiff)
+        self._stiff = {key: self._line(form, label) for key, label in STIFFENING_FIELDS}
+        self.continuity_plate = self._stiff["continuity_plate"]
+        self.full_depth = QCheckBox("Rigidizadores de altura completa")
+        form.addRow(self.full_depth)
+        self.panel_zone = QCheckBox("Verificar la zona de panel (V_c y P_c de los casos)")
+        form.addRow(self.panel_zone)
+        self.panel_inelastic = QCheckBox("Deformación de la zona de panel en el análisis")
+        form.addRow(self.panel_inelastic)
+        layout.addWidget(stiff)
 
         web = self.web_group = QGroupBox("Placa del alma")
         form = QFormLayout(web)
@@ -250,12 +270,12 @@ class MomentWindow(QMainWindow):
         cases = QGroupBox("Casos de carga (V, M y P en el extremo de la viga; P solo en "
                           "placas de extremo, compresión positiva)")
         box = QVBoxLayout(cases)
-        self.cases = QTableWidget(0, 5)
-        self.cases.setHorizontalHeaderLabels(["Nombre", "Tipo", "V", "M", "P"])
+        self.cases = QTableWidget(0, 7)
+        self.cases.setHorizontalHeaderLabels(["Nombre", "Tipo", "V", "M", "P", "V_c", "P_c"])
         box.addWidget(self.cases)
         buttons = QHBoxLayout()
         add = QPushButton("Agregar")
-        add.clicked.connect(lambda: self._add_case("", "D", "", "", ""))
+        add.clicked.connect(lambda: self._add_case("", "D", "", "", "", "", ""))
         remove = QPushButton("Quitar")
         remove.clicked.connect(lambda: self.cases.removeRow(self.cases.currentRow()))
         buttons.addWidget(add)
@@ -292,7 +312,8 @@ class MomentWindow(QMainWindow):
         splitter.setSizes([480, 800])
         self.setCentralWidget(splitter)
 
-    def _add_case(self, name: str, kind: str, V: str, M: str, P: str = "") -> None:
+    def _add_case(self, name: str, kind: str, V: str, M: str, P: str = "", Vc: str = "",
+                  Pc: str = "") -> None:
         row = self.cases.rowCount()
         self.cases.insertRow(row)
         self.cases.setItem(row, 0, QTableWidgetItem(name))
@@ -303,6 +324,8 @@ class MomentWindow(QMainWindow):
         self.cases.setItem(row, 2, QTableWidgetItem(V))
         self.cases.setItem(row, 3, QTableWidgetItem(M))
         self.cases.setItem(row, 4, QTableWidgetItem(P))
+        self.cases.setItem(row, 5, QTableWidgetItem(Vc))
+        self.cases.setItem(row, 6, QTableWidgetItem(Pc))
 
     # -- form <-> project ----------------------------------------------------------------
     def _update_visible(self) -> None:
@@ -336,7 +359,13 @@ class MomentWindow(QMainWindow):
         self.electrode.setText(mc.electrode)
         self.near_end.setChecked(mc.column_near_end)
         self.two_sided.setChecked(mc.two_sided)
-        self.continuity_plate.setText(_text(mc.continuity_plate))
+        for key, edit in self._stiff.items():
+            value = getattr(mc, key)
+            default = MomentConnectionInput.model_fields[key].default
+            edit.setText("" if value is None or value == default else _text(value))
+        self.full_depth.setChecked(mc.continuity_plate_full_depth)
+        self.panel_zone.setChecked(mc.panel_zone)
+        self.panel_inelastic.setChecked(mc.panel_zone_inelastic)
         web = mc.web or Project.model_validate(TEMPLATE).moment_connection.web
         self.web_bolt.setText(_text(web.bolt.diameter))
         self.web_rows.setValue(web.rows)
@@ -368,7 +397,8 @@ class MomentWindow(QMainWindow):
         for case in project.cases:
             self._add_case(case.name, case.type.value,
                            *("" if v in (0, 0.0) else _text(v)
-                             for v in (case.V, case.M, case.P)))
+                             for v in (case.V, case.M, case.P, case.column_V,
+                                       case.column_P)))
         self._update_visible()
         self.setWindowTitle("OpenConex — conexión de momento — "
                             + (self.path.name if self.path else "sin guardar"))
@@ -390,8 +420,11 @@ class MomentWindow(QMainWindow):
             "column_near_end": self.near_end.isChecked(),
             "two_sided": self.two_sided.isChecked(),
         }
-        if self.continuity_plate.text().strip():
-            connection["continuity_plate"] = self.continuity_plate.text().strip()
+        connection.update({k: e.text().strip() for k, e in self._stiff.items()
+                           if e.text().strip()})
+        connection["continuity_plate_full_depth"] = self.full_depth.isChecked()
+        connection["panel_zone"] = self.panel_zone.isChecked()
+        connection["panel_zone_inelastic"] = self.panel_inelastic.isChecked()
         if detail is FlangeDetail.END_PLATE:
             plate = {"layout": self.ep_layout.currentData(),
                      "bolt": {"diameter": self.ep_bolt.text().strip(),
@@ -424,7 +457,7 @@ class MomentWindow(QMainWindow):
             if not name:
                 continue
             case = {"name": name, "type": self.cases.cellWidget(row, 1).currentText()}
-            for col, key in ((2, "V"), (3, "M"), (4, "P")):
+            for col, key in ((2, "V"), (3, "M"), (4, "P"), (5, "column_V"), (6, "column_P")):
                 text = (self.cases.item(row, col) or QTableWidgetItem("")).text().strip()
                 if text:
                     case[key] = text

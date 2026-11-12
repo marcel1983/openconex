@@ -139,8 +139,27 @@ class MomentConnectionInput(_Input):
     deformation_considered: bool = True
     column_near_end: bool = False
     two_sided: bool = False
+    panel_zone: bool = False
+    """Check the column panel zone (§J10.6) with ``column_V`` and ``column_P`` of the cases."""
+    panel_zone_inelastic: bool = False
+    """Panel zone deformation considered in the stability analysis (Eq. J10-11, J10-12)."""
+    doubler_plate: Quantity | None = None
+    """Total thickness of the web doubler plates (steel ``grade``)."""
     continuity_plate: Quantity | None = None
-    """End plates: thickness of the column continuity plates at the beam flanges."""
+    """Thickness of the column continuity plates (transverse stiffeners), a pair at each
+    beam flange (steel ``grade``)."""
+    continuity_plate_width: Quantity | None = None
+    """Width of each stiffener; omitted: (b_fc - t_wc)/2."""
+    continuity_plate_clip: Quantity = "3/4 in"
+    continuity_plate_full_depth: bool = True
+    continuity_plate_length: Quantity | None = None
+    """Omitted: the clear web depth (full depth) or half of it (partial depth)."""
+    continuity_plate_weld: Quantity | None = None
+    """Double-sided fillet weld to the column flanges; omitted: CJP."""
+    continuity_plate_web_weld: Quantity | None = None
+    """Double-sided fillet weld to the column web; omitted: not checked."""
+    doubler_weld: Quantity | None = None
+    """Fillet weld of the doubler plate to the column flanges; omitted: CJP."""
 
     def missing(self) -> list[str]:
         missing: list[str] = []
@@ -238,4 +257,12 @@ def moment_model(project: Project) -> MomentConnection:
         FEXX=project.electrode_library()[mc.electrode].FEXX,
         deformation_considered=mc.deformation_considered, column_near_end=mc.column_near_end,
         two_sided=mc.two_sided, end_plate=end_plate,
-        continuity_plate=q(mc.continuity_plate, T))
+        continuity_plate=q(mc.continuity_plate, T),
+        continuity_plate_width=q(mc.continuity_plate_width),
+        continuity_plate_clip=q(mc.continuity_plate_clip),
+        continuity_plate_full_depth=mc.continuity_plate_full_depth,
+        continuity_plate_length=q(mc.continuity_plate_length),
+        continuity_plate_weld=q(mc.continuity_plate_weld, T),
+        continuity_plate_web_weld=q(mc.continuity_plate_web_weld, T),
+        doubler_weld=q(mc.doubler_weld, T), panel_zone=mc.panel_zone,
+        panel_zone_inelastic=mc.panel_zone_inelastic, doubler_plate=q(mc.doubler_plate, T))

@@ -298,9 +298,27 @@ Lado de la columna (DG4, pasos 14 a 20), con la fuerza de ala F_fu y N = t_fb + 
 |---|---|---|
 | `moment.column_flange_bending` | Configuraciones 4E, 4ES y 8ES: espesor requerido del ala, t_fc,req = √(1,11 φM_np / (φ_b F_yc Y_c)) ≤ t_fc, con Y_c sin rigidizar o, con `continuity_plate`, rigidizado (p_so = p_si = (c − t_s)/2) | DG4 Ec. 3.20; Tablas 3.4 y 3.5 |
 | `moment.column_flange_strength` | Configuraciones 4E, 4ES y 8ES, ala sin rigidizar: F_fu ≤ φ_b F_yc Y_c t_fc² / (d − t_fb) | DG4 Ec. 3.21, 3.22 |
-| `moment.continuity_plates` | Con `continuity_plate`: F_su = F_fu − mín φR_n (ala sin rigidizar, fluencia, pandeo y aplastamiento del alma) ≤ φ F_y (2 b_s t_s), b_s = (b_fc − t_wc)/2; esas cuatro verificaciones pasan a no aplicables | DG4 Ec. 3.32; §J10.8, §J4.4 |
 
-`moment.column_web_local_yielding` usa la Ec. 3.24 de la DG4, R_n = [C_t(6k_c + 2t_p) + N] F_yc t_wc con φ = 1,0 y C_t = 0,5 cerca del extremo de la columna. `moment.column_web_compression_buckling` se verifica siempre en el ala de compresión (DG4 Ec. 3.26 y 3.27, igual que §J10.5) y `moment.column_web_crippling` es §J10.3 con l_b = N (DG4 Ec. 3.29 a 3.31). `moment.column_panel_zone`, como en las demás conexiones de momento. Las configuraciones enrasadas y multifila 1/2 y 1/3 no tienen líneas de fluencia del ala de la columna en las guías: en ellas no se verifica la flexión del ala de la columna.
+`moment.column_web_local_yielding` usa la Ec. 3.24 de la DG4, R_n = [C_t(6k_c + 2t_p) + N] F_yc t_wc con φ = 1,0 y C_t = 0,5 cerca del extremo de la columna. `moment.column_web_compression_buckling` se verifica siempre en el ala de compresión (DG4 Ec. 3.26 y 3.27, igual que §J10.5) y `moment.column_web_crippling` es §J10.3 con l_b = N (DG4 Ec. 3.29 a 3.31). `moment.column_panel_zone`, como en las demás conexiones de momento. Las configuraciones enrasadas y multifila 1/2 y 1/3 no tienen líneas de fluencia del ala de la columna en las guías: en ellas no se verifica la flexión del ala de la columna. Con `continuity_plate`, las verificaciones locales de la columna pasan a no aplicables y los rigidizadores se verifican como en la sección siguiente.
+
+### Rigidización de la columna (`connections/moment/column_stiffening.py` y `panel_zone.py`)
+
+Rigidizadores transversales (placas de continuidad, un par en cada ala de la viga) y dobles placas del alma según AISC Design Guide 13 (Carter, 1999, rev. 2003), para viento y sismo bajo, en todas las conexiones de momento. R_ust = P_uf − φR_n,mín, donde φR_n,mín es la menor resistencia de los estados límite locales de la columna sin rigidizar (flexión del ala, fluencia, aplastamiento y pandeo del alma; en placas de extremo, los de la DG4). La pareja de rigidizadores toma R_ust en cada extremo; con altura completa y vigas a ambos lados, las dos fuerzas se suman (Ec. 4.3-5). La guía usa φ = 0,9 para el corte de los rigidizadores y del alma (LRFD 1993) y se mantiene (Ω = 1,67 en ASD). b y t son el ancho y el espesor del ala de la viga o de la placa de ala.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `moment.continuity_plates` | Área de los rigidizadores: R_ust ≤ φ F_y · 2(b_s − clip) t_s | DG13 Ec. 4.2-1, 4.3-1; §J10.8 |
+| `moment.continuity_plate_width` | b_s ≥ b/3 − t_wc/2 | DG13 Ec. 4.3-2; §J10.8 |
+| `moment.continuity_plate_thickness` | t_s ≥ máx(t/2, b_s √F_y / 95), F_y en ksi | DG13 Ec. 4.3-3; §J10.8 |
+| `moment.continuity_plate_length` | Altura parcial: l ≥ (d_c − 2t_fc)/2 | DG13 §4.3.3; §J10.8 |
+| `moment.continuity_plate_shear` | Corte de los rigidizadores hacia la zona de panel: R_ust (o R_ust,1 + R_ust,2) ≤ φ 0,6 F_y (l − n·clip) 2t_s | DG13 Ec. 4.3-4, 4.3-5 |
+| `moment.continuity_plate_flange_weld` | Con `continuity_plate_weld`: filetes dobles a las alas que desarrollan el rigidizador, φF_y t_s ≤ 2 × 1,5 r_w | DG13 Ec. 4.3-6; §J2.4, Ec. J2-5 |
+| `moment.continuity_plate_web_weld` | Con `continuity_plate_web_weld`: filetes dobles al alma, R ≤ 4 r_w (l − n·clip) | DG13 Ec. 4.3-9, 4.3-10 |
+| `moment.continuity_plate_web_shear` | Alma de la columna (o doble placa, la de menor F_y t) bajo la reacción de los rigidizadores: R ≤ φ 0,6 F_y t · mín[4(l − n·clip), 2d_c] | DG13 Ec. 4.4-2, 4.4-3 |
+| `moment.doubler_plate_buckling` | Con `doubler_plate`: t_d ≥ h √F_y / 418, h = d_c − 2t_fc (como en el Ejemplo 6-3) | DG13 Ec. 4.4-5 |
+| `moment.doubler_plate_weld` | Con `doubler_weld` y `panel_zone`: filete de la doble placa a las alas, w ≥ máx(1,70 F_y t_eff/F_EXX, √2 t_eff), t_eff = V_udp/(φ 0,6 F_y d_c), V_udp = V_u − φR_v,cw | DG13 Ec. 4.2-2, 4.4-1, 4.4-7 |
+
+`moment.column_panel_zone` suma la doble placa a la resistencia del alma, R_v = 0,60 d_c (F_y t_w + F_yd t_d) (§J10.6 y Comentario), con la demanda V_u = P_uf (2 P_uf con `two_sided`) − V_c y la carga axial P_c de los casos (`column_V`, `column_P`).
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 

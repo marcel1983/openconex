@@ -1,0 +1,72 @@
+{
+  "format_version": 12,
+  "info": {
+    "name": "Ejemplo: alas soldadas con rigidizadores y doble placa (AISC DG13, Ej. 6-3)",
+    "number": "OC-0206",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "welded_flange",
+    "beam": "W18X50",
+    "column": "W14X53",
+    "grade": "ASTM A36",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 3,
+      "spacing": "3 in",
+      "length": "9 in",
+      "thickness": "3/8 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "1/4 in"
+    },
+    "panel_zone": true,
+    "continuity_plate": "3/8 in",
+    "continuity_plate_width": "3 in",
+    "continuity_plate_full_depth": false,
+    "continuity_plate_length": "6.5 in",
+    "continuity_plate_weld": "1/4 in",
+    "continuity_plate_web_weld": "1/4 in",
+    "doubler_plate": "5/8 in",
+    "doubler_weld": "1/4 in"
+  },
+  "cases": [
+    {
+      "name": "W",
+      "type": "W",
+      "V": "15 kip",
+      "M": "250 kip*ft",
+      "column_P": "0 kip"
+    },
+    {
+      "name": "D",
+      "type": "D",
+      "V": "5 kip",
+      "M": "0 kip*ft",
+      "column_P": "250 kip"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "include_code": false,
+    "custom": [
+      {
+        "name": "C-1",
+        "method": "LRFD",
+        "factors": {
+          "W": 1.0,
+          "D": 1.2
+        },
+        "source": "AISC DG13, Ejemplo 6-3"
+      }
+    ]
+  }
+}

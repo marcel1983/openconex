@@ -670,19 +670,13 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
             "id": f"moment.{key}", "text_id": f"check.moment.{key}",
             "clause": f"{DG4}, {ref}; {check.clause}", "applicable": not plates}))
     if plates:
-        c = Calc(method, combo)
-        clause = f"{DG4}, Eq. 3.32; {SPEC} §J10.8, §J4.4"
-        fsu = c.step("F_{su}", r"F_{fu} - \min \phi R_n", max(Ffu - min(strengths), 0.0),
-                     Kind.FORCE, clause)
-        ts = mc.continuity_plate
-        bs = c.step("b_s", "(b_{fc} - t_{wc})/2", (col.bf - col.tw) / 2, Kind.LENGTH, clause)
-        rn = c.step("R_n", "F_y (2 b_s t_s)", mc.plate_Fy * 2 * bs * ts, Kind.FORCE, clause,
-                    t_s=(ts, T))
-        out.append(c.result("moment.continuity_plates", clause, fsu,
-                            c.available(rn, TENSION_YIELD, Kind.FORCE, clause), Kind.FORCE))
+        from .column_stiffening import stiffener_checks
+        out += stiffener_checks(mc, Ffu, strengths, beam.bf, beam.tf, method, combo)
+    if mc.doubler_plate > 0:
+        from .column_stiffening import doubler_checks
+        out += doubler_checks(mc, method, combo)
     if column_shear is not None:
-        demand = (2 * Ffu if mc.two_sided else Ffu) - column_shear
-        out.append(_rename(local.panel_zone_shear(col, column_axial, abs(demand), method,
-                                                  combo=combo), "column_panel_zone"))
+        from .panel_zone import panel_zone_check
+        out += panel_zone_check(mc, Ffu, column_shear, column_axial, method, combo)
     return out
 

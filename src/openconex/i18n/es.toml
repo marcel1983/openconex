@@ -365,6 +365,15 @@ end_plate_flange_weld = "Soldadura de filete de las alas a la placa de extremo"
 column_flange_bending = "Flexión del ala de la columna en los pernos (espesor requerido)"
 column_flange_strength = "Resistencia del ala de la columna sin rigidizar a la fuerza de ala"
 continuity_plates = "Placas de continuidad de la columna"
+continuity_plate_width = "Ancho mínimo de los rigidizadores de la columna"
+continuity_plate_thickness = "Espesor mínimo de los rigidizadores de la columna"
+continuity_plate_length = "Largo mínimo de los rigidizadores de altura parcial"
+continuity_plate_shear = "Corte en los rigidizadores hacia la zona de panel"
+continuity_plate_flange_weld = "Soldadura de los rigidizadores a las alas de la columna"
+continuity_plate_web_weld = "Soldadura de los rigidizadores al alma de la columna"
+continuity_plate_web_shear = "Corte en el alma (o doble placa) junto a los rigidizadores"
+doubler_plate_buckling = "Espesor mínimo de la doble placa (pandeo por corte)"
+doubler_plate_weld = "Soldadura de la doble placa a las alas de la columna"
 
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
@@ -495,6 +504,7 @@ pretensioned = "pretensados"
 weld_web = "alma"
 weld_flanges = "alas"
 continuity_plate = "Placas de continuidad (espesor)"
+doubler_plate = "Dobles placas del alma (espesor total)"
 weld_reinforcement = "Refuerzo de la soldadura CJP"
 
 [drawing]

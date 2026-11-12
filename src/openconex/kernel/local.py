@@ -110,12 +110,15 @@ def web_compression_buckling(shape: IShape, demand: float, method: Method,
 
 def panel_zone_shear(column: IShape, Pr: float, demand: float, method: Method,
                      beam_depth: float | None = None, inelastic: bool = False,
-                     combo: str = "") -> CheckResult:
+                     combo: str = "", doubler: float = 0.0,
+                     doubler_Fy: float | None = None) -> CheckResult:
     """Web panel zone shear (§J10.6).
 
     Without considering panel-zone inelastic deformation in the stability
     analysis: Eq. J10-9/J10-10. With it (``inelastic``, needs ``beam_depth``):
     Eq. J10-11/J10-12. ``Pr`` is the required axial strength of the column.
+    A ``doubler`` plate (total thickness, yield stress ``doubler_Fy``, the
+    column's by default) adds 0.60 F_yd d_c t_d to the web term.
     """
     c = Calc(method, combo)
     fy, dc, tw = column.material.Fy, column.d, column.tw
@@ -123,6 +126,12 @@ def panel_zone_shear(column: IShape, Pr: float, demand: float, method: Method,
     alpha = 1.0 if method is Method.LRFD else 1.6
     load = c.step(r"\alpha P_r / P_y", "", alpha * Pr / py, clause=f"{SPEC} §J10.6")
     base = 0.60 * fy * dc * tw
+    if doubler > 0:
+        fyd = doubler_Fy or fy
+        base = c.step("V_{web}", r"0.60 d_c (F_y t_w + F_{yd} t_d)",
+                      0.60 * dc * (fy * tw + fyd * doubler), Kind.FORCE,
+                      f"{SPEC} §J10.6 and Commentary", t_d=(doubler, Kind.THICKNESS))
+        tw = tw + doubler * fyd / fy
     if not inelastic:
         if load <= 0.4:
             clause = f"{SPEC} §J10.6, Eq. J10-9"

@@ -70,6 +70,9 @@ def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
             welds.append(f"{tr('input.weld_reinforcement', lang)}: "
                          f"{q(e.weld_reinforcement, Kind.THICKNESS)}")
         rows.append(Row([tr("input.weld", lang), "; ".join(welds)]))
+        if mc.doubler_plate is not None:
+            rows.append(Row([tr("input.doubler_plate", lang),
+                             q(mc.doubler_plate, Kind.THICKNESS)]))
         if mc.continuity_plate is not None:
             rows.append(Row([tr("input.continuity_plate", lang),
                              q(mc.continuity_plate, Kind.THICKNESS)]))
@@ -115,7 +118,8 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
     lang, units = info.language, info.unit_system()
     model = project.moment_model()
     combos = project.load_combinations()
-    results = check_moment_envelope(model, combos, project.case_forces())
+    results = check_moment_envelope(model, combos, project.case_forces(),
+                                    project.column_forces())
     governing: dict[str, CheckResult] = {}
     for r in results:
         if r.applicable and (r.id not in governing or r.ratio > governing[r.id].ratio):
@@ -128,8 +132,11 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
     forces = project.case_forces()
     mc = project.moment_connection
     end_plate = mc.type is FlangeDetail.END_PLATE
+    column = project.column_forces()
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.V2, Kind.FORCE),
-                  q(f.M3, Kind.MOMENT)] + ([q(f.P, Kind.FORCE)] if end_plate else []))
+                  q(f.M3, Kind.MOMENT)] + ([q(f.P, Kind.FORCE)] if end_plate else [])
+                 + ([q(column[c.name].V2, Kind.FORCE), q(column[c.name].P, Kind.FORCE)]
+                    if mc.panel_zone else []))
              for c, f in zip(project.cases, forces.values(), strict=True)]
     combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
                          tr("report.custom_source", lang) if c.source == "custom" else c.source])
@@ -155,7 +162,8 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
             for k in ("number", "client", "engineer", "revision", "date")],
         codes=MOMENT_CODES, assumptions=assumptions, inputs=_inputs(project, lang, units),
         cases=cases,
-        case_headers=["ID", tr("report.item", lang), "V", "M"] + (["P"] if end_plate else []),
+        case_headers=["ID", tr("report.item", lang), "V", "M"] + (["P"] if end_plate else [])
+        + (["V_c", "P_c"] if mc.panel_zone else []),
         combinations=combinations, summary=summary,
         checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",
