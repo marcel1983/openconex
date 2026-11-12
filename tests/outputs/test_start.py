@@ -66,6 +66,17 @@ def test_beam_to_beam_sets_the_support_web():
     assert connection.support == "W21X62"
 
 
+def test_starter_shear_projects_have_valid_bolt_groups():
+    from openconex.connections.shear.check import validate_shear_connection
+
+    for family in FAMILIES:
+        if family.id not in {"shear_column", "shear_beam"}:
+            continue
+        for subtype in family.subtypes:
+            validate_shear_connection(
+                build_project(family.id, subtype.id).shear_model())
+
+
 def test_beam_family_has_its_own_thumbnails():
     column = next(family for family in FAMILIES if family.id == "shear_column")
     beam = next(family for family in FAMILIES if family.id == "shear_beam")

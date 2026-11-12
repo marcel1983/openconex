@@ -95,8 +95,9 @@ SHEAR_BASE: dict[str, Any] = {
 
 SHEAR_OVERRIDES: dict[str, dict[str, Any]] = {
     "double_angle": {
-        "length": "8.5 in", "leh": "1.25 in", "leh_support": "1.25 in",
-        "support_element": "web",
+        # Three rows fit the 8.5 in angle: 2 x 1.25 + 2 x 3 = 8.5 in.
+        "rows": 3, "length": "8.5 in", "leh": "1.25 in",
+        "leh_support": "1.25 in", "support_element": "web",
     },
     "single_plate": {},
     "extended_single_plate": {
