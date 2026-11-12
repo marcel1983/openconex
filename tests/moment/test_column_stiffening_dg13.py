@@ -167,12 +167,11 @@ def test_project_example_report_3d_and_window(tmp_path):
     ids = {r.id for r in report.results if r.applicable}
     assert {"moment.continuity_plate_web_weld", "moment.doubler_plate_weld",
             "moment.column_panel_zone"} <= ids
-    try:
+    from openconex.geometry3d.base_plate import occ_available
+    if occ_available():  # the 3D extra is optional
         from openconex.geometry3d.moment import moment_parts
         names = {p.name for p in moment_parts(project.moment_model())}
         assert {"doubler_plate", "continuity_plate1a", "continuity_plate2b"} <= names
-    except ImportError:
-        pass
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     pytest.importorskip("PySide6")
     from PySide6.QtWidgets import QApplication
