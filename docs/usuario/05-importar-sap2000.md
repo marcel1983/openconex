@@ -91,3 +91,28 @@ openconex baseplate proyectos/column-HSS6X6X3_8.ocnx --html --docx --dxf
 - **Agrupación por columna:** cada caso lleva el nodo como prefijo ("50: DEAD") y las combinaciones se forman nodo por nodo. La memoria indica el nodo y la combinación que gobiernan.
 
 Los archivos se llaman `joint-<nodo>.ocnx` o `column-<sección>.ocnx`.
+
+## 5. Reacciones de vigas para conexiones de corte
+
+`openconex beams` crea proyectos de conexión de corte (`shear_connection`) a partir de las fuerzas en los extremos de las vigas. Por ahora solo lee exportaciones de **SAP2000**; ETABS da un error claro.
+
+Además de las tablas de la sección 1, exporte:
+
+| Tabla | Para qué | ¿Necesaria? |
+|---|---|---|
+| Element Forces - Frames (Analysis Results) | P y V2 en cada estación de las barras | sí |
+| Frame Release Assignments 1 - General | extremos articulados (M3 liberado) | recomendada |
+
+Qué hace la importación:
+
+- **Vigas:** barras horizontales. Por defecto solo se usan los extremos con M3 liberado; sin la tabla de liberaciones se usan todos, con un aviso, y `--all-ends` también los usa todos.
+- **Apoyo:** la columna (barra vertical) que llega al nodo del extremo; si no hay, una viga principal horizontal que cruza la viga a más de 45°. Un extremo sin apoyo se omite con un aviso.
+- **Ala o alma:** en una columna I, la viga que va en la dirección del eje local 2 llega al ala y la que va en la del eje 3, al alma (con el giro de `Frame Local Axes Assignments 1 - Typical`). En una viga principal, siempre al alma.
+- **Fuerzas:** en la primera estación (extremo I) y la última (extremo J) de cada viga. `V` es V2 y `P` es la fuerza axial con la compresión positiva (SAP2000 da la tracción positiva). Los casos, combinaciones y envolventes se tratan igual que en los apoyos.
+- **Secciones:** la viga y el apoyo deben ser perfiles I (catálogo AISC o W genérica con las dimensiones de SAP2000); otros se omiten con un aviso.
+
+La plantilla es un proyecto de conexión de corte, por ejemplo `examples/shear_single_plate.ocnx`: se conservan el tipo, la geometría, los pernos, las soldaduras y las combinaciones, y se reemplazan la viga, el apoyo, `support_element` y las cargas. Los archivos se llaman `end-<viga>-<I|J>.ocnx` o `section-<viga>_<apoyo>_<ala|alma>.ocnx`, y se calculan con `openconex shear` o desde el cálculo por lotes de la interfaz.
+
+```bash
+openconex beams modelo.xlsx --create corte --template examples/shear_single_plate.ocnx --group section
+```

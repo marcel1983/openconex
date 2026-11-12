@@ -154,7 +154,7 @@ def test_report_has_plan_figure():
     keys = [figure.key for figure in report.figures]
     assert keys[0] == "plan"
     assert set(keys) <= {"plan", "isometric"}
-    assert len(report.summary) == 12
+    assert len(report.summary) == 13  # 12 of the connection + the beam web shear
     assert any("benchmark FE" in assumption for assumption in report.assumptions)
 
 

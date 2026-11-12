@@ -74,6 +74,31 @@ Lee las tablas exportadas a Excel y lista cada apoyo con su columna y las reacci
 | `--group joint\|column` | `joint` (por defecto): un proyecto por apoyo. `column`: un proyecto por sección de columna. |
 | `--method LRFD\|ASD` | Método de las combinaciones importadas (por defecto, el primero de la plantilla). |
 
+## `openconex beams`: extremos de viga de SAP2000
+
+```bash
+openconex beams modelo.xlsx [opciones]
+```
+
+Lee las tablas exportadas de SAP2000 y lista los extremos de viga articulados (con M3 liberado), con su apoyo (columna o viga principal), si la conexión va al ala o al alma, y el corte máximo. Con `--create`, escribe un proyecto de conexión de corte por extremo a partir de una plantilla. Detalles en [Importar desde SAP2000 / ETABS](05-importar-sap2000.md#5-reacciones-de-vigas-para-conexiones-de-corte).
+
+| Opción | Efecto |
+|---|---|
+| `--units SISTEMA` | Unidades del listado (por defecto `SI_kN_m`). |
+| `--all-cases` | Incluye en el listado los casos de carga sin mayorar. |
+| `--all-ends` | Usa todos los extremos de viga, no solo los articulados. |
+| `--create CARPETA` | Escribe los proyectos `.ocnx` en la carpeta. |
+| `--template ARCHIVO` | Proyecto plantilla de conexión de corte (tipo, placa o ángulos, pernos, soldaduras y opciones); obligatorio con `--create`. |
+| `--loads cases\|combinations` | Igual que en `openconex supports`. |
+| `--include REGEX` | Solo los casos o combinaciones cuyo nombre coincide. |
+| `--envelopes` | Con `--loads combinations`, usa también las envolventes Max/Min. |
+| `--group end\|section` | `end` (por defecto): un proyecto por extremo de viga. `section`: un proyecto por sección de viga, sección de apoyo y elemento (ala o alma). |
+| `--method LRFD\|ASD` | Método de las combinaciones importadas. |
+
+```bash
+openconex beams modelo.xlsx --create corte --template examples/shear_single_plate.ocnx
+```
+
 ## `openconex convert`: convertir unidades
 
 ```bash

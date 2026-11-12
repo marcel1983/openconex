@@ -318,6 +318,7 @@ seat_plate_weld = "Soldadura mínima de la placa de asiento"
 seat_plate_weld_length = "Longitud mínima de la soldadura de la placa de asiento"
 
 [check.shear_connection]
+beam_shear_yielding = "Fluencia por corte del alma de la viga"
 axial_compression = "Compresión axial (no implementada para esta conexión)"
 axial_unsupported = "Tracción axial no implementada para esta conexión"
 
