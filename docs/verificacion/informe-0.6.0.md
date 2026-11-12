@@ -164,7 +164,7 @@ Todas las familias principales tienen ya un cálculo independiente. Las cinco de
 | SC-05 | II.A-10 | 0,840 rotura por corte de la placa B |
 | SC-06 | II.A-12A | 0,766 pernos del asiento; 0,610 flexión del ala (ASD); 1,000 detalle del ángulo superior |
 
-La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, RISAConnection ni SkyCiv en el entorno de pruebas, así que la comparación externa **no se ha ejecutado**. Hasta completarla, la validación numérica es la de los ejemplos publicados y el cálculo independiente de asientos.
+La columna `resultado_externo` sigue vacía. No hay licencia de RAM Connection, RISAConnection ni SkyCiv en el entorno de pruebas, así que la comparación externa **no se ha ejecutado**. Hasta completarla, la validación numérica es la de los ejemplos publicados y el cálculo independiente de todas las familias principales (sección 5).
 
 ## 7. Validación de salidas
 

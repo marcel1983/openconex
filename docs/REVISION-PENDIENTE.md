@@ -128,9 +128,9 @@ Puntos a verificar:
 
 Diferencias aceptadas en la validación que conviene revisar con criterio propio:
 
-- [ ] II.A-17A y II.A-17B: C del centro instantáneo (3,556 y 4,06) contra el interpolado de las tablas (3,54 y 4,07).
-- [ ] II.A-1B: la interacción del bloque de corte usa la forma U (0,054); el ejemplo usa la forma L (0,0531).
-- [ ] II.A-19A: Z_net calculado (12,75 in³) contra el de la Tabla 15-2 (12,8 in³).
+- [x] II.A-17A y II.A-17B: C del centro instantáneo (3,556 y 4,06) contra el interpolado de las tablas (3,54 y 4,07). En II.A-17A el cálculo independiente por bisección da también 3,556 (informe 0.6.0, §5.2); la diferencia es la interpolación lineal de la tabla (0,5 %). En II.A-17B la diferencia es del 0,2 %, dentro de la tolerancia del 1 %.
+- [x] II.A-1B: la interacción del bloque de corte usa la forma U (0,054); el ejemplo usa la forma L (0,0531). Se mantiene la forma U, el menor de los bloques axiales, por ser más conservadora (informe 0.6.0, §3).
+- [x] II.A-19A: Z_net calculado (12,75 in³) contra el de la Tabla 15-2 (12,8 in³). Es redondeo de la tabla; el cálculo independiente da 621,6 kip·in frente a 624 publicado (0,4 %, informe 0.6.0, §5.5).
 - [x] Viga destajada con λ > 2λ_p: rama contrastada con un caso sintético de alma delgada; no hay ejemplo publicado.
 - [ ] II.A-18: la placa simple con destaje superior está validada; falta contrastar el doble destaje y las conexiones desplazadas/en ángulo.
 
