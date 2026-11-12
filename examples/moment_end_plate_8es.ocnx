@@ -14,6 +14,7 @@
     "beam": "W21X55",
     "column": "W14X109",
     "continuity_plate": "1/2 in",
+    "continuity_plate_width": "6 in",
     "end_plate": {
       "layout": "extended_8_stiffened",
       "bolt": {

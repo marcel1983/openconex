@@ -365,6 +365,15 @@ end_plate_flange_weld = "Beam flange to end-plate fillet weld"
 column_flange_bending = "Column flange bending at the bolts (required thickness)"
 column_flange_strength = "Unstiffened column flange strength under the flange force"
 continuity_plates = "Column continuity plates"
+continuity_plate_width = "Minimum width of the column stiffeners"
+continuity_plate_thickness = "Minimum thickness of the column stiffeners"
+continuity_plate_length = "Minimum length of partial-depth stiffeners"
+continuity_plate_shear = "Stiffener shear into the panel zone"
+continuity_plate_flange_weld = "Stiffener welds to the column flanges"
+continuity_plate_web_weld = "Stiffener welds to the column web"
+continuity_plate_web_shear = "Web (or doubler) shear at the stiffeners"
+doubler_plate_buckling = "Minimum doubler plate thickness (shear buckling)"
+doubler_plate_weld = "Doubler plate welds to the column flanges"
 
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
@@ -495,6 +504,7 @@ pretensioned = "pretensioned"
 weld_web = "web"
 weld_flanges = "flanges"
 continuity_plate = "Continuity plates (thickness)"
+doubler_plate = "Web doubler plates (total thickness)"
 weld_reinforcement = "CJP weld reinforcement"
 
 [drawing]

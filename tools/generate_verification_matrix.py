@@ -49,6 +49,7 @@ FAMILY = {
     "Conexión de corte: resultados comunes": "conexion_corte",
     "Conexiones de momento": "momento",
     "Placas de extremo de momento": "placa_extremo_momento",
+    "Rigidización de la columna": "rigidizacion_columna",
     "Anclajes": "anclajes",
     "Pernos": "pernos",
     "Soldaduras": "soldaduras",
@@ -72,6 +73,7 @@ REFERENCE = {
     "asiento_rigidizado": "AISC DE v16.1, II.A-14 y II.A-15",
     "conexion_corte": "—",
     "momento": "AISC DE v16.1, II.B-1, II.B-2 y II.B-3",
+    "rigidizacion_columna": "AISC DG13 (1999, rev. 2003), ejemplos 6-1 y 6-3",
     "placa_extremo_momento": ("AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5; "
                               "AISC DG4 2.ª ed., ejemplos 4E A, 4E B y 8ES"),
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
@@ -97,6 +99,7 @@ TEST = {
     "asiento_rigidizado": "tests/connections/test_stiffened_seat.py",
     "conexion_corte": "tests/connections/test_shear_project.py",
     "momento": "tests/moment/test_fr_moment.py",
+    "rigidizacion_columna": "tests/moment/test_column_stiffening_dg13.py",
     "placa_extremo_momento": ("tests/moment/test_end_plate_dg16.py; "
                               "tests/moment/test_end_plate_dg4.py"),
     "anclajes": "tests/kernel/test_anchors.py",
@@ -124,6 +127,7 @@ TEST_OVERRIDE = {
     "bolt_group.eccentric": "tests/kernel/test_bolt_group_manual.py",
     "shear_connection.beam_shear_yielding": "tests/connections/test_beam_web_shear.py",
     "moment.column_web_compression_buckling": "tests/moment/test_end_plate_dg4.py",
+    "moment.column_panel_zone": "tests/moment/test_column_stiffening_dg13.py",
     "weld_group.eccentric": "tests/kernel/test_weld_group.py",
     "prying.tension": "tests/kernel/test_prying.py",
     "prying.min_thickness": "tests/kernel/test_prying.py",
@@ -138,9 +142,8 @@ DIFFERENCE = {
     "moment.end_plate_bolt_shear": (
         "agujeros de AISC 360-22 y desgarro hacia el borde en todas las filas exteriores "
         "(DG4 4E B y 8ES no lo consideran); ver docs/tecnico/07-validacion.md"),
-    "moment.continuity_plates": (
-        "F_su con las resistencias de los pasos 15 a 18 (117/115 kip); la Guía publica 128/131 "
-        "kip con valores que no coinciden con esos pasos"),
+    "moment.continuity_plate_web_shear": (
+        "DG13 6-3 Solución A omite el recorte en l_min (1,23 in); la Solución B lo suma"),
     "moment.end_plate_bolt_rupture": (
         "DG16 3.2.4 y 4.2.3: la Guía publica un valor distinto del que da su diagrama del "
         "Apéndice B; ver docs/tecnico/07-validacion.md"),
@@ -154,9 +157,6 @@ PARTIAL: dict[str, str] = {
     "moment.end_plate_web_weld_shear": _DG16_PARTIAL,
     "moment.end_plate_web_weld_tension": _DG16_PARTIAL,
     "moment.end_plate_flange_weld": _DG16_PARTIAL,
-    "moment.column_panel_zone": (
-        "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.6) se contrasta con "
-        "valores manuales en tests/kernel/test_local.py"),
 }
 
 NO_APLICA = {"shear_connection.axial_compression", "shear_connection.axial_unsupported"}

@@ -123,8 +123,8 @@ def test_stiffened_column_flange(mc, M, plates, Yc, treq):
     force = r["moment.continuity_plates"]
     expected = {"4E-A": 396 - 279, "8ES": 399 - 284}["4E-A" if mc is EX_A else "8ES"]
     assert kip(force.demand) == pytest.approx(expected, rel=1e-2)
-    # two 1/2 in. plates, (14.6 - 0.525)/2 wide: 0.9(50)(2)(7.04)(0.5)
-    assert kip(force.capacity) == pytest.approx(0.9 * 50 * 2 * 7.0375 * 0.5, rel=1e-3)
+    # two 1/2 in. plates, (14.6 - 0.525)/2 wide less a 3/4 in. corner clip (DG13 Eq. 4.3-1)
+    assert kip(force.capacity) == pytest.approx(0.9 * 50 * 2 * (7.0375 - 0.75) * 0.5, rel=1e-3)
 
 
 def test_8es_end_plate():

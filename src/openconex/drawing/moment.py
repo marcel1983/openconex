@@ -172,10 +172,11 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     for y in lay.end_plate_rows:
         t = u(lay.plates[0][2])
         s.rect(-ctf - 1.5 * r, u(y) - r, t + 1.5 * r, u(y) + r, "MC-PERNO")
-    if mc.continuity_plate > 0:  # column continuity plates at the beam flange centerlines
-        ts = u(mc.continuity_plate)
+    if mc.continuity_plate > 0:  # column stiffeners at the beam flange centerlines
+        from openconex.connections.moment.column_stiffening import stiffener_length
+        ts, length = u(mc.continuity_plate), u(stiffener_length(mc))
         for yc in (u(lay.beam_d - lay.beam_tf / 2), u(lay.beam_tf / 2)):
-            s.rect(-cd + ctf, yc - ts / 2, -ctf, yc + ts / 2, "MC-PLACA")
+            s.rect(-ctf - length, yc - ts / 2, -ctf, yc + ts / 2, "MC-PLACA")
     for poly in lay.stiffeners:
         s.msp.add_lwpolyline([(u(x), u(y)) for x, y in poly], close=True,
                              dxfattribs={"layer": "MC-PLACA"})

@@ -76,6 +76,23 @@ def _parts(mc: MomentConnection) -> list[Part]:
         _box(-ctf, lo, -cbf / 2, ctf, hi - lo, cbf),
         _box(-cd, lo, -cbf / 2, ctf, hi - lo, cbf),
         _box(-cd + ctf, lo, -ctw / 2, cd - 2 * ctf, hi - lo, ctw)])))
+    tcp = mc.continuity_plate
+    if tcp > 0:  # pairs of transverse stiffeners at the beam flange centerlines
+        from openconex.connections.moment.column_stiffening import (
+            stiffener_length,
+            stiffener_width,
+        )
+        width, length = stiffener_width(mc), stiffener_length(mc)
+        for j, yc in enumerate((d - tf / 2, tf / 2)):
+            za = ctw / 2 + mc.doubler_plate
+            for side, z, w in (("a", za, width - mc.doubler_plate), ("b", -ctw / 2 - width,
+                                                                     width)):
+                parts.append(Part(f"continuity_plate{j + 1}{side}", _box(
+                    -ctf - length, yc - tcp / 2, z, length, tcp, w)))
+    if mc.doubler_plate > 0:
+        td = mc.doubler_plate
+        parts.append(Part("doubler_plate", _box(-cd + ctf, lo + 50.0, ctw / 2,
+                                                cd - 2 * ctf, hi - lo - 100.0, td)))
     ep = mc.end_plate
     if ep is not None and lay.end_plate_rows:
         x_0, y_0, x_1, y_1, _ = lay.plates[0]
@@ -90,13 +107,6 @@ def _parts(mc: MomentConnection) -> list[Part]:
                 for side, z in (("a", tw / 2), ("b", -bf / 2)):
                     parts.append(Part(f"stiffener{i + 1}{side}",
                                       _box(xa, yd, z, xb - xa, ya - yd, (bf - tw) / 2)))
-        tcp = mc.continuity_plate
-        if tcp > 0:
-            width = (cbf - ctw) / 2
-            for j, yc in enumerate((d - tf / 2, tf / 2)):
-                for side, z in (("a", ctw / 2), ("b", -cbf / 2)):
-                    parts.append(Part(f"continuity_plate{j + 1}{side}", _box(
-                        -cd + ctf, yc - tcp / 2, z, cd - 2 * ctf, tcp, width)))
         r = ep.bolt.diameter / 2
         for i, y in enumerate(lay.end_plate_rows):
             for j, z in enumerate((-ep.gage / 2, ep.gage / 2)):

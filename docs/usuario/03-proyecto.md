@@ -25,6 +25,7 @@ Ejemplos completos en `examples/`:
 | `examples/moment_end_plate_extended.ocnx` | placa de extremo extendida de cuatro pernos 4E (AISC DG16, Ej. 4.2.1) |
 | `examples/moment_end_plate_flush.ocnx` | placa de extremo enrasada de cuatro pernos (AISC DG16, Ej. 3.2.2) |
 | `examples/moment_end_plate_8es.ocnx` | placa de extremo 8ES con placas de continuidad (AISC DG4, Ej. 4.4) |
+| `examples/moment_welded_flange_stiffened.ocnx` | alas soldadas con rigidizadores de altura parcial, doble placa y zona de panel (AISC DG13, Ej. 6-3) |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
@@ -456,7 +457,17 @@ Conexión de momento totalmente restringida de una viga al ala de una columna (M
 | `deformation_considered` | `true` | Aplastamiento con deformación en servicio considerada. |
 | `column_near_end` | `false` | Fuerza de ala cerca del extremo de la columna (§J10, resistencias reducidas). |
 | `two_sided` | `false` | Vigas a ambos lados de la columna (pandeo del alma, §J10.5). |
-| `continuity_plate` | — | Placa de extremo: espesor de las placas de continuidad (rigidizadores) de la columna a la altura de las alas de la viga, del acero `grade`. Con ellas el ala de la columna se verifica rigidizada y se comprueba la fuerza de las placas (DG4 Ec. 3.32). |
+| `panel_zone` | `false` | Verifica la zona de panel de la columna (§J10.6) con `column_V` y `column_P` de los casos. La demanda es la fuerza de ala (de las dos vigas con `two_sided`) menos el corte de piso. |
+| `panel_zone_inelastic` | `false` | El análisis de estabilidad considera la deformación de la zona de panel (Ec. J10-11 y J10-12). |
+| `doubler_plate` | — | Espesor total de las dobles placas del alma en la zona de panel (acero `grade`): suma 0,60 F_y d_c t_d a la resistencia. |
+| `continuity_plate` | — | Espesor de los rigidizadores transversales (placas de continuidad) de la columna, un par a la altura de cada ala de la viga, del acero `grade`. Con ellos las verificaciones locales de la columna pasan a no aplicables y se verifican los rigidizadores (AISC DG13); en placas de extremo, el ala de la columna se verifica rigidizada (DG4). |
+| `continuity_plate_width` | (b_fc − t_wc)/2 | Ancho b_s de cada rigidizador. |
+| `continuity_plate_clip` | `3/4 in` | Recorte de esquina de los rigidizadores. |
+| `continuity_plate_full_depth` | `true` | Rigidizadores de altura completa; con `false`, de altura parcial. |
+| `continuity_plate_length` | — | Largo de los rigidizadores; si no se da, la altura libre del alma (completa) o su mitad (parcial). |
+| `continuity_plate_weld` | — | Filete doble de los rigidizadores a las alas de la columna; sin él, penetración completa. |
+| `continuity_plate_web_weld` | — | Filete doble de los rigidizadores al alma; sin él no se verifica esa soldadura. |
+| `doubler_weld` | — | Filete de la doble placa a las alas de la columna (bisel igual al espesor); sin él, penetración completa. |
 
 Placa del alma (`web`): `bolt`, `rows`, `spacing`, `length`, `thickness`, `lev` (del borde de la placa al perno inferior), `leh` (de la línea de pernos al borde) y `weld` (filete a cada lado, en la columna).
 
@@ -501,6 +512,8 @@ Cada caso es un conjunto de fuerzas sin mayorar en la base de la columna (o en e
 | `M` | `0` | Momento del eje fuerte. |
 | `V_weak` | `0` | Corte en la dirección de B (eje débil). |
 | `M_weak` | `0` | Momento del eje débil; si no es cero, la placa se verifica a flexión biaxial. |
+| `column_V` | `0` | Conexiones de momento con `panel_zone`: corte de piso de la columna sobre el nudo, que descuenta la fuerza de ala en la zona de panel. |
+| `column_P` | `0` | Conexiones de momento con `panel_zone`: carga axial de la columna (§J10.6). |
 
 Los signos de `V` y `M` se conservan al combinar los casos; las verificaciones usan valores absolutos.
 

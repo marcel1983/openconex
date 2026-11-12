@@ -111,6 +111,18 @@ Diferencias documentadas:
 - El ejemplo 8ES escribe h_2 = 22,24 in en Y_c rigidizado, en lugar de 22,29 in.
 - La fluencia por corte de la extensión usa φ = 1,0 (AISC 360-22 §J4.2) en lugar del 0,9 de la Guía (LRFD 1999).
 
+## AISC Design Guide 13 (1999, rev. 2003)
+
+`tests/moment/test_column_stiffening_dg13.py` reproduce el Ejemplo 6-3: viga W18×50 con alas soldadas a una columna W14×53 (F_y = 50 ksi), M_u = 250 ft-kips, P_u = 300 kips, rigidizadores de altura parcial PL ⅜ × 3 × 6½ in de acero A36 con recorte de ¾ in (LRFD).
+
+| Solución | Valores comprobados |
+|---|---|
+| A (doble placa de ⅝ in con filete de ¼ in, filetes de ¼ in al alma) | R_ust = 49 kips, A_st,mín = 1,51 in², b_s,mín = 2,31 in, t_s,mín = 0,285 in, l_mín = 6,30 in; largos mínimos por corte del rigidizador (4,11 in), soldadura al alma (2,95 in) y corte del alma (1,23 in sin recorte); soldadura a las alas w_mín = 0,182 in; doble placa: t_mín = 0,181 in por pandeo, V_udp = 33 kips, t_eff = 0,122 in y w_mín = 0,172 in |
+| B (doble placa de ¼ in con CJP, filetes de 3/16 in al alma) | largos mínimos por corte de la doble placa (3,27 in) y de la soldadura al alma (3,68 in) |
+| Ejemplo 6-1 (columna sin rigidizar) | φR_v = 139 kips, φR_n = 123 kips por flexión del ala |
+
+Diferencias documentadas: la base de perfiles de la 16ª ed. da d = 13,9 in para la W14×53 (13,92 in en la Guía), P_uf = 172,2 kips (la Guía redondea R_ust a 49 kips), y en la Solución A la Guía escribe l_mín = 1,23 in para el corte del alma sin sumar el recorte de ¾ in (1,98 in con él), que la Solución B sí suma.
+
 ## Hallazgos de la validación
 
 - **DG16, ejemplo 3.2.4, procedimiento 2:** φM_np = 1045 ≤ φ_b M_pl/1,11 = 1064 k-in, así que el diagrama del Apéndice B corregido por la errata de 2016 clasifica la placa como gruesa y da mín(φM_np, φ_b M_pl/γ_r) = 945 k-in (fluencia de la placa). La Guía publica 901 k-in (rotura de pernos con palanca), que corresponde a la rama de placa delgada. La prueba comprueba 945 y 1045 k-in.

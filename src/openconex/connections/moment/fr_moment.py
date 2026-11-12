@@ -46,7 +46,9 @@ from openconex.kernel.design import FLEXURE, Calc
 from openconex.kernel.welds import fillet_weld_group_concentric, fillet_weld_per_length
 from openconex.units import Kind, from_internal, to_internal
 
+from .column_stiffening import doubler_checks, stiffener_checks
 from .end_plate import EndPlate, end_plate_checks, end_plate_column_checks
+from .panel_zone import panel_zone_check
 
 __all__ = ["EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
            "check_moment_connection", "check_moment_envelope"]
@@ -126,9 +128,28 @@ class MomentConnection:
     """Beams frame into both column flanges (§J10.5 web compression buckling)."""
     end_plate: EndPlate | None = None
     """End-plate connections (Design Guides 16 and 4)."""
+    panel_zone: bool = False
+    """Check the panel zone (§J10.6) with the column forces of each case."""
+    panel_zone_inelastic: bool = False
+    """Panel zone deformation considered in the stability analysis (Eq. J10-11, J10-12)."""
+    doubler_plate: float = 0.0
+    """Total thickness of the web doubler plates in the panel zone (plate steel)."""
     continuity_plate: float = 0.0
-    """Thickness of the column continuity plates (stiffeners) at the beam flanges; 0: none.
-    Used by end plates (Design Guide 4)."""
+    """Thickness of the column continuity plates (transverse stiffeners) at the beam
+    flanges, a pair at each flange; 0: none (Design Guides 13 and 4)."""
+    continuity_plate_width: float = 0.0
+    """Width b_s of each stiffener; 0: (b_fc - t_wc)/2."""
+    continuity_plate_clip: float = to_internal(0.75, "in", Kind.LENGTH)
+    """Corner clip of the stiffeners."""
+    continuity_plate_full_depth: bool = True
+    continuity_plate_length: float = 0.0
+    """Stiffener length; 0: the clear web depth (full depth) or half of it (partial)."""
+    continuity_plate_weld: float = 0.0
+    """Double-sided fillet weld of the stiffeners to the column flanges; 0: CJP."""
+    continuity_plate_web_weld: float = 0.0
+    """Double-sided fillet weld of the stiffeners to the column web; 0: not checked."""
+    doubler_weld: float = 0.0
+    """Fillet weld of the doubler plate to the column flanges (bevel = thickness); 0: CJP."""
 
 
 def _rename(check: CheckResult, key: str) -> CheckResult:
@@ -344,7 +365,7 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
                    column_shear: float | None, column_axial: float) -> list[CheckResult]:
     col = mc.column
     near = mc.column_near_end
-    out = [
+    local_checks = [
         _rename(local.flange_local_bending(col, P, method, near, combo),
                 "column_flange_local_bending"),
         _rename(local.web_local_yielding(col, lb, P, method, near, combo),
@@ -353,12 +374,21 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
                 "column_web_crippling"),
     ]
     if mc.two_sided:
-        out.append(_rename(local.web_compression_buckling(col, P, method, near, combo),
-                           "column_web_compression_buckling"))
+        local_checks.append(_rename(local.web_compression_buckling(col, P, method, near, combo),
+                                    "column_web_compression_buckling"))
+    plates = mc.continuity_plate > 0
+    out = [r.model_copy(update={"applicable": not plates}) for r in local_checks]
+    if plates:
+        if mc.detail is FlangeDetail.WELDED_FLANGE:
+            b, t = mc.beam.bf, mc.beam.tf
+        else:
+            b, t = mc.top.width, max(mc.top.thickness, (mc.bottom or mc.top).thickness)
+        out += stiffener_checks(mc, P, [r.capacity for r in local_checks], b, t, method,
+                                combo)
+    if mc.doubler_plate > 0:
+        out += doubler_checks(mc, method, combo)
     if column_shear is not None:
-        demand = (2 * P if mc.two_sided else P) - column_shear
-        out.append(_rename(local.panel_zone_shear(col, column_axial, abs(demand), method,
-                                                  combo=combo), "column_panel_zone"))
+        out += panel_zone_check(mc, P, column_shear, column_axial, method, combo)
     return out
 
 
@@ -391,11 +421,20 @@ def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Me
 
 
 def check_moment_envelope(mc: MomentConnection, combinations: Iterable[LoadCombination],
-                          case_forces: Mapping[str, Forces]) -> list[CheckResult]:
-    """Run every combination: ``V2`` is the beam end shear and ``M3`` its moment."""
+                          case_forces: Mapping[str, Forces],
+                          column_forces: Mapping[str, Forces] | None = None,
+                          ) -> list[CheckResult]:
+    """Run every combination: ``V2`` is the beam end shear, ``M3`` its moment and ``P`` its
+    axial force. With ``mc.panel_zone``, ``column_forces`` gives for each case the story
+    shear (``V2``) and axial force (``P``) of the column."""
     results: list[CheckResult] = []
     for combo in combinations:
         forces = combine(combo, case_forces)
+        column_shear, column_axial = None, 0.0
+        if mc.panel_zone:
+            col = combine(combo, column_forces or {name: Forces() for name in case_forces})
+            column_shear, column_axial = col.V2, abs(col.P)
         results += check_moment_connection(mc, forces.V2, forces.M3, combo.method, combo.name,
-                                           P=forces.P)
+                                           column_shear=column_shear,
+                                           column_axial=column_axial, P=forces.P)
     return results

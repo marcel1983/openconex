@@ -42,7 +42,7 @@ Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `
 
 ### Plano de una conexión de momento
 
-`openconex moment --dxf` dibuja la elevación hacia el alma de la viga: las alas de la columna, la viga, las placas de ala y del alma (o la placa de extremo con sus rigidizadores y las placas de continuidad de la columna), los pernos, las soldaduras, cotas principales y notas. Es esquemático, sin lista de materiales. Capas: `MC-VIGA`, `MC-COLUMNA`, `MC-PLACA`, `MC-PERNO`, `MC-SOLDADURA`, `MC-COTAS` y `MC-TEXTO`. La memoria incluye esta elevación y el isométrico, y en los casos muestra `V` y `M` (y `P` con placa de extremo). Con placa de extremo, la memoria cita la AISC Design Guide 16 y la traza indica si la placa se trató como gruesa (sin efecto palanca) o delgada (con efecto palanca).
+`openconex moment --dxf` dibuja la elevación hacia el alma de la viga: las alas de la columna, la viga, las placas de ala y del alma (o la placa de extremo con sus rigidizadores), los rigidizadores transversales de la columna y, en el 3D, la doble placa, los pernos, las soldaduras, cotas principales y notas. Es esquemático, sin lista de materiales. Capas: `MC-VIGA`, `MC-COLUMNA`, `MC-PLACA`, `MC-PERNO`, `MC-SOLDADURA`, `MC-COTAS` y `MC-TEXTO`. La memoria incluye esta elevación y el isométrico, y en los casos muestra `V` y `M` (y `P` con placa de extremo, y `V_c` y `P_c` con zona de panel). Con placa de extremo, la memoria cita la AISC Design Guide 16 y la traza indica si la placa se trató como gruesa (sin efecto palanca) o delgada (con efecto palanca).
 
 ## Modelo 3D (`--step`, `--stl`)
 

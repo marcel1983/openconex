@@ -379,6 +379,10 @@ class LoadCaseInput(_Input):
     """Shear along the weak axis direction (B)."""
     M_weak: Quantity = 0.0
     """Weak-axis moment; with a non-zero value the plate is checked for biaxial bending."""
+    column_V: Quantity = 0.0
+    """Moment connections with ``panel_zone``: story shear of the column above the joint."""
+    column_P: Quantity = 0.0
+    """Moment connections with ``panel_zone``: column axial force."""
 
 
 class CustomCombinationInput(_Input):
@@ -462,6 +466,10 @@ class Project(_Input):
         if len(blocks) != 1:
             raise ValueError("a project needs exactly one of base_plate, shear_connection or "
                              "moment_connection")
+        if self.moment_connection is None and any(
+                self.quantity(c.column_V, Kind.FORCE) or self.quantity(c.column_P, Kind.FORCE)
+                for c in self.cases):
+            raise ValueError("column_V and column_P are only used by moment connections")
         if self.shear_connection is not None:
             return self._validate_shear()
         if self.moment_connection is not None:
@@ -886,6 +894,12 @@ class Project(_Input):
         return {c.name: Forces(P=self.quantity(c.P, F), V2=self.quantity(c.V, F),
                                M3=self.quantity(c.M, M), V3=self.quantity(c.V_weak, F),
                                M2=self.quantity(c.M_weak, M)) for c in self.cases}
+
+    def column_forces(self) -> dict[str, Forces]:
+        """Column story shear (``V2``) and axial force (``P``) of each case (panel zone)."""
+        F = Kind.FORCE
+        return {c.name: Forces(P=self.quantity(c.column_P, F), V2=self.quantity(c.column_V, F))
+                for c in self.cases}
 
     def load_combinations(self) -> list[LoadCombination]:
         opts = self.combinations
