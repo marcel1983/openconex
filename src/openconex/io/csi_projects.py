@@ -153,7 +153,10 @@ def _case(name: str, load_type: LoadType, forces) -> LoadCaseInput:
 
 
 def _loads(support: Support, data: CsiImport, template: Project, source: LoadSource,
-           include: str | None, envelopes: bool, method: Method | None, warnings: list[str]):
+           include: str | None, envelopes: bool, method: Method | None, warnings: list[str],
+           case=None):
+    """Cases and combinations of one support (or beam end, via ``support.forces``)."""
+    case = case or _case
     pattern = re.compile(include) if include else None
     if source is LoadSource.CASES:
         names = [c.name for c in data.cases.values() if c.kind is CaseKind.LOAD_CASE
@@ -161,7 +164,7 @@ def _loads(support: Support, data: CsiImport, template: Project, source: LoadSou
         untyped = [n for n in names if data.cases[n].load_type is None]
         if untyped:
             warnings.append(f"load cases without a design type, not used: {', '.join(untyped)}")
-        cases = [_case(n, data.cases[n].load_type, support.forces[n])
+        cases = [case(n, data.cases[n].load_type, support.forces[n])
                  for n in names if data.cases[n].load_type is not None and n in support.forces]
         combinations = template.combinations.model_copy(update={"include_code": True,
                                                                 "custom": []})
@@ -170,7 +173,7 @@ def _loads(support: Support, data: CsiImport, template: Project, source: LoadSou
     names = [c.name for c in data.cases.values() if c.kind in kinds
              and (pattern is None or pattern.search(c.name)) and c.name in support.forces]
     method = method or (template.combinations.methods or [Method.LRFD])[0]
-    cases = [_case(n, LoadType.DEAD, support.forces[n]) for n in names]
+    cases = [case(n, LoadType.DEAD, support.forces[n]) for n in names]
     custom = [CustomCombinationInput(
         name=n, method=method, factors={n: 1.0}, seismic=data.cases[n].seismic,
         source=f"{data.cases[n].case_type} {data.cases[n].output_case}") for n in names]

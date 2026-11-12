@@ -245,6 +245,62 @@ def _create_projects(args: argparse.Namespace, data) -> int:
     return 0 if projects else 1
 
 
+def _beams(args: argparse.Namespace) -> int:
+    """List the beam ends with a shear connection of a SAP2000 export, or create projects."""
+    import re
+    from pathlib import Path
+
+    from openconex.io.csi import CaseKind
+    from openconex.io.csi_beams import import_beam_ends
+
+    try:
+        data = import_beam_ends(args.file, pinned_only=not args.all_ends)
+    except (OSError, ValueError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    for warning in data.warnings:
+        print(f"warning: {warning}")
+    print(f"{len(data.ends)} beam ends, {len(data.cases)} output cases")
+    if args.create:
+        from openconex.io.csi_projects import LoadSource
+        from openconex.io.csi_shear_projects import ShearGrouping, shear_projects
+        from openconex.io.project import load_project, save_project
+
+        if not args.template:
+            print("error: --create needs --template (a shear connection .ocnx)",
+                  file=sys.stderr)
+            return 2
+        try:
+            projects, warnings = shear_projects(
+                data, load_project(args.template), LoadSource(args.loads), args.include,
+                args.envelopes, Method(args.method) if args.method else None,
+                ShearGrouping(args.group))
+        except ValueError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        for warning in warnings:
+            print(f"warning: {warning}")
+        out = Path(args.create)
+        out.mkdir(parents=True, exist_ok=True)
+        for key, project in projects.items():
+            path = out / f"{args.group}-{re.sub(r'[^A-Za-z0-9_.-]', '_', key)}.ocnx"
+            save_project(project, path)
+            print(f"-> {path}  ({len(project.cases)} cases)")
+        return 0 if projects else 1
+    system = PRESETS[args.units]
+    kinds = {CaseKind.COMBINATION, CaseKind.ENVELOPE} if not args.all_cases else set(CaseKind)
+    for end in data.ends:
+        forces = {c: f for c, f in end.forces.items() if data.cases[c].kind in kinds}
+        line = (f"beam {end.label} (joint {end.joint})  {end.beam.section} -> "
+                f"{end.support.section} {end.support_element} ({end.support_kind})")
+        if forces:
+            case = max(forces, key=lambda c: abs(forces[c].V2))
+            value = format_value(abs(forces[case].V2), Kind.FORCE, system, precision=3)
+            line += f"  max V {value}  {case}"
+        print(line)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Command-line parser; also read by the documentation tests."""
     parser = argparse.ArgumentParser(prog="openconex", description=__doc__)
@@ -314,6 +370,32 @@ def build_parser() -> argparse.ArgumentParser:
     sup.add_argument("--method", choices=["LRFD", "ASD"],
                      help="method of the imported combinations (default: template's)")
     sup.set_defaults(func=_supports)
+
+    beams = sub.add_parser("beams",
+                           help="list the pinned beam ends of a SAP2000 export (.xlsx) and "
+                                "create shear connection projects")
+    beams.add_argument("file", help="Excel file with the exported database tables")
+    beams.add_argument("--units", choices=sorted(PRESETS), default="SI_kN_m",
+                       help="unit system of the listing (default: SI_kN_m)")
+    beams.add_argument("--all-cases", action="store_true",
+                       help="include unfactored load cases in the listing")
+    beams.add_argument("--all-ends", action="store_true",
+                       help="every beam end, not only those released in M3 (pinned)")
+    beams.add_argument("--create", metavar="DIR",
+                       help="write one shear connection project per beam end in DIR")
+    beams.add_argument("--template", help="shear connection project (.ocnx) used as template")
+    beams.add_argument("--loads", choices=["cases", "combinations"], default="cases",
+                       help="load cases (OpenConex combines them) or the program's "
+                            "combinations")
+    beams.add_argument("--include", metavar="REGEX",
+                       help="only cases or combinations whose name matches")
+    beams.add_argument("--envelopes", action="store_true",
+                       help="with --loads combinations, also use Max/Min envelopes")
+    beams.add_argument("--group", choices=["end", "section"], default="end",
+                       help="one project per beam end, or per beam, support and element")
+    beams.add_argument("--method", choices=["LRFD", "ASD"],
+                       help="method of the imported combinations (default: template's)")
+    beams.set_defaults(func=_beams)
 
     return parser
 
