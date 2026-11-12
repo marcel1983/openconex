@@ -149,6 +149,8 @@ def smoke(platform: str) -> None:
          "--html", "-o", str(out / "base")], env=env, timeout=600)
     run([cli, "shear", "examples/shear_single_plate.ocnx",
          "--html", "-o", str(out / "shear")], env=env, timeout=600)
+    run([cli, "moment", "examples/moment_bolted_flange_plate.ocnx",
+         "--html", "-o", str(out / "moment")], env=env, timeout=600)
     print(f"smoke tests OK for {platform}", flush=True)
 
 
