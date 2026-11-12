@@ -1,0 +1,65 @@
+{
+  "format_version": 11,
+  "info": {
+    "name": "Ejemplo: placas de ala soldadas (AISC II.B-2)",
+    "number": "OC-0202",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "welded_flange_plate",
+    "beam": "W18X50",
+    "column": "W14X99",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 3,
+      "spacing": "3 in",
+      "length": "9 in",
+      "thickness": "3/8 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "1/4 in"
+    },
+    "top": {
+      "width": "6 in",
+      "thickness": "1 in",
+      "weld_to_column": "7/16 in",
+      "weld_to_beam": "5/16 in",
+      "weld_length": "8.94 in",
+      "transverse_weld": true
+    },
+    "bottom": {
+      "width": "8.75 in",
+      "thickness": "3/4 in",
+      "weld_to_column": "5/16 in",
+      "unbraced_length": "1.75 in",
+      "weld_to_beam": "5/16 in",
+      "weld_length": "12.5 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "7 kip",
+      "M": "42 kip*ft"
+    },
+    {
+      "name": "L",
+      "type": "L",
+      "V": "21 kip",
+      "M": "126 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD",
+      "ASD"
+    ]
+  }
+}

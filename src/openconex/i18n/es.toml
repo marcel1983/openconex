@@ -22,6 +22,10 @@ moment_of_inertia = "Momento de inercia"
 dimensionless = "Adimensional"
 
 [report]
+subtitle_moment = "Conexión de momento viga–columna"
+assumption_moment_force = "El momento del extremo de la viga se descompone en un par de fuerzas de ala P_f = M/d_m (Manual AISC Ec. 11-1) y el corte V lo toma la placa del alma en corte directo."
+assumption_moment_scope = "Se verifican la conexión y la columna bajo las fuerzas de ala (§J10); no se verifican la viga ni la columna como miembros, ni la zona de panel salvo que se indique el corte de la columna."
+assumption_moment_cjp = "Las alas se sueldan con penetración completa y desarrollan la resistencia del ala; la viga debe ser adecuada para el momento."
 subtitle_shear = "Conexión de corte de extremo de viga"
 assumption_shear_reaction = "La reacción V es la reacción vertical del extremo de la viga; P es la fuerza axial, con la tracción negativa. La compresión axial no está implementada y se informa como no verificada."
 assumption_shear_beam = "No se verifica la viga fuera de la conexión (flexión, corte del alma sin destaje) salvo lo indicado en cada verificación."
@@ -380,6 +384,11 @@ lug_plate_bending = "Llave de corte: flexión local de la placa base"
 lug_anchor_embedment = "Empotramiento de anclajes con llave de corte (h_ef ≥ 2,5 h_sl)"
 
 [input]
+mc_type = "Tipo de conexión de momento"
+web_plate = "Placa del alma"
+top_plate = "Placa de ala superior"
+bottom_plate = "Placa de ala inferior"
+flange_bolts = "Pernos de ala"
 sc_type = "Tipo de conexión"
 beam = "Viga"
 support = "Apoyo"
@@ -520,3 +529,8 @@ end_plate = "Placa de extremo de corte"
 seated = "Asiento no rigidizado"
 stiffened_seat = "Asiento rigidizado"
 skewed_bent_plate = "Conexión sesgada de doble placa doblada"
+
+[moment.type]
+bolted_flange_plate = "Placas de ala apernadas"
+welded_flange_plate = "Placas de ala soldadas"
+welded_flange = "Alas soldadas directamente"

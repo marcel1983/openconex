@@ -278,4 +278,7 @@ def build_report(project: Project, today: dt.date | None = None) -> Report:
     if project.shear_connection is not None:
         from openconex.report.shear import build_shear_report
         return build_shear_report(project, today)
+    if project.moment_connection is not None:
+        from openconex.report.moment import build_moment_report
+        return build_moment_report(project, today)
     return build_base_plate_report(project, today)

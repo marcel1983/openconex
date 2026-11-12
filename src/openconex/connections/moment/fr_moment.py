@@ -33,11 +33,12 @@ axial force are given.
 from __future__ import annotations
 
 import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
 from openconex.core.checks import CheckResult
-from openconex.core.loads import Method
+from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.model import BoltSpec, IShape
 from openconex.kernel import bolts, elements, local
 from openconex.kernel.bolts import clear_distance
@@ -46,7 +47,7 @@ from openconex.kernel.welds import fillet_weld_group_concentric, fillet_weld_per
 from openconex.units import Kind, from_internal, to_internal
 
 __all__ = ["FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
-           "check_moment_connection"]
+           "check_moment_connection", "check_moment_envelope"]
 
 SPEC = "AISC 360-22"
 MANUAL = "AISC Manual 16th ed."
@@ -373,3 +374,13 @@ def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Me
         P = _flange_force(c, M, mc.beam.d - mc.beam.tf, "d - t_f")
         flange, lb = [], mc.beam.tf
     return out + flange + _column_checks(mc, P, lb, method, combo, column_shear, column_axial)
+
+
+def check_moment_envelope(mc: MomentConnection, combinations: Iterable[LoadCombination],
+                          case_forces: Mapping[str, Forces]) -> list[CheckResult]:
+    """Run every combination: ``V2`` is the beam end shear and ``M3`` its moment."""
+    results: list[CheckResult] = []
+    for combo in combinations:
+        forces = combine(combo, case_forces)
+        results += check_moment_connection(mc, forces.V2, forces.M3, combo.method, combo.name)
+    return results

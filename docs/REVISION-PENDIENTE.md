@@ -164,7 +164,8 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 
 ## 3. Próximas fases
 
-- [ ] **F6, momento viga–columna** (Parte 12, DG4/DG16, DG13, AISC 358 opcional): elegir los ejemplos de validación antes de empezar.
+- [x] **F6, fase 1:** conexiones de momento con placas de ala apernadas o soldadas y alas soldadas (II.B-1 a II.B-3), en proyecto, comando, memoria, plano, 3D e interfaz.
+- [ ] **F6, fase 2:** placas de extremo de momento (DG4/DG16; hace falta la guía), conexiones al alma de la columna, rigidizadores y dobles placas (DG13) con zona de panel en el proyecto, y AISC 358.
 - [ ] **F7, empalmes** de viga y columna.
 - [ ] **F8, validación cruzada:** manual de verificación y comparación con otro programa en un conjunto de casos.
 

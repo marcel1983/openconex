@@ -22,6 +22,10 @@ moment_of_inertia = "Moment of inertia"
 dimensionless = "Dimensionless"
 
 [report]
+subtitle_moment = "Beam-to-column moment connection"
+assumption_moment_force = "The beam end moment is resolved into a flange force couple P_f = M/d_m (AISC Manual Eq. 11-1) and the shear V is taken by the web plate in direct shear."
+assumption_moment_scope = "The connection and the column under the flange forces (§J10) are checked; the beam and column as members, and the panel zone unless the column shear is given, are not."
+assumption_moment_cjp = "The flanges are welded with complete-joint-penetration groove welds that develop the flange; the beam must be adequate for the moment."
 subtitle_shear = "Beam-end shear connection"
 assumption_shear_reaction = "V is the vertical end reaction of the beam; P is the axial force, tension negative. Axial compression is not implemented and is reported as not verified."
 assumption_shear_beam = "The beam away from the connection (flexure, shear of an uncoped web) is not checked except where a check says so."
@@ -380,6 +384,11 @@ lug_plate_bending = "Shear lug: local bending of the base plate"
 lug_anchor_embedment = "Anchor embedment with a shear lug (h_ef ≥ 2.5 h_sl)"
 
 [input]
+mc_type = "Moment connection type"
+web_plate = "Web plate"
+top_plate = "Top flange plate"
+bottom_plate = "Bottom flange plate"
+flange_bolts = "Flange bolts"
 sc_type = "Connection type"
 beam = "Beam"
 support = "Support"
@@ -520,3 +529,8 @@ end_plate = "Shear end plate"
 seated = "Unstiffened seat"
 stiffened_seat = "Stiffened seat"
 skewed_bent_plate = "Skewed double bent plate"
+
+[moment.type]
+bolted_flange_plate = "Bolted flange plates"
+welded_flange_plate = "Welded flange plates"
+welded_flange = "Directly welded flanges"

@@ -247,7 +247,7 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 
 ## Conexiones de momento (`connections/moment/fr_moment.py`)
 
-Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual AISC Partes 9 a 12): placas de ala apernadas (II.B-1), placas de ala soldadas (II.B-2) y alas soldadas directamente con soldadura de penetración completa (II.B-3). La fuerza de ala es P_f = M/d_m (Manual Ec. 11-1). Por ahora solo como biblioteca.
+Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual AISC Partes 9 a 12): placas de ala apernadas (II.B-1), placas de ala soldadas (II.B-2) y alas soldadas directamente con soldadura de penetración completa (II.B-3). La fuerza de ala es P_f = M/d_m (Manual Ec. 11-1); con alas soldadas, d_m = d − t_f. Integradas en el proyecto (`moment_connection`), el comando `openconex moment`, la memoria, el plano, el 3D y la interfaz.
 
 | `id` | Verificación | Norma |
 |---|---|---|

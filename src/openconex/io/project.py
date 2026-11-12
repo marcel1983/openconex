@@ -47,6 +47,11 @@ from openconex.core.materials import (
 )
 from openconex.core.model import BoltSpec, HSSKind, HSSShape, IShape
 from openconex.core.shapes import aisc_shapes
+from openconex.io.moment_project import (
+    FlangePlateInput,
+    MomentConnectionInput,
+    WebPlateInput,
+)
 from openconex.io.shear_project import (
     BoltInput,
     CopeInput,
@@ -70,10 +75,12 @@ __all__ = [
     "ElectrodeInput",
     "EmbeddedBaseInput",
     "EmbeddedRebarInput",
+    "FlangePlateInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "LongitudinalStiffenerInput",
     "MaterialInput",
+    "MomentConnectionInput",
     "PedestalRebarInput",
     "Project",
     "ProjectInfo",
@@ -81,11 +88,12 @@ __all__ = [
     "ShearConnectionInput",
     "WSectionInput",
     "WeakBaseInput",
+    "WebPlateInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 10
+FORMAT_VERSION = 11
 Quantity = str | float
 
 
@@ -193,6 +201,7 @@ class WSectionInput(_Input):
 
 
 ShearConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
+MomentConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 
 
 class HSSSectionInput(_Input):
@@ -419,7 +428,10 @@ class Project(_Input):
     """Custom column sections saved with the project, available in the GUI."""
     base_plate: BasePlateInput | None = None
     shear_connection: ShearConnectionInput | None = None
-    """Beam-end shear connection; a project holds either this or ``base_plate``."""
+    """Beam-end shear connection."""
+    moment_connection: MomentConnectionInput | None = None
+    """Beam-to-column moment connection. A project holds exactly one of ``base_plate``,
+    ``shear_connection`` and ``moment_connection``."""
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
@@ -444,10 +456,15 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
-        if (self.base_plate is None) == (self.shear_connection is None):
-            raise ValueError("a project needs exactly one of base_plate or shear_connection")
+        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection)
+                  if b is not None]
+        if len(blocks) != 1:
+            raise ValueError("a project needs exactly one of base_plate, shear_connection or "
+                             "moment_connection")
         if self.shear_connection is not None:
             return self._validate_shear()
+        if self.moment_connection is not None:
+            return self._validate_moment()
         library = self.material_library()
         if self.base_plate.plate_grade not in library:
             raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
@@ -637,6 +654,34 @@ class Project(_Input):
                 if length is not None and self.quantity(length, Kind.LENGTH) <= 0:
                     raise ValueError("cope reinforcement length must be positive")
         return self
+
+    def _validate_moment(self) -> Project:
+        mc = self.moment_connection
+        missing = mc.missing()
+        if missing:
+            raise ValueError(f"{mc.type.value} moment connection needs {', '.join(missing)}")
+        library = self.material_library()
+        for grade in (mc.grade, mc.beam_grade, mc.column_grade):
+            if grade not in library:
+                raise ValueError(f"unknown material: {grade!r}")
+        for section in (mc.beam, mc.column):
+            if not isinstance(section, str) and section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
+        bolts = self.bolt_library()
+        for bolt in (mc.web.bolt, mc.bolt):
+            if bolt is not None and bolt.grade not in bolts:
+                raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
+        if mc.electrode not in self.electrode_library():
+            raise ValueError(f"unknown electrode: {mc.electrode!r}")
+        if any(self.quantity(c.P, Kind.FORCE) or self.quantity(c.V_weak, Kind.FORCE)
+               or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
+            raise ValueError("moment connections take only V and M load cases")
+        return self
+
+    def moment_model(self):
+        """Engine model of the moment connection (:class:`MomentConnection`)."""
+        from openconex.io.moment_project import moment_model
+        return moment_model(self)
 
     def shear_model(self):
         """Engine model of the shear connection (:class:`ShearConnection`)."""

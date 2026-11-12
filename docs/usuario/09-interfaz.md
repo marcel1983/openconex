@@ -217,6 +217,10 @@ Antes de calcular se revisa la geometría de los pernos. Cada fila debe quedar d
 
 El cálculo por lotes también admite proyectos de conexión de corte; en el resumen, la columna muestra la viga.
 
+## Conexiones de momento
+
+**Archivo > Nueva conexión de momento…** abre una ventana propia para las conexiones de momento viga–columna; al abrir un `.ocnx` con `moment_connection` se abre también en ella. Se elige el tipo (placas de ala apernadas, placas de ala soldadas o alas soldadas), la viga y la columna, y se completan la placa del alma, las placas de ala y, si son apernadas, los pernos de ala. Los casos llevan `V` y `M`. **Calcular** (`F5`) muestra el resumen, las verificaciones, las figuras (elevación e isométrico) y el 3D, y **Exportar** genera HTML, Word, PDF, DXF, STEP o STL. Las cantidades se escriben con su unidad; esta ventana no tiene editor gráfico ni conversión automática de unidades. El cálculo por lotes también admite estos proyectos.
+
 ## Cálculo por lotes
 
 **Cálculo > Calcular lote…** calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
