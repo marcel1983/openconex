@@ -33,6 +33,20 @@ def test_parts_and_exports(tmp_path, project):
     assert write_stl(parts, tmp_path / "bp.stl").stat().st_size > 10_000
 
 
+def test_context_column_is_optional():
+    from openconex.geometry3d.shear import shear_parts
+
+    project = load_project(EXAMPLE.with_name("shear_single_plate.ocnx"))
+    plain = [part.name for part in shear_parts(project.shear_model())]
+    context = [part.name for part in shear_parts(project.shear_model(),
+                                                 context="column")]
+    assert "support_context" not in plain
+    assert "support_context" in context
+    girder = [part.name for part in shear_parts(project.shear_model(),
+                                                context="beam")]
+    assert "support_context" in girder
+
+
 def test_bent_plate_parts():
     from OCP.BRepGProp import BRepGProp
     from OCP.GProp import GProp_GProps

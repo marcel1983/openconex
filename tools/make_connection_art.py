@@ -255,6 +255,21 @@ def shear_skewed(scene: Scene) -> None:
     scene.line(iso(60, 8, 100), iso(60, 8, 152), WELD, 2.0)
 
 
+def shear_beam_skewed(scene: Scene) -> None:
+    # Supporting girder along y, skewed beam along x.
+    box(scene, 20, -20, 75, 240, 40, 50, STEEL)
+    for i in range(8):
+        x = 55 + i * 18
+        y = 20 + i * 8
+        box(scene, x, y, 100, 18, 38, 38, STEEL)
+    box(scene, 55, 20, 98, 38, 22, 55, CONNECTION)
+    box(scene, 62, 44, 98, 38, 22, 55, CONNECTION)
+    for z in (108, 128, 148):
+        bolt(scene, 62, 24, z)
+        bolt(scene, 70, 48, z)
+    scene.line(iso(60, 20, 100), iso(60, 20, 152), WELD, 2.0)
+
+
 def future_moment(scene: Scene) -> None:
     column(scene, 0, 0, 0, 180, 55, FUTURE)
     beam(scene, 55, 10, 95, 150, 45, 55, FUTURE)
@@ -309,6 +324,7 @@ def main() -> int:
     save("shear_seated", shear_seated)
     save("shear_stiffened_seat", shear_stiffened_seat)
     save("shear_skewed_bent_plate", shear_skewed)
+    save("shear_beam_skewed_bent_plate", shear_beam_skewed)
     print(f"wrote {len(list(OUT.glob('*.svg')))} SVGs to {OUT}")
     return 0
 

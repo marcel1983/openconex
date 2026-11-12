@@ -230,7 +230,7 @@ class ShearWindow(QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figures)
         self.tabs.addTab(figure_scroll, "Figuras")
-        self.viewer = Viewer3D(lambda: parts_3d(self.project))
+        self.viewer = Viewer3D(lambda: parts_3d(self.project), swap_yz=True)
         self.tabs.addTab(self.viewer, "3D")
         for index, key in enumerate(("tab.summary", "tab.details", "tab.figures", "tab.viewer")):
             self.tabs.setTabToolTip(index, help_text(key))
