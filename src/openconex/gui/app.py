@@ -201,6 +201,9 @@ class MainWindow(QMainWindow):
         file_menu.addAction(action("Nueva conexión de corte…",
                                    lambda: self.open_shear_window(), "",
                                    "main.file.shear"))
+        file_menu.addAction(action("Nueva conexión de momento…",
+                                   lambda: self.open_moment_window(), "",
+                                   "main.file.moment"))
         file_menu.addSeparator()
         file_menu.addAction(action("Importar SAP2000 / ETABS…", self.import_csi_dialog,
                                    "", "main.file.import_csi"))
@@ -1166,6 +1169,9 @@ class MainWindow(QMainWindow):
         if project.shear_connection is not None:
             self.open_shear_window(project, path)
             return
+        if project.moment_connection is not None:
+            self.open_moment_window(project, path)
+            return
         self.project = project
         self.path = Path(path)
         self._fill_form(project)
@@ -1213,6 +1219,17 @@ class MainWindow(QMainWindow):
         self._shear_windows = [*getattr(self, "_shear_windows", []), window]
         window.show()
         self.statusBar().showMessage("Conexión de corte abierta en otra ventana.")
+        return window
+
+    def open_moment_window(self, project: Project | None = None,
+                           path: str | Path | None = None):
+        """Open a beam-to-column moment connection project in its own window."""
+        from openconex.gui.moment import MomentWindow
+        window = MomentWindow(project, path, parent=self)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._moment_windows = [*getattr(self, "_moment_windows", []), window]
+        window.show()
+        self.statusBar().showMessage("Conexión de momento abierta en otra ventana.")
         return window
 
     def import_csi_dialog(self) -> None:
@@ -1756,6 +1773,10 @@ def main(argv: list[str] | None = None) -> int:
                 from openconex.gui.shear import ShearWindow
 
                 window = ShearWindow(project, selection.path)
+            elif project.moment_connection is not None:
+                from openconex.gui.moment import MomentWindow
+
+                window = MomentWindow(project, selection.path)
             else:
                 window = MainWindow()
                 window.open_project_model(project, selection.path)

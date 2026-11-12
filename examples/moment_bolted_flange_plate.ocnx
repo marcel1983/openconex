@@ -1,0 +1,63 @@
+{
+  "format_version": 11,
+  "info": {
+    "name": "Ejemplo: placas de ala apernadas (AISC II.B-1)",
+    "number": "OC-0201",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "bolted_flange_plate",
+    "beam": "W18X50",
+    "column": "W14X99",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 3,
+      "spacing": "3 in",
+      "length": "9 in",
+      "thickness": "3/8 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "1/4 in"
+    },
+    "top": {
+      "width": "7 in",
+      "thickness": "3/4 in",
+      "weld_to_column": "3/8 in",
+      "unbraced_length": "3 in"
+    },
+    "bolt": {
+      "diameter": "7/8 in"
+    },
+    "rows": 4,
+    "spacing": "3 in",
+    "gage": "4 in",
+    "plate_lev": "1.5 in",
+    "beam_lev": "1.5 in"
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "7 kip",
+      "M": "42 kip*ft"
+    },
+    {
+      "name": "L",
+      "type": "L",
+      "V": "21 kip",
+      "M": "126 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD",
+      "ASD"
+    ]
+  }
+}

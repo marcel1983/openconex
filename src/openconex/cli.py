@@ -43,7 +43,8 @@ def _baseplate(args: argparse.Namespace) -> int:
 
     project = load_project(args.project)
     if project.base_plate is None:
-        print("error: this project has no base plate; use 'openconex shear'", file=sys.stderr)
+        print("error: this project has no base plate; use 'openconex shear' or "
+              "'openconex moment'", file=sys.stderr)
         return 2
     if args.lang:
         project.info.language = args.lang
@@ -124,8 +125,8 @@ def _shear(args: argparse.Namespace) -> int:
 
     project = load_project(args.project)
     if project.shear_connection is None:
-        print("error: this project has no shear connection; use 'openconex baseplate'",
-              file=sys.stderr)
+        print("error: this project has no shear connection; use 'openconex baseplate' or "
+              "'openconex moment'", file=sys.stderr)
         return 2
     if project.shear_connection.type.value == "skewed_bent_plate" and \
             (args.dxf or args.step or args.stl):
@@ -160,6 +161,58 @@ def _shear(args: argparse.Namespace) -> int:
         from openconex.geometry3d.base_plate import write_step, write_stl
         from openconex.geometry3d.shear import shear_parts
         parts = shear_parts(conn)
+        if args.step:
+            written.append(write_step(parts, out.with_suffix(".step")))
+        if args.stl:
+            written.append(write_stl(parts, out.with_suffix(".stl")))
+    for row in report.summary:
+        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
+    for path in written:
+        print(f"-> {path}")
+    return 0 if report.ok else 1
+
+
+def _moment(args: argparse.Namespace) -> int:
+    """Check a beam-to-column moment connection project and write the requested outputs."""
+    from pathlib import Path
+
+    from openconex.drawing.moment import MomentDrawing, write_moment_dxf
+    from openconex.io.project import load_project
+    from openconex.report.moment import build_moment_report
+
+    project = load_project(args.project)
+    if project.moment_connection is None:
+        print("error: this project has no moment connection; use 'openconex baseplate' or "
+              "'openconex shear'", file=sys.stderr)
+        return 2
+    if args.lang:
+        project.info.language = args.lang
+    if args.units:
+        project.info.units = args.units
+    report = build_moment_report(project)
+    out = Path(args.output or Path(args.project).with_suffix(""))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    written = []
+    if args.html:
+        from openconex.report.html import write_html
+        written.append(write_html(report, out.with_suffix(".html")))
+    if args.docx:
+        from openconex.report.docx import write_docx
+        written.append(write_docx(report, out.with_suffix(".docx")))
+    if args.pdf:
+        from openconex.report.pdf import write_pdf
+        written.append(write_pdf(report, out.with_suffix(".pdf")))
+    info = project.info
+    conn = project.moment_model()
+    if args.dxf:
+        options = MomentDrawing(title=info.name, number=info.number, revision=info.revision,
+                               date=info.date)
+        written.append(write_moment_dxf(conn, out.with_suffix(".dxf"), info.unit_system(),
+                                       info.language, options))
+    if args.step or args.stl:
+        from openconex.geometry3d.base_plate import write_step, write_stl
+        from openconex.geometry3d.moment import moment_parts
+        parts = moment_parts(conn)
         if args.step:
             written.append(write_step(parts, out.with_suffix(".step")))
         if args.stl:
@@ -348,6 +401,20 @@ def build_parser() -> argparse.ArgumentParser:
                        ("stl", "STL 3D model (needs openconex[3d])")):
         sc.add_argument(f"--{flag}", action="store_true", help=text)
     sc.set_defaults(func=_shear)
+
+    mo = sub.add_parser("moment",
+                        help="check a beam-to-column moment connection project (.ocnx) and "
+                             "write outputs")
+    mo.add_argument("project", help="project file (.ocnx)")
+    mo.add_argument("-o", "--output", help="output path without extension")
+    mo.add_argument("--lang", choices=["es", "en"], help="report language")
+    mo.add_argument("--units", choices=sorted(PRESETS), help="unit system of the outputs")
+    for flag, text in (("html", "HTML report"), ("docx", "Word report"),
+                       ("pdf", "PDF report (needs openconex[pdf])"), ("dxf", "DXF drawing"),
+                       ("step", "STEP 3D model (needs openconex[3d])"),
+                       ("stl", "STL 3D model (needs openconex[3d])")):
+        mo.add_argument(f"--{flag}", action="store_true", help=text)
+    mo.set_defaults(func=_moment)
 
     sup = sub.add_parser("supports",
                          help="list supports and reactions exported from SAP2000 / ETABS (.xlsx)")

@@ -135,6 +135,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `main.file.save` | Guarda el proyecto actual. | Archivo → Guardar (Ctrl+S). | Escribe el archivo .ocnx. | — | todas |
 | `main.file.save_as` | Guarda con otro nombre. | Archivo → Guardar como. | Crea un archivo nuevo. | — | todas |
 | `main.file.shear` | Abre la ventana de conexiones de corte. | Archivo → Nueva conexión de corte. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
+| `main.file.moment` | Abre la ventana de conexiones de momento viga–columna. | Archivo → Nueva conexión de momento. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
 | `main.file.import_csi` | Importa reacciones de un modelo CSI. | Archivo → Importar SAP2000 / ETABS. | Crea proyectos por apoyo o por sección. | — | todas |
 | `main.file.import_table` | Importa una tabla de reacciones. | Archivo → Importar Excel / CSV. | Crea proyectos desde una tabla. | — | todas |
 | `main.file.exit` | Cierra la aplicación. | Archivo → Salir. | No guarda automáticamente. | — | todas |

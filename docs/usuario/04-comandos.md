@@ -74,6 +74,27 @@ Lee las tablas exportadas a Excel y lista cada apoyo con su columna y las reacci
 | `--group joint\|column` | `joint` (por defecto): un proyecto por apoyo. `column`: un proyecto por sección de columna. |
 | `--method LRFD\|ASD` | Método de las combinaciones importadas (por defecto, el primero de la plantilla). |
 
+## `openconex moment`: calcular una conexión de momento
+
+```bash
+openconex moment proyecto.ocnx [opciones]
+```
+
+Calcula un proyecto con `moment_connection` en todas sus combinaciones e imprime la verificación que gobierna de cada tipo. Devuelve 0 si todo cumple, 1 si algo no cumple y 2 si el proyecto es de otro tipo. Las opciones son las mismas que en `openconex shear`:
+
+| Opción | Efecto |
+|---|---|
+| `-o`, `--output RUTA` | Ruta de las salidas, sin extensión. |
+| `--lang es\|en` | Idioma de la memoria y el plano. |
+| `--units SISTEMA` | Sistema de unidades de las salidas. |
+| `--html`, `--docx`, `--pdf` | Memoria de cálculo (PDF con el extra `pdf`). |
+| `--dxf` | Plano DXF en elevación. |
+| `--step`, `--stl` | Modelo 3D (requiere el extra `3d`). |
+
+```bash
+openconex moment examples/moment_bolted_flange_plate.ocnx --html --dxf
+```
+
 ## `openconex beams`: extremos de viga de SAP2000
 
 ```bash

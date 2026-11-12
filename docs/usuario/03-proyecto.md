@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate` o `shear_connection` (uno de los dos), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `shear_connection` o `moment_connection` (uno de los tres), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -20,6 +20,8 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
 | `examples/base_plate_template_sap2000.ocnx` | plantilla para importar de SAP2000 / ETABS |
+| `examples/moment_bolted_flange_plate.ocnx` | conexión de momento: placas de ala apernadas (AISC II.B-1) |
+| `examples/moment_welded_flange_plate.ocnx` | conexión de momento: placas de ala soldadas (AISC II.B-2) |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
@@ -423,6 +425,37 @@ El refuerzo solo se admite en un destaje superior (`dc_bottom = 0`). La placa do
 ### Cargas de una conexión de corte
 
 Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción negativa**, como en la placa base). `M`, `V_weak` y `M_weak` no se admiten. La tracción se verifica en la placa simple, la placa simple extendida y el doble ángulo apernado. La compresión (`P` > 0) se verifica en la placa simple y la placa extendida: la placa se comprueba a pandeo como voladizo desde la soldadura (K = 1,2, L = `a`) en lugar de la tracción. En los demás tipos aparecen como verificaciones que no cumplen (`shear_connection.axial_unsupported`, `shear_connection.axial_compression`).
+
+## Conexión de momento (`moment_connection`)
+
+Conexión de momento totalmente restringida de una viga al ala de una columna (Manual AISC Partes 9 a 12, ejemplos II.B-1 a II.B-3). Se calcula con `openconex moment` o en la ventana de conexiones de momento de la interfaz. Cada caso de carga lleva solo `V` (corte del extremo de la viga) y `M` (momento del extremo de la viga).
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `type` | (obligatorio) | `bolted_flange_plate` (placas de ala apernadas), `welded_flange_plate` (placas de ala soldadas) o `welded_flange` (alas soldadas con penetración completa). |
+| `beam` | (obligatorio) | Viga: etiqueta W del catálogo o W genérica. |
+| `beam_grade` | `ASTM A992` | Acero de la viga del catálogo. |
+| `column` | (obligatorio) | Columna: etiqueta W del catálogo o W genérica; la conexión va a su ala. |
+| `column_grade` | `ASTM A992` | Acero de la columna del catálogo. |
+| `grade` | `ASTM A572 Gr. 50` | Acero de las placas. |
+| `electrode` | `E70XX` | Electrodo. |
+| `web` | (obligatorio) | Placa del alma (ver abajo). |
+| `top` | — | Placa de ala. Apernadas: ambas placas (salvo que se dé `bottom`). Soldadas: la superior (de tracción). |
+| `bottom` | — | Soldadas: la placa inferior (de compresión). Apernadas: opcional. |
+| `bolt` | — | Apernadas: pernos de ala (`diameter`, `grade`, `threads`, `hole`). |
+| `rows` | `0` | Apernadas: pernos en cada una de las dos líneas. |
+| `spacing` | — | Apernadas: separación de los pernos de ala. |
+| `gage` | — | Apernadas: gramil entre las dos líneas. |
+| `plate_lev` | — | Apernadas: del extremo de la placa al primer perno. |
+| `beam_lev` | — | Apernadas: del extremo de la viga al primer perno (sin descontar la tolerancia). |
+| `underrun` | `0.25 in` | Tolerancia de longitud de la viga. |
+| `deformation_considered` | `true` | Aplastamiento con deformación en servicio considerada. |
+| `column_near_end` | `false` | Fuerza de ala cerca del extremo de la columna (§J10, resistencias reducidas). |
+| `two_sided` | `false` | Vigas a ambos lados de la columna (pandeo del alma, §J10.5). |
+
+Placa del alma (`web`): `bolt`, `rows`, `spacing`, `length`, `thickness`, `lev` (del borde de la placa al perno inferior), `leh` (de la línea de pernos al borde) y `weld` (filete a cada lado, en la columna).
+
+Placa de ala (`top`, `bottom`): `width`, `thickness`, `weld_to_column` (filete a cada lado, en la columna), `unbraced_length` (longitud para la compresión: la separación entre pernos o la longitud libre hasta las soldaduras), y en las placas soldadas `weld_to_beam`, `weld_length` (largo de cada soldadura longitudinal) y `transverse_weld` (soldadura también en el extremo de la placa).
 
 ## Casos de carga (`cases`)
 
