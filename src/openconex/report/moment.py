@@ -19,6 +19,8 @@ __all__ = ["MOMENT_CODES", "build_moment_report", "moment_figures"]
 MOMENT_CODES = [
     "ANSI/AISC 360-22, Specification for Structural Steel Buildings",
     "AISC Steel Construction Manual, 16th ed., Parts 7 to 12",
+    "AISC Design Guide 16, Flush and Extended Multiple-Row Moment End-Plate Connections "
+    "(2002, rev. 2016)",
     "ASCE/SEI 7-22, Minimum Design Loads and Associated Criteria, Chapter 2",
 ]
 
@@ -38,10 +40,33 @@ def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
         Row([tr("input.electrode", lang), mc.electrode]),
     ]
     w = mc.web
-    rows.append(Row([tr("input.web_plate", lang),
-                     f"PL {q(w.thickness, Kind.THICKNESS)} × {q(w.length)}; {w.rows} × Ø "
-                     f"{q(w.bolt.diameter)} {w.bolt.grade} @ {q(w.spacing)}; l_ev {q(w.lev)}, "
-                     f"l_eh {q(w.leh)}; {q(w.weld, Kind.THICKNESS)}"]))
+    if w is not None:
+        rows.append(Row([tr("input.web_plate", lang),
+                         f"PL {q(w.thickness, Kind.THICKNESS)} × {q(w.length)}; {w.rows} × Ø "
+                         f"{q(w.bolt.diameter)} {w.bolt.grade} @ {q(w.spacing)}; "
+                         f"l_ev {q(w.lev)}, l_eh {q(w.leh)}; {q(w.weld, Kind.THICKNESS)}"]))
+    e = mc.end_plate
+    if mc.type is FlangeDetail.END_PLATE and e is not None:
+        ep = model.end_plate
+        rows.append(Row([tr("input.end_plate_layout", lang),
+                         tr(f"moment.layout.{e.layout.value}", lang)]))
+        dims = [f"b_p = {q(e.width)}", f"g = {q(e.gage)}", f"p_f = {q(e.pf)}"]
+        for name, label in (("pb", "p_b"), ("pf_o", "p_f,o"), ("pext", "p_ext"),
+                            ("ps_o", "p_s,o"), ("stiffener_thickness", "t_s"), ("ps", "p_s")):
+            if getattr(e, name) is not None:
+                dims.append(f"{label} = {q(getattr(e, name))}")
+        rows.append(Row([tr("input.moment_end_plate", lang),
+                         f"PL {q(e.thickness, Kind.THICKNESS)} × {q(e.width)}; "
+                         + ", ".join(dims)]))
+        tight = tr("input.snug_tight" if e.snug_tight else "input.pretensioned", lang)
+        rows.append(Row([tr("input.bolts", lang),
+                         f"{ep.tension_bolts} × Ø {q(e.bolt.diameter)} {e.bolt.grade} "
+                         f"({tight})"]))
+        welds = [f"{tr('input.weld_web', lang)}: "
+                 + (q(e.web_weld, Kind.THICKNESS) if e.web_weld is not None else "CJP"),
+                 f"{tr('input.weld_flanges', lang)}: "
+                 + (q(e.flange_weld, Kind.THICKNESS) if e.flange_weld is not None else "CJP")]
+        rows.append(Row([tr("input.weld", lang), "; ".join(welds)]))
     for key, plate in (("top_plate", mc.top), ("bottom_plate", mc.bottom)):
         if plate is None:
             continue
@@ -95,17 +120,23 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
         return fmt(value, kind, units)
 
     forces = project.case_forces()
+    mc = project.moment_connection
+    end_plate = mc.type is FlangeDetail.END_PLATE
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.V2, Kind.FORCE),
-                  q(f.M3, Kind.MOMENT)])
+                  q(f.M3, Kind.MOMENT)] + ([q(f.P, Kind.FORCE)] if end_plate else []))
              for c, f in zip(project.cases, forces.values(), strict=True)]
     combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
                          tr("report.custom_source", lang) if c.source == "custom" else c.source])
                     for c in combos]
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
-    mc = project.moment_connection
-    assumptions = [tr("report.assumption_moment_force", lang),
-                   tr("report.assumption_moment_scope", lang)]
+    if end_plate:
+        assumptions = [tr("report.assumption_end_plate", lang),
+                       tr("report.assumption_end_plate_column", lang),
+                       tr("report.assumption_moment_scope", lang)]
+    else:
+        assumptions = [tr("report.assumption_moment_force", lang),
+                       tr("report.assumption_moment_scope", lang)]
     if mc.type is FlangeDetail.WELDED_FLANGE:
         assumptions.append(tr("report.assumption_moment_cjp", lang))
     today = today or dt.date.today()
@@ -117,7 +148,8 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
             (tr(f"report.{k}", lang), getattr(info, k) or "—")
             for k in ("number", "client", "engineer", "revision", "date")],
         codes=MOMENT_CODES, assumptions=assumptions, inputs=_inputs(project, lang, units),
-        cases=cases, case_headers=["ID", tr("report.item", lang), "V", "M"],
+        cases=cases,
+        case_headers=["ID", tr("report.item", lang), "V", "M"] + (["P"] if end_plate else []),
         combinations=combinations, summary=summary,
         checks=[_block(r, lang, units) for r in governing.values()], ok=ok,
         footer=tr("report.generated", lang, generator=f"OpenConex {__version__}",

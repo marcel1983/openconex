@@ -277,6 +277,23 @@ Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual 
 | `moment.column_web_compression_buckling` | Pandeo del alma de la columna, con vigas a ambos lados | §J10.5 |
 | `moment.column_panel_zone` | Corte de la zona de panel, con el corte de la columna dado | §J10.6 |
 
+### Placas de extremo de momento (`connections/moment/end_plate.py`)
+
+Placas de extremo enrasadas y extendidas según AISC Design Guide 16 (Murray y Shoemaker, 2002, revisión 2016; `type: end_plate`). Nueve configuraciones (`layout`): `flush_2`, `flush_4`, `flush_4_stiffened_between`, `flush_4_stiffened_inside` (Tablas 3-2 a 3-5) y `extended_4`, `extended_4_stiffened`, `extended_1_2`, `extended_1_3`, `extended_1_3_stiffened` (Tablas 4-2 a 4-6). La resistencia sigue el diagrama de revisión del Apéndice B con la errata de 2016: placa gruesa si φM_np ≤ φ_b M_pl/1,11 (rotura de pernos sin palanca), si no placa delgada (rotura con palanca, M_q). Las distancias d_n van al centro del ala de compresión y h_n a su cara exterior. La carga axial se convierte en M_u = |M| − P(h − t_f)/2 (P positiva en compresión; §2.5.3, punto 11). La fuerza de ala para las demás verificaciones es F_fu = M_u/(d − t_f). En ASD se usa Ω = 1,67 (fluencia) y 2,00 (pernos) en lugar de mayorar el momento por 1,5 como la Guía; ambos dan el mismo resultado.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `moment.end_plate_yielding` | Fluencia de la placa: φ_b F_py t_p² Y / γ_r, con Y de la tabla de la configuración y γ_r = 1,25 (enrasada) o 1,0 (extendida); s = ½√(b_p g), p_f ≤ s | DG16 Tablas 3-2 a 4-6, §2.5.3 |
+| `moment.end_plate_bolt_rupture` | Rotura de pernos: φM_np = φ 2P_t Σd_n (placa gruesa) o φM_q con Q_max,i y Q_max,o (Ec. 2-11 a 2-19), T_b de la Tabla J3.1 (fracción de la Tabla 2-1 con apriete ajustado) | DG16 Apéndice B |
+| `moment.end_plate_shear_yielding` | Placas extendidas: fluencia por corte de la extensión, F_fu/2 ≤ φ 0,6 F_y b_p t_p | §J4.2(a); DG16 §2.6 |
+| `moment.end_plate_shear_rupture` | Placas extendidas: rotura por corte en los pernos exteriores, A_n = (b_p − 2(d_h + 1/16 in)) t_p | §J4.2(b); DG16 §2.6 |
+| `moment.end_plate_bolt_shear` | Corte en los pernos del ala en compresión (todos los de tracción si `symmetric`, si no dos): mín(corte, aplastamiento en la placa y en el ala de la columna) | §J3.7, §J3.10; DG16 §2.5.3 punto 5 |
+| `moment.end_plate_web_weld_shear` | Soldadura del alma para el corte, en la longitud mín(d/2 − t_f, d − 2t_f − p_f − (n_i − 1)p_b − 2d_b) | §J2.4; DG16 §2.5.3 punto 10 |
+| `moment.end_plate_web_weld_tension` | Soldadura del alma junto a los pernos de tracción para desarrollar la fluencia del alma, φF_y t_w ≤ 2 × 1,5 r_w | §J2.4, Ec. J2-5; DG16 §2.5.3 punto 9 |
+| `moment.end_plate_flange_weld` | Filete de las alas (si se da `flange_weld`): máx(F_fu, 0,6 F_y b_f t_f) ≤ 1,5 r_w (2b_f − t_w); sin él, penetración completa | §J2.4, Ec. J2-5; DG16 §2.5.3 punto 8 |
+
+En la columna, `moment.column_web_local_yielding` y `moment.column_web_crippling` usan l_b = t_f + 2t_p (+ 2 w con filete en las alas), repartiendo la fuerza a 1:1 en la placa; `moment.column_web_compression_buckling` y `moment.column_panel_zone` como en las demás conexiones de momento. No se verifica la flexión del ala de la columna en los pernos (líneas de fluencia de AISC Design Guide 4).
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

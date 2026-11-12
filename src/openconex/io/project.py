@@ -27,6 +27,7 @@ from openconex.connections.base_plate.check import (
     ShearLug,
     WeakBase,
 )
+from openconex.connections.moment.fr_moment import FlangeDetail
 from openconex.connections.shear.check import ShearType
 from openconex.core.loads import (
     Forces,
@@ -60,7 +61,7 @@ from openconex.io.shear_project import (
     ShearConnectionInput,
 )
 from openconex.kernel.anchors import Edges
-from openconex.units import PRESETS, Kind, UnitSystem, parse
+from openconex.units import PRESETS, Kind, UnitSystem, parse, to_internal
 
 __all__ = [
     "FORMAT_VERSION",
@@ -93,7 +94,7 @@ __all__ = [
     "save_project",
 ]
 
-FORMAT_VERSION = 11
+FORMAT_VERSION = 12
 Quantity = str | float
 
 
@@ -668,14 +669,21 @@ class Project(_Input):
             if not isinstance(section, str) and section.grade not in library:
                 raise ValueError(f"unknown section material: {section.grade!r}")
         bolts = self.bolt_library()
-        for bolt in (mc.web.bolt, mc.bolt):
+        for bolt in (mc.web.bolt if mc.web else None, mc.bolt,
+                     mc.end_plate.bolt if mc.end_plate else None):
             if bolt is not None and bolt.grade not in bolts:
                 raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
         if mc.electrode not in self.electrode_library():
             raise ValueError(f"unknown electrode: {mc.electrode!r}")
-        if any(self.quantity(c.P, Kind.FORCE) or self.quantity(c.V_weak, Kind.FORCE)
+        end_plate = mc.type is FlangeDetail.END_PLATE
+        if end_plate and mc.end_plate.snug_tight and bolts[mc.end_plate.bolt.grade].Fnt > \
+                to_internal(100.0, "ksi", Kind.STRESS):
+            raise ValueError("snug-tight end-plate bolts must be Group A (A325)")
+        if any((self.quantity(c.P, Kind.FORCE) and not end_plate)
+               or self.quantity(c.V_weak, Kind.FORCE)
                or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
-            raise ValueError("moment connections take only V and M load cases")
+            raise ValueError("moment connections take only V and M load cases "
+                             "(and P for end plates)")
         return self
 
     def moment_model(self):

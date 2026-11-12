@@ -24,6 +24,25 @@ def _cylinder_y(x, y0, z, r, h):
     return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(x, y0, z), gp_Dir(0, 1, 0)), r, h).Shape()
 
 
+def _cylinder_x(x0, y, z, r, h):
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakeCylinder
+    from OCP.gp import gp_Ax2, gp_Dir, gp_Pnt
+    return BRepPrimAPI_MakeCylinder(gp_Ax2(gp_Pnt(x0, y, z), gp_Dir(1, 0, 0)), r, h).Shape()
+
+
+def _prism_z(points, z0, h):
+    """Polygon in the x-y plane at z0 extruded by h along z."""
+    from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeFace, BRepBuilderAPI_MakePolygon
+    from OCP.BRepPrimAPI import BRepPrimAPI_MakePrism
+    from OCP.gp import gp_Pnt, gp_Vec
+    poly = BRepBuilderAPI_MakePolygon()
+    for x, y in points:
+        poly.Add(gp_Pnt(x, y, z0))
+    poly.Close()
+    return BRepPrimAPI_MakePrism(BRepBuilderAPI_MakeFace(poly.Wire()).Face(),
+                                 gp_Vec(0, 0, h)).Shape()
+
+
 def _z_up(shape):
     """Rotate +90° about x so that the elevation y axis becomes the vertical z axis."""
     import math
@@ -46,7 +65,7 @@ def _parts(mc: MomentConnection) -> list[Part]:
     beam, col = mc.beam, mc.column
     d, tf, tw, bf = beam.d, beam.tf, beam.tw, beam.bf
     length = lay.beam_length
-    x0 = 0.0 if not lay.plates[1:] else 0.5 * 25.4  # setback of 1/2 in. with flange plates
+    x0 = lay.beam_x0
     parts = [Part("beam", _fuse_all([_box(x0, 0, -bf / 2, length, tf, bf),
                                      _box(x0, d - tf, -bf / 2, length, tf, bf),
                                      _box(x0, tf, -tw / 2, length, d - 2 * tf, tw)]))]
@@ -57,6 +76,26 @@ def _parts(mc: MomentConnection) -> list[Part]:
         _box(-ctf, lo, -cbf / 2, ctf, hi - lo, cbf),
         _box(-cd, lo, -cbf / 2, ctf, hi - lo, cbf),
         _box(-cd + ctf, lo, -ctw / 2, cd - 2 * ctf, hi - lo, ctw)])))
+    ep = mc.end_plate
+    if ep is not None and lay.end_plate_rows:
+        x_0, y_0, x_1, y_1, _ = lay.plates[0]
+        parts.append(Part("end_plate", _box(x_0, y_0, -ep.width / 2, x_1 - x_0, y_1 - y_0,
+                                            ep.width)))
+        ts = max(tw, ep.stiffener_thickness)
+        for i, poly in enumerate(lay.stiffeners):
+            if len(poly) == 3:  # triangular stiffener on the extension, in the web plane
+                parts.append(Part(f"stiffener{i + 1}", _prism_z(poly, -ts / 2, ts)))
+            else:  # horizontal stiffeners on both sides of the web
+                (xa, ya), (xb, _), _, (_, yd) = poly
+                for side, z in (("a", tw / 2), ("b", -bf / 2)):
+                    parts.append(Part(f"stiffener{i + 1}{side}",
+                                      _box(xa, yd, z, xb - xa, ya - yd, (bf - tw) / 2)))
+        r = ep.bolt.diameter / 2
+        for i, y in enumerate(lay.end_plate_rows):
+            for j, z in enumerate((-ep.gage / 2, ep.gage / 2)):
+                parts.append(Part(f"bolt{i + 1}{'ab'[j]}", _cylinder_x(
+                    -ctf - 2 * r, y, z, r, ctf + ep.thickness + 4 * r)))
+        return parts
     w = mc.web
     x_0, y_0, x_1, y_1, _ = lay.plates[0]
     parts.append(Part("web_plate", _box(x_0, y_0, tw / 2, x_1 - x_0, y_1 - y_0, w.thickness)))
