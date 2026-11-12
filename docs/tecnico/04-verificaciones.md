@@ -241,6 +241,7 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 
 | `id` | Verificación | Norma |
 |---|---|---|
+| `shear_connection.beam_shear_yielding` | Fluencia por corte del alma de la viga sin destaje, 0,60 F_y d t_w; con destaje la verifica `coped_beam.shear_yielding` sobre el alma reducida | §J4.2(a); II.A-1B, II.A-17B |
 | `shear_connection.axial_compression` | Compresión axial en un tipo sin procedimiento de compresión (todos salvo la placa simple y la placa extendida): se informa con capacidad 0 (no cumple) | — |
 | `shear_connection.axial_unsupported` | Tracción axial en un tipo sin procedimiento axial (placa extendida, placa de extremo, asientos, doble ángulo soldado): capacidad 0 | — |
 

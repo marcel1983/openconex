@@ -139,7 +139,8 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 - [x] Compresión axial en la placa simple y la placa extendida (§J4.4, K = 1,2; comentarios de II.A-19B, 410/272 kip).
 - [x] II.A-19B: el ejemplo y la prueba usaban una geometría distinta de la publicada (placa de 14½ in, l_ev = 1¼ in, l_eh = 1¾ in); corregidos, los valores coinciden dentro del 1 %.
 - [ ] Compresión axial en el doble ángulo, la placa de extremo y los asientos.
-- [ ] Flexión de la viga y corte del alma sin destaje.
+- [x] Corte del alma de la viga sin destaje (`shear_connection.beam_shear_yielding`, II.A-1B y II.A-17B: 192/128 kip).
+- [ ] Flexión de la viga: fuera del alcance de la conexión (diseño del miembro).
 
 - [ ] Validar el reparto de carga de II.A-10 con un FE de contacto y pretensión; mientras tanto, revisar la placa B con `share_b` ≥ 0,66.
 - [x] Importar reacciones de vigas desde SAP2000 (`openconex beams`) para crear proyectos de corte por extremo o por sección.

@@ -21,6 +21,7 @@ from openconex.core.checks import CheckResult
 from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.model import IShape
 from openconex.kernel.design import Calc
+from openconex.kernel.elements import shear_yielding
 from openconex.units import Kind
 
 from .bent_plate import SkewedBentPlate, check_skewed_bent_plate
@@ -36,8 +37,14 @@ from .single_plate import SinglePlate, check_single_plate
 from .single_plate_axial import check_single_plate_axial
 from .stiffened_seat import StiffenedSeat, check_stiffened_seat
 
-__all__ = ["ShearConnection", "ShearType", "check_shear_connection",
-           "check_shear_envelope", "validate_shear_connection"]
+__all__ = [
+    "ShearConnection",
+    "ShearType",
+    "beam_web_shear",
+    "check_shear_connection",
+    "check_shear_envelope",
+    "validate_shear_connection",
+]
 
 
 class ShearType(StrEnum):
@@ -203,7 +210,20 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
         raise AssertionError(f"unsupported shear connection type: {conn.type}")
     if conn.cope is not None:
         out += check_coped_beam(conn.cope, V, method, combo)
+    elif conn.beam is not None and not any(r.id.endswith(".beam_shear_yielding")
+                                           for r in out):
+        out.append(beam_web_shear(conn.beam, V, method, combo))
     return out
+
+
+def beam_web_shear(beam: IShape, V: float, method: Method, combo: str = "") -> CheckResult:
+    """Shear yielding of the uncoped beam web, 0.60 F_y d t_w (§J4.2(a); II.A-1B, II.A-17B).
+
+    A coped beam is checked on its reduced web by :mod:`coped_beam` instead.
+    """
+    check = shear_yielding(beam.d * beam.tw, beam.material.Fy, V, method, combo)
+    return check.model_copy(update={"id": "shear_connection.beam_shear_yielding",
+                                    "text_id": "check.shear_connection.beam_shear_yielding"})
 
 
 def check_shear_envelope(conn: ShearConnection, combinations: Iterable[LoadCombination],

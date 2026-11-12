@@ -318,6 +318,7 @@ seat_plate_weld = "Minimum seat plate weld"
 seat_plate_weld_length = "Minimum seat plate weld length"
 
 [check.shear_connection]
+beam_shear_yielding = "Shear yielding of the beam web"
 axial_compression = "Axial compression (not implemented for this connection)"
 axial_unsupported = "Axial tension not implemented for this connection"
 
