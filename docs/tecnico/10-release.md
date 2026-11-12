@@ -32,7 +32,7 @@ El workflow `.github/workflows/release.yml` compila en Windows x64, macOS ARM64 
 
 - Ejecuta `packaging/build_portable.py <plataforma>`.
 - Construye la GUI (`OpenConex`) y la CLI (`openconex-cli/openconex`) con PyInstaller `--onedir`.
-- Ejecuta la prueba de humo sobre las carpetas de `dist`: versión, assets, conversión de unidades, placa base y conexión de corte.
+- Ejecuta la prueba de humo sobre las carpetas de `dist`: versión, assets, conversión de unidades, placa base, conexión de corte y conexión de momento.
 - Empaqueta el ZIP, extrae ese mismo ZIP y vuelve a probar la GUI, los assets, la CLI, la exportación PDF y el modelo STEP desde el paquete extraído. Así se detectan symlinks rotos o bibliotecas que falten.
 - Genera `SHA256SUMS-<plataforma>.txt`.
 
