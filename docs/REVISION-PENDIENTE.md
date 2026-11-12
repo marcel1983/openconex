@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-12, sobre `main`, versión 0.5.17. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-12, sobre `main`, versión 0.5.18. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -44,6 +44,7 @@ Estado al 2026-11-12, sobre `main`, versión 0.5.17. Cada tarea indica qué hay 
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
 - [x] Release 0.5.15.
+- [x] Release 0.5.18: placas de extremo con AISC Design Guide 4 (lado de la columna y 8ES), rigidizadores, dobles placas y zona de panel según AISC Design Guide 13, y conexiones de momento al alma de la columna.
 - [x] Release 0.5.17: placas de extremo de momento de AISC Design Guide 16 (nueve configuraciones, formato de proyecto 12) y vigas armadas en la ventana de momento.
 - [x] Release 0.5.16: compresión axial en placas simples, II.A-19B corregido, `openconex beams`, corte del alma de la viga, cierre de la F5 y F6 fase 1 (conexiones de momento II.B-1 a II.B-3).
 
@@ -167,7 +168,8 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 ## 3. Próximas fases
 
 - [x] **F6, fase 1:** conexiones de momento con placas de ala apernadas o soldadas y alas soldadas (II.B-1 a II.B-3), en proyecto, comando, memoria, plano, 3D e interfaz.
-- [ ] **F6, fase 2:** placas de extremo de momento (DG4/DG16; hace falta la guía), conexiones al alma de la columna, rigidizadores y dobles placas (DG13) con zona de panel en el proyecto, y AISC 358.
+- [x] **F6, fase 2:** placas de extremo de momento (DG16 y DG4), rigidizadores y dobles placas (DG13) con zona de panel en el proyecto, y conexiones al alma de la columna (DG13, Apéndice D).
+- [ ] **F6, opción sísmica:** AISC 358 (hacen falta la norma y el Seismic Design Manual para validarla).
 - [ ] **F7, empalmes** de viga y columna.
 - [ ] **F8, validación cruzada:** manual de verificación y comparación con otro programa en un conjunto de casos.
 
