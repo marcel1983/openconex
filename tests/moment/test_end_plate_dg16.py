@@ -187,7 +187,9 @@ def test_full_check_list_and_asd():
         "moment.end_plate_shear_yielding", "moment.end_plate_shear_rupture",
         "moment.end_plate_bolt_shear", "moment.end_plate_web_weld_shear",
         "moment.end_plate_web_weld_tension", "moment.end_plate_flange_weld",
-        "moment.column_web_local_yielding", "moment.column_web_crippling"}
+        "moment.column_web_local_yielding", "moment.column_web_crippling",
+        "moment.column_web_compression_buckling", "moment.column_flange_bending",
+        "moment.column_flange_strength"}
     # flange force M/(d - t_f) = 1750/23.625 = 74.1 kips; half on each side of the flange
     shear = lrfd["moment.end_plate_shear_yielding"]
     assert kip(shear.demand) == pytest.approx(74.07 / 2, rel=1e-3)

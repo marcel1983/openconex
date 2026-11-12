@@ -274,25 +274,33 @@ Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual 
 | `moment.column_flange_local_bending` | Flexión local del ala de la columna bajo la fuerza de ala | §J10.1 |
 | `moment.column_web_local_yielding` | Fluencia local del alma de la columna, l_b = espesor de la placa o del ala | §J10.2 |
 | `moment.column_web_crippling` | Aplastamiento local del alma de la columna | §J10.3 |
-| `moment.column_web_compression_buckling` | Pandeo del alma de la columna, con vigas a ambos lados | §J10.5 |
+| `moment.column_web_compression_buckling` | Pandeo del alma de la columna, con vigas a ambos lados (en placas de extremo, siempre en el ala de compresión, DG4 Ec. 3.26) | §J10.5 |
 | `moment.column_panel_zone` | Corte de la zona de panel, con el corte de la columna dado | §J10.6 |
 
 ### Placas de extremo de momento (`connections/moment/end_plate.py`)
 
-Placas de extremo enrasadas y extendidas según AISC Design Guide 16 (Murray y Shoemaker, 2002, revisión 2016; `type: end_plate`). Nueve configuraciones (`layout`): `flush_2`, `flush_4`, `flush_4_stiffened_between`, `flush_4_stiffened_inside` (Tablas 3-2 a 3-5) y `extended_4`, `extended_4_stiffened`, `extended_1_2`, `extended_1_3`, `extended_1_3_stiffened` (Tablas 4-2 a 4-6). La resistencia sigue el diagrama de revisión del Apéndice B con la errata de 2016: placa gruesa si φM_np ≤ φ_b M_pl/1,11 (rotura de pernos sin palanca), si no placa delgada (rotura con palanca, M_q). Las distancias d_n van al centro del ala de compresión y h_n a su cara exterior. La carga axial se convierte en M_u = |M| − P(h − t_f)/2 (P positiva en compresión; §2.5.3, punto 11). La fuerza de ala para las demás verificaciones es F_fu = M_u/(d − t_f). En ASD se usa Ω = 1,67 (fluencia) y 2,00 (pernos) en lugar de mayorar el momento por 1,5 como la Guía; ambos dan el mismo resultado.
+Placas de extremo enrasadas y extendidas según AISC Design Guide 16 (Murray y Shoemaker, 2002, revisión 2016; `type: end_plate`) y, del lado de la columna y para la 8ES, AISC Design Guide 4, 2ª ed. (Murray y Sumner, 2004). Diez configuraciones (`layout`): `flush_2`, `flush_4`, `flush_4_stiffened_between`, `flush_4_stiffened_inside` (DG16 Tablas 3-2 a 3-5), `extended_4`, `extended_4_stiffened`, `extended_1_2`, `extended_1_3`, `extended_1_3_stiffened` (DG16 Tablas 4-2 a 4-6) y `extended_8_stiffened` (8ES, DG4 Tabla 3.3, con h_1 a h_4 medidos al centro del ala de compresión; solo placa gruesa: con placa delgada la rotura de pernos se informa con capacidad 0, DG4 §3.3). La resistencia sigue el diagrama de revisión del Apéndice B con la errata de 2016: placa gruesa si φM_np ≤ φ_b M_pl/1,11 (rotura de pernos sin palanca), si no placa delgada (rotura con palanca, M_q). Las distancias d_n van al centro del ala de compresión y h_n a su cara exterior. La carga axial se convierte en M_u = |M| − P(h − t_f)/2 (P positiva en compresión; §2.5.3, punto 11). La fuerza de ala para las demás verificaciones es F_fu = M_u/(d − t_f). En ASD se usa Ω = 1,67 (fluencia) y 2,00 (pernos) en lugar de mayorar el momento por 1,5 como la Guía; ambos dan el mismo resultado.
 
 | `id` | Verificación | Norma |
 |---|---|---|
 | `moment.end_plate_yielding` | Fluencia de la placa: φ_b F_py t_p² Y / γ_r, con Y de la tabla de la configuración y γ_r = 1,25 (enrasada) o 1,0 (extendida); s = ½√(b_p g), p_f ≤ s | DG16 Tablas 3-2 a 4-6, §2.5.3 |
 | `moment.end_plate_bolt_rupture` | Rotura de pernos: φM_np = φ 2P_t Σd_n (placa gruesa) o φM_q con Q_max,i y Q_max,o (Ec. 2-11 a 2-19), T_b de la Tabla J3.1 (fracción de la Tabla 2-1 con apriete ajustado) | DG16 Apéndice B |
-| `moment.end_plate_shear_yielding` | Placas extendidas: fluencia por corte de la extensión, F_fu/2 ≤ φ 0,6 F_y b_p t_p | §J4.2(a); DG16 §2.6 |
-| `moment.end_plate_shear_rupture` | Placas extendidas: rotura por corte en los pernos exteriores, A_n = (b_p − 2(d_h + 1/16 in)) t_p | §J4.2(b); DG16 §2.6 |
-| `moment.end_plate_bolt_shear` | Corte en los pernos del ala en compresión (todos los de tracción si `symmetric`, si no dos): mín(corte, aplastamiento en la placa y en el ala de la columna) | §J3.7, §J3.10; DG16 §2.5.3 punto 5 |
+| `moment.end_plate_shear_yielding` | Placas extendidas sin rigidizador (DG4 paso 8): fluencia por corte de la extensión, F_fu/2 ≤ φ 0,6 F_y b_p t_p | §J4.2(a); DG16 §2.6 |
+| `moment.end_plate_shear_rupture` | Placas extendidas sin rigidizador (DG4 paso 9): rotura por corte en los pernos exteriores, A_n = (b_p − 2(d_h + 1/16 in)) t_p | §J4.2(b); DG16 §2.6 |
+| `moment.end_plate_bolt_shear` | Corte en los pernos del ala en compresión (todos los de tracción si `symmetric`, si no dos): Σ mín(corte, aplastamiento o desgarro en la placa, aplastamiento en el ala de la columna). El desgarro usa la distancia libre al agujero vecino y, en la fila exterior, también al borde de la placa (el corte puede cambiar de sentido) | §J3.7, §J3.11; DG16 §2.5.3 punto 5; DG4 Ec. 3.17 a 3.19 |
 | `moment.end_plate_web_weld_shear` | Soldadura del alma para el corte, en la longitud mín(d/2 − t_f, d − 2t_f − p_f − (n_i − 1)p_b − 2d_b) | §J2.4; DG16 §2.5.3 punto 10 |
 | `moment.end_plate_web_weld_tension` | Soldadura del alma junto a los pernos de tracción para desarrollar la fluencia del alma, φF_y t_w ≤ 2 × 1,5 r_w | §J2.4, Ec. J2-5; DG16 §2.5.3 punto 9 |
 | `moment.end_plate_flange_weld` | Filete de las alas (si se da `flange_weld`): máx(F_fu, 0,6 F_y b_f t_f) ≤ 1,5 r_w (2b_f − t_w); sin él, penetración completa | §J2.4, Ec. J2-5; DG16 §2.5.3 punto 8 |
 
-En la columna, `moment.column_web_local_yielding` y `moment.column_web_crippling` usan l_b = t_f + 2t_p (+ 2 w con filete en las alas), repartiendo la fuerza a 1:1 en la placa; `moment.column_web_compression_buckling` y `moment.column_panel_zone` como en las demás conexiones de momento. No se verifica la flexión del ala de la columna en los pernos (líneas de fluencia de AISC Design Guide 4).
+Lado de la columna (DG4, pasos 14 a 20), con la fuerza de ala F_fu y N = t_fb + 2 × `weld_reinforcement` (penetración completa) o t_fb + 0,707 w (filete):
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `moment.column_flange_bending` | Configuraciones 4E, 4ES y 8ES: espesor requerido del ala, t_fc,req = √(1,11 φM_np / (φ_b F_yc Y_c)) ≤ t_fc, con Y_c sin rigidizar o, con `continuity_plate`, rigidizado (p_so = p_si = (c − t_s)/2) | DG4 Ec. 3.20; Tablas 3.4 y 3.5 |
+| `moment.column_flange_strength` | Configuraciones 4E, 4ES y 8ES, ala sin rigidizar: F_fu ≤ φ_b F_yc Y_c t_fc² / (d − t_fb) | DG4 Ec. 3.21, 3.22 |
+| `moment.continuity_plates` | Con `continuity_plate`: F_su = F_fu − mín φR_n (ala sin rigidizar, fluencia, pandeo y aplastamiento del alma) ≤ φ F_y (2 b_s t_s), b_s = (b_fc − t_wc)/2; esas cuatro verificaciones pasan a no aplicables | DG4 Ec. 3.32; §J10.8, §J4.4 |
+
+`moment.column_web_local_yielding` usa la Ec. 3.24 de la DG4, R_n = [C_t(6k_c + 2t_p) + N] F_yc t_wc con φ = 1,0 y C_t = 0,5 cerca del extremo de la columna. `moment.column_web_compression_buckling` se verifica siempre en el ala de compresión (DG4 Ec. 3.26 y 3.27, igual que §J10.5) y `moment.column_web_crippling` es §J10.3 con l_b = N (DG4 Ec. 3.29 a 3.31). `moment.column_panel_zone`, como en las demás conexiones de momento. Las configuraciones enrasadas y multifila 1/2 y 1/3 no tienen líneas de fluencia del ala de la columna en las guías: en ellas no se verifica la flexión del ala de la columna.
 
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 

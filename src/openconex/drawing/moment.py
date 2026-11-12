@@ -66,6 +66,7 @@ class MomentLayout:
 
 
 def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
+    from openconex.connections.moment.end_plate import STIFFENED_EXTENSION
     from openconex.connections.moment.end_plate import EndPlateLayout as Layout
     ep, beam = mc.end_plate, mc.beam
     d, tf, t = beam.d, beam.tf, ep.thickness
@@ -74,6 +75,8 @@ def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
     top = d
     if not ep.flush:
         rows.insert(0, d + ep.pf_o)
+        if ep.outside_rows == 2:
+            rows.insert(0, d + ep.pf_o + ep.pb)
         top = d + ep.pext
     if ep.symmetric:
         bottom_rows = [d - y for y in rows]
@@ -86,7 +89,7 @@ def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
     lay.bolt_diameter = ep.bolt.diameter
     lay.beam_x0 = t
     half = (beam.bf - beam.tw) / 2
-    if ep.layout in (Layout.EXTENDED_4_STIFFENED, Layout.EXTENDED_1_3_STIFFENED):
+    if ep.layout in STIFFENED_EXTENSION:
         h = ep.pext
         length = h * 3**0.5  # 30° stiffener, AISC 358 §6.10
         lay.stiffeners.append([(t, d), (t, d + h), (t + length, d)])
@@ -169,6 +172,10 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     for y in lay.end_plate_rows:
         t = u(lay.plates[0][2])
         s.rect(-ctf - 1.5 * r, u(y) - r, t + 1.5 * r, u(y) + r, "MC-PERNO")
+    if mc.continuity_plate > 0:  # column continuity plates at the beam flange centerlines
+        ts = u(mc.continuity_plate)
+        for yc in (u(lay.beam_d - lay.beam_tf / 2), u(lay.beam_tf / 2)):
+            s.rect(-cd + ctf, yc - ts / 2, -ctf, yc + ts / 2, "MC-PLACA")
     for poly in lay.stiffeners:
         s.msp.add_lwpolyline([(u(x), u(y)) for x, y in poly], close=True,
                              dxfattribs={"layer": "MC-PLACA"})

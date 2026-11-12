@@ -89,6 +89,8 @@ class EndPlateInput(_Input):
     """Fillet weld on each side of the beam web (omitted: CJP groove weld)."""
     flange_weld: Quantity | None = None
     """Fillet weld at the beam flanges (omitted: CJP groove weld)."""
+    weld_reinforcement: Quantity | None = None
+    """CJP flange welds: reinforcing fillet leg (Design Guide 4: N = t_f + 2w)."""
     symmetric: bool = True
     """Same bolt pattern at both flanges; otherwise two bolts at the compression flange."""
 
@@ -137,6 +139,8 @@ class MomentConnectionInput(_Input):
     deformation_considered: bool = True
     column_near_end: bool = False
     two_sided: bool = False
+    continuity_plate: Quantity | None = None
+    """End plates: thickness of the column continuity plates at the beam flanges."""
 
     def missing(self) -> list[str]:
         missing: list[str] = []
@@ -219,7 +223,8 @@ def moment_model(project: Project) -> MomentConnection:
             ps=q(e.ps), snug_tight=e.snug_tight,
             pretension=None if e.pretension is None else project.quantity(e.pretension,
                                                                            Kind.FORCE),
-            web_weld=q(e.web_weld, T), flange_weld=q(e.flange_weld, T), symmetric=e.symmetric)
+            web_weld=q(e.web_weld, T), flange_weld=q(e.flange_weld, T),
+            weld_reinforcement=q(e.weld_reinforcement, T), symmetric=e.symmetric)
     top = plate(mc.top)
     bottom = plate(mc.bottom)
     if mc.type is FlangeDetail.BOLTED_FLANGE_PLATE and bottom is None:
@@ -232,4 +237,5 @@ def moment_model(project: Project) -> MomentConnection:
         beam_lev=q(mc.beam_lev), underrun=q(mc.underrun),
         FEXX=project.electrode_library()[mc.electrode].FEXX,
         deformation_considered=mc.deformation_considered, column_near_end=mc.column_near_end,
-        two_sided=mc.two_sided, end_plate=end_plate)
+        two_sided=mc.two_sided, end_plate=end_plate,
+        continuity_plate=q(mc.continuity_plate, T))

@@ -72,7 +72,8 @@ REFERENCE = {
     "asiento_rigidizado": "AISC DE v16.1, II.A-14 y II.A-15",
     "conexion_corte": "—",
     "momento": "AISC DE v16.1, II.B-1, II.B-2 y II.B-3",
-    "placa_extremo_momento": "AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5",
+    "placa_extremo_momento": ("AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5; "
+                              "AISC DG4 2.ª ed., ejemplos 4E A, 4E B y 8ES"),
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
     "pernos": "AISC 360-22 §J3; Manual Tablas 7-6 a 7-14 y 14-2",
     "soldaduras": "AISC 360-22 §J2; Manual Tablas 8-3 a 8-11",
@@ -96,7 +97,8 @@ TEST = {
     "asiento_rigidizado": "tests/connections/test_stiffened_seat.py",
     "conexion_corte": "tests/connections/test_shear_project.py",
     "momento": "tests/moment/test_fr_moment.py",
-    "placa_extremo_momento": "tests/moment/test_end_plate_dg16.py",
+    "placa_extremo_momento": ("tests/moment/test_end_plate_dg16.py; "
+                              "tests/moment/test_end_plate_dg4.py"),
     "anclajes": "tests/kernel/test_anchors.py",
     "pernos": "tests/kernel/test_bolts.py",
     "soldaduras": "tests/kernel/test_welds.py",
@@ -121,6 +123,7 @@ TEST_OVERRIDE = {
     "base_plate.anchor_rebar_clearance": "tests/base_plate/test_anchor_reinforcement.py",
     "bolt_group.eccentric": "tests/kernel/test_bolt_group_manual.py",
     "shear_connection.beam_shear_yielding": "tests/connections/test_beam_web_shear.py",
+    "moment.column_web_compression_buckling": "tests/moment/test_end_plate_dg4.py",
     "weld_group.eccentric": "tests/kernel/test_weld_group.py",
     "prying.tension": "tests/kernel/test_prying.py",
     "prying.min_thickness": "tests/kernel/test_prying.py",
@@ -132,6 +135,12 @@ DIFFERENCE = {
                            "el cálculo independiente de II.A-17A da C = 3,556 y 58,7/39,1 kip"),
     "double_angle.block_shear_axial": "forma U en vez de L (II.A-1B), algo conservador",
     "extended_plate.flexural_rupture": "Z_net = 12,75 in³ frente a 12,8 in³ (II.A-19A)",
+    "moment.end_plate_bolt_shear": (
+        "agujeros de AISC 360-22 y desgarro hacia el borde en todas las filas exteriores "
+        "(DG4 4E B y 8ES no lo consideran); ver docs/tecnico/07-validacion.md"),
+    "moment.continuity_plates": (
+        "F_su con las resistencias de los pasos 15 a 18 (117/115 kip); la Guía publica 128/131 "
+        "kip con valores que no coinciden con esos pasos"),
     "moment.end_plate_bolt_rupture": (
         "DG16 3.2.4 y 4.2.3: la Guía publica un valor distinto del que da su diagrama del "
         "Apéndice B; ver docs/tecnico/07-validacion.md"),
@@ -142,13 +151,9 @@ _DG16_PARTIAL = ("los ejemplos de la DG16 no la calculan; usa las fórmulas de A
 PARTIAL: dict[str, str] = {
     "moment.end_plate_shear_yielding": _DG16_PARTIAL,
     "moment.end_plate_shear_rupture": _DG16_PARTIAL,
-    "moment.end_plate_bolt_shear": _DG16_PARTIAL,
     "moment.end_plate_web_weld_shear": _DG16_PARTIAL,
     "moment.end_plate_web_weld_tension": _DG16_PARTIAL,
     "moment.end_plate_flange_weld": _DG16_PARTIAL,
-    "moment.column_web_compression_buckling": (
-        "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.5) se contrasta con "
-        "valores manuales en tests/kernel/test_local.py"),
     "moment.column_panel_zone": (
         "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.6) se contrasta con "
         "valores manuales en tests/kernel/test_local.py"),

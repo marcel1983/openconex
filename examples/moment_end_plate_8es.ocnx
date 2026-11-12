@@ -1,0 +1,53 @@
+{
+  "format_version": 12,
+  "info": {
+    "name": "Ejemplo: placa de extremo 8ES con placas de continuidad (AISC DG4, 4.4)",
+    "number": "OC-0205",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": "W21X55",
+    "column": "W14X109",
+    "continuity_plate": "1/2 in",
+    "end_plate": {
+      "layout": "extended_8_stiffened",
+      "bolt": {
+        "diameter": "1 in"
+      },
+      "width": "9 in",
+      "thickness": "7/8 in",
+      "gage": "5.5 in",
+      "pf": "1.75 in",
+      "pf_o": "1.75 in",
+      "pb": "3 in",
+      "pext": "6 in",
+      "web_weld": "5/16 in",
+      "weld_reinforcement": "5/16 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "10 kip",
+      "M": "150 kip*ft"
+    },
+    {
+      "name": "L",
+      "type": "L",
+      "V": "17.5 kip",
+      "M": "308.5 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD",
+      "ASD"
+    ]
+  }
+}

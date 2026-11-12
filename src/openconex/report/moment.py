@@ -66,7 +66,13 @@ def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
                  + (q(e.web_weld, Kind.THICKNESS) if e.web_weld is not None else "CJP"),
                  f"{tr('input.weld_flanges', lang)}: "
                  + (q(e.flange_weld, Kind.THICKNESS) if e.flange_weld is not None else "CJP")]
+        if e.flange_weld is None and e.weld_reinforcement is not None:
+            welds.append(f"{tr('input.weld_reinforcement', lang)}: "
+                         f"{q(e.weld_reinforcement, Kind.THICKNESS)}")
         rows.append(Row([tr("input.weld", lang), "; ".join(welds)]))
+        if mc.continuity_plate is not None:
+            rows.append(Row([tr("input.continuity_plate", lang),
+                             q(mc.continuity_plate, Kind.THICKNESS)]))
     for key, plate in (("top_plate", mc.top), ("bottom_plate", mc.bottom)):
         if plate is None:
             continue
