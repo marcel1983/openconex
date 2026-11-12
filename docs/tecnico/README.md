@@ -13,3 +13,4 @@ Cómo está hecho OpenConex y cómo calcula. Está dirigida a quien revisa los r
 9. [Cierre de la placa base](09-cierre-placa-base.md): alcance pendiente y criterios de aceptación.
 10. [Publicar una release](10-release.md): versión, etiqueta, workflow, checksums y paquetes portables.
 11. [Conexión sesgada de doble placa doblada (II.A-10)](11-ii-a-10.md): modelo, comprobaciones, validación y fase 2 pendiente.
+12. [Propuesta de visor 3D](12-propuesta-render-3d.md): z-buffer OpenGL, vista separada, aristas y criterios de aceptación.

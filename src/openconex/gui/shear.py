@@ -91,6 +91,18 @@ STIFFENER_FIELDS = ("width", "thickness", "weld", "length")
 HIDDEN_FIELDS = ("seat_plate_width", "seat_plate_thickness", "seat_plate_weld",
                  "top_angle_leg", "top_angle_thickness", "top_angle_length",
                  "top_angle_bolts", "top_angle_weld")
+# Viewer-only offsets for the exploded inspection view [mm], in viewer axes.
+EXPLODE_BY_TYPE = {
+    "double_angle": {"beam": (0.0, -250.0, 0.0)},
+    "single_plate": {"beam": (0.0, -200.0, 0.0)},
+    "extended_single_plate": {"beam": (0.0, -200.0, 0.0)},
+    "end_plate": {"beam": (80.0, -260.0, 0.0),
+                  "end_plate": (80.0, 0.0, 0.0),
+                  "support_bolt*": (80.0, 0.0, 0.0)},
+    "seated": {"beam": (80.0, 0.0, 220.0)},
+    "stiffened_seat": {"beam": (80.0, 0.0, 240.0)},
+    "skewed_bent_plate": None,
+}
 CASE_TYPES = [t.value for t in LoadType]
 CUSTOM_UNITS = "(del proyecto)"
 
@@ -230,7 +242,8 @@ class ShearWindow(QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figures)
         self.tabs.addTab(figure_scroll, "Figuras")
-        self.viewer = Viewer3D(lambda: parts_3d(self.project), swap_yz=True)
+        self.viewer = Viewer3D(lambda: parts_3d(self.project), swap_yz=True,
+                               explode=self._explode_for_current_type())
         self.tabs.addTab(self.viewer, "3D")
         for index, key in enumerate(("tab.summary", "tab.details", "tab.figures", "tab.viewer")):
             self.tabs.setTabToolTip(index, help_text(key))
@@ -430,6 +443,9 @@ class ShearWindow(QMainWindow):
         self.cases.setItem(row, 3, QTableWidgetItem(P))
 
     # -- form <-> project ---------------------------------------------------------
+    def _explode_for_current_type(self):
+        return EXPLODE_BY_TYPE.get(self.type.currentData())
+
     def _update_visible(self) -> None:
         kind = ShearType(self.type.currentData())
         shown = set(TYPE_FIELDS[kind])
@@ -440,6 +456,8 @@ class ShearWindow(QMainWindow):
             widget.setVisible(visible)
             text = tr(f"input.{'seat_bolts' if name == 'bolts' else name}", "es")
             label.setText(f"{text} *" if name in required else text)
+        if hasattr(self, "viewer"):
+            self.viewer.set_explode_spec(self._explode_for_current_type())
 
     def _change_units(self, name: str) -> None:
         if name == CUSTOM_UNITS:

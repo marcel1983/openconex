@@ -51,6 +51,18 @@ def test_cope_reinforcement_is_preserved(app):
     assert project.shear_connection.cope.doubler is not None
 
 
+def test_explode_button_follows_the_connection_type(app):
+    window = ShearWindow(load_project(EXAMPLES / "shear_double_angle_coped.ocnx"))
+    assert window.viewer._explode_button is not None
+    window.type.setCurrentIndex(window.type.findData("skewed_bent_plate"))
+    window._update_visible()
+    assert window.viewer._explode_button.isHidden()
+    window.type.setCurrentIndex(window.type.findData("double_angle"))
+    window._update_visible()
+    assert not window.viewer._explode_button.isHidden()
+    window.close()
+
+
 def test_shear_window_converts_units(app):
     window = ShearWindow(load_project(EXAMPLES / "shear_single_plate_coped.ocnx"))
     assert window._fields["length"].text() == "11.5 in"
