@@ -119,10 +119,11 @@ def test_report_drawing_3d_and_window(tmp_path):
     out = tmp_path / "web"
     assert main(["moment", str(EXAMPLE), "-o", str(out), "--dxf"]) == 0
     assert ezdxf.readfile(out.with_suffix(".dxf"))
-    pytest.importorskip("OCP")
-    from openconex.geometry3d.moment import moment_parts
-    names = {p.name for p in moment_parts(project.moment_model())}
-    assert {"beam", "column", "top_plate", "bottom_plate", "web_plate"} <= names
+    from openconex.geometry3d.base_plate import occ_available
+    if occ_available():  # the 3D extra is optional
+        from openconex.geometry3d.moment import moment_parts
+        names = {p.name for p in moment_parts(project.moment_model())}
+        assert {"beam", "column", "top_plate", "bottom_plate", "web_plate"} <= names
     os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
     pytest.importorskip("PySide6")
     from PySide6.QtWidgets import QApplication
