@@ -4,15 +4,15 @@
 
 ## 1. Alcance
 
-Se revisan las verificaciones implementadas en OpenConex 0.5.16:
+Se revisan las verificaciones implementadas en OpenConex 0.5.17:
 
 - placa base y anclajes (DG1 3.ª ed., ACI 318-19);
 - conexiones de corte de la F5 (Manual AISC Parte 10 y ejemplos II.A-1A a II.A-19B);
-- conexiones de momento de la F6, fase 1 (ejemplos II.B-1 a II.B-3);
+- conexiones de momento de la F6, fase 1 (ejemplos II.B-1 a II.B-3), y placas de extremo de momento (AISC Design Guide 16, ejemplos 3.2.1 a 4.2.5);
 - comprobaciones de la biblioteca (pernos, soldaduras, elementos, fuerzas concentradas);
 - salidas HTML, DOCX, PDF, DXF, STEP, STL y GUI.
 
-No se revisan las funciones que aún no existen: compresión axial en el doble ángulo, la placa de extremo y los asientos, flexión de la viga, placas de extremo de momento y demás conexiones de la F6 fase 2, ni empalmes (F7).
+No se revisan las funciones que aún no existen: compresión axial en el doble ángulo, la placa de extremo y los asientos, flexión de la viga, flexión del ala de la columna en los pernos de la placa de extremo (DG4) y demás conexiones de la F6 fase 2, ni empalmes (F7).
 
 ## 2. Método
 

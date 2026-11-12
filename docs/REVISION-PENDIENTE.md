@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-12, sobre `main`, versión 0.5.16. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-12, sobre `main`, versión 0.5.17. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -44,6 +44,7 @@ Estado al 2026-11-12, sobre `main`, versión 0.5.16. Cada tarea indica qué hay 
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
 - [x] Release 0.5.15.
+- [x] Release 0.5.17: placas de extremo de momento de AISC Design Guide 16 (nueve configuraciones, formato de proyecto 12) y vigas armadas en la ventana de momento.
 - [x] Release 0.5.16: compresión axial en placas simples, II.A-19B corregido, `openconex beams`, corte del alma de la viga, cierre de la F5 y F6 fase 1 (conexiones de momento II.B-1 a II.B-3).
 
 ## 0. Completado en 0.4.2
