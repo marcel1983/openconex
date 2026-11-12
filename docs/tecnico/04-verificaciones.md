@@ -277,6 +277,20 @@ Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual 
 | `moment.column_web_compression_buckling` | Pandeo del alma de la columna, con vigas a ambos lados (en placas de extremo, siempre en el ala de compresión, DG4 Ec. 3.26) | §J10.5 |
 | `moment.column_panel_zone` | Corte de la zona de panel, con el corte de la columna dado | §J10.6 |
 
+### Conexiones al alma de la columna (`support: web`)
+
+Viga de momento al alma de la columna (eje débil), con alas soldadas directamente a placas de conexión (`welded_flange`) o con placas de ala apernadas (`bolted_flange_plate`), según AISC Design Guide 13, Apéndice D (Manual LRFD Parte 10 y Ferrell, 1998). Las placas encajan entre las alas de la columna y se sueldan a ellas; sus soldaduras se diseñan solo a corte y la fuerza no pasa por el alma. No se aplican las verificaciones de la columna del eje fuerte (§J10, zona de panel, rigidizadores). La placa simple del alma se suelda al alma de la columna (`moment.web_support_rupture` con t_wc). Las reglas de detalle se comprueban contra los valores de la guía; las resistencias usan AISC 360-22 sin ejemplo publicado.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `moment.web_connection_plate_yielding_top`, `moment.web_connection_plate_yielding_bottom` | Alas soldadas: fluencia por tracción de la placa de conexión en el ancho libre d_c − 2t_fc | §J4.1(a); DG13 Ap. D |
+| `moment.web_connection_plate_thickness_top`, `moment.web_connection_plate_thickness_bottom` | Alas soldadas: t ≥ t_f + 1/4 in (placa superior) y t_f + 3/8 in (inferior) por tolerancias | DG13 Ap. D (Ferrell, 1998) |
+| `moment.web_connection_weld_top`, `moment.web_connection_weld_bottom` | Cuatro filetes de la placa a las alas de la columna, a corte, en l_w = (b_fc − t_wc)/2 − clip − 2w | §J2.4; DG13 Ap. D |
+| `moment.web_connection_plate_extension` | Prolongación de las placas ≥ 3/4 in más allá de las puntas de las alas de la columna | DG13 Ap. D (Driscoll et al., 1983) |
+| `moment.web_connection_fit` | Ancho del ala de la viga o de la placa ≤ d_c − 2t_fc | DG13 Ap. D |
+
+Con placas de ala apernadas se mantienen las verificaciones de pernos, placa y bloque de corte de II.B-1, y la soldadura de la placa a la columna se reemplaza por `moment.web_connection_weld_top`.
+
 ### Placas de extremo de momento (`connections/moment/end_plate.py`)
 
 Placas de extremo enrasadas y extendidas según AISC Design Guide 16 (Murray y Shoemaker, 2002, revisión 2016; `type: end_plate`) y, del lado de la columna y para la 8ES, AISC Design Guide 4, 2ª ed. (Murray y Sumner, 2004). Diez configuraciones (`layout`): `flush_2`, `flush_4`, `flush_4_stiffened_between`, `flush_4_stiffened_inside` (DG16 Tablas 3-2 a 3-5), `extended_4`, `extended_4_stiffened`, `extended_1_2`, `extended_1_3`, `extended_1_3_stiffened` (DG16 Tablas 4-2 a 4-6) y `extended_8_stiffened` (8ES, DG4 Tabla 3.3, con h_1 a h_4 medidos al centro del ala de compresión; solo placa gruesa: con placa delgada la rotura de pernos se informa con capacidad 0, DG4 §3.3). La resistencia sigue el diagrama de revisión del Apéndice B con la errata de 2016: placa gruesa si φM_np ≤ φ_b M_pl/1,11 (rotura de pernos sin palanca), si no placa delgada (rotura con palanca, M_q). Las distancias d_n van al centro del ala de compresión y h_n a su cara exterior. La carga axial se convierte en M_u = |M| − P(h − t_f)/2 (P positiva en compresión; §2.5.3, punto 11). La fuerza de ala para las demás verificaciones es F_fu = M_u/(d − t_f). En ASD se usa Ω = 1,67 (fluencia) y 2,00 (pernos) en lugar de mayorar el momento por 1,5 como la Guía; ambos dan el mismo resultado.

@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from openconex.connections.moment.end_plate import EXTENDED, EndPlate, EndPlateLayout
 from openconex.connections.moment.fr_moment import (
+    ColumnFace,
     FlangeDetail,
     FlangePlate,
     MomentConnection,
@@ -139,6 +140,10 @@ class MomentConnectionInput(_Input):
     deformation_considered: bool = True
     column_near_end: bool = False
     two_sided: bool = False
+    support: ColumnFace = ColumnFace.FLANGE
+    """``flange`` or ``web`` of the column (web: welded_flange or bolted_flange_plate)."""
+    plate_extension: Quantity = "3/4 in"
+    """Column web: extension of the connection plates past the column flange tips."""
     panel_zone: bool = False
     """Check the column panel zone (§J10.6) with ``column_V`` and ``column_P`` of the cases."""
     panel_zone_inelastic: bool = False
@@ -169,6 +174,8 @@ class MomentConnectionInput(_Input):
             return self.end_plate.missing()
         if self.web is None:
             missing.append("web")
+        if self.support is ColumnFace.WEB and self.type is FlangeDetail.WELDED_FLANGE:
+            missing += [n for n in ("top", "bottom") if getattr(self, n) is None]
         if self.type is FlangeDetail.BOLTED_FLANGE_PLATE:
             missing += [n for n in ("top", "bolt", "spacing", "gage", "plate_lev", "beam_lev")
                         if getattr(self, n) is None]
@@ -264,5 +271,6 @@ def moment_model(project: Project) -> MomentConnection:
         continuity_plate_length=q(mc.continuity_plate_length),
         continuity_plate_weld=q(mc.continuity_plate_weld, T),
         continuity_plate_web_weld=q(mc.continuity_plate_web_weld, T),
-        doubler_weld=q(mc.doubler_weld, T), panel_zone=mc.panel_zone,
+        doubler_weld=q(mc.doubler_weld, T), panel_zone=mc.panel_zone, support=mc.support,
+        plate_extension=q(mc.plate_extension),
         panel_zone_inelastic=mc.panel_zone_inelastic, doubler_plate=q(mc.doubler_plate, T))

@@ -49,6 +49,7 @@ FAMILY = {
     "Conexión de corte: resultados comunes": "conexion_corte",
     "Conexiones de momento": "momento",
     "Placas de extremo de momento": "placa_extremo_momento",
+    "Conexiones al alma de la columna": "alma_columna",
     "Rigidización de la columna": "rigidizacion_columna",
     "Anclajes": "anclajes",
     "Pernos": "pernos",
@@ -74,6 +75,7 @@ REFERENCE = {
     "conexion_corte": "—",
     "momento": "AISC DE v16.1, II.B-1, II.B-2 y II.B-3",
     "rigidizacion_columna": "AISC DG13 (1999, rev. 2003), ejemplos 6-1 y 6-3",
+    "alma_columna": "AISC DG13, Apéndice D (reglas de detalle; sin ejemplo resuelto)",
     "placa_extremo_momento": ("AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5; "
                               "AISC DG4 2.ª ed., ejemplos 4E A, 4E B y 8ES"),
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
@@ -100,6 +102,7 @@ TEST = {
     "conexion_corte": "tests/connections/test_shear_project.py",
     "momento": "tests/moment/test_fr_moment.py",
     "rigidizacion_columna": "tests/moment/test_column_stiffening_dg13.py",
+    "alma_columna": "tests/moment/test_column_web.py",
     "placa_extremo_momento": ("tests/moment/test_end_plate_dg16.py; "
                               "tests/moment/test_end_plate_dg4.py"),
     "anclajes": "tests/kernel/test_anchors.py",
@@ -151,7 +154,11 @@ DIFFERENCE = {
 
 _DG16_PARTIAL = ("los ejemplos de la DG16 no la calculan; usa las fórmulas de AISC 360-22 "
                  "validadas en tests/kernel")
+_WEB_PARTIAL = ("sin ejemplo publicado: fórmulas de AISC 360-22 contrastadas con cálculos "
+                "manuales en tests/moment/test_column_web.py")
 PARTIAL: dict[str, str] = {
+    **{f"moment.web_connection_{k}": _WEB_PARTIAL for k in (
+        "plate_yielding_top", "plate_yielding_bottom", "weld_top", "weld_bottom", "fit")},
     "moment.end_plate_shear_yielding": _DG16_PARTIAL,
     "moment.end_plate_shear_rupture": _DG16_PARTIAL,
     "moment.end_plate_web_weld_shear": _DG16_PARTIAL,

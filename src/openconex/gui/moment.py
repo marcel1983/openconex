@@ -199,7 +199,13 @@ class MomentWindow(QMainWindow):
         self.beam = self._section_combo()
         form.addRow("Viga", self.beam)
         self.column = self._section_combo()
-        form.addRow("Columna (al ala)", self.column)
+        form.addRow("Columna", self.column)
+        self.support = QComboBox()
+        self.support.addItem("Ala de la columna", "flange")
+        self.support.addItem("Alma de la columna (eje débil, DG13 Ap. D)", "web")
+        form.addRow("Cara de la columna", self.support)
+        self.support.currentIndexChanged.connect(self._update_visible)
+        self.plate_extension = self._line(form, "Prolongación de las placas (alma; vacío: 3/4 in)")
         self.grade = self._line(form, "Material de las placas")
         self.electrode = self._line(form, "Electrodo")
         self.near_end = QCheckBox("Fuerza de ala cerca del extremo de la columna")
@@ -328,17 +334,24 @@ class MomentWindow(QMainWindow):
         self.cases.setItem(row, 6, QTableWidgetItem(Pc))
 
     # -- form <-> project ----------------------------------------------------------------
+    def _uses_plates(self, detail: FlangeDetail) -> bool:
+        """Flange plates, or the connection plates of a flange welded to the column web."""
+        if detail is FlangeDetail.WELDED_FLANGE:
+            return self.support.currentData() == "web"
+        return detail is not FlangeDetail.END_PLATE
+
     def _update_visible(self) -> None:
         detail = FlangeDetail(self.type.currentData())
         bolted = detail is FlangeDetail.BOLTED_FLANGE_PLATE
         end_plate = detail is FlangeDetail.END_PLATE
-        plates = detail not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.END_PLATE)
+        plates = self._uses_plates(detail)
         self.web_group.setVisible(not end_plate)
         self.end_plate_group.setVisible(end_plate)
         self.bolts_group.setVisible(bolted)
         self._plate_groups["top"].setVisible(plates)
         self._plate_groups["bottom"].setVisible(plates)
-        if detail is FlangeDetail.WELDED_FLANGE_PLATE:
+        if detail is FlangeDetail.WELDED_FLANGE_PLATE or (
+                detail is FlangeDetail.WELDED_FLANGE and plates):
             self._plate_groups["bottom"].setChecked(True)
 
     def _fill(self, project: Project) -> None:
@@ -359,6 +372,9 @@ class MomentWindow(QMainWindow):
         self.electrode.setText(mc.electrode)
         self.near_end.setChecked(mc.column_near_end)
         self.two_sided.setChecked(mc.two_sided)
+        self.support.setCurrentIndex(self.support.findData(mc.support.value))
+        self.plate_extension.setText("" if mc.plate_extension == "3/4 in"
+                                     else _text(mc.plate_extension))
         for key, edit in self._stiff.items():
             value = getattr(mc, key)
             default = MomentConnectionInput.model_fields[key].default
@@ -419,7 +435,10 @@ class MomentWindow(QMainWindow):
             "grade": self.grade.text().strip(), "electrode": self.electrode.text().strip(),
             "column_near_end": self.near_end.isChecked(),
             "two_sided": self.two_sided.isChecked(),
+            "support": self.support.currentData(),
         }
+        if self.plate_extension.text().strip():
+            connection["plate_extension"] = self.plate_extension.text().strip()
         connection.update({k: e.text().strip() for k, e in self._stiff.items()
                            if e.text().strip()})
         connection["continuity_plate_full_depth"] = self.full_depth.isChecked()
@@ -438,7 +457,7 @@ class MomentWindow(QMainWindow):
             connection["web"] = {"bolt": {"diameter": self.web_bolt.text().strip()},
                                  "rows": self.web_rows.value(),
                                  **{k: e.text().strip() for k, e in self._web.items()}}
-        if detail not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.END_PLATE):
+        if self._uses_plates(detail):
             for key in ("top", "bottom"):
                 if key == "bottom" and not self._plate_groups[key].isChecked():
                     continue

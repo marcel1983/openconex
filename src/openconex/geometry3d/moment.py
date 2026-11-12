@@ -72,10 +72,17 @@ def _parts(mc: MomentConnection) -> list[Part]:
     ys = [y for p in lay.plates for y in (p[1], p[3])] + [0.0, d]
     lo, hi = min(ys) - 150.0, max(ys) + 150.0
     cbf, ctf, ctw, cd = col.bf, col.tf, col.tw, col.d
-    parts.append(Part("column", _fuse_all([
-        _box(-ctf, lo, -cbf / 2, ctf, hi - lo, cbf),
-        _box(-cd, lo, -cbf / 2, ctf, hi - lo, cbf),
-        _box(-cd + ctf, lo, -ctw / 2, cd - 2 * ctf, hi - lo, ctw)])))
+    if lay.column_web:  # beam framing to the column web: the web lies in the y-z plane
+        x_f = -ctw / 2 - cbf / 2
+        parts.append(Part("column", _fuse_all([
+            _box(-ctw, lo, -cd / 2 + ctf, ctw, hi - lo, cd - 2 * ctf),
+            _box(x_f, lo, cd / 2 - ctf, cbf, hi - lo, ctf),
+            _box(x_f, lo, -cd / 2, cbf, hi - lo, ctf)])))
+    else:
+        parts.append(Part("column", _fuse_all([
+            _box(-ctf, lo, -cbf / 2, ctf, hi - lo, cbf),
+            _box(-cd, lo, -cbf / 2, ctf, hi - lo, cbf),
+            _box(-cd + ctf, lo, -ctw / 2, cd - 2 * ctf, hi - lo, ctw)])))
     tcp = mc.continuity_plate
     if tcp > 0:  # pairs of transverse stiffeners at the beam flange centerlines
         from openconex.connections.moment.column_stiffening import (
@@ -121,8 +128,10 @@ def _parts(mc: MomentConnection) -> list[Part]:
         if rect is None or plate is None:
             continue
         x_0, y_0, x_1, y_1, _ = rect
-        parts.append(Part(name, _box(x_0, y_0, -plate.width / 2, x_1 - x_0, y_1 - y_0,
-                                     plate.width)))
+        width = plate.width
+        if lay.column_web and mc.bolt is None:  # connection plate between the column flanges
+            width = cd - 2 * ctf
+        parts.append(Part(name, _box(x_0, y_0, -width / 2, x_1 - x_0, y_1 - y_0, width)))
     r = lay.bolt_diameter / 2
     for i, (x, y) in enumerate(lay.web_bolts):
         parts.append(Part(f"web_bolt{i + 1}", _cylinder_z(x, y, -tw / 2 - 2 * r, r,

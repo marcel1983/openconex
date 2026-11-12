@@ -123,6 +123,10 @@ Diferencias documentadas:
 
 Diferencias documentadas: la base de perfiles de la 16ª ed. da d = 13,9 in para la W14×53 (13,92 in en la Guía), P_uf = 172,2 kips (la Guía redondea R_ust a 49 kips), y en la Solución A la Guía escribe l_mín = 1,23 in para el corte del alma sin sumar el recorte de ¾ in (1,98 in con él), que la Solución B sí suma.
 
+## Conexiones al alma de la columna
+
+La DG13 (Apéndice D) da reglas de detalle y el modelo de fuerzas, pero no un ejemplo resuelto. `tests/moment/test_column_web.py` comprueba los espesores mínimos (t_f + 1/4 in y t_f + 3/8 in) y la prolongación de 3/4 in de la guía, y las resistencias (fluencia de la placa, soldaduras a las alas y rotura del alma en la placa simple) contra cálculos manuales con AISC 360-22. En la matriz figuran como parciales.
+
 ## Hallazgos de la validación
 
 - **DG16, ejemplo 3.2.4, procedimiento 2:** φM_np = 1045 ≤ φ_b M_pl/1,11 = 1064 k-in, así que el diagrama del Apéndice B corregido por la errata de 2016 clasifica la placa como gruesa y da mín(φM_np, φ_b M_pl/γ_r) = 945 k-in (fluencia de la placa). La Guía publica 901 k-in (rotura de pernos con palanca), que corresponde a la rama de placa delgada. La prueba comprueba 945 y 1045 k-in.

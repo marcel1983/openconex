@@ -36,6 +36,7 @@ def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
         Row([tr("input.mc_type", lang), tr(f"moment.type.{mc.type.value}", lang)]),
         Row([tr("input.beam", lang), f"{model.beam.name} ({model.beam.grade})"]),
         Row([tr("input.column", lang), f"{model.column.name} ({model.column.grade})"]),
+        Row([tr("input.support", lang), tr(f"input.support_{mc.support.value}", lang)]),
         Row([tr("input.grade", lang), mc.grade]),
         Row([tr("input.electrode", lang), mc.electrode]),
     ]

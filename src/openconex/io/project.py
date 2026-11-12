@@ -684,6 +684,13 @@ class Project(_Input):
         if mc.electrode not in self.electrode_library():
             raise ValueError(f"unknown electrode: {mc.electrode!r}")
         end_plate = mc.type is FlangeDetail.END_PLATE
+        if mc.support.value == "web":
+            if mc.type not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.BOLTED_FLANGE_PLATE):
+                raise ValueError("connections to the column web take welded_flange or "
+                                 "bolted_flange_plate")
+            if mc.panel_zone or mc.continuity_plate or mc.doubler_plate or mc.two_sided:
+                raise ValueError("connections to the column web take no panel zone, "
+                                 "stiffeners, doubler plates or two_sided")
         if end_plate and mc.end_plate.snug_tight and bolts[mc.end_plate.bolt.grade].Fnt > \
                 to_internal(100.0, "ksi", Kind.STRESS):
             raise ValueError("snug-tight end-plate bolts must be Group A (A325)")
