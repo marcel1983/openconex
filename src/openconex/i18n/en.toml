@@ -362,6 +362,9 @@ end_plate_bolt_shear = "Shear on the compression flange bolts"
 end_plate_web_weld_shear = "Beam web to end-plate weld: shear"
 end_plate_web_weld_tension = "Beam web to end-plate weld: tension"
 end_plate_flange_weld = "Beam flange to end-plate fillet weld"
+column_flange_bending = "Column flange bending at the bolts (required thickness)"
+column_flange_strength = "Unstiffened column flange strength under the flange force"
+continuity_plates = "Column continuity plates"
 
 [check.base_plate]
 a2_over_a1 = "A2/A1 allowed by the pedestal size"
@@ -491,6 +494,8 @@ snug_tight = "snug-tight"
 pretensioned = "pretensioned"
 weld_web = "web"
 weld_flanges = "flanges"
+continuity_plate = "Continuity plates (thickness)"
+weld_reinforcement = "CJP weld reinforcement"
 
 [drawing]
 plan = "PLAN"
@@ -562,3 +567,4 @@ extended_4_stiffened = "Four-bolt extended stiffened, 4ES (DG16 Table 4-3)"
 extended_1_2 = "Multiple row 1/2 extended unstiffened (DG16 Table 4-4)"
 extended_1_3 = "Multiple row 1/3 extended unstiffened (DG16 Table 4-5)"
 extended_1_3_stiffened = "Multiple row 1/3 extended stiffened (DG16 Table 4-6)"
+extended_8_stiffened = "Eight-bolt extended stiffened, 8ES (DG4 Table 3.3)"

@@ -46,7 +46,7 @@ from openconex.kernel.design import FLEXURE, Calc
 from openconex.kernel.welds import fillet_weld_group_concentric, fillet_weld_per_length
 from openconex.units import Kind, from_internal, to_internal
 
-from .end_plate import EndPlate, column_web_checks, end_plate_checks
+from .end_plate import EndPlate, end_plate_checks, end_plate_column_checks
 
 __all__ = ["EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
            "check_moment_connection", "check_moment_envelope"]
@@ -125,7 +125,10 @@ class MomentConnection:
     two_sided: bool = False
     """Beams frame into both column flanges (§J10.5 web compression buckling)."""
     end_plate: EndPlate | None = None
-    """End-plate connections (Design Guide 16)."""
+    """End-plate connections (Design Guides 16 and 4)."""
+    continuity_plate: float = 0.0
+    """Thickness of the column continuity plates (stiffeners) at the beam flanges; 0: none.
+    Used by end plates (Design Guide 4)."""
 
 
 def _rename(check: CheckResult, key: str) -> CheckResult:
@@ -370,8 +373,9 @@ def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Me
     """
     V, M = abs(V), abs(M)
     if mc.detail is FlangeDetail.END_PLATE:
-        out, Pf, lb = end_plate_checks(mc, V, M, P, method, combo)
-        return out + column_web_checks(mc, Pf, lb, method, combo, column_shear, column_axial)
+        out, Pf, N = end_plate_checks(mc, V, M, P, method, combo)
+        return out + end_plate_column_checks(mc, Pf, N, method, combo, column_shear,
+                                             column_axial)
     out = _web_checks(mc, V, method, combo)
     if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
         flange, P = _bolted(mc, M, method, combo)

@@ -362,6 +362,9 @@ end_plate_bolt_shear = "Corte en los pernos del ala en compresión"
 end_plate_web_weld_shear = "Soldadura del alma a la placa de extremo: corte"
 end_plate_web_weld_tension = "Soldadura del alma a la placa de extremo: tracción"
 end_plate_flange_weld = "Soldadura de filete de las alas a la placa de extremo"
+column_flange_bending = "Flexión del ala de la columna en los pernos (espesor requerido)"
+column_flange_strength = "Resistencia del ala de la columna sin rigidizar a la fuerza de ala"
+continuity_plates = "Placas de continuidad de la columna"
 
 [check.base_plate]
 a2_over_a1 = "Relación A2/A1 admisible por el tamaño del pedestal"
@@ -491,6 +494,8 @@ snug_tight = "apriete ajustado"
 pretensioned = "pretensados"
 weld_web = "alma"
 weld_flanges = "alas"
+continuity_plate = "Placas de continuidad (espesor)"
+weld_reinforcement = "Refuerzo de la soldadura CJP"
 
 [drawing]
 plan = "PLANTA"
@@ -562,3 +567,4 @@ extended_4_stiffened = "Extendida de cuatro pernos rigidizada, 4ES (DG16 Tabla 4
 extended_1_2 = "Extendida multifila 1/2 sin rigidizar (DG16 Tabla 4-4)"
 extended_1_3 = "Extendida multifila 1/3 sin rigidizar (DG16 Tabla 4-5)"
 extended_1_3_stiffened = "Extendida multifila 1/3 rigidizada (DG16 Tabla 4-6)"
+extended_8_stiffened = "Extendida de ocho pernos rigidizada, 8ES (DG4 Tabla 3.3)"

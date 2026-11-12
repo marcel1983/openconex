@@ -17,7 +17,7 @@ from openconex.report.builder import build_report
 from openconex.units import Kind, from_internal
 
 EXAMPLES = Path(__file__).parents[2] / "examples"
-NAMES = ["moment_end_plate_extended", "moment_end_plate_flush"]
+NAMES = ["moment_end_plate_extended", "moment_end_plate_flush", "moment_end_plate_8es"]
 
 
 def governing(project):
@@ -173,3 +173,22 @@ def test_window_round_trip_and_calculate(tmp_path):
         window._ep[key].setText(value)
     assert window.calculate()
     assert window.project.moment_connection.end_plate.layout.value == "extended_4"
+
+
+def test_8es_example_matches_dg4():
+    """DG4 4.4: Y_c = 377.7 in. with 1/2 in. continuity plates (t_fc,req = 0.75 in.), and the
+    plate force F_fu - min φR_n = 399 - 284 = 115 kips (LRFD-2: M = 8082 k-in.)."""
+    project = load_project(EXAMPLES / "moment_end_plate_8es.ocnx")
+    lrfd = {r.id: r for r in check_moment_envelope(
+        project.moment_model(), project.load_combinations(), project.case_forces())
+        if r.combo == "LRFD-2"}
+    bending = lrfd["moment.column_flange_bending"]
+    assert from_internal(bending.demand, Kind.LENGTH, "in") == pytest.approx(0.75, abs=0.01)
+    plates = lrfd["moment.continuity_plates"]
+    assert from_internal(plates.demand, Kind.FORCE, "kip") == pytest.approx(115, rel=1e-2)
+    assert not lrfd["moment.column_web_crippling"].applicable
+    pytest.importorskip("OCP")
+    from openconex.geometry3d.moment import moment_parts
+    names = {p.name for p in moment_parts(project.moment_model())}
+    assert {"continuity_plate1a", "continuity_plate2b", "stiffener1"} <= names
+    assert sum(n.startswith("bolt") for n in names) == 16

@@ -85,7 +85,8 @@ END_PLATE_FIELDS = (("width", "Ancho b_p"), ("thickness", "Espesor t_p"), ("gage
                     ("ps", "p_s: fila al rigidizador (Tabla 3-5)"),
                     ("pretension", "Pretensión T_b (vacío: Tabla J3.1)"),
                     ("web_weld", "Filete del alma (vacío: CJP)"),
-                    ("flange_weld", "Filete de las alas (vacío: CJP)"))
+                    ("flange_weld", "Filete de las alas (vacío: CJP)"),
+                    ("weld_reinforcement", "Refuerzo de la soldadura CJP (DG4: N)"))
 FLANGE_BOLT_FIELDS = (("spacing", "Separación s"), ("gage", "Gramil g"),
                       ("plate_lev", "l_ev de la placa"), ("beam_lev", "l_ev de la viga"))
 
@@ -195,6 +196,8 @@ class MomentWindow(QMainWindow):
         form.addRow(self.near_end)
         self.two_sided = QCheckBox("Vigas a ambos lados de la columna")
         form.addRow(self.two_sided)
+        self.continuity_plate = self._line(
+            form, "Placas de continuidad, espesor (placa de extremo; vacío: sin placas)")
         layout.addWidget(conn)
 
         web = self.web_group = QGroupBox("Placa del alma")
@@ -333,6 +336,7 @@ class MomentWindow(QMainWindow):
         self.electrode.setText(mc.electrode)
         self.near_end.setChecked(mc.column_near_end)
         self.two_sided.setChecked(mc.two_sided)
+        self.continuity_plate.setText(_text(mc.continuity_plate))
         web = mc.web or Project.model_validate(TEMPLATE).moment_connection.web
         self.web_bolt.setText(_text(web.bolt.diameter))
         self.web_rows.setValue(web.rows)
@@ -386,6 +390,8 @@ class MomentWindow(QMainWindow):
             "column_near_end": self.near_end.isChecked(),
             "two_sided": self.two_sided.isChecked(),
         }
+        if self.continuity_plate.text().strip():
+            connection["continuity_plate"] = self.continuity_plate.text().strip()
         if detail is FlangeDetail.END_PLATE:
             plate = {"layout": self.ep_layout.currentData(),
                      "bolt": {"diameter": self.ep_bolt.text().strip(),

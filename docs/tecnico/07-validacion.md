@@ -92,6 +92,25 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 
 Diferencias de redondeo de la Guía: en 4.2.2 redondea a_i = 0,375 a 0,38 in (Q_max 1 % menor, φM_q 1824 frente a 1809 k-in) y en 4.2.4 usa d_3 = 28,6875 in en lugar de h_3 = 28,875 in en Y (380,3 frente a 381,1 in).
 
+## AISC Design Guide 4 (2ª ed., 2004)
+
+`tests/moment/test_end_plate_dg4.py` compara los ejemplos del capítulo 4 (viga W21×55 a columna W14×109, LRFD):
+
+| Ejemplo | Valores comprobados |
+|---|---|
+| 4E A (sísmico, 1¼ in A490) | Y_c = 170,1 in, t_fc,req = 1,10 in; con placas de continuidad de ½ in, Y_c = 309,1 in y 0,82 in; ala sin rigidizar 279 kip, fluencia del alma 326 kip (N = 1,15 in), pandeo 330 kip, aplastamiento 284 kip; pernos de compresión en la placa 508 kip con el agujero de la Guía |
+| 4E B (viento, 1 in A325, filete de ⅜ in) | t_fc,req = 0,790 in, aplastamiento del alma 275 kip (N = 0,787 in) |
+| 8ES (1 in A325) | Y_p = 277,6 in, M_np = 11 470 k-in, Y_c = 224,6 in y t_fc,req = 0,97 in; rigidizada, 377,7 in y 0,75 in; ala 369 kip, fluencia 306 kip, pandeo 330 kip, aplastamiento 284 kip |
+
+Diferencias documentadas:
+
+- Los agujeros son los de AISC 360-22 Tabla J3.3 (1⅜ in para pernos de 1¼ in y 1⅛ in para 1 in); la Guía usa 1 5/16 y 1 1/16 in. En 4E A el desgarro de los pernos exteriores da 91,4 kip en lugar de 94,5 kip (503 frente a 508 kip en total); la prueba también comprueba los 94,5 kip con el agujero de la Guía.
+- La Guía toma el desgarro hacia el borde de la placa en los pernos exteriores de 4E A, pero no en 4E B ni en 8ES (411 y 807 kip). OpenConex lo considera siempre, porque el corte puede cambiar de sentido: 314 y 646 kip.
+- En 4E B la Guía usa N = t_fb = 0,522 in para la fluencia del alma (289 kip) y N = 0,787 in para el aplastamiento; OpenConex usa 0,787 in en ambos (296 kip).
+- La fuerza de las placas de continuidad (Ec. 3.32) se calcula con las resistencias de los pasos 15 a 18: 396 − 279 = 117 kip en 4E A y 399 − 284 = 115 kip en 8ES. La Guía resta valores que no coinciden con esos pasos (268 kip) y publica 128 y 131 kip.
+- El ejemplo 8ES escribe h_2 = 22,24 in en Y_c rigidizado, en lugar de 22,29 in.
+- La fluencia por corte de la extensión usa φ = 1,0 (AISC 360-22 §J4.2) en lugar del 0,9 de la Guía (LRFD 1999).
+
 ## Hallazgos de la validación
 
 - **DG16, ejemplo 3.2.4, procedimiento 2:** φM_np = 1045 ≤ φ_b M_pl/1,11 = 1064 k-in, así que el diagrama del Apéndice B corregido por la errata de 2016 clasifica la placa como gruesa y da mín(φM_np, φ_b M_pl/γ_r) = 945 k-in (fluencia de la placa). La Guía publica 901 k-in (rotura de pernos con palanca), que corresponde a la rama de placa delgada. La prueba comprueba 945 y 1045 k-in.
