@@ -34,6 +34,10 @@ def test_part_colors():
     assert part_color("shear_lug").name() == "#ef6c00"
     assert part_color("anchor_rod_1").name() == "#c62828"
     assert part_color("foundation").name() == "#8d6e63"
+    assert part_color("base_plate").name() == "#ef6c00"
+    assert part_color("angle+").name() == "#ef6c00"
+    assert part_color("seat").name() == "#ef6c00"
+    assert part_color("bolt1").name() == "#ef6c00"
 
 
 def test_viewer_lists_and_hides_parts(qapp):
@@ -53,11 +57,22 @@ def test_tessellate_box():
     from OCP.BRepPrimAPI import BRepPrimAPI_MakeBox
     from OCP.gp import gp_Pnt
 
+    from openconex.gui.viewer3d import _normal
+
     box = BRepPrimAPI_MakeBox(gp_Pnt(0, 0, 0), 10, 20, 30).Shape()
     meshes = tessellate_parts([Part("box", box)])
     assert len(meshes) == 1
     assert meshes[0].name == "box"
     assert len(meshes[0].triangles) > 0
+    center = (5.0, 10.0, 15.0)
+    for p0, p1, p2 in meshes[0].triangles:
+        normal = _normal(p0, p1, p2)
+        middle = ((p0[0] + p1[0] + p2[0]) / 3 - center[0],
+                  (p0[1] + p1[1] + p2[1]) / 3 - center[1],
+                  (p0[2] + p1[2] + p2[2]) / 3 - center[2])
+        assert sum(value * value for value in normal) == pytest.approx(1.0)
+        assert normal[0] * middle[0] + normal[1] * middle[1] \
+            + normal[2] * middle[2] > 0
 
 
 @pytest.mark.skipif(not occ_available(), reason="OpenCASCADE is not installed")

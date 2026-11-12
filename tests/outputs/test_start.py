@@ -94,6 +94,16 @@ def test_shear_viewer_swaps_y_and_z():
     assert swapped.triangles[0][0] == (0.0, 2.0, 1.0)
 
 
+def test_shear_viewer_keeps_the_outward_orientation():
+    mesh = MeshPart("beam", (((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
+                              (0.0, 1.0, 0.0)),))
+    p0, p1, p2 = _swap_yz_meshes([mesh])[0].triangles[0]
+    ux, uy, uz = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
+    vx, vy, vz = (p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2])
+    normal = (uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx)
+    assert normal == (0.0, 1.0, 0.0)
+
+
 def test_3d_thumbnails_are_packaged():
     for asset in ("base_plate_exposed", "base_plate_embedded", "base_plate_weak",
                   "family_base_plate", "family_shear_column", "family_shear_beam",

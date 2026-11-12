@@ -153,7 +153,7 @@ Esta página se genera desde `src/openconex/help.py`. Cada entrada responde qué
 | `tab.summary` | Tabla de verificaciones gobernantes. | Revise la pestaña Resumen después de calcular. | Muestra demanda, capacidad, relación y estado por combinación. | — | todas |
 | `tab.details` | Traza de cálculo de cada verificación. | Seleccione una fila del resumen y revise esta pestaña. | Muestra fórmulas, valores intermedios y cláusulas. | — | todas |
 | `tab.figures` | Plano y figuras de la conexión. | Revise la pestaña Figuras después de calcular. | Muestra el DXF convertido a imagen y el isométrico si está disponible. | — | todas |
-| `tab.viewer` | Visor 3D interactivo. | Gire, haga zoom o seleccione piezas en la pestaña 3D. | Muestra el modelo 3D; no cambia el cálculo. | — | todas |
+| `tab.viewer` | Visor 3D interactivo con caras ocultas y superficies sombreadas. | Gire, haga zoom o seleccione piezas; los elementos de conexión se resaltan en naranja y los pernos en gris oscuro. | Muestra el modelo 3D; no cambia el cálculo. | — | todas |
 | `ui.type` | Elige la tipología de conexión. | Seleccione un tipo en el desplegable. | Muestra solo los campos aplicables y activa sus comprobaciones. | — | todas |
 | `ui.methods` | Métodos de diseño que se van a calcular. | Marque LRFD, ASD o ambos. | Genera las combinaciones y verifica con los factores correspondientes. | LRFD | todas |
 | `ui.cases` | Cargas D, L, S, W o combinaciones propias. | Agregue filas con nombre, tipo, V y P. | Las cargas se combinan y producen la demanda de cada verificación. | — | todas |

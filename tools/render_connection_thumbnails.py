@@ -42,13 +42,13 @@ SIZE = QSize(640, 360)
 BASE_PLATE = (
     # family, subtype, asset, margin, highlight, hide, highlight colour
     ("base_plate", "exposed", "base_plate_exposed", 1.8, ("base_plate",),
-     ("beam", "support", "column", "pedestal", "foundation"), "#1565c0"),
+     ("beam", "support", "column", "pedestal", "foundation"), "#ef6c00"),
     ("base_plate", "embedded", "base_plate_embedded", 1.3,
      ("embedded_base_plate", "face_plate_front", "face_plate_back"), (), "#ef6c00"),
     ("base_plate", "weak", "base_plate_weak", 1.8, ("base_plate",),
-     ("beam", "support", "column", "pedestal", "foundation"), "#1565c0"),
+     ("beam", "support", "column", "pedestal", "foundation"), "#ef6c00"),
     ("base_plate", "exposed", "family_base_plate", 2.1, ("base_plate",),
-     ("beam", "support", "column", "pedestal", "foundation"), "#1565c0"),
+     ("beam", "support", "column", "pedestal", "foundation"), "#ef6c00"),
 )
 
 SHEAR_APP = (
@@ -60,7 +60,7 @@ SHEAR_APP = (
     ("shear_column", "extended_single_plate", "shear_extended_plate", 2.0,
      {"beam": (0.0, -200.0, 0.0)}, "column"),
     ("shear_column", "end_plate", "shear_end_plate", 2.0,
-     {"beam": (110.0, 0.0, 0.0), "end_plate": (80.0, 0.0, 0.0)}, "column"),
+     {"beam": (80.0, -260.0, 0.0), "end_plate": (80.0, 0.0, 0.0)}, "column"),
     ("shear_column", "seated", "shear_seated", 1.4,
      {"beam": (80.0, 0.0, 220.0)}, "column"),
     ("shear_column", "stiffened_seat", "shear_stiffened_seat", 1.4,
@@ -76,7 +76,7 @@ SHEAR_BEAM_APP = (
     ("shear_beam", "extended_single_plate", "shear_beam_extended_single_plate", 2.0,
      {"beam": (0.0, -200.0, 0.0)}, None),
     ("shear_beam", "end_plate", "shear_beam_end_plate", 2.0,
-     {"beam": (110.0, 0.0, 0.0), "end_plate": (80.0, 0.0, 0.0)}, None),
+     {"beam": (80.0, -260.0, 0.0), "end_plate": (80.0, 0.0, 0.0)}, None),
     ("shear_beam", "seated", "shear_beam_seated", 1.4,
      {"beam": (80.0, 0.0, 220.0)}, None),
     ("shear_beam", "stiffened_seat", "shear_beam_stiffened_seat", 1.4,
