@@ -47,6 +47,7 @@ FAMILY = {
     "Asiento no rigidizado apernado": "asiento",
     "Asiento rigidizado soldado": "asiento_rigidizado",
     "Conexión de corte: resultados comunes": "conexion_corte",
+    "Conexiones de momento": "momento",
     "Anclajes": "anclajes",
     "Pernos": "pernos",
     "Soldaduras": "soldaduras",
@@ -69,6 +70,7 @@ REFERENCE = {
     "asiento": "AISC DE v16.1, II.A-12A, II.A-13 y II.A-16",
     "asiento_rigidizado": "AISC DE v16.1, II.A-14 y II.A-15",
     "conexion_corte": "—",
+    "momento": "AISC DE v16.1, II.B-1, II.B-2 y II.B-3",
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
     "pernos": "AISC 360-22 §J3; Manual Tablas 7-6 a 7-14 y 14-2",
     "soldaduras": "AISC 360-22 §J2; Manual Tablas 8-3 a 8-11",
@@ -91,6 +93,7 @@ TEST = {
     "asiento": "tests/connections/test_seated.py; tests/connections/test_shear_project.py",
     "asiento_rigidizado": "tests/connections/test_stiffened_seat.py",
     "conexion_corte": "tests/connections/test_shear_project.py",
+    "momento": "tests/moment/test_fr_moment.py",
     "anclajes": "tests/kernel/test_anchors.py",
     "pernos": "tests/kernel/test_bolts.py",
     "soldaduras": "tests/kernel/test_welds.py",
@@ -114,6 +117,7 @@ TEST_OVERRIDE = {
     "base_plate.lug_anchor_embedment": "tests/base_plate/test_shear_lug.py",
     "base_plate.anchor_rebar_clearance": "tests/base_plate/test_anchor_reinforcement.py",
     "bolt_group.eccentric": "tests/kernel/test_bolt_group_manual.py",
+    "shear_connection.beam_shear_yielding": "tests/connections/test_beam_web_shear.py",
     "weld_group.eccentric": "tests/kernel/test_weld_group.py",
     "prying.tension": "tests/kernel/test_prying.py",
     "prying.min_thickness": "tests/kernel/test_prying.py",
@@ -127,7 +131,14 @@ DIFFERENCE = {
     "extended_plate.flexural_rupture": "Z_net = 12,75 in³ frente a 12,8 in³ (II.A-19A)",
 }
 
-PARTIAL: dict[str, str] = {}
+PARTIAL: dict[str, str] = {
+    "moment.column_web_compression_buckling": (
+        "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.5) se contrasta con "
+        "valores manuales en tests/kernel/test_local.py"),
+    "moment.column_panel_zone": (
+        "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.6) se contrasta con "
+        "valores manuales en tests/kernel/test_local.py"),
+}
 
 NO_APLICA = {"shear_connection.axial_compression", "shear_connection.axial_unsupported"}
 

@@ -245,6 +245,38 @@ Placa de asiento sobre un rigidizador vertical de ancho W y largo l, soldados al
 | `shear_connection.axial_compression` | Compresión axial en un tipo sin procedimiento de compresión (todos salvo la placa simple y la placa extendida): se informa con capacidad 0 (no cumple) | — |
 | `shear_connection.axial_unsupported` | Tracción axial en un tipo sin procedimiento axial (placa extendida, placa de extremo, asientos, doble ángulo soldado): capacidad 0 | — |
 
+## Conexiones de momento (`connections/moment/fr_moment.py`)
+
+Conexiones de momento totalmente restringidas al ala de una columna (F6, Manual AISC Partes 9 a 12): placas de ala apernadas (II.B-1), placas de ala soldadas (II.B-2) y alas soldadas directamente con soldadura de penetración completa (II.B-3). La fuerza de ala es P_f = M/d_m (Manual Ec. 11-1). Por ahora solo como biblioteca.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `moment.beam_flexural_rupture` | Rotura de la viga en los agujeros del ala de tracción, M_n = F_u A_fn S_x / A_fg; aplicable si F_u A_fn < Y_t F_y A_fg | §F13.1, Ec. F13-1 |
+| `moment.web_bolts` | Placa del alma: Σ mín(corte, aplastamiento y desgarro en placa y alma); el perno inferior es el de borde | §J3.7, §J3.11 |
+| `moment.web_plate_shear_yielding` | Fluencia por corte de la placa del alma | §J4.2(a) |
+| `moment.web_plate_shear_rupture` | Rotura por corte de la placa del alma | §J4.2(b) |
+| `moment.web_plate_block_shear` | Bloque de corte de la placa del alma (U_bs = 1) | §J4.3 |
+| `moment.web_weld` | Dos soldaduras de la placa del alma a la columna, en corte directo | §J2.4; Manual Ec. 8-2 |
+| `moment.web_support_rupture` | Rotura por corte del ala de la columna en las soldaduras, 2 l t_f | §J4.2(b) |
+| `moment.flange_bolts` | Placas de ala apernadas: 2 Σ mín(corte, placa, ala de la viga) para P_f = M/d | §J3.7, §J3.11; Manual Ec. 11-1 |
+| `moment.flange_plate_tension_yielding` | Fluencia por tracción de la placa de ala, P_f = M/(d + t_p) o M/(d + (t_sup + t_inf)/2) | §J4.1(a) |
+| `moment.flange_plate_tension_rupture` | Rotura por tracción de la placa de ala apernada, A_n = (b − 2 d_h') t_p | §J4.1(b) |
+| `moment.flange_plate_block_shear` | Bloque de corte de la placa de ala: mínimo de los casos 1, 2 y 3 del ejemplo II.B-1 | §J4.3 |
+| `moment.beam_flange_block_shear` | Bloque de corte del ala de la viga (l_ev menos la tolerancia de longitud) | §J4.3 |
+| `moment.flange_plate_weld` | Soldadura de la placa de ala apernada a la columna, k_ds = 1,5 | §J2.4, Ec. J2-5; Manual Ec. 8-2 |
+| `moment.flange_plate_compression` | Compresión de la placa de ala, K = 0,65 y L entre pernos o hasta la soldadura | §J4.4; Comentario Tabla C-A-7.1 |
+| `moment.top_plate_weld_to_beam` | Soldaduras longitudinales y transversal de la placa superior al ala, P_f = M/d | §J2.4(b), Ec. J2-6 |
+| `moment.weld_base_metal` | Espesor mínimo de ala y placa para la soldadura, 3,09 D/F_u | Manual Ec. 9-6 |
+| `moment.top_plate_weld_to_column` | Soldadura de la placa superior a la columna, k_ds = 1,5 | §J2.4, Ec. J2-5 |
+| `moment.bottom_plate_weld_to_beam` | Soldaduras longitudinales de la placa inferior al ala | §J2.4; Manual Ec. 8-2 |
+| `moment.beam_flange_rupture_at_welds` | Rotura por corte del ala de la viga junto a las soldaduras de la placa inferior | §J4.2(b) |
+| `moment.bottom_plate_weld_to_column` | Soldadura de la placa inferior a la columna, k_ds = 1,5 | §J2.4, Ec. J2-5 |
+| `moment.column_flange_local_bending` | Flexión local del ala de la columna bajo la fuerza de ala | §J10.1 |
+| `moment.column_web_local_yielding` | Fluencia local del alma de la columna, l_b = espesor de la placa o del ala | §J10.2 |
+| `moment.column_web_crippling` | Aplastamiento local del alma de la columna | §J10.3 |
+| `moment.column_web_compression_buckling` | Pandeo del alma de la columna, con vigas a ambos lados | §J10.5 |
+| `moment.column_panel_zone` | Corte de la zona de panel, con el corte de la columna dado | §J10.6 |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |
