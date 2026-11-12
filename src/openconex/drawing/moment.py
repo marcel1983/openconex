@@ -57,6 +57,51 @@ class MomentLayout:
     web_bolts: list[tuple[float, float]] = field(default_factory=list)
     bolt_diameter: float = 0.0
     welds: list[tuple[float, float, float, float]] = field(default_factory=list)
+    end_plate_rows: list[float] = field(default_factory=list)
+    """y of the end-plate bolt rows (two bolts each, at the gage)."""
+    stiffeners: list[list[tuple[float, float]]] = field(default_factory=list)
+    """End-plate stiffeners in elevation (closed polygons)."""
+    beam_x0: float = 0.0
+    """x of the beam end (setback, or the end-plate thickness)."""
+
+
+def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
+    from openconex.connections.moment.end_plate import EndPlateLayout as Layout
+    ep, beam = mc.end_plate, mc.beam
+    d, tf, t = beam.d, beam.tf, ep.thickness
+    inner = [d - tf - ep.pf - i * ep.pb for i in range(ep.inside_rows)]
+    rows = list(inner)
+    top = d
+    if not ep.flush:
+        rows.insert(0, d + ep.pf_o)
+        top = d + ep.pext
+    if ep.symmetric:
+        bottom_rows = [d - y for y in rows]
+        bottom = d - top
+    else:
+        bottom_rows = [tf + ep.pf]
+        bottom = 0.0
+    lay.end_plate_rows = rows + bottom_rows
+    lay.plates.append((0.0, bottom, t, top, "end_plate"))
+    lay.bolt_diameter = ep.bolt.diameter
+    lay.beam_x0 = t
+    half = (beam.bf - beam.tw) / 2
+    if ep.layout in (Layout.EXTENDED_4_STIFFENED, Layout.EXTENDED_1_3_STIFFENED):
+        h = ep.pext
+        length = h * 3**0.5  # 30° stiffener, AISC 358 §6.10
+        lay.stiffeners.append([(t, d), (t, d + h), (t + length, d)])
+        if ep.symmetric:
+            lay.stiffeners.append([(t, 0.0), (t, -h), (t + length, 0.0)])
+    elif ep.layout is Layout.FLUSH_4_STIFFENED_BETWEEN:
+        y1 = d - tf - ep.pf - ep.ps_o
+        lay.stiffeners.append([(t, y1), (t + half, y1), (t + half, y1 - ep.stiffener_thickness),
+                               (t, y1 - ep.stiffener_thickness)])
+    elif ep.layout is Layout.FLUSH_4_STIFFENED_INSIDE:
+        y1 = d - tf - ep.pf - ep.pb - ep.ps
+        ts = ep.stiffener_thickness or tf
+        lay.stiffeners.append([(t, y1), (t + half, y1), (t + half, y1 - ts), (t, y1 - ts)])
+    lay.welds += [(t, d - tf, t, d), (t, 0.0, t, tf)]
+    lay.welds.append((t, tf, t, d - tf))
 
 
 def moment_layout(mc: MomentConnection) -> MomentLayout:
@@ -64,6 +109,10 @@ def moment_layout(mc: MomentConnection) -> MomentLayout:
     d = beam.d
     lay = MomentLayout(beam_d=d, beam_tf=beam.tf, beam_length=max(1.5 * d, 30 * INCH),
                        column_d=col.d, column_tf=col.tf)
+    if mc.detail is FlangeDetail.END_PLATE:
+        _end_plate_layout(mc, lay)
+        return lay
+    lay.beam_x0 = SETBACK if mc.detail is not FlangeDetail.WELDED_FLANGE else 0.0
     w = mc.web
     mid = d / 2
     top_y = mid + w.length / 2
@@ -108,8 +157,7 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     s.rect(-ctf, lo, 0.0, hi, "MC-COLUMNA")
     s.rect(-cd, lo, -cd + ctf, hi, "MC-COLUMNA")
     # beam
-    x0, xe = u(SETBACK if mc.detail is not FlangeDetail.WELDED_FLANGE else 0.0), \
-        u(lay.beam_length)
+    x0, xe = u(lay.beam_x0), u(lay.beam_length)
     s.rect(x0, 0.0, xe, d, "MC-VIGA")
     for y in (tf, d - tf):
         s.msp.add_line((x0, y), (xe, y), dxfattribs={"layer": "MC-VIGA"})
@@ -118,6 +166,12 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     r = u(lay.bolt_diameter) / 2 or u(0.4 * INCH)
     for x, y in lay.web_bolts:
         s.msp.add_circle((u(x), u(y)), r, dxfattribs={"layer": "MC-PERNO"})
+    for y in lay.end_plate_rows:
+        t = u(lay.plates[0][2])
+        s.rect(-ctf - 1.5 * r, u(y) - r, t + 1.5 * r, u(y) + r, "MC-PERNO")
+    for poly in lay.stiffeners:
+        s.msp.add_lwpolyline([(u(x), u(y)) for x, y in poly], close=True,
+                             dxfattribs={"layer": "MC-PLACA"})
     for x in lay.flange_bolts:
         for y0, y1 in ((u(lay.plates[1][3]) + 2 * r, d - tf - 2 * r),
                        (u(lay.plates[2][1]) - 2 * r, tf + 2 * r)):
@@ -141,8 +195,16 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
     if mc.bolt is not None:
         lines.append(f"{tr('input.bolts', lang)}: {4 * mc.rows} × Ø {q(mc.bolt.diameter)} "
                      f"{mc.bolt.grade}")
-    lines.append(f"PL {q(mc.web.thickness)} × {q(mc.web.length)}, {mc.web.rows} × Ø "
-                 f"{q(mc.web.bolt.diameter)}")
+    if mc.web is not None:
+        lines.append(f"PL {q(mc.web.thickness)} × {q(mc.web.length)}, {mc.web.rows} × Ø "
+                     f"{q(mc.web.bolt.diameter)}")
+    ep = mc.end_plate
+    if mc.detail is FlangeDetail.END_PLATE and ep is not None:
+        x_0, y_0, x_1, y_1, _ = lay.plates[0]
+        lines.append(tr(f"moment.layout.{ep.layout.value}", lang))
+        lines.append(f"PL {q(ep.thickness)} × {q(ep.width)} × {q(y_1 - y_0)}")
+        lines.append(f"{tr('input.bolts', lang)}: {2 * len(lay.end_plate_rows)} × Ø "
+                     f"{q(ep.bolt.diameter)} {ep.bolt.grade}, g = {q(ep.gage)}")
     y = lo - 3 * s.text_h
     for line in lines:
         s.text(line, -cd, y, layer="MC-TEXTO")

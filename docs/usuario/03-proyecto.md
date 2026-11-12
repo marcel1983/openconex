@@ -22,6 +22,8 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_template_sap2000.ocnx` | plantilla para importar de SAP2000 / ETABS |
 | `examples/moment_bolted_flange_plate.ocnx` | conexión de momento: placas de ala apernadas (AISC II.B-1) |
 | `examples/moment_welded_flange_plate.ocnx` | conexión de momento: placas de ala soldadas (AISC II.B-2) |
+| `examples/moment_end_plate_extended.ocnx` | placa de extremo extendida de cuatro pernos 4E (AISC DG16, Ej. 4.2.1) |
+| `examples/moment_end_plate_flush.ocnx` | placa de extremo enrasada de cuatro pernos (AISC DG16, Ej. 3.2.2) |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
@@ -428,18 +430,19 @@ Cada caso lleva solo `V` (reacción vertical) y `P` (fuerza axial, **tracción n
 
 ## Conexión de momento (`moment_connection`)
 
-Conexión de momento totalmente restringida de una viga al ala de una columna (Manual AISC Partes 9 a 12, ejemplos II.B-1 a II.B-3). Se calcula con `openconex moment` o en la ventana de conexiones de momento de la interfaz. Cada caso de carga lleva solo `V` (corte del extremo de la viga) y `M` (momento del extremo de la viga).
+Conexión de momento totalmente restringida de una viga al ala de una columna (Manual AISC Partes 9 a 12, ejemplos II.B-1 a II.B-3) o placa de extremo de momento enrasada o extendida (AISC Design Guide 16). Se calcula con `openconex moment` o en la ventana de conexiones de momento de la interfaz. Cada caso de carga lleva `V` (corte del extremo de la viga) y `M` (momento del extremo de la viga); la placa de extremo admite además `P` (axial de la viga, positiva en compresión).
 
 | Campo | Por defecto | Significado |
 |---|---|---|
-| `type` | (obligatorio) | `bolted_flange_plate` (placas de ala apernadas), `welded_flange_plate` (placas de ala soldadas) o `welded_flange` (alas soldadas con penetración completa). |
+| `type` | (obligatorio) | `bolted_flange_plate` (placas de ala apernadas), `welded_flange_plate` (placas de ala soldadas), `welded_flange` (alas soldadas con penetración completa) o `end_plate` (placa de extremo de momento). |
 | `beam` | (obligatorio) | Viga: etiqueta W del catálogo o W genérica. |
 | `beam_grade` | `ASTM A992` | Acero de la viga del catálogo. |
 | `column` | (obligatorio) | Columna: etiqueta W del catálogo o W genérica; la conexión va a su ala. |
 | `column_grade` | `ASTM A992` | Acero de la columna del catálogo. |
 | `grade` | `ASTM A572 Gr. 50` | Acero de las placas. |
 | `electrode` | `E70XX` | Electrodo. |
-| `web` | (obligatorio) | Placa del alma (ver abajo). |
+| `web` | — | Placa del alma (ver abajo); obligatoria salvo en `end_plate`. |
+| `end_plate` | — | `end_plate`: la placa de extremo (ver abajo). |
 | `top` | — | Placa de ala. Apernadas: ambas placas (salvo que se dé `bottom`). Soldadas: la superior (de tracción). |
 | `bottom` | — | Soldadas: la placa inferior (de compresión). Apernadas: opcional. |
 | `bolt` | — | Apernadas: pernos de ala (`diameter`, `grade`, `threads`, `hole`). |
@@ -456,6 +459,31 @@ Conexión de momento totalmente restringida de una viga al ala de una columna (M
 Placa del alma (`web`): `bolt`, `rows`, `spacing`, `length`, `thickness`, `lev` (del borde de la placa al perno inferior), `leh` (de la línea de pernos al borde) y `weld` (filete a cada lado, en la columna).
 
 Placa de ala (`top`, `bottom`): `width`, `thickness`, `weld_to_column` (filete a cada lado, en la columna), `unbraced_length` (longitud para la compresión: la separación entre pernos o la longitud libre hasta las soldaduras), y en las placas soldadas `weld_to_beam`, `weld_length` (largo de cada soldadura longitudinal) y `transverse_weld` (soldadura también en el extremo de la placa).
+
+### Placa de extremo de momento (`end_plate`)
+
+Placa soldada al extremo de la viga y apernada al ala de la columna, con dos pernos por fila (AISC Design Guide 16). El acero de la placa es `grade`.
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `layout` | (obligatorio) | Configuración: `flush_2`, `flush_4`, `flush_4_stiffened_between`, `flush_4_stiffened_inside` (enrasadas, DG16 Tablas 3-2 a 3-5) o `extended_4` (4E), `extended_4_stiffened` (4ES), `extended_1_2`, `extended_1_3`, `extended_1_3_stiffened` (extendidas, Tablas 4-2 a 4-6). |
+| `bolt` | `3/4 in` A325 | Pernos (`diameter`, `grade`, `threads`, `hole`). |
+| `width` | (obligatorio) | Ancho b_p de la placa (la Guía limita el ancho efectivo a b_f + 1 in). |
+| `thickness` | (obligatorio) | Espesor t_p. |
+| `gage` | (obligatorio) | Gramil g entre las dos líneas de pernos. |
+| `pf` | (obligatorio) | p_f (enrasadas) o p_f,i (extendidas): de la primera fila interior a la cara interior del ala de tracción. |
+| `pb` | — | Separación entre filas interiores; obligatoria con dos o más filas interiores (`flush_4*`, `extended_1_2`, `extended_1_3*`). |
+| `pf_o` | — | Extendidas: de la fila exterior a la cara exterior del ala de tracción. |
+| `pext` | — | Extendidas: extensión de la placa más allá de la cara exterior del ala. |
+| `ps_o`, `stiffener_thickness` | — | `flush_4_stiffened_between`: de la fila exterior al rigidizador y espesor t_s del rigidizador (p_s,i = p_b − p_s,o − t_s). |
+| `ps` | — | `flush_4_stiffened_inside`: de la fila al rigidizador. |
+| `snug_tight` | `false` | Pernos con apriete ajustado (solo A325): T_b es el 75 %, 50 %, 37,5 % o 25 % de la pretensión de la Tabla J3.1 según el diámetro (≤ 5/8, 3/4, 7/8, ≥ 1 in). |
+| `pretension` | — | Pretensión T_b propia en lugar de la Tabla J3.1 (pernos métricos: si no se da, 0,7 P_t). |
+| `web_weld` | — | Filete a cada lado del alma; sin él, penetración completa (no se verifica). |
+| `flange_weld` | — | Filete en las alas; sin él, penetración completa que desarrolla el ala. |
+| `symmetric` | `true` | Misma disposición de pernos en ambas alas (momento reversible); con `false`, dos pernos en el ala de compresión, como en los modelos de fuerzas de la Guía. |
+
+Las dimensiones probadas en los ensayos están en las Tablas 3-6 y 4-7 de la Guía; fuera de ese rango el mecanismo puede cambiar (el programa no las limita).
 
 ## Casos de carga (`cases`)
 

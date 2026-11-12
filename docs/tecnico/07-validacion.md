@@ -74,7 +74,28 @@ La tolerancia es del 1 % (o 0,005 en valores pequeños), porque las tablas redon
 | II.B-2 | placas de ala soldadas: tracción (270/180), soldadura superior a la viga (169/113, Ec. J2-6), t_min = 0,238 in, soldaduras a la columna (D_min = 6,39 y 4,38), compresión (295/196), soldadura inferior (l_min = 12,1 in) y rotura del ala de la viga (419/279 kip) | `tests/moment/test_fr_moment.py` |
 | II.B-3 | alas soldadas con penetración completa: solo la placa del alma y la columna (el ejemplo no da valores propios) | `tests/moment/test_fr_moment.py` |
 
+## AISC Design Guide 16 (2002, revisión 2016)
+
+`tests/moment/test_end_plate_dg16.py` comprueba los nueve ejemplos de placas de extremo de momento (capítulos 3 y 4), con la placa y los pernos del procedimiento de diseño 1 (placa gruesa) y del 2 (placa delgada), contra la resistencia φM_n que da la Guía con el diagrama del Apéndice B (LRFD): Y, la clasificación gruesa/delgada y φM_n con tolerancia del 1 %; además φM_q, Q_max,i y Q_max,o del perno de prueba del procedimiento 2 y la carga axial del ejemplo 4.2.3 (16,9 kip de tracción suman 200 k-in).
+
+| Ejemplo | Configuración | φM_n (procedimientos 1 / 2, k-in) |
+|---|---|---|
+| 3.2.1 | enrasada de dos pernos | 673 / 693 |
+| 3.2.2 | enrasada de cuatro pernos | 783 / 643 |
+| 3.2.3 | enrasada de cuatro pernos, rigidizador entre filas | 1045 / 1069 |
+| 3.2.4 | enrasada de cuatro pernos, rigidizador bajo las filas | 1045 / (ver hallazgos) |
+| 4.2.1 | extendida 4E | 1987 / 2108 |
+| 4.2.2 | extendida 4ES | 1987 / 1824 |
+| 4.2.3 | extendida multifila 1/2, con tracción axial | (ver hallazgos) / 2431 |
+| 4.2.4 | extendida multifila 1/3 | 5460 / 5415 |
+| 4.2.5 | extendida multifila 1/3 rigidizada | 5460 / 4935 |
+
+Diferencias de redondeo de la Guía: en 4.2.2 redondea a_i = 0,375 a 0,38 in (Q_max 1 % menor, φM_q 1824 frente a 1809 k-in) y en 4.2.4 usa d_3 = 28,6875 in en lugar de h_3 = 28,875 in en Y (380,3 frente a 381,1 in).
+
 ## Hallazgos de la validación
+
+- **DG16, ejemplo 3.2.4, procedimiento 2:** φM_np = 1045 ≤ φ_b M_pl/1,11 = 1064 k-in, así que el diagrama del Apéndice B corregido por la errata de 2016 clasifica la placa como gruesa y da mín(φM_np, φ_b M_pl/γ_r) = 945 k-in (fluencia de la placa). La Guía publica 901 k-in (rotura de pernos con palanca), que corresponde a la rama de placa delgada. La prueba comprueba 945 y 1045 k-in.
+- **DG16, ejemplo 4.2.3, procedimiento 1:** φM_np = 2782 k-in supera en 0,4 % a φ_b M_pl/1,11 = 2772 k-in, así que el diagrama toma la rama de placa delgada (palanca con T_b = 19 kip para los pernos de 5/8 in). La Guía publica la resistencia de placa gruesa, 2782 k-in.
 
 - **Soldaduras concéntricas:** si todos los elementos son paralelos se usa §J2.4(b) sin compatibilidad de deformaciones. Si son longitudinales y transversales, se toma la mayor entre la compatibilidad y la Ec. J2-6.
 - **Electrodos E80 y superiores:** el método del centro instantáneo usa el C1 de la Tabla 8-3, no FEXX/70 (E80: 1,03 en lugar de 1,14).

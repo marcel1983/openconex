@@ -1,0 +1,61 @@
+{
+  "format_version": 12,
+  "info": {
+    "name": "Ejemplo: placa de extremo extendida 4E (AISC DG16, Ej. 4.2.1)",
+    "number": "OC-0203",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": {
+      "type": "W",
+      "name": "BU 24×8",
+      "d": "24 in",
+      "bf": "8 in",
+      "tf": "3/8 in",
+      "tw": "1/4 in",
+      "k_des": "5/8 in",
+      "grade": "ASTM A572 Gr. 50"
+    },
+    "beam_grade": "ASTM A572 Gr. 50",
+    "column": "W14X90",
+    "end_plate": {
+      "layout": "extended_4",
+      "bolt": {
+        "diameter": "3/4 in"
+      },
+      "width": "8 in",
+      "thickness": "1/2 in",
+      "gage": "3 in",
+      "pf": "1.75 in",
+      "pf_o": "2.5 in",
+      "pext": "5 in",
+      "snug_tight": true,
+      "web_weld": "1/4 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "8 kip",
+      "M": "35 kip*ft"
+    },
+    {
+      "name": "L",
+      "type": "L",
+      "V": "15 kip",
+      "M": "65 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD",
+      "ASD"
+    ]
+  }
+}

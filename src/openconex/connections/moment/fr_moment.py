@@ -46,7 +46,9 @@ from openconex.kernel.design import FLEXURE, Calc
 from openconex.kernel.welds import fillet_weld_group_concentric, fillet_weld_per_length
 from openconex.units import Kind, from_internal, to_internal
 
-__all__ = ["FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
+from .end_plate import EndPlate, column_web_checks, end_plate_checks
+
+__all__ = ["EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
            "check_moment_connection", "check_moment_envelope"]
 
 SPEC = "AISC 360-22"
@@ -58,6 +60,7 @@ class FlangeDetail(StrEnum):
     BOLTED_FLANGE_PLATE = "bolted_flange_plate"
     WELDED_FLANGE_PLATE = "welded_flange_plate"
     WELDED_FLANGE = "welded_flange"
+    END_PLATE = "end_plate"
 
 
 @dataclass(frozen=True)
@@ -98,7 +101,8 @@ class MomentConnection:
     beam: IShape
     beam_Sx: float
     column: IShape
-    web: WebPlate
+    web: WebPlate | None = None
+    """Single plate on the web (not used by end plates)."""
     plate_Fy: float = 0.0
     plate_Fu: float = 0.0
     top: FlangePlate | None = None
@@ -120,6 +124,8 @@ class MomentConnection:
     """Flange force applied near the column end (§J10: reduced strengths)."""
     two_sided: bool = False
     """Beams frame into both column flanges (§J10.5 web compression buckling)."""
+    end_plate: EndPlate | None = None
+    """End-plate connections (Design Guide 16)."""
 
 
 def _rename(check: CheckResult, key: str) -> CheckResult:
@@ -355,13 +361,17 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
 
 def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Method,
                             combo: str = "", column_shear: float | None = None,
-                            column_axial: float = 0.0) -> list[CheckResult]:
+                            column_axial: float = 0.0, P: float = 0.0) -> list[CheckResult]:
     """Limit states for the beam end shear ``V`` and moment ``M`` (absolute values used).
 
     ``column_shear`` (story shear in the column above the connection) enables the
-    panel zone check; ``column_axial`` is the column axial force for it.
+    panel zone check; ``column_axial`` is the column axial force for it. ``P``
+    is the beam axial force (positive in compression), used by end plates only.
     """
     V, M = abs(V), abs(M)
+    if mc.detail is FlangeDetail.END_PLATE:
+        out, Pf, lb = end_plate_checks(mc, V, M, P, method, combo)
+        return out + column_web_checks(mc, Pf, lb, method, combo, column_shear, column_axial)
     out = _web_checks(mc, V, method, combo)
     if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
         flange, P = _bolted(mc, M, method, combo)
@@ -382,5 +392,6 @@ def check_moment_envelope(mc: MomentConnection, combinations: Iterable[LoadCombi
     results: list[CheckResult] = []
     for combo in combinations:
         forces = combine(combo, case_forces)
-        results += check_moment_connection(mc, forces.V2, forces.M3, combo.method, combo.name)
+        results += check_moment_connection(mc, forces.V2, forces.M3, combo.method, combo.name,
+                                           P=forces.P)
     return results

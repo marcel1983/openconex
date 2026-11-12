@@ -18,7 +18,7 @@ cli.py ─────────────► io/ (proyecto, importación) �
 | `kernel/` | Verificaciones reutilizables por cualquier conexión: `bolts` (§J3), `welds` (§J2), `elements` (§J4), `prying` (Manual Parte 9), `bolt_group` y `weld_group` (método elástico y centro instantáneo), `local` (§J10), `anchors` (ACI 318-19 Cap. 17), `design` (`Calc`, φ/Ω). |
 | `connections/base_plate/` | Placa base: `plate` (modelos de presiones de la DG1), `transfer` (corte, llave, soldaduras), `seismic` (DG1 Cap. 5 y 6), `check` (verificación completa por combinación). |
 | `connections/shear/` | Conexiones de corte de extremo de viga: una biblioteca por tipo (`double_angle`, `double_angle_axial`, `single_plate`, `single_plate_axial`, `extended_single_plate`, `end_plate`, `seated`, `stiffened_seat`, `coped_beam`) y `check` (`ShearConnection`, `check_shear_connection`, `check_shear_envelope`), la interfaz común que usan el proyecto, el comando, la memoria y la interfaz gráfica. |
-| `connections/moment/` | Conexiones de momento (F6): `fr_moment` (placas de ala apernadas o soldadas y alas soldadas, placa del alma y columna bajo las fuerzas de ala; `check_moment_connection`, `check_moment_envelope`). |
+| `connections/moment/` | Conexiones de momento (F6): `fr_moment` (placas de ala apernadas o soldadas y alas soldadas, placa del alma y columna bajo las fuerzas de ala; `check_moment_connection`, `check_moment_envelope`) y `end_plate` (placas de extremo de AISC Design Guide 16: líneas de fluencia, pernos con efecto palanca y demás estados límite). |
 | `io/` | `project` (archivo `.ocnx` con pydantic), `shear_project` (bloque `shear_connection` y su conversión a `ShearConnection`), `csi` (tablas de SAP2000/ETABS), `csi_projects` (proyectos de placa base a partir de la importación), `csi_beams` y `csi_shear_projects` (extremos de viga de SAP2000 y proyectos de conexión de corte). |
 | `report/` | `builder` (estructura de la memoria; `build_report` elige entre placa base y conexión de corte), `shear` (memoria de una conexión de corte), `figures` (planta/elevación desde DXF e isométrico desde 3D), `html` (Jinja2 + MathML), `docx` (python-docx), `pdf` (Qt WebEngine). La memoria consume `Report.figures`; cada futuro tipo de conexión debe aportar sus figuras desde su propio dibujo/modelo. |
 | `drawing/` | Plano DXF (ezdxf) y vistas independientes para las figuras de la memoria; `shear` dibuja la elevación de las conexiones de corte desde `shear_layout`, que también usa el modelo 3D. |
@@ -38,7 +38,7 @@ cli.py ─────────────► io/ (proyecto, importación) �
 
 ## Flujo de una conexión de momento (`openconex moment`)
 
-Igual que el de corte: `io/moment_project.py` valida y convierte `moment_connection` en un `MomentConnection`, `check_moment_envelope` combina `V2` y `M3` de cada combinación, `report/moment.py` arma la memoria y `drawing/moment.py` y `geometry3d/moment.py` el plano y el modelo. La ventana es `gui/moment.py`.
+Igual que el de corte: `io/moment_project.py` valida y convierte `moment_connection` en un `MomentConnection`, `check_moment_envelope` combina `V2` y `M3` (y `P`, que solo usa la placa de extremo) de cada combinación, `report/moment.py` arma la memoria y `drawing/moment.py` y `geometry3d/moment.py` el plano y el modelo. La ventana es `gui/moment.py`.
 
 ## Flujo de una conexión de corte (`openconex shear`)
 

@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.connections.moment.end_plate import EndPlateLayout
 from openconex.connections.moment.fr_moment import FlangeDetail
 from openconex.core.loads import LoadType, Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
@@ -74,6 +75,17 @@ PLATE_FIELDS = (("width", "Ancho"), ("thickness", "Espesor"),
                 ("unbraced_length", "Longitud libre (compresión)"),
                 ("weld_to_beam", "Soldadura a la viga"),
                 ("weld_length", "Largo de cada soldadura longitudinal"))
+END_PLATE_FIELDS = (("width", "Ancho b_p"), ("thickness", "Espesor t_p"), ("gage", "Gramil g"),
+                    ("pf", "p_f (p_f,i): fila interior a la cara del ala"),
+                    ("pb", "p_b entre filas interiores"),
+                    ("pf_o", "p_f,o: fila exterior a la cara del ala"),
+                    ("pext", "p_ext: extensión de la placa"),
+                    ("ps_o", "p_s,o: fila exterior al rigidizador (Tabla 3-4)"),
+                    ("stiffener_thickness", "t_s del rigidizador (Tabla 3-4)"),
+                    ("ps", "p_s: fila al rigidizador (Tabla 3-5)"),
+                    ("pretension", "Pretensión T_b (vacío: Tabla J3.1)"),
+                    ("web_weld", "Filete del alma (vacío: CJP)"),
+                    ("flange_weld", "Filete de las alas (vacío: CJP)"))
 FLANGE_BOLT_FIELDS = (("spacing", "Separación s"), ("gage", "Gramil g"),
                       ("plate_lev", "l_ev de la placa"), ("beam_lev", "l_ev de la viga"))
 
@@ -185,7 +197,7 @@ class MomentWindow(QMainWindow):
         form.addRow(self.two_sided)
         layout.addWidget(conn)
 
-        web = QGroupBox("Placa del alma")
+        web = self.web_group = QGroupBox("Placa del alma")
         form = QFormLayout(web)
         self.web_bolt = self._line(form, "Diámetro de perno")
         self.web_rows = QSpinBox()
@@ -208,6 +220,21 @@ class MomentWindow(QMainWindow):
             self._plate_groups[key] = group
             layout.addWidget(group)
 
+        self.end_plate_group = QGroupBox("Placa de extremo (AISC DG16)")
+        form = QFormLayout(self.end_plate_group)
+        self.ep_layout = QComboBox()
+        for layout_ in EndPlateLayout:
+            self.ep_layout.addItem(tr(f"moment.layout.{layout_.value}", "es"), layout_.value)
+        form.addRow("Configuración", self.ep_layout)
+        self.ep_bolt = self._line(form, "Diámetro de perno")
+        self.ep_bolt_grade = self._line(form, "Material de los pernos")
+        self._ep = {key: self._line(form, label) for key, label in END_PLATE_FIELDS}
+        self.ep_snug = QCheckBox("Pernos con apriete ajustado (solo A325)")
+        form.addRow(self.ep_snug)
+        self.ep_symmetric = QCheckBox("Mismos pernos en ambas alas (momento reversible)")
+        form.addRow(self.ep_symmetric)
+        layout.addWidget(self.end_plate_group)
+
         self.bolts_group = QGroupBox("Pernos de ala")
         form = QFormLayout(self.bolts_group)
         self.flange_bolt = self._line(form, "Diámetro de perno")
@@ -217,14 +244,15 @@ class MomentWindow(QMainWindow):
         self._flange = {key: self._line(form, label) for key, label in FLANGE_BOLT_FIELDS}
         layout.addWidget(self.bolts_group)
 
-        cases = QGroupBox("Casos de carga (V y M en el extremo de la viga)")
+        cases = QGroupBox("Casos de carga (V, M y P en el extremo de la viga; P solo en "
+                          "placas de extremo, compresión positiva)")
         box = QVBoxLayout(cases)
-        self.cases = QTableWidget(0, 4)
-        self.cases.setHorizontalHeaderLabels(["Nombre", "Tipo", "V", "M"])
+        self.cases = QTableWidget(0, 5)
+        self.cases.setHorizontalHeaderLabels(["Nombre", "Tipo", "V", "M", "P"])
         box.addWidget(self.cases)
         buttons = QHBoxLayout()
         add = QPushButton("Agregar")
-        add.clicked.connect(lambda: self._add_case("", "D", "", ""))
+        add.clicked.connect(lambda: self._add_case("", "D", "", "", ""))
         remove = QPushButton("Quitar")
         remove.clicked.connect(lambda: self.cases.removeRow(self.cases.currentRow()))
         buttons.addWidget(add)
@@ -261,7 +289,7 @@ class MomentWindow(QMainWindow):
         splitter.setSizes([480, 800])
         self.setCentralWidget(splitter)
 
-    def _add_case(self, name: str, kind: str, V: str, M: str) -> None:
+    def _add_case(self, name: str, kind: str, V: str, M: str, P: str = "") -> None:
         row = self.cases.rowCount()
         self.cases.insertRow(row)
         self.cases.setItem(row, 0, QTableWidgetItem(name))
@@ -271,12 +299,16 @@ class MomentWindow(QMainWindow):
         self.cases.setCellWidget(row, 1, combo)
         self.cases.setItem(row, 2, QTableWidgetItem(V))
         self.cases.setItem(row, 3, QTableWidgetItem(M))
+        self.cases.setItem(row, 4, QTableWidgetItem(P))
 
     # -- form <-> project ----------------------------------------------------------------
     def _update_visible(self) -> None:
         detail = FlangeDetail(self.type.currentData())
         bolted = detail is FlangeDetail.BOLTED_FLANGE_PLATE
-        plates = detail is not FlangeDetail.WELDED_FLANGE
+        end_plate = detail is FlangeDetail.END_PLATE
+        plates = detail not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.END_PLATE)
+        self.web_group.setVisible(not end_plate)
+        self.end_plate_group.setVisible(end_plate)
         self.bolts_group.setVisible(bolted)
         self._plate_groups["top"].setVisible(plates)
         self._plate_groups["bottom"].setVisible(plates)
@@ -301,10 +333,20 @@ class MomentWindow(QMainWindow):
         self.electrode.setText(mc.electrode)
         self.near_end.setChecked(mc.column_near_end)
         self.two_sided.setChecked(mc.two_sided)
-        self.web_bolt.setText(_text(mc.web.bolt.diameter))
-        self.web_rows.setValue(mc.web.rows)
+        web = mc.web or Project.model_validate(TEMPLATE).moment_connection.web
+        self.web_bolt.setText(_text(web.bolt.diameter))
+        self.web_rows.setValue(web.rows)
         for key, edit in self._web.items():
-            edit.setText(_text(getattr(mc.web, key)))
+            edit.setText(_text(getattr(web, key)))
+        ep = mc.end_plate
+        self.ep_layout.setCurrentIndex(self.ep_layout.findData(
+            (ep.layout if ep else EndPlateLayout.EXTENDED_4).value))
+        self.ep_bolt.setText(_text(ep.bolt.diameter) if ep else "3/4 in")
+        self.ep_bolt_grade.setText(ep.bolt.grade if ep else "ASTM F3125 Gr. A325")
+        for key, edit in self._ep.items():
+            edit.setText(_text(getattr(ep, key)) if ep else "")
+        self.ep_snug.setChecked(bool(ep and ep.snug_tight))
+        self.ep_symmetric.setChecked(ep.symmetric if ep else True)
         for key in ("top", "bottom"):
             plate = getattr(mc, key)
             fields = self._plates[key]
@@ -321,24 +363,43 @@ class MomentWindow(QMainWindow):
         self.cases.setRowCount(0)
         for case in project.cases:
             self._add_case(case.name, case.type.value,
-                           *("" if v in (0, 0.0) else _text(v) for v in (case.V, case.M)))
+                           *("" if v in (0, 0.0) else _text(v)
+                             for v in (case.V, case.M, case.P)))
         self._update_visible()
         self.setWindowTitle("OpenConex — conexión de momento — "
                             + (self.path.name if self.path else "sin guardar"))
 
+    def _section(self, combo: QComboBox, key: str):
+        """Catalog label, or the project's generic section when its label is kept."""
+        text = combo.currentText().strip()
+        current = getattr(self.project.moment_connection, key)
+        if not isinstance(current, str) and text == current.label():
+            return current.model_dump()
+        return text.upper()
+
     def project_from_form(self) -> Project:
         detail = FlangeDetail(self.type.currentData())
         connection: dict = {
-            "type": detail.value, "beam": self.beam.currentText().strip().upper(),
-            "column": self.column.currentText().strip().upper(),
+            "type": detail.value, "beam": self._section(self.beam, "beam"),
+            "column": self._section(self.column, "column"),
             "grade": self.grade.text().strip(), "electrode": self.electrode.text().strip(),
             "column_near_end": self.near_end.isChecked(),
             "two_sided": self.two_sided.isChecked(),
-            "web": {"bolt": {"diameter": self.web_bolt.text().strip()},
-                    "rows": self.web_rows.value(),
-                    **{k: e.text().strip() for k, e in self._web.items()}},
         }
-        if detail is not FlangeDetail.WELDED_FLANGE:
+        if detail is FlangeDetail.END_PLATE:
+            plate = {"layout": self.ep_layout.currentData(),
+                     "bolt": {"diameter": self.ep_bolt.text().strip(),
+                              "grade": self.ep_bolt_grade.text().strip()
+                              or "ASTM F3125 Gr. A325"},
+                     "snug_tight": self.ep_snug.isChecked(),
+                     "symmetric": self.ep_symmetric.isChecked()}
+            plate.update({k: e.text().strip() for k, e in self._ep.items() if e.text().strip()})
+            connection["end_plate"] = plate
+        else:
+            connection["web"] = {"bolt": {"diameter": self.web_bolt.text().strip()},
+                                 "rows": self.web_rows.value(),
+                                 **{k: e.text().strip() for k, e in self._web.items()}}
+        if detail not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.END_PLATE):
             for key in ("top", "bottom"):
                 if key == "bottom" and not self._plate_groups[key].isChecked():
                     continue
@@ -357,7 +418,7 @@ class MomentWindow(QMainWindow):
             if not name:
                 continue
             case = {"name": name, "type": self.cases.cellWidget(row, 1).currentText()}
-            for col, key in ((2, "V"), (3, "M")):
+            for col, key in ((2, "V"), (3, "M"), (4, "P")):
                 text = (self.cases.item(row, col) or QTableWidgetItem("")).text().strip()
                 if text:
                     case[key] = text

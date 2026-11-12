@@ -1,0 +1,60 @@
+{
+  "format_version": 12,
+  "info": {
+    "name": "Ejemplo: placa de extremo enrasada de cuatro pernos (AISC DG16, Ej. 3.2.2)",
+    "number": "OC-0204",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-12",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": {
+      "type": "W",
+      "name": "BU 18×6",
+      "d": "18 in",
+      "bf": "6 in",
+      "tf": "1/4 in",
+      "tw": "3/16 in",
+      "k_des": "1/2 in",
+      "grade": "ASTM A572 Gr. 50"
+    },
+    "beam_grade": "ASTM A572 Gr. 50",
+    "column": "W14X90",
+    "end_plate": {
+      "layout": "flush_4",
+      "bolt": {
+        "diameter": "1/2 in"
+      },
+      "width": "6 in",
+      "thickness": "3/8 in",
+      "gage": "2.75 in",
+      "pf": "1.375 in",
+      "pb": "3 in",
+      "snug_tight": true,
+      "web_weld": "3/16 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "4 kip",
+      "M": "10 kip*ft"
+    },
+    {
+      "name": "L",
+      "type": "L",
+      "V": "8 kip",
+      "M": "23.75 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD",
+      "ASD"
+    ]
+  }
+}

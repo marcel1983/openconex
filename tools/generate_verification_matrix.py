@@ -48,6 +48,7 @@ FAMILY = {
     "Asiento rigidizado soldado": "asiento_rigidizado",
     "Conexión de corte: resultados comunes": "conexion_corte",
     "Conexiones de momento": "momento",
+    "Placas de extremo de momento": "placa_extremo_momento",
     "Anclajes": "anclajes",
     "Pernos": "pernos",
     "Soldaduras": "soldaduras",
@@ -71,6 +72,7 @@ REFERENCE = {
     "asiento_rigidizado": "AISC DE v16.1, II.A-14 y II.A-15",
     "conexion_corte": "—",
     "momento": "AISC DE v16.1, II.B-1, II.B-2 y II.B-3",
+    "placa_extremo_momento": "AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5",
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
     "pernos": "AISC 360-22 §J3; Manual Tablas 7-6 a 7-14 y 14-2",
     "soldaduras": "AISC 360-22 §J2; Manual Tablas 8-3 a 8-11",
@@ -94,6 +96,7 @@ TEST = {
     "asiento_rigidizado": "tests/connections/test_stiffened_seat.py",
     "conexion_corte": "tests/connections/test_shear_project.py",
     "momento": "tests/moment/test_fr_moment.py",
+    "placa_extremo_momento": "tests/moment/test_end_plate_dg16.py",
     "anclajes": "tests/kernel/test_anchors.py",
     "pernos": "tests/kernel/test_bolts.py",
     "soldaduras": "tests/kernel/test_welds.py",
@@ -129,9 +132,20 @@ DIFFERENCE = {
                            "el cálculo independiente de II.A-17A da C = 3,556 y 58,7/39,1 kip"),
     "double_angle.block_shear_axial": "forma U en vez de L (II.A-1B), algo conservador",
     "extended_plate.flexural_rupture": "Z_net = 12,75 in³ frente a 12,8 in³ (II.A-19A)",
+    "moment.end_plate_bolt_rupture": (
+        "DG16 3.2.4 y 4.2.3: la Guía publica un valor distinto del que da su diagrama del "
+        "Apéndice B; ver docs/tecnico/07-validacion.md"),
 }
 
+_DG16_PARTIAL = ("los ejemplos de la DG16 no la calculan; usa las fórmulas de AISC 360-22 "
+                 "validadas en tests/kernel")
 PARTIAL: dict[str, str] = {
+    "moment.end_plate_shear_yielding": _DG16_PARTIAL,
+    "moment.end_plate_shear_rupture": _DG16_PARTIAL,
+    "moment.end_plate_bolt_shear": _DG16_PARTIAL,
+    "moment.end_plate_web_weld_shear": _DG16_PARTIAL,
+    "moment.end_plate_web_weld_tension": _DG16_PARTIAL,
+    "moment.end_plate_flange_weld": _DG16_PARTIAL,
     "moment.column_web_compression_buckling": (
         "los ejemplos II.B no lo calculan; la fórmula del núcleo (§J10.5) se contrasta con "
         "valores manuales en tests/kernel/test_local.py"),
