@@ -172,6 +172,11 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `geometry.redo` | Rehace el cambio deshecho. | Pulse Rehacer o Ctrl+Y. | Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular. | — | PB |
 | `viewer.refresh` | Recarga el modelo 3D con el proyecto actual. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | PB |
 | `viewer.reset` | Restablece la cámara del visor 3D. | Pulse Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
+| `viewer.iso` | Vuelve a la vista isométrica de la conexión. | Pulse Iso en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.front` | Mira la conexión de frente. | Pulse Frente en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.top` | Mira la conexión desde arriba. | Pulse Planta en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.side` | Mira la conexión de lado. | Pulse Lado en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.explode` | Separa la viga del apoyo para ver placas, ángulos y asientos. | Marque Separar en la pestaña 3D. | Solo cambia la vista; no modifica el proyecto ni la exportación. | — | todas |
 | `dialog.import_csi.file` | Archivo Excel exportado de SAP2000 o ETABS. | Elija el archivo con Examinar. | Es la fuente de apoyos, reacciones y casos. | — | todas |
 | `dialog.import_csi.output` | Carpeta donde se escribirán los proyectos. | Elija la carpeta con Carpeta. | No cambia el cálculo; determina dónde se guardan los .ocnx. | — | todas |
 | `dialog.import_csi.group` | Criterio para crear proyectos: por apoyo o por sección de columna. | Seleccione Joint o Column. | Cambia el número de proyectos y su agrupación. | joint | todas |

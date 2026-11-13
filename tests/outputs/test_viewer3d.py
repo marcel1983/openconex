@@ -16,7 +16,13 @@ from PySide6.QtWidgets import QApplication
 from openconex.geometry3d.base_plate import Part, occ_available
 from openconex.geometry3d.mesh import MeshPart, tessellate_parts
 from openconex.gui.exporting import parts_3d
-from openconex.gui.viewer3d import Viewer3D, part_color
+from openconex.gui.viewer3d import (
+    Viewer3D,
+    _explode_meshes,
+    _opengl_available,
+    part_color,
+    view_angles,
+)
 from openconex.io.project import load_project
 
 EXAMPLE = Path(__file__).parents[2] / "examples" / "base_plate_dg1_4_7_11.ocnx"
@@ -40,9 +46,21 @@ def test_part_colors():
     assert part_color("bolt1").name() == "#ef6c00"
 
 
+def test_explode_moves_exact_and_prefixed_parts():
+    first = MeshPart("beam", (((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
+                               (0.0, 1.0, 0.0)),))
+    bolt = MeshPart("support_bolt_1", (((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
+                                        (0.0, 1.0, 0.0)),))
+    moved = _explode_meshes([first, bolt], {"beam": (10.0, 0.0, 0.0),
+                                            "support_bolt*": (0.0, 5.0, 0.0)})
+    assert moved[0].triangles[0][0] == (10.0, 0.0, 0.0)
+    assert moved[1].triangles[0][0] == (0.0, 5.0, 0.0)
+
+
 def test_viewer_lists_and_hides_parts(qapp):
     mesh = MeshPart("column", (((0, 0, 0), (10, 0, 0), (0, 10, 0)),))
     viewer = Viewer3D(lambda: [])
+    viewer.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     viewer.set_meshes([mesh])
     assert viewer._list.count() == 1
     assert viewer._list.item(0).text() == "column"
@@ -50,6 +68,19 @@ def test_viewer_lists_and_hides_parts(qapp):
     assert "column" in viewer._canvas._hidden
     assert not viewer._canvas.grab().isNull()
     viewer.close()
+
+
+def test_standard_view_angles():
+    assert view_angles("iso") == (35.0, 25.0)
+    assert view_angles("front") == (0.0, 0.0)
+    assert view_angles("top") == (0.0, 89.0)
+    assert view_angles("side") == (90.0, 0.0)
+
+
+def test_opengl_is_disabled_offscreen(qapp):
+    from PySide6.QtWidgets import QApplication
+    if QApplication.platformName() == "offscreen":
+        assert not _opengl_available()
 
 
 @pytest.mark.skipif(not occ_available(), reason="OpenCASCADE is not installed")

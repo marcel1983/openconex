@@ -32,6 +32,9 @@ HIDDEN = (
     "PySide6.QtWebChannel",
     "PySide6.QtPrintSupport",
     "PySide6.QtSvg",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
+    "openconex.gui.viewer3d_gl",
 )
 
 

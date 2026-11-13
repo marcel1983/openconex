@@ -87,9 +87,13 @@ La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
 - **Rueda** para acercar o alejar.
 - **Arrastrar con el botón central o derecho** para desplazar la vista.
 - **Doble clic** o **Ajustar vista** para volver a la vista isométrica.
+- **Iso**, **Frente**, **Planta** y **Lado** colocan la cámara en una vista estándar.
+- **Separar**, en las conexiones de corte, separa la viga del apoyo para ver la placa, los ángulos o el asiento. Es solo una vista de inspección: no modifica el proyecto ni la exportación.
 - La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla.
 
-El render oculta las caras posteriores, sombrea cada superficie y no dibuja la triangulación interna. Los elementos de la conexión se resaltan en naranja y los pernos en gris oscuro, para distinguirlos de la viga, el apoyo y la columna.
+El visor usa OpenGL con búfer de profundidad: las caras posteriores quedan ocultas por píxel, sin los dientes de sierra que aparecían cuando el ala de una viga tapaba un ángulo. El render se hace en un búfer con antialiasing y se compone sobre la ventana. Los elementos de la conexión se resaltan en naranja y la placa base también; la viga, el apoyo y la columna quedan en gris azulado.
+
+Si OpenGL no está disponible (escritorio remoto, máquina virtual o controlador antiguo), el visor cambia automáticamente a la vista simplificada con `QPainter` y lo indica en la barra de estado. También se puede forzar con la variable de entorno `OPENCONEX_SOFTWARE_3D=1`.
 
 El modelo se genera en segundo plano al entrar en la pestaña, con las piezas de `geometry3d.base_plate` (`base_plate_parts` o `embedded_base_parts`). Funciona con placa expuesta y base empotrada. La exportación STEP/STL no cambia.
 
