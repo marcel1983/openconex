@@ -1,6 +1,6 @@
 # Propuesta: visor 3D con z-buffer y vista de conexión
 
-**Estado:** aprobada. Fases 1–2 implementadas juntas en 0.5.16; fase 3 pendiente.  
+**Estado:** aprobada. Fases 1–2 implementadas juntas en 0.5.19; fase 3 pendiente.  
 **Fecha:** 2026-11-12.  
 **Base:** OpenConex 0.5.15.
 
@@ -127,7 +127,7 @@ a la posición real. No cambia el proyecto ni la exportación.
 | 4 (opcional) | Agujeros de pernos, tuercas, arandelas y cordones de soldadura | 0.5.19 / 0.6.0 | 3–5 días |
 
 La fase 1 da una mejora inmediata sin tocar el renderer. La fase 2 es la que
-elimina de verdad los dientes de sierra y las penetraciones. En 0.5.16 se
+elimina de verdad los dientes de sierra y las penetraciones. En 0.5.19 se
 publicaron las fases 1 y 2 juntas; la tabla conserva la estimación original por
 fases.
 
