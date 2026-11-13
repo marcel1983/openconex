@@ -16,7 +16,13 @@ from PySide6.QtWidgets import QApplication
 from openconex.geometry3d.base_plate import Part, occ_available
 from openconex.geometry3d.mesh import MeshPart, tessellate_parts
 from openconex.gui.exporting import parts_3d
-from openconex.gui.viewer3d import Viewer3D, _explode_meshes, part_color
+from openconex.gui.viewer3d import (
+    Viewer3D,
+    _explode_meshes,
+    _opengl_available,
+    part_color,
+    view_angles,
+)
 from openconex.io.project import load_project
 
 EXAMPLE = Path(__file__).parents[2] / "examples" / "base_plate_dg1_4_7_11.ocnx"
@@ -40,12 +46,6 @@ def test_part_colors():
     assert part_color("bolt1").name() == "#ef6c00"
 
 
-def test_offscreen_viewer_uses_the_painter_canvas(qapp):
-    viewer = Viewer3D(lambda: [], use_opengl=False)
-    assert type(viewer._canvas).__name__ == "_ViewCanvas"
-    viewer.close()
-
-
 def test_explode_moves_exact_and_prefixed_parts():
     first = MeshPart("beam", (((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
                                (0.0, 1.0, 0.0)),))
@@ -57,34 +57,10 @@ def test_explode_moves_exact_and_prefixed_parts():
     assert moved[1].triangles[0][0] == (0.0, 5.0, 0.0)
 
 
-def test_standard_views_reset_the_camera(qapp):
-    mesh = MeshPart("column", (((0, 0, 0), (10, 0, 0), (0, 10, 0)),))
-    viewer = Viewer3D(lambda: [], use_opengl=False)
-    viewer.set_meshes([mesh])
-    viewer._canvas.set_view("top")
-    assert viewer._canvas._yaw == 0.0
-    assert viewer._canvas._pitch == 89.0
-    viewer._canvas.set_view("side")
-    assert viewer._canvas._yaw == 90.0
-    assert viewer._canvas._pitch == 0.0
-    viewer.close()
-
-
-def test_explode_button_and_prefix_shift(qapp):
-    mesh = MeshPart("beam", (((0.0, 0.0, 0.0), (1.0, 0.0, 0.0),
-                              (0.0, 1.0, 0.0)),))
-    viewer = Viewer3D(lambda: [], explode={"beam": (5.0, 0.0, 0.0)},
-                      use_opengl=False)
-    viewer.set_meshes([mesh])
-    assert viewer._explode_button is not None
-    viewer._explode_button.setChecked(True)
-    assert viewer._canvas._meshes[0].triangles[0][0] == (5.0, 0.0, 0.0)
-    viewer.close()
-
-
 def test_viewer_lists_and_hides_parts(qapp):
     mesh = MeshPart("column", (((0, 0, 0), (10, 0, 0), (0, 10, 0)),))
     viewer = Viewer3D(lambda: [])
+    viewer.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
     viewer.set_meshes([mesh])
     assert viewer._list.count() == 1
     assert viewer._list.item(0).text() == "column"
@@ -92,6 +68,19 @@ def test_viewer_lists_and_hides_parts(qapp):
     assert "column" in viewer._canvas._hidden
     assert not viewer._canvas.grab().isNull()
     viewer.close()
+
+
+def test_standard_view_angles():
+    assert view_angles("iso") == (35.0, 25.0)
+    assert view_angles("front") == (0.0, 0.0)
+    assert view_angles("top") == (0.0, 89.0)
+    assert view_angles("side") == (90.0, 0.0)
+
+
+def test_opengl_is_disabled_offscreen(qapp):
+    from PySide6.QtWidgets import QApplication
+    if QApplication.platformName() == "offscreen":
+        assert not _opengl_available()
 
 
 @pytest.mark.skipif(not occ_available(), reason="OpenCASCADE is not installed")

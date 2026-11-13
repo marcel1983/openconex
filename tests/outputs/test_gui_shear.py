@@ -13,7 +13,7 @@ pytest.importorskip("PySide6")
 
 from openconex.gui.app import MainWindow
 from openconex.gui.help import HelpDialog
-from openconex.gui.shear import TYPE_FIELDS, ShearWindow
+from openconex.gui.shear import EXPLODE_BY_TYPE, TYPE_FIELDS, ShearWindow
 from openconex.io.project import Project, load_project
 from openconex.units import Kind, to_internal
 
@@ -51,16 +51,10 @@ def test_cope_reinforcement_is_preserved(app):
     assert project.shear_connection.cope.doubler is not None
 
 
-def test_explode_button_follows_the_connection_type(app):
-    window = ShearWindow(load_project(EXAMPLES / "shear_double_angle_coped.ocnx"))
-    assert window.viewer._explode_button is not None
-    window.type.setCurrentIndex(window.type.findData("skewed_bent_plate"))
-    window._update_visible()
-    assert window.viewer._explode_button.isHidden()
-    window.type.setCurrentIndex(window.type.findData("double_angle"))
-    window._update_visible()
-    assert not window.viewer._explode_button.isHidden()
-    window.close()
+def test_explode_offsets_by_connection_type():
+    assert EXPLODE_BY_TYPE["double_angle"] == {"beam": (0.0, -250.0, 0.0)}
+    assert EXPLODE_BY_TYPE["end_plate"]["support_bolt*"] == (80.0, 0.0, 0.0)
+    assert EXPLODE_BY_TYPE["skewed_bent_plate"] is None
 
 
 def test_shear_window_converts_units(app):

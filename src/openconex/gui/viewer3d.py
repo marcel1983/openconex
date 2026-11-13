@@ -26,7 +26,19 @@ from openconex.geometry3d.base_plate import Part
 from openconex.geometry3d.mesh import MeshPart, tessellate_parts
 from openconex.help import help_text
 
-__all__ = ["Viewer3D", "part_color", "render_parts"]
+__all__ = ["Viewer3D", "part_color", "render_parts", "view_angles"]
+
+VIEW_ANGLES = {
+    "iso": (35.0, 25.0),
+    "front": (0.0, 0.0),
+    "top": (0.0, 89.0),
+    "side": (90.0, 0.0),
+}
+
+
+def view_angles(name: str) -> tuple[float, float]:
+    """Camera angles for a standard view name."""
+    return VIEW_ANGLES[name]
 
 
 def part_color(name: str) -> QColor:
@@ -114,13 +126,7 @@ class _ViewCanvas(QWidget):
         self.update()
 
     def set_view(self, name: str) -> None:
-        views = {
-            "iso": (35.0, 25.0),
-            "front": (0.0, 0.0),
-            "top": (0.0, 89.0),
-            "side": (90.0, 0.0),
-        }
-        self._yaw, self._pitch = views[name]
+        self._yaw, self._pitch = view_angles(name)
         self._zoom = 1.0
         self._pan = QPointF()
         self.update()
@@ -332,6 +338,20 @@ def _normal(p0: tuple[float, float, float], p1: tuple[float, float, float],
 
 def _opengl_available() -> bool:
     """Whether the interactive GL canvas can be used in this session."""
+    import os
+
+    from PySide6.QtWidgets import QApplication
+
+    if os.environ.get("OPENCONEX_SOFTWARE_3D") == "1":
+        return False
+    app = QApplication.instance()
+    if app is None:
+        return False
+    platform = getattr(app, "platformName", lambda: "")()
+    if platform in {"offscreen", "minimal"}:
+        # Do not even import QtOpenGLWidgets: on headless Qt it can leave a
+        # shared QObject behind and crash the process during teardown.
+        return False
     try:
         from .viewer3d_gl import gl_available
 

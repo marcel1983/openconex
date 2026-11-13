@@ -35,7 +35,7 @@ from PySide6.QtOpenGL import (
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QWidget
 
-from .viewer3d import MeshPart, _normal, part_color
+from .viewer3d import MeshPart, _normal, part_color, view_angles
 
 __all__ = ["OpenGLCanvas", "gl_available"]
 
@@ -178,13 +178,7 @@ class OpenGLCanvas(QOpenGLWidget):
         self.update()
 
     def set_view(self, name: str) -> None:
-        views = {
-            "iso": (35.0, 25.0),
-            "front": (0.0, 0.0),
-            "top": (0.0, 89.0),
-            "side": (90.0, 0.0),
-        }
-        self._yaw, self._pitch = views[name]
+        self._yaw, self._pitch = view_angles(name)
         self._zoom = 1.0
         self._pan = QPointF()
         self.update()
