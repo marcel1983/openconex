@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-12, sobre `main`, versión 0.5.19. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-21, sobre `main`, versión 0.5.20. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -33,6 +33,7 @@ Estado al 2026-11-12, sobre `main`, versión 0.5.19. Cada tarea indica qué hay 
 - [x] Validación de la geometría de pernos: filas dentro de la placa o ángulo, l_ev/l_eh de la Tabla J3.4 y separación mínima; el cálculo se detiene con un mensaje correctivo.
 - [x] Render 3D limpio: caras posteriores ocultas, sin malla de triangulación, caras grandes subdivididas y elementos de conexión resaltados.
 - [x] Visor 3D OpenGL (fases 1–2): z-buffer, MSAA, respaldo a QPainter, vistas estándar y vista separada de la conexión.
+- [x] Interfaz: aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.
 - [x] Release 0.5.6.
@@ -45,6 +46,7 @@ Estado al 2026-11-12, sobre `main`, versión 0.5.19. Cada tarea indica qué hay 
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
 - [x] Release 0.5.15.
+- [x] Release 0.5.20: aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar archivos en la interfaz.
 - [x] Release 0.5.19: visor 3D OpenGL (fases 1–2), z-buffer y MSAA, respaldo a QPainter, vistas estándar y vista separada de la conexión.
 - [x] Release 0.5.18: placas de extremo con AISC Design Guide 4 (lado de la columna y 8ES), rigidizadores, dobles placas y zona de panel según AISC Design Guide 13, y conexiones de momento al alma de la columna.
 - [x] Release 0.5.17: placas de extremo de momento de AISC Design Guide 16 (nueve configuraciones, formato de proyecto 12) y vigas armadas en la ventana de momento.
