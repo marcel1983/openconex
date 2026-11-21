@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.gui.session import last_directory, recent_projects
 from openconex.gui.start_data import FAMILIES, Family, Subtype, build_project
 from openconex.io.project import Project
 
@@ -198,6 +199,19 @@ class ConnectionStartDialog(QDialog):
             grid.addWidget(card, index // 3, index % 3,
                            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         layout.addLayout(grid)
+        recent = recent_projects()[:5]
+        if recent:
+            heading = QLabel("Proyectos recientes")
+            heading.setObjectName("sectionTitle")
+            layout.addSpacing(8)
+            layout.addWidget(heading)
+            for path in recent:
+                button = QPushButton(f"{path.name}   —   {path.parent}")
+                button.setObjectName("recentProject")
+                button.setToolTip(str(path))
+                button.setCursor(Qt.CursorShape.PointingHandCursor)
+                button.clicked.connect(lambda _checked=False, p=path: self._open_path(p))
+                layout.addWidget(button)
         layout.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -250,11 +264,14 @@ class ConnectionStartDialog(QDialog):
         self.accept()
 
     def _open_project(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Abrir proyecto", "",
+        path, _ = QFileDialog.getOpenFileName(self, "Abrir proyecto", last_directory(),
                                                "OpenConex (*.ocnx);;Todos (*)")
         if path:
-            self.selection = StartSelection(kind="open", path=Path(path))
-            self.accept()
+            self._open_path(Path(path))
+
+    def _open_path(self, path: Path) -> None:
+        self.selection = StartSelection(kind="open", path=path)
+        self.accept()
 
 
 _STYLE = """
@@ -287,4 +304,9 @@ QPushButton#secondary {
     padding: 6px 14px; color: #1f2d3d;
 }
 QPushButton#secondary:hover { border-color: #1565c0; color: #1565c0; }
+QPushButton#recentProject {
+    background: transparent; border: none; text-align: left;
+    padding: 3px 2px; color: #1565c0;
+}
+QPushButton#recentProject:hover { text-decoration: underline; }
 """

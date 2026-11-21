@@ -53,6 +53,7 @@ __all__ = [
     "Support",
     "Table",
     "import_supports",
+    "is_csi_export",
     "read_tables",
 ]
 
@@ -149,6 +150,28 @@ def _normalize_table(table: Table) -> Table:
     return Table(_canonical(table.name, _TABLE_ALIASES), columns, table.units, [
         {columns[i]: value for i, value in enumerate(row.values()) if i < len(columns)}
         for row in table.rows])
+
+
+def is_csi_export(path: str | Path) -> bool:
+    """``True`` if the workbook has at least one CSI database table sheet.
+
+    SAP2000 and ETABS write ``TABLE: <name>`` in the first cell of each sheet;
+    a generic reaction table does not. Unreadable files return ``False``.
+    """
+    from openpyxl import load_workbook
+
+    try:
+        workbook = load_workbook(path, read_only=True, data_only=True)
+    except Exception:
+        return False
+    try:
+        for sheet in workbook.worksheets:
+            for row in sheet.iter_rows(min_row=1, max_row=1, values_only=True):
+                if row and str(row[0] or "").startswith("TABLE:"):
+                    return True
+    finally:
+        workbook.close()
+    return False
 
 
 def read_tables(path: str | Path) -> dict[str, Table]:

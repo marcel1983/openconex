@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
-    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -41,7 +40,13 @@ from openconex.connections.moment.fr_moment import FlangeDetail
 from openconex.core.loads import LoadType, Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.session import (
+    ProjectSessionMixin,
+    add_recent_project,
+    populate_recent_menu,
+)
 from openconex.gui.viewer3d import Viewer3D
+from openconex.help import help_text
 from openconex.i18n import tr
 from openconex.io.moment_project import MomentConnectionInput
 from openconex.io.project import Project, load_project, save_project
@@ -105,8 +110,10 @@ def _text(value) -> str:
     return "" if value is None else str(value)
 
 
-class MomentWindow(QMainWindow):
+class MomentWindow(ProjectSessionMixin, QMainWindow):
     """Editor, calculation and outputs of one moment connection project."""
+
+    _session_key = "moment"
 
     def __init__(self, project: Project | None = None, path: str | Path | None = None,
                  parent: QWidget | None = None) -> None:
@@ -119,6 +126,8 @@ class MomentWindow(QMainWindow):
         self._build_menu()
         self._build_body()
         self._fill(self.project)
+        self._init_session(self._form)
+        self._set_clean()
         self.statusBar().showMessage("Edite la conexión y pulse Calcular (F5).")
 
     # -- construction ------------------------------------------------------------------
@@ -133,6 +142,12 @@ class MomentWindow(QMainWindow):
                 action.setShortcut(shortcut)
             action.triggered.connect(slot)
             menu.addAction(action)
+            if shortcut == "Ctrl+O":
+                recent = menu.addMenu("Abrir reciente")
+                recent.setToolTipsVisible(True)
+                recent.menuAction().setStatusTip(help_text("menu.file.recent"))
+                recent.aboutToShow.connect(
+                    lambda r=recent: populate_recent_menu(r, self.open))
         calc = self.menuBar().addMenu("&Cálculo")
         action = QAction("Calcular", self)
         action.setShortcut("F5")
@@ -167,6 +182,7 @@ class MomentWindow(QMainWindow):
 
     def _build_body(self) -> None:
         form_widget = QWidget()
+        self._form = form_widget
         layout = QVBoxLayout(form_widget)
 
         info = QGroupBox("Proyecto")
@@ -326,6 +342,7 @@ class MomentWindow(QMainWindow):
         combo = QComboBox()
         combo.addItems([t.value for t in LoadType])
         combo.setCurrentText(kind)
+        combo.currentIndexChanged.connect(self._mark_modified)
         self.cases.setCellWidget(row, 1, combo)
         self.cases.setItem(row, 2, QTableWidgetItem(V))
         self.cases.setItem(row, 3, QTableWidgetItem(M))
@@ -416,8 +433,11 @@ class MomentWindow(QMainWindow):
                              for v in (case.V, case.M, case.P, case.column_V,
                                        case.column_P)))
         self._update_visible()
-        self.setWindowTitle("OpenConex — conexión de momento — "
-                            + (self.path.name if self.path else "sin guardar"))
+        self._update_title()
+
+    def _update_title(self) -> None:
+        name = self.path.name if self.path else "sin guardar"
+        self.setWindowTitle(f"OpenConex — conexión de momento — {name}[*]")
 
     def _section(self, combo: QComboBox, key: str):
         """Catalog label, or the project's generic section when its label is kept."""
@@ -498,13 +518,15 @@ class MomentWindow(QMainWindow):
 
     # -- actions -----------------------------------------------------------------------
     def new_project(self) -> None:
+        if not self.maybe_save():
+            return
         self.project, self.path, self.report = Project.model_validate(TEMPLATE), None, None
         self._fill(self.project)
         self._set_export_enabled(False)
+        self._set_clean()
 
     def open_dialog(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Abrir proyecto", "",
-                                               "OpenConex (*.ocnx);;Todos (*)")
+        path = self._open_file_name()
         if path:
             self.open(path)
 
@@ -518,20 +540,29 @@ class MomentWindow(QMainWindow):
             QMessageBox.warning(self, "Otro tipo de proyecto",
                                 "Ese proyecto no es una conexión de momento.")
             return False
+        if not self.maybe_save():
+            return False
         self.project, self.path, self.report = project, Path(path), None
         self._fill(project)
         self._set_export_enabled(False)
+        self._set_clean()
+        add_recent_project(path)
         return True
 
-    def save_dialog(self, save_as: bool = False) -> None:
+    def save_dialog(self, save_as: bool = False) -> bool:
         path = self.path
         if save_as or path is None:
-            selected, _ = QFileDialog.getSaveFileName(self, "Guardar proyecto", "",
-                                                       "OpenConex (*.ocnx)")
+            selected = self._save_file_name()
             if not selected:
-                return
+                return False
             path = Path(selected).with_suffix(".ocnx")
-        self.save_to(path)
+        return self.save_to(path)
+
+    def _session_save(self) -> bool:
+        return self.save_dialog()
+
+    def _open_dropped(self, path: Path) -> None:
+        self.open(path)
 
     def save_to(self, path: str | Path) -> bool:
         try:
@@ -541,6 +572,9 @@ class MomentWindow(QMainWindow):
             QMessageBox.critical(self, "Error al guardar", str(exc))
             return False
         self.project, self.path = project, Path(path)
+        self._update_title()
+        self._set_clean()
+        add_recent_project(path)
         self.statusBar().showMessage(f"Proyecto guardado: {path}")
         return True
 
@@ -597,7 +631,7 @@ class MomentWindow(QMainWindow):
         if self.report is None:
             return None
         if path is None:
-            selected, _ = QFileDialog.getSaveFileName(self, "Exportar", "", f"*{suffix}")
+            selected = self._export_file_name(suffix)
             if not selected:
                 return None
             path = selected

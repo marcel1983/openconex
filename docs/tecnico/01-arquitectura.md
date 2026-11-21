@@ -24,6 +24,7 @@ cli.py ─────────────► io/ (proyecto, importación) �
 | `drawing/` | Plano DXF (ezdxf) y vistas independientes para las figuras de la memoria; `shear` dibuja la elevación de las conexiones de corte desde `shear_layout`, que también usa el modelo 3D. |
 | `geometry3d/` | Sólidos OpenCASCADE, exportación STEP/STL y vista isométrica con líneas ocultas. |
 | `i18n/` | Textos en `es.toml` y `en.toml`. |
+| `gui/` | Interfaz PySide6: `app` (ventana principal y placa base), `shear` y `moment` (ventanas de corte y de momento), `start` (galería de inicio) y diálogos. `session` reúne lo común a las tres ventanas: `ProjectSessionMixin` (cambios sin guardar con el marcador `[*]` del título y la pregunta *Guardar / Descartar / Cancelar* al cerrar, abrir o crear; arrastrar y soltar; geometría de la ventana) y las preferencias en `QSettings` (INI de usuario: proyectos recientes, última carpeta y preset de unidades). Las preferencias nunca entran en el proyecto. `watch_changes` conecta las señales de los widgets editables del formulario; lo que cambia el proyecto sin pasar por un widget con señal (arrastre en el lienzo, bibliotecas, combos dentro de las tablas) llama a `_mark_modified` explícitamente. Las pruebas aíslan `QSettings` en una carpeta temporal y responden «Descartar» (`tests/conftest.py`). |
 | `cli.py` | Comando `openconex`. |
 | `data/shapes/` | `aisc_v16.sql`, base de datos de perfiles en SQL (no GPL; ver `NOTICE.md`). |
 

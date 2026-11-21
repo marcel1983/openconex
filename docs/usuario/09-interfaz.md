@@ -35,7 +35,26 @@ Al abrir OpenConex sin un proyecto, aparece una galería visual:
 
 Cada tarjeta tiene una imagen y una descripción. Las tarjetas de **placa base** y de **corte** —salvo **placa doblada en esviaje**— usan una ilustración 3D generada con el mismo motor de dibujo del visor: **placa simple**, **placa extendida**, **doble ángulo**, **placa de extremo**, **asiento** y **asiento rigidizado**. Las ilustraciones de corte separan la viga del apoyo para que se vea la placa, el asiento o los ángulos. Las tarjetas de **corte viga-columna** añaden una columna corta de contexto; las de **corte viga-viga** muestran el alma del apoyo. **Placa doblada en esviaje** mantiene el isométrico SVG porque el modelo 3D actual no representa con claridad el apoyo en esviaje. Las tarjetas de las familias disponibles también muestran una ilustración 3D representativa. Al elegir una tarjeta, se abre el editor correspondiente con un proyecto inicial válido y valores habituales.
 
-La comparación entre los isométricos SVG y las ilustraciones 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente.
+La comparación entre los isométricos SVG y las ilustraciones 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente. Debajo de las familias, **Proyectos recientes** muestra los cinco últimos proyectos abiertos o guardados; un clic los abre.
+
+## Cambios sin guardar, recientes y preferencias
+
+- **Cambios sin guardar.** Al editar un campo, una tabla, la geometría en el lienzo o al crear una sección o un material, el título de la ventana muestra `*`. Al cerrar la ventana, abrir otro proyecto del mismo tipo o crear uno nuevo, OpenConex pregunta **Guardar / Descartar / Cancelar**. **Cancelar** deja la ventana como estaba. Si no hay cambios, no pregunta.
+- **Archivo > Abrir reciente** lista los ocho últimos proyectos abiertos o guardados en cualquiera de las tres ventanas; los archivos que ya no existen no aparecen. **Borrar la lista** la vacía. En la ventana principal, un proyecto de corte o de momento se abre en su propia ventana.
+- **Carpetas.** Los diálogos de abrir, guardar y exportar empiezan en la carpeta del proyecto actual o en la última usada.
+- **Unidades.** La ventana principal recuerda el último preset elegido en el menú **Unidades** y lo usa al abrirse. Al abrir un proyecto mandan las unidades del proyecto.
+- **Tamaño y posición** de cada ventana se recuerdan al cerrarla.
+
+Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de configuración del usuario (en Windows, `%APPDATA%\OpenConex`); no forman parte del proyecto ni cambian los resultados.
+
+## Arrastrar y soltar
+
+- Un `.ocnx` soltado sobre cualquier ventana se abre como con **Archivo > Abrir**.
+- En la ventana principal, con un proyecto abierto como plantilla:
+  - un `.xlsx` exportado por SAP2000/ETABS (hojas que empiezan con `TABLE:`) abre **Importar SAP2000 / ETABS**;
+  - cualquier otro `.xlsx` o un `.csv` abre **Importar Excel / CSV**.
+
+  El diálogo se abre con el archivo y, como salida, la carpeta del archivo; ambos se pueden cambiar antes de importar.
 
 ## Flujo de trabajo
 
@@ -283,6 +302,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 - Importación de SAP2000/ETABS y Excel/CSV, con creación de proyectos por apoyo o por sección.
 - Cálculo y reporte por lotes de una carpeta de proyectos.
 - Cálculo individual, resumen, traza y figuras.
+- Aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar archivos.
 - Exportación a los formatos disponibles.
 - Ventana de conexiones de corte: edición (incluido el refuerzo del destaje), cálculo, figuras, 3D y exportación.
 

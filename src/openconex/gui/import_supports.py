@@ -30,10 +30,13 @@ __all__ = ["ImportSupportsDialog"]
 class ImportSupportsDialog(QDialog):
     """Choose the CSI export, the output folder and the batch options."""
 
-    def __init__(self, parent: QWidget | None, template_name: str) -> None:
+    def __init__(self, parent: QWidget | None, template_name: str, file: str = "") -> None:
         super().__init__(parent)
         self.setWindowTitle("Importar SAP2000 / ETABS")
         self._build_ui(template_name)
+        if file:
+            self._file.setText(file)
+            self._output.setText(str(Path(file).parent))
 
     def _tip(self, widget: QWidget, key: str) -> None:
         widget.setToolTip(help_text(key))

@@ -132,6 +132,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 |---|---|---|---|---|---|
 | `main.file.new` | Abre la galería para crear una conexión. | Archivo → Nueva conexión (Ctrl+N). | Crea un proyecto de placa base o de corte con valores iniciales. | — | todas |
 | `main.file.open` | Abre un proyecto .ocnx. | Archivo → Abrir (Ctrl+O). | Carga el proyecto y actualiza la ventana. | — | todas |
+| `main.file.recent` | Lista los últimos proyectos abiertos o guardados. | Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía. | Abre el proyecto en la ventana que le corresponde. | — | todas |
 | `main.file.save` | Guarda el proyecto actual. | Archivo → Guardar (Ctrl+S). | Escribe el archivo .ocnx. | — | todas |
 | `main.file.save_as` | Guarda con otro nombre. | Archivo → Guardar como. | Crea un archivo nuevo. | — | todas |
 | `main.file.shear` | Abre la ventana de conexiones de corte. | Archivo → Nueva conexión de corte. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
