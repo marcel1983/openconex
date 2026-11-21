@@ -36,11 +36,15 @@ LABELS = {
 class TableImportDialog(QDialog):
     """Choose a CSV/XLSX table, the output folder and the default units."""
 
-    def __init__(self, parent: QWidget | None, default_units: str = "US") -> None:
+    def __init__(self, parent: QWidget | None, default_units: str = "US",
+                 file: str = "") -> None:
         super().__init__(parent)
         self.setWindowTitle("Importar Excel / CSV")
         self.resize(560, 360)
         self._build(default_units if default_units in PRESETS else "US")
+        if file:
+            self._file.setText(file)
+            self._output.setText(str(Path(file).parent))
 
     def _tip(self, widget: QWidget, key: str) -> None:
         widget.setToolTip(help_text(key))

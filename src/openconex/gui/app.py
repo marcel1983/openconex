@@ -16,7 +16,6 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
-    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
@@ -60,10 +59,17 @@ from openconex.gui.quantity import (
     format_quantity,
     unit_label,
 )
+from openconex.gui.session import (
+    ProjectSessionMixin,
+    add_recent_project,
+    populate_recent_menu,
+    preferred_units,
+    set_preferred_units,
+)
 from openconex.gui.units import UnitDialog
 from openconex.gui.viewer3d import Viewer3D
 from openconex.help import help_text
-from openconex.io.csi import import_supports
+from openconex.io.csi import import_supports, is_csi_export
 from openconex.io.csi_projects import Grouping, LoadSource, base_plate_projects
 from openconex.io.project import (
     BoltGradeInput,
@@ -128,8 +134,11 @@ def _quantity_row(edit: QLineEdit, unit: QLabel) -> QWidget:
     return widget
 
 
-class MainWindow(QMainWindow):
+class MainWindow(ProjectSessionMixin, QMainWindow):
     """Small project editor and report viewer for base plates."""
+
+    _session_key = "main"
+    _drop_suffixes = (".ocnx", ".xlsx", ".csv")
 
     def __init__(self) -> None:
         super().__init__()
@@ -154,7 +163,7 @@ class MainWindow(QMainWindow):
 
     # -- construction -----------------------------------------------------------
     def _build_ui(self) -> None:
-        self.setWindowTitle(APP_NAME)
+        self.setWindowTitle(f"{APP_NAME}[*]")
         self.setWindowIcon(app_icon())
         self.resize(1280, 860)
         self._build_menu()
@@ -176,6 +185,11 @@ class MainWindow(QMainWindow):
                 self._schedule_geometry_refresh)
         self._connection_combo.currentIndexChanged.connect(self._on_connection_changed)
         self._on_connection_changed()
+        preset = preferred_units()
+        if preset in PRESETS and preset != self._units.name:
+            self.set_unit_system(preset)
+        self._init_session(self._form)
+        self._set_clean()
         self.statusBar().showMessage("Abra un proyecto .ocnx o importe apoyos de "
                                      "SAP2000/ETABS.")
 
@@ -193,6 +207,10 @@ class MainWindow(QMainWindow):
                                    "Ctrl+N", "main.file.new"))
         file_menu.addAction(action("Abrir…", self.open_project_dialog, "Ctrl+O",
                                    "main.file.open"))
+        recent = file_menu.addMenu("Abrir reciente")
+        recent.setToolTipsVisible(True)
+        self._tip(recent.menuAction(), "main.file.recent")
+        recent.aboutToShow.connect(lambda: populate_recent_menu(recent, self.open_project))
         file_menu.addAction(action("Guardar", self.save_project_dialog, "Ctrl+S",
                                    "main.file.save"))
         file_menu.addAction(action("Guardar como…",
@@ -299,6 +317,7 @@ class MainWindow(QMainWindow):
     def _build_body(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
         form = QWidget()
+        self._form = form
         form_layout = QVBoxLayout(form)
         form_layout.addWidget(self._build_info_group())
         form_layout.addWidget(self._build_connection_group())
@@ -583,6 +602,8 @@ class MainWindow(QMainWindow):
         else:
             new = selection
             label = "personalizado"
+        if isinstance(selection, str):
+            set_preferred_units(selection)
         if new == self._units:
             self._check_unit_action(selection if isinstance(selection, str) else "")
             return
@@ -952,6 +973,8 @@ class MainWindow(QMainWindow):
             edit, _label, kind = field
             with QSignalBlocker(edit):
                 edit.setText(format_quantity(value, kind, self._units))
+        if changes:
+            self._mark_modified()
         if hasattr(self, "_geometry_timer"):
             self._geometry_timer.start(0)
 
@@ -1058,6 +1081,7 @@ class MainWindow(QMainWindow):
         if self.project is not None:
             self.project.sections = [item.model_copy(deep=True)
                                      for item in self._custom_sections.values()]
+            self._mark_modified()
         return label
 
     def add_custom_material(self, material: MaterialInput) -> None:
@@ -1071,6 +1095,7 @@ class MainWindow(QMainWindow):
             raise ValueError(f"Ya existe un material llamado {name!r}.")
         self.project.materials.append(material.model_copy(update={"name": name}))
         self._refresh_material_combos()
+        self._mark_modified()
 
     def add_custom_bolt(self, grade: BoltGradeInput) -> None:
         """Add a custom bolt grade to the project and to the combos."""
@@ -1082,6 +1107,7 @@ class MainWindow(QMainWindow):
             raise ValueError(f"Ya existe un grado de perno llamado {name!r}.")
         self.project.bolts.append(grade.model_copy(update={"name": name}))
         self._refresh_material_combos()
+        self._mark_modified()
 
     def add_custom_electrode(self, electrode: ElectrodeInput) -> None:
         """Add a custom electrode to the project and to the combos."""
@@ -1094,6 +1120,7 @@ class MainWindow(QMainWindow):
         self.project.electrodes.append(electrode.model_copy(update={"name": name}))
         if self.advanced is not None:
             self.advanced.set_electrodes(self._electrode_names())
+        self._mark_modified()
 
     def _on_section_changed(self, label: str) -> None:
         if self._suspend_grade_sync or "column_grade" not in self._material_combos:
@@ -1155,8 +1182,7 @@ class MainWindow(QMainWindow):
             self.cases.removeRow(row)
 
     def open_project_dialog(self) -> None:
-        path, _ = QFileDialog.getOpenFileName(self, "Abrir proyecto", "",
-                                               "OpenConex (*.ocnx);;Todos (*)")
+        path = self._open_file_name()
         if path:
             self.open_project(path)
 
@@ -1167,15 +1193,21 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error al abrir", str(exc))
             return
         if project.shear_connection is not None:
+            add_recent_project(path)
             self.open_shear_window(project, path)
             return
         if project.moment_connection is not None:
+            add_recent_project(path)
             self.open_moment_window(project, path)
+            return
+        if not self.maybe_save():
             return
         self.project = project
         self.path = Path(path)
         self._fill_form(project)
         self._clear_report()
+        self._set_clean()
+        add_recent_project(path)
         self.statusBar().showMessage(f"Proyecto abierto: {self.path}")
 
     def open_project_model(self, project: Project,
@@ -1185,8 +1217,29 @@ class MainWindow(QMainWindow):
         self.path = None if path is None else Path(path)
         self._fill_form(project)
         self._clear_report()
+        self._set_clean()
         self.statusBar().showMessage(
             f"Proyecto creado: {project.info.name or 'sin nombre'}")
+
+    def maybe_save(self) -> bool:
+        return self.project is None or super().maybe_save()
+
+    def _session_name(self) -> str:
+        if self.path is not None:
+            return self.path.name
+        return (self.project.info.name if self.project else "") or "sin guardar"
+
+    def _session_save(self) -> bool:
+        return self.save_project_dialog()
+
+    def _open_dropped(self, path: Path) -> None:
+        suffix = path.suffix.lower()
+        if suffix == ".ocnx":
+            self.open_project(path)
+        elif suffix == ".xlsx" and is_csi_export(path):
+            self.import_csi_dialog(str(path))
+        else:
+            self.import_table_dialog(str(path))
 
     def new_connection_dialog(self) -> None:
         from openconex.gui.start import ConnectionStartDialog
@@ -1198,14 +1251,8 @@ class MainWindow(QMainWindow):
         if selection.kind == "open" and selection.path is not None:
             self.open_project(selection.path)
         elif selection.kind == "base_plate" and selection.project is not None:
-            if self.project is not None:
-                answer = QMessageBox.question(
-                    self, "Nueva conexión",
-                    "Se reemplazará el proyecto de placa base actual. ¿Desea continuar?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                    QMessageBox.StandardButton.No)
-                if answer != QMessageBox.StandardButton.Yes:
-                    return
+            if not self.maybe_save():
+                return
             self.open_project_model(selection.project)
         elif selection.kind == "shear" and selection.project is not None:
             self.open_shear_window(selection.project)
@@ -1232,13 +1279,13 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage("Conexión de momento abierta en otra ventana.")
         return window
 
-    def import_csi_dialog(self) -> None:
+    def import_csi_dialog(self, file: str = "") -> None:
         if self.project is None:
             QMessageBox.warning(self, "Sin plantilla", "Abra el proyecto que servirá de "
                                 "plantilla antes de importar.")
             return
         name = self.project.info.name or (self.path.name if self.path else "")
-        dialog = ImportSupportsDialog(self, name)
+        dialog = ImportSupportsDialog(self, name, file)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self.import_from_csi(dialog.file, dialog.output, dialog.group, dialog.loads,
@@ -1285,13 +1332,13 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f"Importados {len(written)} proyectos en {out}")
         return written
 
-    def import_table_dialog(self) -> None:
+    def import_table_dialog(self, file: str = "") -> None:
         if self.project is None:
             QMessageBox.warning(self, "Sin plantilla", "Abra el proyecto que servirá de "
                                 "plantilla antes de importar.")
             return
         default = self._units.name if self._units.name in PRESETS else "US"
-        dialog = TableImportDialog(self, default)
+        dialog = TableImportDialog(self, default, file)
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
         self.import_table_file(dialog.file, dialog.output, dialog.units)
@@ -1413,7 +1460,7 @@ class MainWindow(QMainWindow):
 
     def _update_title(self) -> None:
         name = self.project.info.name if self.project else ""
-        self.setWindowTitle(f"{APP_NAME} — {name}" if name else APP_NAME)
+        self.setWindowTitle(f"{APP_NAME} — {name}[*]" if name else f"{APP_NAME}[*]")
 
     def _project_from_form(self) -> Project | None:
         if self.project is None:
@@ -1658,38 +1705,40 @@ class MainWindow(QMainWindow):
         for action in self._export_actions:
             action.setEnabled(enabled)
 
-    def save_project_dialog(self, save_as: bool = False) -> None:
+    def save_project_dialog(self, save_as: bool = False) -> bool:
         if self.project is None:
             QMessageBox.warning(self, "Sin proyecto", "Abra un proyecto .ocnx primero.")
-            return
+            return False
         path = self.path
         if save_as or path is None:
-            selected, _ = QFileDialog.getSaveFileName(self, "Guardar proyecto", "",
-                                                       "OpenConex (*.ocnx)")
+            selected = self._save_file_name()
             if not selected:
-                return
+                return False
             path = Path(selected)
             if path.suffix.lower() != ".ocnx":
                 path = path.with_suffix(".ocnx")
-        self.save_project_to(path)
+        return self.save_project_to(path)
 
-    def save_project_to(self, path: str | Path) -> None:
+    def save_project_to(self, path: str | Path) -> bool:
         project = self._project_from_form()
         if project is None:
-            return
+            return False
         try:
             save_project(project, path)
         except Exception as exc:
             QMessageBox.critical(self, "Error al guardar", str(exc))
-            return
+            return False
         self.project, self.path = project, Path(path)
         self._update_title()
+        self._set_clean()
+        add_recent_project(path)
         self.statusBar().showMessage(f"Proyecto guardado: {path}")
+        return True
 
     def export(self, kind: str, suffix: str) -> None:
         if self.report is None or self.project is None:
             return
-        path, _ = QFileDialog.getSaveFileName(self, "Exportar", "", f"*{suffix}")
+        path = self._export_file_name(suffix)
         if not path:
             return
         target = Path(path)
@@ -1769,6 +1818,7 @@ def main(argv: list[str] | None = None) -> int:
             except Exception as exc:
                 QMessageBox.critical(None, "Error al abrir", str(exc))
                 return 1
+            add_recent_project(selection.path)
             if project.shear_connection is not None:
                 from openconex.gui.shear import ShearWindow
 

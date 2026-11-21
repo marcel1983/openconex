@@ -135,6 +135,7 @@ Esta página se genera desde `src/openconex/help.py`. Cada entrada responde qué
 |---|---|---|---|---|---|
 | `menu.file.new` | Crea un proyecto nuevo con la plantilla de placa simple. | Archivo → Nuevo (Ctrl+N). | Descarta el proyecto actual y carga la plantilla. | — | todas |
 | `menu.file.open` | Abre un proyecto .ocnx existente. | Archivo → Abrir (Ctrl+O) y elija el archivo. | Carga todos los datos y recalcula la ventana. | — | todas |
+| `menu.file.recent` | Lista los últimos proyectos abiertos o guardados. | Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía. | Carga el proyecto en esta ventana si es del mismo tipo. | — | todas |
 | `menu.file.save` | Guarda el proyecto en el archivo actual. | Archivo → Guardar (Ctrl+S). | Escribe el .ocnx con los valores del formulario. | — | todas |
 | `menu.file.save_as` | Guarda el proyecto con otro nombre. | Archivo → Guardar como y elija la ruta. | Crea un archivo nuevo; no modifica el original. | — | todas |
 | `menu.calc.run` | Ejecuta todas las comprobaciones del proyecto. | Cálculo → Calcular o F5. | Actualiza el resumen, las verificaciones y las figuras. | — | todas |
