@@ -300,11 +300,14 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
 
 
 def build_report(project: Project, today: dt.date | None = None) -> Report:
-    """Report of a base plate or of a shear connection project."""
+    """Report of a base plate, shear connection, moment connection or splice project."""
     if project.shear_connection is not None:
         from openconex.report.shear import build_shear_report
         return build_shear_report(project, today)
     if project.moment_connection is not None:
         from openconex.report.moment import build_moment_report
         return build_moment_report(project, today)
+    if project.splice is not None:
+        from openconex.report.splice import build_splice_report
+        return build_splice_report(project, today)
     return build_base_plate_report(project, today)

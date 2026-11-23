@@ -153,6 +153,10 @@ No hay todavía un ejemplo publicado transcrito: los ejemplos de conexiones prec
 
 La DG13 (Apéndice D) da reglas de detalle y el modelo de fuerzas, pero no un ejemplo resuelto. `tests/moment/test_column_web.py` comprueba los espesores mínimos (t_f + 1/4 in y t_f + 3/8 in) y la prolongación de 3/4 in de la guía, y las resistencias (fluencia de la placa, soldaduras a las alas y rotura del alma en la placa simple) contra cálculos manuales con AISC 360-22. En la matriz figuran como parciales.
 
+## Empalmes (F7)
+
+No hay todavía un ejemplo publicado de empalme apernado de viga o de columna en el proyecto. `docs/verificacion/calculos/empalmes.py` recalcula, sin importar `openconex`, los estados límite principales de los dos ejemplos (`examples/splice_beam_bolted.ocnx` con V = 60 kip, M = 300 kip·ft y P = −20 kip; `examples/splice_column_fillers.ocnx` con P = 200 kip, M = 150 kip·ft y V_weak = 20 kip, LRFD), y `tests/splice/test_splice.py` compara el programa con ese cálculo dentro del 0,5 %: pernos de ala (con desgarro hacia los extremos y el factor de rellenos de §J5.2), fluencia y rotura de las cubreplacas (A_e ≤ 0,85 A_g), compresión, bloque de corte del ala, §F13.1, corte, bloque y flexión de las cubreplacas del alma y aplastamiento de extremos fresados. El grupo excéntrico de pernos del alma usa el centro instantáneo ya validado contra las Tablas 7-6 a 7-8. En la matriz figuran como parciales hasta compararlos con un ejemplo publicado o con otro programa.
+
 ## Hallazgos de la validación
 
 - **DG16, ejemplo 3.2.4, procedimiento 2:** φM_np = 1045 ≤ φ_b M_pl/1,11 = 1064 k-in, así que el diagrama del Apéndice B corregido por la errata de 2016 clasifica la placa como gruesa y da mín(φM_np, φ_b M_pl/γ_r) = 945 k-in (fluencia de la placa). La Guía publica 901 k-in (rotura de pernos con palanca), que corresponde a la rama de placa delgada. La prueba comprueba 945 y 1045 k-in.

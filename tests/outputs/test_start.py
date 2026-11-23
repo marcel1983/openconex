@@ -40,8 +40,9 @@ def test_families_and_subtypes():
     assert by_id["shear_column"].enabled
     assert by_id["shear_beam"].enabled
     assert not by_id["moment"].enabled
-    assert not by_id["splice"].enabled
+    assert by_id["splice"].enabled
     assert len(by_id["base_plate"].subtypes) == 3
+    assert [s.id for s in by_id["splice"].subtypes] == ["beam", "column"]
     assert len(by_id["shear_column"].subtypes) == 7
 
 
@@ -53,6 +54,9 @@ def test_every_subtype_builds_a_valid_project(family):
         if family.id == "base_plate":
             assert project.base_plate is not None
             assert project.shear_connection is None
+        elif family.id == "splice":
+            assert project.splice is not None
+            assert project.splice.type.value == subtype.id
         else:
             assert project.shear_connection is not None
             assert project.base_plate is None

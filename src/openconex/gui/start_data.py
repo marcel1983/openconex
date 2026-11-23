@@ -196,6 +196,45 @@ SHEAR_BEAM_SUBTYPES = tuple(
     for subtype in SHEAR_SUBTYPES
 )
 
+SPLICE_BEAM: dict[str, Any] = {
+    "info": {"name": "Empalme de viga", "language": "es", "units": "US"},
+    "splice": {
+        "type": "beam", "beam": "W21X62",
+        "flange": {"bolt": {"diameter": "7/8 in"}, "rows": 4, "spacing": "3 in",
+                   "gage": "5.5 in", "width": "8 in", "thickness": "5/8 in",
+                   "lev_member": "1.5 in", "lev_plate": "1.5 in"},
+        "web": {"bolt": {"diameter": "7/8 in"}, "rows": 5, "spacing": "3 in",
+                "height": "15 in", "thickness": "3/8 in", "lev_member": "1.5 in",
+                "leh_plate": "1.5 in"}},
+    "cases": [{"name": "D", "type": "D", "V": "15 kip", "M": "75 kip*ft"},
+              {"name": "L", "type": "L", "V": "30 kip", "M": "150 kip*ft"}],
+    "combinations": {"methods": ["LRFD", "ASD"]},
+}
+SPLICE_COLUMN: dict[str, Any] = {
+    "info": {"name": "Empalme de columna", "language": "es", "units": "US"},
+    "splice": {
+        "type": "column", "upper": "W14X90", "lower": "W14X132", "grade": "ASTM A36",
+        "flange": {"bolt": {"diameter": "7/8 in"}, "rows": 3, "spacing": "3 in",
+                   "gage": "5.5 in", "width": "14 in", "thickness": "1/2 in",
+                   "lev_member": "1.5 in", "lev_plate": "1.5 in"},
+        "web": {"bolt": {"diameter": "7/8 in"}, "rows": 3, "spacing": "3 in",
+                "height": "9 in", "thickness": "3/8 in", "lev_member": "1.5 in",
+                "leh_plate": "1.5 in"}},
+    "cases": [{"name": "D", "type": "D", "P": "180 kip", "V": "4 kip", "M": "20 kip*ft"},
+              {"name": "L", "type": "L", "P": "120 kip", "V": "6 kip", "M": "30 kip*ft"},
+              {"name": "W", "type": "W", "P": "-60 kip", "V": "15 kip",
+               "M": "140 kip*ft", "V_weak": "10 kip"}],
+    "combinations": {"methods": ["LRFD"]},
+}
+SPLICE_SUBTYPES = _subtypes((
+    ("beam", "Empalme de viga",
+     "Cubreplacas apernadas en las alas y en el alma.",
+     "splice_beam"),
+    ("column", "Empalme de columna",
+     "Cubreplacas de ala apernadas, con rellenos y extremos fresados.",
+     "splice_column"),
+))
+
 FAMILIES = (
     Family("base_plate", "Placa base",
            "Columna apoyada en concreto, con anclajes y placa de acero.",
@@ -211,7 +250,7 @@ FAMILIES = (
            enabled=False, badge="Próximamente"),
     Family("splice", "Empalmes",
            "Unión de dos tramos de viga o de columna.", "family_splice",
-           enabled=False, badge="Próximamente"),
+           SPLICE_SUBTYPES),
 )
 
 
@@ -252,5 +291,9 @@ def build_project(family_id: str, subtype_id: str) -> Project:
                                      else "W21X62")
             connection["support_element"] = "web"
         data["info"]["name"] = f"Conexión de corte — {subtype.label}"
+        return Project.model_validate(data)
+    if family_id == "splice":
+        data = copy.deepcopy(SPLICE_BEAM if subtype_id == "beam" else SPLICE_COLUMN)
+        data["info"]["name"] = subtype.label
         return Project.model_validate(data)
     raise ValueError(f"{family.label} todavía no está disponible")
