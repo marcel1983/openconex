@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from openconex import __version__
 from openconex.connections.base_plate.check import (
     BearingAreaModel,
+    EmbeddedType,
     PressureModel,
     check_envelope,
 )
@@ -139,17 +140,20 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
 
     L, T = Kind.LENGTH, Kind.THICKNESS
     embedded = bp.embedded_base
+    type2 = embedded is not None and embedded.type == EmbeddedType.TYPE_II
     if embedded is not None:
         inputs = [
             Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
             Row([tr("input.grade", lang), bp.plate_grade]),
             Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+            Row([tr("input.embedded_type", lang), embedded.type.value]),
             Row([tr("input.embedment", lang), q(embedded.embedment, L)]),
             Row([tr("input.foundation_width", lang), q(embedded.foundation_width, L)]),
-            Row([tr("input.face_plate_thickness", lang),
-                 q(embedded.face_plate_thickness, T)]),
-            Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]),
         ]
+        if not type2:
+            inputs.append(Row([tr("input.face_plate_thickness", lang),
+                               q(embedded.face_plate_thickness, T)]))
+        inputs.append(Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]))
         if embedded.base_plate_width is not None:
             inputs += [
                 Row([tr("input.base_plate_width", lang),
@@ -164,6 +168,9 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
                                    f"{q(layer.area, Kind.AREA)} · "
                                    f"{q(layer.fy, Kind.STRESS)} · "
                                    f"d {q(layer.depth, L)}"]))
+        if embedded.face_plate_weld:
+            inputs.append(Row([tr("input.face_plate_weld", lang),
+                               q(embedded.face_plate_weld, T)]))
         if embedded.damage_limit:
             inputs.append(Row([tr("input.damage_limit", lang), "0.8 M_HB"]))
     else:
@@ -210,6 +217,15 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
                                f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
                                f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
                                + tr(f"input.lug_direction_{lug.direction}", lang)]))
+        if bp.pedestal is not None:
+            ped = bp.pedestal
+            size = (f"Ø {q(bp.pedestal_N, L)}" if ped.shape == "round"
+                    else f"{q(bp.pedestal_N, L)} × {q(bp.pedestal_B, L)}")
+            ties = (f"; Ø {q(ped.tie_diameter, L)} @ {q(ped.tie_spacing, L)}"
+                    if ped.tie_diameter else "")
+            inputs.append(Row([tr("input.pedestal_design", lang),
+                               f"{size}, h = {q(ped.height, L)}, "
+                               f"fy = {q(ped.fy, Kind.STRESS)}{ties}"]))
     forces = project.case_forces()
     biaxial = any(f.V3 or f.M2 for f in forces.values())
     case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]
@@ -225,12 +241,18 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
     if embedded is not None:
-        assumptions = [tr("report.assumption_embedded_lrfd", lang),
-                       tr("report.assumption_embedded_base", lang),
-                       tr("report.assumption_embedded_scope", lang),
-                       tr("report.assumption_embedded_limits", lang)]
+        assumptions = [tr("report.assumption_embedded_lrfd", lang)]
+        if type2:
+            assumptions.append(tr("report.assumption_type2", lang))
+        else:
+            assumptions += [tr("report.assumption_embedded_base", lang),
+                            tr("report.assumption_embedded_weld" if embedded.face_plate_weld
+                               else "report.assumption_embedded_scope", lang)]
+        assumptions.append(tr("report.assumption_embedded_limits", lang))
         if embedded.base_plate_width is None:
             assumptions.append(tr("report.assumption_embedded_no_plate", lang))
+        else:
+            assumptions.append(tr("report.assumption_embedded_plate", lang))
         if embedded.rebar_top is None and embedded.rebar_bottom is None:
             assumptions.append(tr("report.assumption_embedded_no_rebar", lang))
         assumptions.append(tr(
@@ -255,6 +277,10 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
             assumptions.append(tr("report.assumption_effective_area", lang))
         if bp.weak_base is not None:
             assumptions.append(tr("report.assumption_weak_base", lang))
+        if bp.pedestal is not None:
+            assumptions.append(tr("report.assumption_pedestal", lang))
+            if bp.pedestal.shape == "round":
+                assumptions.append(tr("report.assumption_pedestal_round", lang))
     figures = base_plate_figures(project, bp, lang, units)
     today = today or dt.date.today()
     return Report(

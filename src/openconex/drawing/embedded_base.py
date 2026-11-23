@@ -47,7 +47,8 @@ def _elevation(s: _Sheet, bp: BasePlate, fw: float, emb: float, depth: float, h:
     s.rect(-d / 2, top - emb, d / 2, top + stub, "BP-COLUMNA")
     # The face bearing plates sit on the top of the foundation, not at the
     # bottom of the embedment (DG1 Figure 5-1 and Section 5.3).
-    s.rect(-d / 2 + tf, top, d / 2 - tf, top + tp, "BP-PLACA")
+    if tp > 0:  # face bearing plates (Type I)
+        s.rect(-d / 2 + tf, top, d / 2 - tf, top + tp, "BP-PLACA")
     if embedded.base_plate_width is not None:
         width = s.u(embedded.base_plate_width)
         bp_t = s.u(embedded.base_plate_thickness)

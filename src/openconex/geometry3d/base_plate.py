@@ -98,8 +98,13 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
     z_plate = grout
     z_top = grout + bp.tp
     pn, pb = pedestal_N or bp.N + 300, pedestal_B or bp.B + 300
+    depth = bp.pedestal.height if bp.pedestal is not None else hef + 150
+    if bp.pedestal_shape == "round":
+        pedestal = _cylinder(0, 0, -depth, pn / 2, depth)
+    else:
+        pedestal = _box(-pn / 2, -pb / 2, -depth, pn, pb, depth)
     parts = [
-        Part("pedestal", _box(-pn / 2, -pb / 2, -(hef + 150), pn, pb, hef + 150)),
+        Part("pedestal", pedestal),
         Part("grout", _box(-bp.N / 2, -bp.B / 2, 0, bp.N, bp.B, grout)),
         Part("base_plate", _cut_all(_box(-bp.N / 2, -bp.B / 2, z_plate, bp.N, bp.B, bp.tp),
                                     [_cylinder(x, y, z_plate - 1, hole / 2, bp.tp + 2)
@@ -121,6 +126,7 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         web = _box(-col.d / 2 + col.tf, -col.tw / 2, z_top, col.d - 2 * col.tf, col.tw, h)
         column = _fuse_all([*flanges, web])
     parts.append(Part("column", column))
+    parts += _pedestal_reinforcement(bp, pn, pb, depth)
     if bp.shear_lug:
         lug = bp.shear_lug
         h_lug = grout + lug.embedment
@@ -141,6 +147,44 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         parts.append(Part(f"washer_{i}", washer))
         parts.append(Part(f"nut_top_{i}", _hex_nut(x, y, z_top + w_t, af, d, d)))
         parts.append(Part(f"nut_embedded_{i}", _hex_nut(x, y, -hef, af, d, d)))
+    return parts
+
+
+def _ring(x0, y0, z0, dx, dy, bar):
+    """Closed rectangular tie of bar diameter ``bar`` with outside size dx × dy."""
+    outer = _box(x0, y0, z0, dx, dy, bar)
+    inner = _box(x0 + bar, y0 + bar, z0 - 1, dx - 2 * bar, dy - 2 * bar, bar + 2)
+    return _cut_all(outer, [inner])
+
+
+def _pedestal_reinforcement(bp: BasePlate, pn: float, pb: float, depth: float) -> list[Part]:
+    """Longitudinal pedestal bars and, with a pedestal design, its ties."""
+    parts = []
+    bars = bp.pedestal_rebars
+    if not bars:
+        return parts
+    top = -50.0  # bars stop below the top of the concrete (cover)
+    for i, bar in enumerate(bars, 1):
+        parts.append(Part(f"rebar_long_{i}", _cylinder(bar.x, bar.y, -depth + 50.0,
+                                                       bar.diameter / 2, depth - 100.0)))
+    ped = bp.pedestal
+    if ped is None or not ped.tie_diameter or not ped.tie_spacing:
+        return parts
+    tie = ped.tie_diameter
+    long_d = max(bar.diameter for bar in bars)
+    reach_x = max(abs(bar.x) for bar in bars) + long_d / 2 + tie
+    reach_y = max(abs(bar.y) for bar in bars) + long_d / 2 + tie
+    z = top - tie
+    k = 0
+    while z > -depth + 50.0 and k < 60:
+        k += 1
+        if bp.pedestal_shape == "round":
+            r = max(math.hypot(bar.x, bar.y) for bar in bars) + long_d / 2 + tie
+            ring = _cut_all(_cylinder(0, 0, z, r, tie), [_cylinder(0, 0, z - 1, r - tie, tie + 2)])
+        else:
+            ring = _ring(-reach_x, -reach_y, z, 2 * reach_x, 2 * reach_y, tie)
+        parts.append(Part(f"rebar_tie_{k}", ring))
+        z -= ped.tie_spacing
     return parts
 
 
@@ -180,6 +224,8 @@ def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
             -width / 2, -width / 2, z0 - embedded.base_plate_thickness, width, width,
             embedded.base_plate_thickness)))
     tp = embedded.face_plate_thickness
+    if tp <= 0:  # Type II: compression through the embedded base plate
+        return parts
     x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
     # Face bearing plates bear on the top of the foundation (DG1 §5.3).
     parts.append(Part("face_plate_front", _box(

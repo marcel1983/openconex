@@ -23,6 +23,28 @@ Cada parte del cálculo se compara con ejemplos resueltos o tablas publicadas. L
 | 6.4-1 | base débil con anclajes dúctiles (sísmica) |
 | B.2-1, B.2-2, B.3-1 | distribución triangular y área efectiva (Apéndice B) |
 
+## Pedestal como columna corta (ACI 318-19)
+
+Prueba: `tests/base_plate/test_pedestal.py`.
+
+| Referencia | Sección | Valores comprobados |
+|---|---|---|
+| Reynolds y Kramer, *Interaction Diagrams for Concrete Columns*, ACI Designing Concrete Structures E702.2 (2007) | 12 × 12 in, 4 #8, f'c = 4 ksi, f_y = 60 ksi | P_n y M_n en c = 25,05, 7,06, 5,40 y 2,14 in (658,98/2,82; 281,02/99,41; 160,96/105,45; −43,73/52,38 kip, kip·ft); φP_n,max = 347,60 kip; φP_nt = −170,64 kip; φM_n = 64,62 kip·ft para φP_n = 182,67 kip y 47,14 kip·ft para −39,36 kip |
+| StructurePoint, *Interaction Diagram - Circular Reinforced Concrete Column (ACI 318-14)* (2020), según Wang et al., 8.ª ed. | Ø 20 in, 8 #9 en un círculo de 14,72 in, f'c = 5 ksi | P_n y M_n en c = 17,37, 12,91, 10,28, 6,51 y 6,256 in (1 312,6/277,5; 856,3/375,2; 518,9/407,7; 37,5/330,3; 0/320,1); P_o = 1 902 kip; φP_nt = −548,6 kip |
+
+E702.2 usa la transición de φ de ACI 318-05 (ε_t entre ε_y y 0,005); se comparan los valores nominales y los puntos con φ = 0,65 o 0,90, que coinciden con ACI 318-19. El corte del pedestal (Tabla 22.5.5.1 y §22.5.8.5.3) se comprueba contra el cálculo directo de las ecuaciones; no hay un ejemplo publicado.
+
+## Base empotrada: soldadura, placa embebida y Tipo II
+
+- Soldadura de las placas de cara: φR_n = 1,392 D L kip con E70 (Manual AISC, Ec. 8-2a).
+- Placa embebida: misma función que los ejemplos DG1 4.7-1 y 4.7-2 (`plate.compression_design`).
+- Levantamiento: funciones de arrancamiento y extracción de ACI 318-19 ya validadas con DG1 4.7-3 y 4.7-12.
+- Tipo II (DG1 §5.2.2): la DG1 no tiene ejemplo resuelto de Tipo II (el 5.3-1 es de Tipo I). Se prueba que φM_HB es el de la Ec. 5-6 con b_j de la placa embebida (la misma función validada con el 5.3-1), que coincide con el Tipo I con la misma placa, que M_VB = 0 y la F_t de la Ec. 5-9 calculada a mano.
+
+## Optimización global
+
+`tests/base_plate/test_optimize_global.py`: el resultado cumple todas las combinaciones de cinco ejemplos, no pesa más que la placa inicial ni que el óptimo local, es reproducible y, para una disposición, no es peor que la búsqueda exhaustiva en una malla de N, B y tp.
+
 ## Steel Tube Institute (2024)
 
 El artículo *HSS Base Plate Design for Axial Compression and Bending Moment* (M. Manor, septiembre de 2024) adapta la DG1 a columnas HSS e incluye dos ejemplos resueltos. Se comparan con `tests/base_plate/test_hss_moment.py`:

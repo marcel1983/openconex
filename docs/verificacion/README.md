@@ -96,8 +96,8 @@ Las limitaciones de alcance están en [Alcance y limitaciones](../usuario/08-lim
 
 - El HSS circular con momento se rechaza; el rectangular/cuadrado está validado contra STI.
 - El área efectiva solo aplica a compresión concéntrica de perfiles I.
-- La base empotrada Tipo II no se implementa porque la DG1 no presenta un método definitivo.
-- El pedestal no se diseña como columna ni se comprueba su corte como elemento.
+- La base empotrada Tipo II (DG1 §5.2.2) desprecia el momento por apoyo vertical M_VB (conservador), porque la DG1 no presenta un método definitivo ni un ejemplo resuelto.
+- El pedestal se diseña como columna corta (rectangular o circular) sin efectos de esbeltez; su corte no tiene ejemplo publicado.
 - La interacción placa–llave de corte usa un ancho efectivo, sin validación con elementos finitos.
 
 ## 7. Reproducción

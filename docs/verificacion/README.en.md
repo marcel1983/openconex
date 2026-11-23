@@ -81,8 +81,8 @@ Scope limitations are in [Scope and limitations](../usuario/08-limitaciones.md).
 
 - Round HSS with moment is rejected; rectangular/square HSS is validated against STI.
 - Effective area applies only to I-shapes in concentric compression.
-- Type II embedded base is not implemented because DG1 does not present a definitive method.
-- The pedestal is not designed as a column and its shear is not checked as an element.
+- Type II embedded base (DG1 §5.2.2) neglects the vertical-bearing moment M_VB (conservative), because DG1 presents neither a definitive method nor a worked example.
+- The pedestal is designed as a short column (rectangular or round) without slenderness effects; its shear has no published example.
 - The plate–shear lug interaction uses an effective width, without finite-element validation.
 
 ## 7. Reproduction

@@ -16,6 +16,9 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
 | `examples/base_plate_weak_base.ocnx` | base sísmica débil (DG1 6.4-1) |
 | `examples/base_plate_embedded_base.ocnx` | base empotrada tipo I (DG1 5.3-1) |
+| `examples/base_plate_embedded_type2.ocnx` | base empotrada tipo II: cimiento bajo la placa embebida diseñado para carga vertical |
+| `examples/base_plate_pedestal.ocnx` | pedestal rectangular diseñado como columna corta (ACI 318-19) |
+| `examples/base_plate_pedestal_round.ocnx` | pedestal circular diseñado como columna corta (ACI 318-19) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
 | `examples/base_plate_hss_round.ocnx` | columna HSS circular |
 | `examples/base_plate_shear_lug.ocnx` | llave de corte (DG1 Ejemplo 4.7-5) |
@@ -119,7 +122,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 
 | Campo | Por defecto | Significado |
 |---|---|---|
-| `connection_type` | `"exposed"` | Tipo de conexión: `exposed` (placa base expuesta) o `embedded` (base empotrada). Si se omite, se deduce de `embedded_base`. |
+| `connection_type` | `"exposed"` | Tipo de conexión: `exposed` (placa base expuesta) o `embedded` (base empotrada Tipo I o II, según `embedded_base.type`). Si se omite, se deduce de `embedded_base`. |
 | `column` | (obligatorio) | Columna: etiqueta del catálogo AISC (`"W12X96"`) o sección genérica (ver más abajo). |
 | `column_grade` | `"ASTM A992"` | Acero de la columna cuando `column` es una etiqueta del catálogo. |
 | `N` | (obligatorio en `exposed`) | Largo de la placa, en la dirección del eje fuerte. |
@@ -132,7 +135,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `fc` | (obligatorio) | Resistencia del concreto f'c. |
 | `A2_over_A1` | `1.0` | Relación entre el área de apoyo del concreto y el área de la placa, A2/A1 (1 a 4). Aumenta la resistencia al aplastamiento según √(A2/A1) ≤ 2. |
 | `bearing_area` | ninguno | Área de apoyo de la tuerca o placa embebida para la extracción del anclaje; si se omite, se usa la tuerca hexagonal pesada. |
-| `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal. Se usan en los planos y el modelo 3D y, si no se da `edges`, para deducir las distancias de los anclajes a los bordes (arrancamiento en tracción y corte, desprendimiento lateral). También limitan `A2_over_A1`: la verificación avisa si supera el valor que permite el pedestal. Sin pedestal ni `edges`, el concreto se toma ilimitado, como en una zapata. |
+| `pedestal_N`, `pedestal_B` | sin pedestal | Dimensiones del pedestal (en un pedestal circular, `pedestal_N` es el diámetro y `pedestal_B` se omite o es igual). Se usan en los planos y el modelo 3D y, si no se da `edges`, para deducir las distancias de los anclajes a los bordes (arrancamiento en tracción y corte, desprendimiento lateral). También limitan `A2_over_A1`: la verificación avisa si supera el valor que permite el pedestal. Sin pedestal ni `edges`, el concreto se toma ilimitado, como en una zapata. |
 | `grout` | `"1.5 in"` | Espesor del mortero de nivelación. Se usa en los planos y en el brazo de la llave de corte. |
 | `rod_diameter` | (obligatorio en `exposed`) | Diámetro de las barras de anclaje. |
 | `rod_grade` | `"ASTM F1554 Gr. 36"` | Material de las barras. |
@@ -142,9 +145,10 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
 | `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
-| `embedded_base` | ninguno | Base empotrada tipo I con placas de cara (ver más abajo). |
+| `embedded_base` | ninguno | Base empotrada tipo I o tipo II (DG1 Capítulo 5, ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
-| `pedestal_rebars` | `[]` | Barras longitudinales del pedestal para el revisor de interferencias (ver más abajo). |
+| `pedestal_rebars` | `[]` | Barras longitudinales del pedestal: revisor de interferencias y armadura del pedestal (ver más abajo). |
+| `pedestal` | ninguno | Diseño del pedestal como columna corta según ACI 318-19 (ver más abajo). |
 | `edges` | `{}` | Distancias de los anclajes extremos a los bordes del concreto: `left`, `right` (en la dirección de B), `bottom` (desde la fila traccionada, en la dirección de N) y `top`. Si se da alguna, se usan estas y no las del pedestal; las omitidas se toman como lejanas. |
 | `washer_thickness` | ninguno | Espesor de arandelas de placa soldadas a la placa base. Con arandelas soldadas, el corte se reparte entre todas las barras y se verifica la barra a tracción, corte y flexión. |
 | `flange_weld` | ninguno | Tamaño de la soldadura de filete en las alas de la columna; si se da, se verifica para el momento. |
@@ -243,14 +247,19 @@ La verificación es LRFD, requiere el modelo de presión rectangular, no admite 
 
 ### Base empotrada (`embedded_base`)
 
-Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concreto y el momento se resiste por apoyo horizontal. Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1):
+En los dos tipos de la DG1 Capítulo 5 la columna se empotra en el cimiento y el momento se resiste por apoyo horizontal del concreto sobre las alas; no hay placa base expuesta. Se eligen con `type` según el cimiento bajo la placa embebida (DG1 §5.2):
+
+- **Tipo I** (`"type": "I"`, por defecto): el cimiento bajo la placa embebida no se diseña para cargas verticales (o no hay placa embebida). Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1).
+- **Tipo II** (`"type": "II"`): el cimiento bajo la placa embebida sí se diseña para cargas verticales. La placa embebida es obligatoria y transmite toda la carga axial; no hay placas de cara. El detalle de una placa base expuesta con un bloque de concreto vertido encima (*blockout*) no es un Tipo II: la DG1 normalmente desprecia la flexión del bloque y lo trata en el Apéndice C.
 
 ```json
 "connection_type": "embedded",
 "embedded_base": {
+  "type": "I",
   "embedment": "22 in",
   "foundation_width": "60 in",
   "face_plate_thickness": "1 in",
+  "face_plate_weld": "5/16 in",
   "beta1": 0.85,
   "base_plate_width": "30 in",
   "base_plate_thickness": "1 in",
@@ -262,11 +271,13 @@ Base empotrada tipo I de la DG1 Capítulo 5: la columna se empotra en el concret
 
 | Campo | Por defecto | Significado |
 |---|---|---|
+| `type` | `"I"` | `I`: cimiento bajo la placa embebida no diseñado para carga vertical; `II`: diseñado para carga vertical. |
 | `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto. |
 | `foundation_width` | (obligatorio) | Ancho del cimiento en la dirección del momento. |
-| `face_plate_thickness` | (obligatorio) | Espesor de las placas de apoyo frontal. |
+| `face_plate_thickness` | obligatorio en Tipo I | Espesor de las placas de apoyo frontal. No se usa en el Tipo II. |
+| `face_plate_weld` | ninguno | Tamaño del filete de las placas de cara a la columna (Tipo I). Si se omite, no se verifica y se supone CJP o un detalle que desarrolla la placa. |
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
-| `base_plate_width` | ninguno | Ancho B de la placa embebida del fondo. Si se define, `b_j = (b_f + B)/2`. |
+| `base_plate_width` | ninguno (obligatorio en Tipo II) | Ancho B de la placa embebida del fondo (cuadrada). Si se define, `b_j = (b_f + B)/2`. |
 | `base_plate_thickness` | ninguno | Espesor de la placa embebida; obligatorio junto con `base_plate_width`. |
 | `rebar_top` | ninguno | Refuerzo horizontal superior: `area`, `fy` y `depth`. |
 | `rebar_bottom` | ninguno | Refuerzo horizontal inferior: `area`, `fy` y `depth`. |
@@ -280,16 +291,43 @@ Cada capa de refuerzo horizontal se define con:
 | `fy` | Fluencia del refuerzo. |
 | `depth` | Profundidad bajo la cara superior del cimiento. |
 
-Cuando se define `connection_type: "embedded"`, no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada y no los de la placa base expuesta.
+En la base empotrada no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada.
 
 Alcance implementado:
 
-- Tipo I con o sin placa embebida y con refuerzo horizontal superior e inferior opcional.
-- Solo LRFD, perfiles I y eje fuerte.
-- No admite levantamiento neto, momento débil, llave de corte, base débil ni combinaciones ASD.
-- El espesor sísmico mínimo de las placas de cara es `máx(0,75 t_w, 3/8 in)`.
-- La soldadura de las placas de apoyo frontal no se verifica; se supone CJP o un detalle capaz de desarrollar la fluencia de la placa.
-- El Tipo II no está implementado.
+- **Tipo I:** momento por apoyo horizontal (Ec. 5-6), aplastamiento y espesor de las placas de cara, espesor sísmico mínimo `máx(0,75 t_w, 3/8 in)`, soldadura de las placas de cara si se da `face_plate_weld`, y, con placa embebida, su aplastamiento y flexión por la carga axial. Con levantamiento neto exige placa embebida y verifica su flexión, el arrancamiento del concreto (h_ef = `embedment`) y la extracción.
+- **Tipo II** (versión conservadora): momento por apoyo horizontal (Ec. 5-6) con `b_j` de la placa embebida; el momento por apoyo vertical M_VB se toma igual a cero, porque la DG1 no da un método definitivo y advierte que con refuerzo horizontal soldado puede ser casi nulo. La placa embebida se verifica a aplastamiento y flexión con la compresión, y a flexión, arrancamiento y extracción con el levantamiento. Sin refuerzo horizontal, la traza informa la fuerza de arrancamiento F_t de la Ec. 5-9 (escenario 1), sin usarla.
+- Solo LRFD, perfiles I y eje fuerte. No admite momento débil, llave de corte, base débil ni combinaciones ASD.
+
+### Pedestal diseñado como columna (`pedestal`)
+
+Con este bloque el pedestal se verifica como columna corta con estribos según ACI 318-19. Necesita `pedestal_N`, `pedestal_B` (o solo `pedestal_N` si es circular) y las barras longitudinales en `pedestal_rebars`:
+
+```json
+"pedestal_N": "36 in",
+"pedestal_B": "36 in",
+"pedestal": {
+  "shape": "rectangular",
+  "height": "4 ft",
+  "fy": "60 ksi",
+  "tie_diameter": "0.5 in",
+  "tie_spacing": "12 in"
+}
+```
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `shape` | `"rectangular"` | `rectangular` o `round`. Otras formas se rechazan con un mensaje: deben verificarse aparte. En `round`, `pedestal_N` es el diámetro. |
+| `height` | (obligatorio) | Altura desde la zapata hasta la cara superior del pedestal. El momento de diseño en la base es `M + V·height`. |
+| `fy` | `"60 ksi"` | Fluencia de las barras longitudinales. |
+| `tie_diameter` | ninguno | Diámetro de los estribos; sin estribos, V_s = 0 y V_c usa la Ec. (c) de la Tabla 22.5.5.1. |
+| `tie_spacing` | ninguno | Separación de los estribos; obligatoria junto con `tie_diameter`. |
+| `tie_fy` | `"60 ksi"` | Fluencia de los estribos (se limita a 60 ksi en corte). |
+| `tie_legs` | `2` | Ramas del estribo que cruzan cada plano de corte. |
+| `min_ratio` | `0.01` | Cuantía longitudinal mínima ρ_g (ACI 318-19 §10.6.1.1). |
+| `lightweight` | `1.0` | Factor λ del concreto. |
+
+Verificaciones (solo combinaciones LRFD): esbeltez del pedestal (h/b ≤ 3), cuantías mínima y máxima, resistencia axial, flexocompresión por compatibilidad de deformaciones (con momento en ambos ejes, contorno lineal), corte en cada dirección con carga y separación de estribos. En el pedestal circular, las distancias al borde de los anclajes son las del rectángulo inscrito en el círculo y `A2_over_A1` se limita con el rectángulo semejante inscrito.
 
 ### Barras del pedestal (`pedestal_rebars`)
 
@@ -308,7 +346,7 @@ Posiciones en planta de las barras longitudinales del pedestal, respecto al eje 
 | `y` | Posición en la dirección de `B`. |
 | `diameter` | Diámetro de la barra. |
 
-El revisor comprueba que las barras de anclaje no choquen con estas barras. Si la lista está vacía, no se ejecuta esa comprobación.
+El revisor comprueba que las barras de anclaje no choquen con estas barras. Si la lista está vacía, no se ejecuta esa comprobación. Con el bloque `pedestal`, estas barras son además la armadura longitudinal del pedestal; se dibujan en el plano y en el modelo 3D.
 
 ### Llave de corte (`shear_lug`)
 

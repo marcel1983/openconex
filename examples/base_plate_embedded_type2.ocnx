@@ -1,0 +1,50 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "Ejemplo: base empotrada tipo II (cimiento diseñado para carga vertical)",
+    "number": "OC-0030",
+    "client": "OpenConex",
+    "engineer": "",
+    "revision": "0",
+    "date": "2026-11-23",
+    "language": "es",
+    "units": "US"
+  },
+  "base_plate": {
+    "connection_type": "embedded",
+    "column": "W14X176",
+    "column_grade": "ASTM A992",
+    "plate_grade": "ASTM A572 Gr. 50",
+    "fc": "4 ksi",
+    "embedded_base": {
+      "type": "II",
+      "embedment": "22 in",
+      "foundation_width": "60 in",
+      "beta1": 0.85,
+      "base_plate_width": "22 in",
+      "base_plate_thickness": "1.5 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "S1",
+      "type": "E",
+      "P": "250 kip",
+      "M": "700 kip*ft",
+      "V": "96 kip"
+    }
+  ],
+  "combinations": {
+    "include_code": false,
+    "custom": [
+      {
+        "name": "S1-LRFD",
+        "method": "LRFD",
+        "factors": {
+          "S1": 1.0
+        },
+        "source": "DG1 5.3-1 (cargas)"
+      }
+    ]
+  }
+}

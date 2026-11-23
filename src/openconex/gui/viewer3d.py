@@ -94,6 +94,8 @@ def part_color(name: str) -> QColor:
         return QColor("#ef6c00")
     if "anchor" in lower or "washer" in lower or "nut" in lower:
         return QColor("#c62828")
+    if "rebar" in lower:
+        return QColor("#455a64")
     if "grout" in lower:
         return QColor("#bcaaa4")
     if "pedestal" in lower or "foundation" in lower:
