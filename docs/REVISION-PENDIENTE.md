@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-21, sobre `main`, versión 0.5.20. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-23, sobre `main`, versión 0.5.21. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -48,6 +48,7 @@ Estado al 2026-11-21, sobre `main`, versión 0.5.20. Cada tarea indica qué hay 
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
 - [x] Release 0.5.15.
+- [x] Release 0.5.21: instaladores MSI, .dmg y AppImage, publicación en PyPI preparada y comprobación de la versión en el release; opción sísmica AISC 358-22 (experimental, pendiente de cotejo); empalmes apernados de viga y columna (F7); pedestal como columna, base empotrada Tipo II y optimización global de la placa base; visor 3D que sigue al formulario.
 - [x] Release 0.5.20: aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar archivos en la interfaz.
 - [x] Release 0.5.19: visor 3D OpenGL (fases 1–2), z-buffer y MSAA, respaldo a QPainter, vistas estándar y vista separada de la conexión.
 - [x] Release 0.5.18: placas de extremo con AISC Design Guide 4 (lado de la columna y 8ES), rigidizadores, dobles placas y zona de panel según AISC Design Guide 13, y conexiones de momento al alma de la columna.
