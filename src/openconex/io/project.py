@@ -60,6 +60,12 @@ from openconex.io.shear_project import (
     LongitudinalStiffenerInput,
     ShearConnectionInput,
 )
+from openconex.io.splice_project import (
+    FlangeSpliceInput,
+    SpliceInput,
+    SpliceType,
+    WebSpliceInput,
+)
 from openconex.kernel.anchors import Edges
 from openconex.units import PRESETS, Kind, UnitSystem, parse, to_internal
 
@@ -77,6 +83,7 @@ __all__ = [
     "EmbeddedBaseInput",
     "EmbeddedRebarInput",
     "FlangePlateInput",
+    "FlangeSpliceInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "LongitudinalStiffenerInput",
@@ -87,14 +94,16 @@ __all__ = [
     "ProjectInfo",
     "ReinforcementInput",
     "ShearConnectionInput",
+    "SpliceInput",
     "WSectionInput",
     "WeakBaseInput",
     "WebPlateInput",
+    "WebSpliceInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 12
+FORMAT_VERSION = 13
 Quantity = str | float
 
 
@@ -203,6 +212,7 @@ class WSectionInput(_Input):
 
 ShearConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 MomentConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
+SpliceInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 
 
 class HSSSectionInput(_Input):
@@ -435,8 +445,10 @@ class Project(_Input):
     shear_connection: ShearConnectionInput | None = None
     """Beam-end shear connection."""
     moment_connection: MomentConnectionInput | None = None
-    """Beam-to-column moment connection. A project holds exactly one of ``base_plate``,
-    ``shear_connection`` and ``moment_connection``."""
+    """Beam-to-column moment connection."""
+    splice: SpliceInput | None = None
+    """Beam or column splice. A project holds exactly one of ``base_plate``,
+    ``shear_connection``, ``moment_connection`` and ``splice``."""
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
@@ -461,11 +473,11 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
-        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection)
-                  if b is not None]
+        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection,
+                              self.splice) if b is not None]
         if len(blocks) != 1:
-            raise ValueError("a project needs exactly one of base_plate, shear_connection or "
-                             "moment_connection")
+            raise ValueError("a project needs exactly one of base_plate, shear_connection, "
+                             "moment_connection or splice")
         if self.moment_connection is None and any(
                 self.quantity(c.column_V, Kind.FORCE) or self.quantity(c.column_P, Kind.FORCE)
                 for c in self.cases):
@@ -474,6 +486,8 @@ class Project(_Input):
             return self._validate_shear()
         if self.moment_connection is not None:
             return self._validate_moment()
+        if self.splice is not None:
+            return self._validate_splice()
         library = self.material_library()
         if self.base_plate.plate_grade not in library:
             raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
@@ -700,6 +714,46 @@ class Project(_Input):
             raise ValueError("moment connections take only V and M load cases "
                              "(and P for end plates)")
         return self
+
+    def _validate_splice(self) -> Project:
+        sp = self.splice
+        missing = sp.missing()
+        if missing:
+            raise ValueError(f"{sp.type.value} splice needs {', '.join(missing)}")
+        library = self.material_library()
+        for grade in (sp.grade, sp.beam_grade, sp.column_grade):
+            if grade not in library:
+                raise ValueError(f"unknown material: {grade!r}")
+        for section in (sp.beam, sp.upper, sp.lower):
+            if section is not None and not isinstance(section, str) and \
+                    section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
+        bolts = self.bolt_library()
+        for bolt in (sp.flange.bolt, sp.web.bolt if sp.web else None):
+            if bolt is not None and bolt.grade not in bolts:
+                raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
+        F, M = Kind.FORCE, Kind.MOMENT
+        if any(self.quantity(c.M_weak, M) for c in self.cases):
+            raise ValueError("splices take no weak-axis moment M_weak")
+        if sp.type is SpliceType.BEAM:
+            if sp.upper is not None or sp.lower is not None:
+                raise ValueError("beam splices take beam, not upper and lower")
+            if any(self.quantity(c.V_weak, F) for c in self.cases):
+                raise ValueError("beam splices take only P, V and M load cases")
+        else:
+            if sp.beam is not None:
+                raise ValueError("column splices take upper and lower, not beam")
+            if sp.flange.inner_width is not None:
+                raise ValueError("column splices take no inner flange plates")
+            if sp.web is None and any(self.quantity(c.V, F) for c in self.cases):
+                raise ValueError("column splice with strong-axis shear V needs web plates "
+                                 "(web)")
+        return self
+
+    def splice_model(self):
+        """Engine model of the splice (:class:`BeamSplice` or :class:`ColumnSplice`)."""
+        from openconex.io.splice_project import splice_model
+        return splice_model(self)
 
     def moment_model(self):
         """Engine model of the moment connection (:class:`MomentConnection`)."""

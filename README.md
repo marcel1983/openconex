@@ -9,7 +9,7 @@ Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC
   </a>
 </p>
 
-> **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19) y genera memoria, planos DXF y modelo 3D desde la línea de comandos o desde una interfaz gráfica inicial. Ver el [plan de desarrollo](docs/PLAN.md).
+> **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19), conexiones de corte y de momento viga–columna y viga–viga (Manual AISC, DG4, DG13, DG16) y empalmes apernados de viga y de columna, y genera memoria, planos DXF y modelo 3D desde la línea de comandos o desde la interfaz gráfica. Ver el [plan de desarrollo](docs/PLAN.md).
 
 ## Alcance previsto
 - **Conexiones:** placas base, viga–columna y viga–viga (corte y momento), empalmes de viga y columna.

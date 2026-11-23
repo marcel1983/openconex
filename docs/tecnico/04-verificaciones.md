@@ -334,6 +334,49 @@ Rigidizadores transversales (placas de continuidad, un par en cada ala de la vig
 
 `moment.column_panel_zone` suma la doble placa a la resistencia del alma, R_v = 0,60 d_c (F_y t_w + F_yd t_d) (§J10.6 y Comentario), con la demanda V_u = P_uf (2 P_uf con `two_sided`) − V_c y la carga axial P_c de los casos (`column_V`, `column_P`).
 
+## Empalmes (`connections/splice/splice.py`)
+
+Empalmes apernados de viga y de columna con cubreplacas (F7, AISC 360-22 Capítulos J y F13; Manual AISC Partes 7, 9 y 14). Integrados en el proyecto (`splice`), el comando `openconex splice`, la memoria, el plano, el 3D, la interfaz y el cálculo por lotes.
+
+**Empalme de viga** (`type: beam`): dos tramos del mismo perfil con una separación `gap`, una cubreplaca exterior en cada ala (y opcionalmente dos interiores, pernos en doble corte) y dos cubreplacas en el alma. Las alas toman el momento como un par de fuerzas T, C = M/d ∓ P A_f/A, con P positiva en compresión: la carga axial se reparte entre alas y alma según sus áreas (A sin filetes). Las cubreplacas del alma toman V y P_w = P A_w/A aplicados en el eje del empalme; el grupo de pernos de un lado es excéntrico (centro instantáneo, Manual Parte 7) con e medida desde el eje del empalme.
+
+**Empalme de columna** (`type: column`): columna superior e inferior con una cubreplaca exterior en cada ala y rellenos de espesor (d_inf − d_sup)/2 del lado de la columna menos peraltada. Con extremos fresados (`finished_ends`, §M2.6) la compresión pasa por aplastamiento (§J7) y las cubreplacas solo toman la tracción T = M/d − P A_f/A, o M/d + |P|/2 con tracción neta (todas las fuerzas en las alas). El corte débil `V_weak` lo toman los pernos de ala (resultante con la fuerza de ala) y el corte fuerte `V`, cubreplacas del alma opcionales (obligatorias si hay `V`). Sin extremos fresados, las cubreplacas y los pernos toman también la compresión.
+
+| `id` | Verificación | Norma |
+|---|---|---|
+| `splice.flange_bolts` | Viga: pernos de ala de un lado, 2 Σ mín(corte, aplastamiento o desgarro en el ala, en las cubreplacas). Tracción: el ala desgarra hacia su extremo y las placas hacia el suyo; compresión: las placas hacia el empalme. Gobierna la peor de las dos | §J3.7, §J3.11 |
+| `splice.upper_flange_bolts` | Columna superior: igual que la anterior con la resultante de T y V_weak/2; el corte se reduce por los rellenos (§J5.2) si están de este lado | §J3.7, §J3.11, §J5.2 |
+| `splice.lower_flange_bolts` | Columna inferior: igual que la anterior | §J3.7, §J3.11, §J5.2 |
+| `splice.flange_plate_tension_yielding` | Fluencia por tracción de las cubreplacas de ala (exterior más interiores) | §J4.1(a) |
+| `splice.flange_plate_tension_rupture` | Rotura por tracción de las cubreplacas, A_e = A_n ≤ 0,85 A_g | §J4.1(b) |
+| `splice.flange_plate_block_shear` | Bloque de corte de la cubreplaca exterior con su parte de la fuerza: mínimo de los bloques hacia los bordes, entre las líneas y de una sola línea | §J4.3 |
+| `splice.inner_plate_block_shear` | Bloque de corte de cada cubreplaca interior (una línea de pernos, centrada en la placa) | §J4.3 |
+| `splice.flange_plate_compression` | Compresión de las cubreplacas, K = 0,65, L = separación + 2 l_e del perfil, r de la placa más delgada; no aplica con extremos fresados | §J4.4; Comentario Tabla C-A-7.1 |
+| `splice.beam_flange_block_shear` | Bloque de corte del ala de la viga, mínimo de los bloques hacia las puntas y entre las líneas | §J4.3 |
+| `splice.upper_flange_block_shear` | Bloque de corte del ala de la columna superior | §J4.3 |
+| `splice.lower_flange_block_shear` | Bloque de corte del ala de la columna inferior | §J4.3 |
+| `splice.beam_flexural_rupture` | Rotura de la viga en los agujeros del ala, M_n = F_u A_fn S_x / A_fg; aplicable si F_u A_fn < Y_t F_y A_fg | §F13.1, Ec. F13-1 |
+| `splice.flange_min_spacing` | Separación mínima de los pernos de ala, 2⅔ d | §J3.3 |
+| `splice.flange_min_edge` | Distancia mínima al borde de los pernos de ala (la menor de las del perfil, la placa y los bordes laterales) | §J3.4, Tabla J3.4 |
+| `splice.flange_max_spacing` | Separación máxima de los pernos de ala | §J3.5 |
+| `splice.flange_max_edge` | Distancia máxima al borde de los pernos de ala | §J3.5 |
+| `splice.web_bolts` | Pernos del alma de un lado por centro instantáneo con la resultante de V y P_w; r_n = mín(doble corte, aplastamiento en el alma, aplastamiento y desgarro vertical en las dos placas) | Manual Parte 7; §J3.7, §J3.11 |
+| `splice.web_plate_shear_yielding` | Fluencia por corte de las dos cubreplacas del alma | §J4.2(a) |
+| `splice.web_plate_shear_rupture` | Rotura por corte de las dos cubreplacas del alma | §J4.2(b) |
+| `splice.web_plate_block_shear` | Bloque de corte de las cubreplacas del alma: plano vertical por la línea más alejada y tracción hasta el extremo (U_bs = 0,5 con dos o más líneas) | §J4.3 |
+| `splice.web_plate_flexural_yielding` | Flexión de las cubreplacas del alma en la primera línea de pernos, M = V (g/2 + l_e), Z = 2 t h²/4 | §J4.5 |
+| `splice.web_plate_flexural_rupture` | Igual, con Z_net = Z − 2 t (d_h + 1/16) Σ\|y_i\| | §J4.5 |
+| `splice.web_plate_tension_yielding` | Fluencia por tracción de las cubreplacas del alma con P_w de tracción | §J4.1(a) |
+| `splice.web_plate_tension_rupture` | Rotura por tracción de las cubreplacas del alma, A_e ≤ 0,85 A_g | §J4.1(b) |
+| `splice.web_plate_fit` | Altura de las cubreplacas del alma dentro de la distancia T = d − 2 k_des | Manual Parte 9 |
+| `splice.web_min_spacing` | Separación mínima de los pernos del alma | §J3.3 |
+| `splice.web_min_edge` | Distancia mínima al borde de los pernos del alma | §J3.4, Tabla J3.4 |
+| `splice.web_max_spacing` | Separación máxima de los pernos del alma | §J3.5 |
+| `splice.web_max_edge` | Distancia máxima al borde de los pernos del alma | §J3.5 |
+| `splice.column_flange_bearing` | Aplastamiento del ala superior sobre la inferior, R_n = 1,8 F_y A_pb con A_pb = mín(b_f) × espesor de contacto; capacidad nula si las alas no se tocan (hace falta una placa de apoyo, no implementada) | §J7(a), Ec. J7-1 |
+| `splice.column_web_bearing` | Aplastamiento del alma con P_w | §J7(a), Ec. J7-1 |
+| `splice.filler_thickness` | Rellenos no desarrollados de más de 1/4 in: espesor ≤ 3/4 in | §J5.2(b) |
+
 ## Anclajes (`kernel/anchors.py`, ACI 318-19 Cap. 17, solo LRFD)
 
 | `id` | Verificación | Norma | Placa base |

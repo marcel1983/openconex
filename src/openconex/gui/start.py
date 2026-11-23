@@ -42,7 +42,7 @@ DATA_PACKAGE = "openconex.data"
 @dataclass
 class StartSelection:
     kind: str
-    """``base_plate``, ``shear`` or ``open``."""
+    """``base_plate``, ``shear``, ``splice`` or ``open``."""
     project: Project | None = None
     path: Path | None = None
 
@@ -259,7 +259,7 @@ class ConnectionStartDialog(QDialog):
         except Exception as exc:
             QMessageBox.critical(self, "No se pudo crear el proyecto", str(exc))
             return
-        kind = "base_plate" if self._family.id == "base_plate" else "shear"
+        kind = {"base_plate": "base_plate", "splice": "splice"}.get(self._family.id, "shear")
         self.selection = StartSelection(kind=kind, project=project)
         self.accept()
 

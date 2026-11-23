@@ -1,0 +1,43 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "Ejemplo: empalme de viga con cubreplacas apernadas",
+    "number": "OC-0301",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-23",
+    "language": "es",
+    "units": "US"
+  },
+  "splice": {
+    "type": "beam",
+    "beam": "W21X62",
+    "flange": {
+      "bolt": {"diameter": "7/8 in"},
+      "rows": 4,
+      "spacing": "3 in",
+      "gage": "5.5 in",
+      "width": "8 in",
+      "thickness": "5/8 in",
+      "lev_member": "1.5 in",
+      "lev_plate": "1.5 in",
+      "inner_width": "3 in",
+      "inner_thickness": "5/8 in"
+    },
+    "web": {
+      "bolt": {"diameter": "7/8 in"},
+      "rows": 5,
+      "spacing": "3 in",
+      "height": "15 in",
+      "thickness": "3/8 in",
+      "lev_member": "1.5 in",
+      "leh_plate": "1.5 in"
+    },
+    "gap": "1/2 in"
+  },
+  "cases": [
+    {"name": "D", "type": "D", "V": "15 kip", "M": "75 kip*ft"},
+    {"name": "L", "type": "L", "V": "30 kip", "M": "150 kip*ft"}
+  ],
+  "combinations": {"methods": ["LRFD", "ASD"]}
+}

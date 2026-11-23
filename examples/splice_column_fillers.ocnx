@@ -1,0 +1,44 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "Ejemplo: empalme de columna W14X90 sobre W14X120 con rellenos",
+    "number": "OC-0302",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-23",
+    "language": "es",
+    "units": "US"
+  },
+  "splice": {
+    "type": "column",
+    "upper": "W14X90",
+    "lower": "W14X132",
+    "grade": "ASTM A36",
+    "flange": {
+      "bolt": {"diameter": "7/8 in"},
+      "rows": 3,
+      "spacing": "3 in",
+      "gage": "5.5 in",
+      "width": "14 in",
+      "thickness": "1/2 in",
+      "lev_member": "1.5 in",
+      "lev_plate": "1.5 in"
+    },
+    "web": {
+      "bolt": {"diameter": "7/8 in"},
+      "rows": 3,
+      "spacing": "3 in",
+      "height": "9 in",
+      "thickness": "3/8 in",
+      "lev_member": "1.5 in",
+      "leh_plate": "1.5 in"
+    },
+    "finished_ends": true
+  },
+  "cases": [
+    {"name": "D", "type": "D", "P": "180 kip", "V": "4 kip", "M": "20 kip*ft"},
+    {"name": "L", "type": "L", "P": "120 kip", "V": "6 kip", "M": "30 kip*ft"},
+    {"name": "W", "type": "W", "P": "-60 kip", "V": "15 kip", "M": "140 kip*ft", "V_weak": "10 kip"}
+  ],
+  "combinations": {"methods": ["LRFD"]}
+}

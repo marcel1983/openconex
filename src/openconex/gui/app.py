@@ -222,6 +222,9 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         file_menu.addAction(action("Nueva conexión de momento…",
                                    lambda: self.open_moment_window(), "",
                                    "main.file.moment"))
+        file_menu.addAction(action("Nuevo empalme…",
+                                   lambda: self.open_splice_window(), "",
+                                   "main.file.splice"))
         file_menu.addSeparator()
         file_menu.addAction(action("Importar SAP2000 / ETABS…", self.import_csi_dialog,
                                    "", "main.file.import_csi"))
@@ -1200,6 +1203,10 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             add_recent_project(path)
             self.open_moment_window(project, path)
             return
+        if project.splice is not None:
+            add_recent_project(path)
+            self.open_splice_window(project, path)
+            return
         if not self.maybe_save():
             return
         self.project = project
@@ -1256,6 +1263,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             self.open_project_model(selection.project)
         elif selection.kind == "shear" and selection.project is not None:
             self.open_shear_window(selection.project)
+        elif selection.kind == "splice" and selection.project is not None:
+            self.open_splice_window(selection.project)
 
     def open_shear_window(self, project: Project | None = None,
                           path: str | Path | None = None):
@@ -1277,6 +1286,17 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self._moment_windows = [*getattr(self, "_moment_windows", []), window]
         window.show()
         self.statusBar().showMessage("Conexión de momento abierta en otra ventana.")
+        return window
+
+    def open_splice_window(self, project: Project | None = None,
+                           path: str | Path | None = None):
+        """Open a beam or column splice project in its own window."""
+        from openconex.gui.splice import SpliceWindow
+        window = SpliceWindow(project, path, parent=self)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._splice_windows = [*getattr(self, "_splice_windows", []), window]
+        window.show()
+        self.statusBar().showMessage("Empalme abierto en otra ventana.")
         return window
 
     def import_csi_dialog(self, file: str = "") -> None:
@@ -1827,6 +1847,10 @@ def main(argv: list[str] | None = None) -> int:
                 from openconex.gui.moment import MomentWindow
 
                 window = MomentWindow(project, selection.path)
+            elif project.splice is not None:
+                from openconex.gui.splice import SpliceWindow
+
+                window = SpliceWindow(project, selection.path)
             else:
                 window = MainWindow()
                 window.open_project_model(project, selection.path)
@@ -1837,6 +1861,10 @@ def main(argv: list[str] | None = None) -> int:
             from openconex.gui.shear import ShearWindow
 
             window = ShearWindow(selection.project)
+        elif selection.kind == "splice" and selection.project is not None:
+            from openconex.gui.splice import SpliceWindow
+
+            window = SpliceWindow(selection.project)
         if window is None:
             return 0
         window.show()

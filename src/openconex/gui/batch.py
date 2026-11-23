@@ -137,7 +137,11 @@ def _calculate_one(path: Path, out: Path | None, formats: tuple[str, ...],
     except Exception as exc:
         return BatchResult(path=path, name=path.stem, status="ERROR", error=str(exc))
     check, combo, ratio = _summary(report)
-    if project.moment_connection is not None:
+    if project.splice is not None:
+        sp = project.splice
+        members = [m for m in (sp.beam, sp.upper, sp.lower) if m is not None]
+        column_text = " / ".join(m if isinstance(m, str) else m.label() for m in members)
+    elif project.moment_connection is not None:
         beam = project.moment_connection.beam
         column_text = beam if isinstance(beam, str) else beam.label()
     elif project.shear_connection is not None:
