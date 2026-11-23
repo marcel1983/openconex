@@ -131,7 +131,13 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
         for j in range(lines):
             lay.bolts += _bolt_column(el.a + j * gage, y1 - el.lev, el.rows, el.spacing)
         lay.welds.append((0.0, y1 - el.length, 0.0, y1))
-        lay.beam_start = min(half, el.a - el.leh) if el.a > el.leh else half
+        if isinstance(el, ExtendedSinglePlate):
+            # The beam end is beam_leh from the first bolt line (II.A-19A): the
+            # extended plate exists so that the beam clears the support flanges.
+            beam_leh = el.beam_leh if el.beam_leh is not None else el.leh
+            lay.beam_start = max(el.a - beam_leh, half)
+        else:
+            lay.beam_start = min(half, el.a - el.leh) if el.a > el.leh else half
     elif isinstance(el, DoubleAngle):
         leg = el.beam_leg or (half + INCH * 1.5 + el.leh_beam)
         y1 = mid + el.length / 2
@@ -160,12 +166,13 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
         lay.beam_start = el.setback - INCH / 4
         lay.plates += [(0.0, -t, el.leg, 0.0, "seat"),
                        (0.0, -(el.vertical_leg or el.leg + 2 * INCH), t, -t, "seat"),
-                       (el.setback - INCH / 4, el.beam_d, el.setback - INCH / 4
-                        + el.top_angle_length, el.beam_d + el.top_angle_thickness,
-                        "top_angle"),
+                       # Top angle: the heel is at the support face, the
+                       # horizontal leg lies on the beam flange.
+                       (0.0, el.beam_d, el.top_angle_leg,
+                        el.beam_d + el.top_angle_thickness, "top_angle"),
                        (0.0, el.beam_d, el.top_angle_thickness, el.beam_d + el.top_angle_leg,
                         "top_angle")]
-        lay.plate_thickness = el.length
+        lay.plate_thickness = t
         if el.support_weld > 0:
             lay.welds.append((0.0, -(el.vertical_leg or el.leg), 0.0, 0.0))
         else:
@@ -177,7 +184,7 @@ def shear_layout(conn: ShearConnection) -> ShearLayout:
         lay.beam_start = el.setback
         lay.plates += [(0.0, -seat, el.width, 0.0, "seat"),
                        (0.0, -seat - el.length, el.width, -seat, "stiffener"),
-                       (el.setback, el.beam_d, el.setback + el.top_angle_length,
+                       (0.0, el.beam_d, el.top_angle_leg,
                         el.beam_d + el.top_angle_thickness, "top_angle"),
                        (0.0, el.beam_d, el.top_angle_thickness,
                         el.beam_d + el.top_angle_leg, "top_angle")]

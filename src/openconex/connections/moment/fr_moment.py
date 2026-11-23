@@ -49,6 +49,7 @@ from openconex.units import Kind, from_internal, to_internal
 from .column_stiffening import doubler_checks, stiffener_checks
 from .end_plate import EndPlate, end_plate_checks, end_plate_column_checks
 from .panel_zone import panel_zone_check
+from .seismic import Seismic, seismic_checks
 
 __all__ = ["ColumnFace", "EndPlate", "FlangeDetail", "FlangePlate", "MomentConnection", "WebPlate",
            "check_moment_connection", "check_moment_envelope"]
@@ -161,6 +162,8 @@ class MomentConnection:
     tips."""
     doubler_weld: float = 0.0
     """Fillet weld of the doubler plate to the column flanges (bevel = thickness); 0: CJP."""
+    seismic: Seismic | None = None
+    """Prequalified seismic connection (AISC 358-22): capacity-design checks."""
 
 
 def _rename(check: CheckResult, key: str) -> CheckResult:
@@ -502,7 +505,8 @@ def check_moment_envelope(mc: MomentConnection, combinations: Iterable[LoadCombi
                           ) -> list[CheckResult]:
     """Run every combination: ``V2`` is the beam end shear, ``M3`` its moment and ``P`` its
     axial force. With ``mc.panel_zone``, ``column_forces`` gives for each case the story
-    shear (``V2``) and axial force (``P``) of the column."""
+    shear (``V2``) and axial force (``P``) of the column. With ``mc.seismic``, the AISC 358
+    checks are added once (combination ``AISC 358``)."""
     results: list[CheckResult] = []
     for combo in combinations:
         forces = combine(combo, case_forces)
@@ -513,4 +517,6 @@ def check_moment_envelope(mc: MomentConnection, combinations: Iterable[LoadCombi
         results += check_moment_connection(mc, forces.V2, forces.M3, combo.method, combo.name,
                                            column_shear=column_shear,
                                            column_axial=column_axial, P=forces.P)
+    if mc.seismic is not None:
+        results += seismic_checks(mc)
     return results

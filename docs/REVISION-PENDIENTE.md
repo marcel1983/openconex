@@ -33,6 +33,8 @@ Estado al 2026-11-21, sobre `main`, versión 0.5.20. Cada tarea indica qué hay 
 - [x] Validación de la geometría de pernos: filas dentro de la placa o ángulo, l_ev/l_eh de la Tabla J3.4 y separación mínima; el cálculo se detiene con un mensaje correctivo.
 - [x] Render 3D limpio: caras posteriores ocultas, sin malla de triangulación, caras grandes subdivididas y elementos de conexión resaltados.
 - [x] Visor 3D OpenGL (fases 1–2): z-buffer, MSAA, respaldo a QPainter, vistas estándar y vista separada de la conexión.
+- [x] Visor 3D: actualización automática al editar el formulario (300 ms, caché de 8 modelos, un solo hilo de mallado), aristas vivas en OpenGL, sin subdivisión en OpenGL y corrección de la geometría (vista de corte sin reflejo, pernos y ángulo superior del asiento, viga de la placa extendida, viga en esviaje).
+- [ ] Visor 3D, fase 3 restante: plano de corte y transparencia opcional.
 - [x] Interfaz: aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar.
 - [x] Ejemplo de II.A-12A en el proyecto y seis casos de corte en `casos.csv`.
 - [x] Release 0.5.5.

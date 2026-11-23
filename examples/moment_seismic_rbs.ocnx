@@ -1,0 +1,68 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "Ejemplo: sección reducida de viga (RBS), pórtico especial (AISC 358-22, Cap. 5)",
+    "number": "OC-0207",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-23",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "welded_flange",
+    "beam": "W24X76",
+    "column": "W14X257",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 6,
+      "spacing": "3 in",
+      "length": "18 in",
+      "thickness": "1/2 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "5/16 in"
+    },
+    "two_sided": true,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "seismic": {
+      "connection": "rbs",
+      "system": "smf",
+      "span": "26 ft",
+      "gravity_load": "2.0 kip/ft",
+      "column_axial": "400 kip",
+      "rbs_a": "5 in",
+      "rbs_b": "18 in",
+      "rbs_c": "2 in"
+    },
+    "doubler_plate": "1/2 in"
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "25 kip",
+      "M": "120 kip*ft",
+      "column_V": "30 kip",
+      "column_P": "300 kip"
+    },
+    {
+      "name": "E",
+      "type": "E",
+      "V": "20 kip",
+      "M": "350 kip*ft",
+      "column_V": "60 kip",
+      "column_P": "50 kip"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "SDS": 1.0,
+    "include_code": true
+  }
+}

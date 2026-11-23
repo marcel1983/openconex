@@ -680,6 +680,8 @@ class Project(_Input):
 
     def _validate_moment(self) -> Project:
         mc = self.moment_connection
+        if mc.seismic is not None:
+            self._validate_seismic()
         missing = mc.missing()
         if missing:
             raise ValueError(f"{mc.type.value} moment connection needs {', '.join(missing)}")
@@ -714,6 +716,36 @@ class Project(_Input):
             raise ValueError("moment connections take only V and M load cases "
                              "(and P for end plates)")
         return self
+
+    def _validate_seismic(self) -> None:
+        from openconex.io.moment_project import PREQUALIFIED_DETAIL, PREQUALIFIED_LAYOUTS
+        mc = self.moment_connection
+        s = mc.seismic
+        need = PREQUALIFIED_DETAIL[s.connection]
+        if mc.type is not need:
+            raise ValueError(f"AISC 358 {s.connection.value} needs a {need.value} moment "
+                             "connection")
+        if mc.support.value != "flange":
+            raise ValueError("AISC 358 connections frame to the column flange")
+        layouts = PREQUALIFIED_LAYOUTS.get(s.connection)
+        if layouts and mc.end_plate is not None and mc.end_plate.layout not in layouts:
+            raise ValueError(f"AISC 358 {s.connection.value} takes the end-plate layouts "
+                             f"{', '.join(lay.value for lay in layouts)}")
+        from openconex.connections.moment.seismic import expected_ratios
+        grades = [(mc.beam_grade if isinstance(mc.beam, str) else mc.beam.grade,
+                   s.Ry_beam is not None and s.Rt_beam is not None, False),
+                  (mc.column_grade if isinstance(mc.column, str) else mc.column.grade,
+                   s.Ry_column is not None, False)]
+        if s.connection.value == "bfp":
+            grades.append((mc.grade, s.Ry_plate is not None, True))
+        for grade, given, plate in grades:
+            if not given and expected_ratios(grade, plate) is None:
+                raise ValueError(f"no AISC 341 R_y/R_t for {grade!r}: give them in seismic")
+        if self.quantity(s.span, Kind.LENGTH) <= 0:
+            raise ValueError("seismic span must be positive")
+        if s.connection.value == "rbs" and s.rbs_c is not None and \
+                self.quantity(s.rbs_c, Kind.LENGTH) <= 0:
+            raise ValueError("seismic rbs_c must be positive")
 
     def _validate_splice(self) -> Project:
         sp = self.splice

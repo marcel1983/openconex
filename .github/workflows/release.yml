@@ -10,16 +10,78 @@ on:
         required: false
         default: ""
       publish:
-        description: "Crear o actualizar el release"
+        description: "Crear o actualizar el release de GitHub"
         type: boolean
         default: false
+      pypi:
+        description: "Subir wheel y sdist a un índice de paquetes"
+        type: choice
+        options: [none, testpypi, pypi]
+        default: none
 
 permissions:
   contents: read
 
 jobs:
+  version:
+    name: check version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ inputs.tag }}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+      - name: Require a tag when publishing manually
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.tag.outputs.tag == '' && (inputs.publish || inputs.pypi == 'pypi') }}
+        run: |
+          echo "::error::Indique el tag existente en el campo 'tag' para publicar en GitHub o en PyPI."
+          exit 1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.tag.outputs.tag || github.ref }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Tag matches __version__
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: python tools/check_release_version.py "${{ steps.tag.outputs.tag }}"
+
+  dist:
+    name: wheel and sdist
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.version.outputs.tag || github.ref }}
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip build twine
+      - run: python -m build --outdir dist
+      - run: python -m twine check --strict dist/*
+      - name: Install the wheel in a clean environment
+        run: |
+          python -m venv /tmp/wheel-env
+          /tmp/wheel-env/bin/pip install dist/*.whl
+          /tmp/wheel-env/bin/openconex --version
+          /tmp/wheel-env/bin/openconex baseplate examples/base_plate_dg1_4_7_11.ocnx -o /tmp/wheel-out --html --docx --dxf
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+
   build:
     name: build (${{ matrix.os }})
+    needs: version
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -31,15 +93,23 @@ jobs:
             platform: macos-arm64
           - os: ubuntu-22.04
             platform: linux-x86_64
+    env:
+      # Optional signing secrets (see docs/tecnico/10-release.md). Empty values
+      # produce unsigned installers, which is what forks and test runs get.
+      WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+      LINUX_GPG_KEY: ${{ secrets.LINUX_GPG_KEY }}
+      LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
     steps:
-      - name: Require a tag when publishing manually
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && inputs.tag == '' }}
-        run: |
-          echo "::error::Indique el tag existente en el campo 'tag' para publicar un release."
-          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ needs.version.outputs.tag || github.ref }}
           fetch-depth: 0
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
@@ -49,22 +119,58 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libnss3 libxkbcommon0 libgbm1 libasound2 \
-            libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libxcb-cursor0
+            libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libxcb-cursor0 file
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[gui,pdf,3d]" pyinstaller
       - name: Build portable bundle
         run: python packaging/build_portable.py ${{ matrix.platform }}
+
+      - name: Install WiX Toolset
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Append
+          & "$env:USERPROFILE\.dotnet\tools\wix.exe" --version
+      - name: Install appimagetool
+        if: runner.os == 'Linux'
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/appimagetool" \
+            https://github.com/AppImage/appimagetool/releases/download/1.9.1/appimagetool-x86_64.AppImage
+          chmod +x "$RUNNER_TEMP/appimagetool"
+          echo "APPIMAGETOOL=$RUNNER_TEMP/appimagetool" >> "$GITHUB_ENV"
+      - name: Import the Apple signing certificate
+        if: runner.os == 'macOS' && env.MACOS_CERTIFICATE != ''
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 24)"
+          echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$MACOS_CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          rm "$RUNNER_TEMP/certificate.p12"
+      - name: Build, sign and test the installer
+        run: python packaging/build_installer.py ${{ matrix.platform }}
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: portable-${{ matrix.platform }}
           path: |
             dist/OpenConex-*.zip
+            dist/OpenConex-*.msi
+            dist/OpenConex-*.dmg
+            dist/OpenConex-*.AppImage
+            dist/OpenConex-*.asc
             dist/SHA256SUMS-*.txt
           if-no-files-found: error
 
   publish:
-    name: publish release
-    needs: build
+    name: publish GitHub release
+    needs: [version, dist, build]
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
     permissions:
@@ -72,30 +178,71 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
-      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
-        with:
-          python-version: "3.12"
-      - run: python -m pip install --upgrade pip build
-      - name: Build wheel and sdist
-        run: python -m build --outdir dist
+          ref: ${{ needs.version.outputs.tag }}
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
+          name: python-dist
+          path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: portable-*
           path: portable
           merge-multiple: true
       - name: Assemble assets
         run: |
-          cp portable/OpenConex-*.zip dist/
+          cp portable/OpenConex-* dist/
           cat portable/SHA256SUMS-*.txt > dist/SHA256SUMS.txt
           cd dist
           sha256sum *.whl *.tar.gz >> SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
       - name: Create or update release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
         run: |
-          TAG="${{ inputs.tag || github.ref_name }}"
           VERSION="${TAG#v}"
-          test "v${VERSION}" = "${TAG}" || { echo "tag/version mismatch"; exit 1; }
+          PRERELEASE=""
+          case "$VERSION" in *a*|*b*|*rc*) PRERELEASE="--prerelease" ;; esac
           gh release view "$TAG" >/dev/null 2>&1 || \
-            gh release create "$TAG" --target main --title "OpenConex $VERSION" --generate-notes
-          gh release upload "$TAG" dist/OpenConex-*.zip dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt --clobber
+            gh release create "$TAG" --verify-tag --title "OpenConex $VERSION" --generate-notes $PRERELEASE
+          gh release upload "$TAG" dist/OpenConex-* dist/*.whl dist/*.tar.gz dist/SHA256SUMS.txt --clobber
+
+  # PyPI and TestPyPI use Trusted Publishing (OIDC): no token is stored in the
+  # repository. Each index needs a one-time "trusted publisher" entry for this
+  # workflow and environment (see docs/tecnico/10-release.md).
+  pypi:
+    name: publish to PyPI
+    needs: [version, dist, build]
+    if: ${{ (github.event_name == 'push' && vars.PYPI_PUBLISH == 'true') || inputs.pypi == 'pypi' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/project/openconex/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  testpypi:
+    name: publish to TestPyPI
+    needs: [version, dist]
+    if: ${{ (github.event_name == 'push' && vars.TESTPYPI_PUBLISH == 'true') || inputs.pypi == 'testpypi' }}
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/openconex/
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: python-dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
