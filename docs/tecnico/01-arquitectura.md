@@ -55,8 +55,8 @@ Igual que el de corte: `io/moment_project.py` valida y convierte `moment_connect
 3. La clave de caché es el JSON del proyecto sin casos, combinaciones ni generador. Si coincide con el modelo en pantalla no se hace nada; si está entre los ocho últimos (`CACHE_SIZE`), se muestra al instante.
 4. Si no, un único `_MeshWorker` en `QThreadPool` llama a `parts_3d` y a `geometry3d.mesh.tessellate_parts(max_edge=None, edges=True)`: triángulos de OpenCASCADE (deflexión 0,35 mm y 0,3 rad) y aristas vivas (`feature_edges`, ángulo entre caras > 35°). Los cambios que llegan mientras trabaja se agrupan en una sola actualización posterior, que vuelve a leer el formulario.
 5. El canvas OpenGL dibuja esos triángulos con z-buffer y, en una segunda pasada, las aristas (`GL_LINES`, con `glPolygonOffset` en las caras). El canvas `QPainter` de respaldo recibe la malla subdividida a 40 mm (`subdivide_meshes`) que necesita el algoritmo del pintor; las normales se calculan una vez por modelo, no en cada cuadro.
-6. Las conexiones de corte (eje y vertical) se giran con `y_up_to_z_up`, (x, y, z) → (x, −z, y), una rotación sin reflexión; las vistas estándar se reflejan en el giro (`180° − yaw`) para mirar desde el lado de la placa. Los desplazamientos de **Separar** (`EXPLODE_BY_TYPE`) están en los ejes del modelo y se aplican antes del giro.
-7. La lista de piezas conserva las ocultas y la seleccionada; la cámara solo se reencuadra si el modelo nuevo no cabe en la vista o es mucho más pequeño (`_keeps_framing`).
+6. Las conexiones de corte (eje y vertical) se giran con `geometry3d.mesh.y_up_to_z_up`, (x, y, z) → (x, −z, y), una rotación sin reflexión; las vistas estándar se reflejan en el giro (`180° − yaw`) para mirar desde el lado de la placa. Los desplazamientos de **Separar** (`EXPLODE_BY_TYPE`) están en los ejes del modelo y se aplican antes del giro.
+7. La lista de piezas conserva las ocultas y la seleccionada; la cámara solo se reencuadra si el modelo nuevo no cabe en la vista o es mucho más pequeño (`geometry3d.mesh.keeps_framing`).
 
 Las miniaturas de la galería (`render_parts`) siguen usando el canvas `QPainter` con su propia convención de ejes.
 

@@ -6,11 +6,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
+from typing import Any
 
 from openconex.geometry3d.base_plate import Part
 
-__all__ = ["MAX_EDGE", "MeshPart", "feature_edges", "subdivide_meshes",
-           "tessellate_parts"]
+__all__ = ["MAX_EDGE", "MeshPart", "cache_key", "feature_edges", "keeps_framing",
+           "mesh_bounds", "subdivide_meshes", "tessellate_parts", "y_up_to_z_up"]
 
 Point = tuple[float, float, float]
 Triangle = tuple[Point, Point, Point]
@@ -169,3 +170,116 @@ def tessellate_parts(parts: list[Part], deflection: float = 0.35,
                     else _subdivide_triangles(triangles, max_edge))
             meshes.append(MeshPart(part.name, mesh, outline))
     return meshes
+
+
+def mesh_bounds(meshes: list[MeshPart]) -> tuple[tuple[float, float, float], float] | None:
+    """Centre of the bounding box and radius of the enclosing sphere."""
+    xs: list[float] = []
+    ys: list[float] = []
+    zs: list[float] = []
+    for mesh in meshes:
+        for triangle in mesh.triangles:
+            for point in triangle:
+                xs.append(point[0])
+                ys.append(point[1])
+                zs.append(point[2])
+    if not xs:
+        return None
+    center = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, (min(zs) + max(zs)) / 2)
+    radius = math.sqrt(max((x - center[0]) ** 2 + (y - center[1]) ** 2
+                           + (z - center[2]) ** 2 for x, y, z in zip(xs, ys, zs,
+                                                                     strict=True)))
+    return center, radius or 1.0
+
+
+def keeps_framing(old_center: tuple[float, float, float], old_radius: float,
+                   center: tuple[float, float, float], radius: float) -> bool:
+    """Whether a model update can keep the camera target and scale.
+
+    Small edits (a plate a bit thicker, one more bolt) should not make the
+    view jump; the camera is refitted only when the new model would no longer
+    fit, or would look much smaller than before.
+    """
+    return (math.dist(old_center, center) + radius <= 1.1 * old_radius
+            and radius >= 0.6 * old_radius)
+
+
+def y_up_to_z_up(meshes: list[MeshPart]) -> list[MeshPart]:
+    """Rotate a y-up model (shear connections) so that z is vertical.
+
+    (x, y, z) → (x, −z, y) is a rotation of +90° about x, not a reflection:
+    the connection is shown as built (plates on their real side of the web,
+    the skew in its real direction) and the triangle winding stays valid.
+    """
+    def turn(point):
+        return (point[0], -point[2], point[1])
+
+    return [MeshPart(mesh.name,
+                     tuple((turn(p0), turn(p1), turn(p2)) for p0, p1, p2 in mesh.triangles),
+                     tuple((turn(a), turn(b)) for a, b in mesh.edges))
+            for mesh in meshes]
+
+
+def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
+    """Map the shear model's y-up axes to the viewer's z-up axes.
+
+    Swapping y and z is a reflection: the vertex order is reversed so the
+    outward normals keep their orientation and back-face culling stays valid.
+    """
+    swapped: list[MeshPart] = []
+    for mesh in meshes:
+        triangles = [((p0[0], p0[2], p0[1]),
+                      (p2[0], p2[2], p2[1]),
+                      (p1[0], p1[2], p1[1]))
+                     for p0, p1, p2 in mesh.triangles]
+        swapped.append(MeshPart(mesh.name, tuple(triangles)))
+    return swapped
+
+
+def _explode_meshes(meshes: list[MeshPart],
+                    explode: dict[str, tuple[float, float, float]] | None
+                    ) -> list[MeshPart]:
+    """Move the parts named in ``explode``; a trailing * matches a prefix."""
+    if not explode:
+        return meshes
+    moved: list[MeshPart] = []
+    for mesh in meshes:
+        shift = explode.get(mesh.name)
+        if shift is None:
+            for key, value in explode.items():
+                if key.endswith("*") and mesh.name.startswith(key[:-1]):
+                    shift = value
+                    break
+        if shift is None:
+            moved.append(mesh)
+            continue
+        dx, dy, dz = shift
+
+        def move(point, dx=dx, dy=dy, dz=dz):
+            return (point[0] + dx, point[1] + dy, point[2] + dz)
+
+        moved.append(MeshPart(
+            mesh.name,
+            tuple((move(p0), move(p1), move(p2)) for p0, p1, p2 in mesh.triangles),
+            tuple((move(a), move(b)) for a, b in mesh.edges)))
+    return moved
+
+
+def _normal(p0: tuple[float, float, float], p1: tuple[float, float, float],
+            p2: tuple[float, float, float]) -> tuple[float, float, float]:
+    ax, ay, az = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+    bx, by, bz = p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]
+    nx, ny, nz = ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx
+    length = math.sqrt(nx * nx + ny * ny + nz * nz) or 1.0
+    return nx / length, ny / length, nz / length
+
+
+def cache_key(value: Any) -> str:
+    """Cache key of a snapshot: the JSON of a pydantic model, else its repr."""
+    dump = getattr(value, "model_dump_json", None)
+    if callable(dump):
+        try:
+            return str(dump(exclude={"cases", "combinations", "generator"}))
+        except Exception:
+            return str(dump())
+    return repr(value)
