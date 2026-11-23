@@ -66,6 +66,7 @@ from openconex.gui.session import (
     populate_recent_menu,
     preferred_units,
     set_preferred_units,
+    watch_changes,
 )
 from openconex.gui.units import UnitDialog
 from openconex.gui.viewer3d import Viewer3D
@@ -190,6 +191,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         if preset in PRESETS and preset != self._units.name:
             self.set_unit_system(preset)
         self._init_session(self._form)
+        # The 3D tab follows the form: it regenerates shortly after each edit.
+        watch_changes(self._form, self.viewer.schedule_update)
         self._set_clean()
         self.statusBar().showMessage("Abra un proyecto .ocnx o importe apoyos de "
                                      "SAP2000/ETABS.")
@@ -355,7 +358,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self.tabs.addTab(figure_scroll, "Figuras")
         self.geometry = GeometryEditor(self._read_geometry, self._apply_geometry)
         self.tabs.addTab(self.geometry, "Geometría")
-        self.viewer = Viewer3D(self._load_3d_parts)
+        self.viewer = Viewer3D(parts_3d, snapshot=self._viewer_project)
         self.tabs.addTab(self.viewer, "3D")
         self.tabs.currentChanged.connect(self._on_tab_changed)
         splitter.addWidget(self.tabs)
@@ -894,13 +897,14 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
     def _on_tab_changed(self, index: int) -> None:
         if self.tabs.widget(index) is self.geometry:
             self.refresh_geometry()
-        elif self.tabs.widget(index) is self.viewer:
-            self.viewer.load_model()
 
-    def _load_3d_parts(self):
+    def _viewer_project(self) -> Project:
+        """Project for the 3D viewer: the form as it is now, without dialogs."""
         if self.project is None:
-            raise ValueError("abra o calcule un proyecto antes de ver el modelo 3D")
-        return parts_3d(self.project.model_copy(deep=True))
+            raise ValueError("abra un proyecto o cree uno nuevo para ver el modelo 3D")
+        project = self._project_from_form(quiet=True)
+        assert project is not None
+        return project
 
     def _schedule_geometry_refresh(self, *_args: object) -> None:
         if hasattr(self, "_geometry_timer"):
@@ -1476,9 +1480,22 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         name = self.project.info.name if self.project else ""
         self.setWindowTitle(f"{APP_NAME} — {name}[*]" if name else f"{APP_NAME}[*]")
 
-    def _project_from_form(self) -> Project | None:
+    def _form_problem(self, quiet: bool, level: str, title: str, text: str) -> None:
+        """Report a form error: raise in quiet mode (3D viewer), else show a dialog."""
+        if quiet:
+            raise ValueError(text)
+        (QMessageBox.critical if level == "critical" else QMessageBox.warning)(
+            self, title, text)
+
+    def _project_from_form(self, quiet: bool = False) -> Project | None:
+        """Project read from the form, or ``None`` after showing the problem.
+
+        With ``quiet`` no dialog is shown: the problem is raised as
+        ``ValueError`` (used by the 3D viewer, which reads the form after each
+        edit).
+        """
         if self.project is None:
-            QMessageBox.warning(self, "Sin proyecto", "Abra un proyecto .ocnx primero.")
+            self._form_problem(quiet, "warning", "Sin proyecto", "Abra un proyecto .ocnx primero.")
             return None
         data = self.project.model_copy(deep=True)
         info = data.info
@@ -1490,7 +1507,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
 
         column_text = self._section_combo.currentText().strip()
         if not column_text:
-            QMessageBox.warning(self, "Datos incompletos", "Seleccione una sección de columna.")
+            self._form_problem(quiet, "warning", "Datos incompletos",
+                               "Seleccione una sección de columna.")
             return None
         grade = self._material_combos["column_grade"].currentText()
         custom = self._custom_sections.get(column_text)
@@ -1502,8 +1520,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             try:
                 bp.column = aisc_shapes().get(column_text).label
             except ShapeDatabaseError:
-                QMessageBox.critical(self, "Sección desconocida",
-                                     f"No se encontró la sección {column_text!r}.")
+                self._form_problem(quiet, "critical", "Sección desconocida",
+                                   f"No se encontró la sección {column_text!r}.")
                 return None
             bp.column_grade = grade
 
@@ -1557,7 +1575,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             self.advanced.apply(data, errors, embedded, type2)
         self._apply_combinations(data, errors)
         if errors:
-            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
+            self._form_problem(quiet, "warning", "Datos incompletos", "\n".join(errors))
             return None
 
         cases: list[LoadCaseInput] = []
@@ -1580,7 +1598,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
                 name=name, type=values[1] or "D", P=quantities[0], V=quantities[1],
                 M=quantities[2], V_weak=quantities[3], M_weak=quantities[4]))
         if errors:
-            QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))
+            self._form_problem(quiet, "warning", "Datos incompletos", "\n".join(errors))
             return None
 
         data.cases = cases
@@ -1589,7 +1607,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         try:
             return Project.model_validate(data.model_dump())
         except Exception as exc:
-            QMessageBox.critical(self, "Datos incompletos", str(exc))
+            self._form_problem(quiet, "critical", "Datos incompletos", str(exc))
             return None
 
     # -- calculation and report -------------------------------------------------

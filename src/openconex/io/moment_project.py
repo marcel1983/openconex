@@ -16,16 +16,38 @@ from openconex.connections.moment.fr_moment import (
     MomentConnection,
     WebPlate,
 )
+from openconex.connections.moment.seismic import (
+    Prequalified,
+    Seismic,
+    SeismicSystem,
+    expected_ratios,
+    nominal_depth,
+    section_properties,
+)
 from openconex.core.model import BoltSpec, IShape
 from openconex.core.shapes import aisc_shapes
 from openconex.io.shear_project import BoltInput
-from openconex.units import Kind
+from openconex.units import Kind, to_internal
 
 if TYPE_CHECKING:
     from openconex.io.project import Project, WSectionInput
 
-__all__ = ["EndPlateInput", "FlangePlateInput", "MomentConnectionInput", "WebPlateInput",
-           "moment_model"]
+__all__ = ["EndPlateInput", "FlangePlateInput", "MomentConnectionInput", "SeismicInput",
+           "WebPlateInput", "moment_model"]
+
+PREQUALIFIED_DETAIL = {
+    Prequalified.RBS: FlangeDetail.WELDED_FLANGE,
+    Prequalified.WUF_W: FlangeDetail.WELDED_FLANGE,
+    Prequalified.BFP: FlangeDetail.BOLTED_FLANGE_PLATE,
+    Prequalified.BUEEP: FlangeDetail.END_PLATE,
+    Prequalified.BSEEP: FlangeDetail.END_PLATE,
+}
+"""Flange detail that each AISC 358 connection uses."""
+PREQUALIFIED_LAYOUTS = {
+    Prequalified.BUEEP: (EndPlateLayout.EXTENDED_4,),
+    Prequalified.BSEEP: (EndPlateLayout.EXTENDED_4_STIFFENED,
+                         EndPlateLayout.EXTENDED_8_STIFFENED),
+}
 
 Quantity = str | float
 
@@ -110,6 +132,50 @@ class EndPlateInput(_Input):
         return [f"end_plate.{n}" for n in need if getattr(self, n) is None]
 
 
+class SeismicInput(_Input):
+    """Prequalified seismic connection (AISC 358-22 with AISC 341-22)."""
+
+    connection: Prequalified
+    """``rbs``, ``wuf_w``, ``bfp``, ``bueep`` (4E) or ``bseep`` (4ES, 8ES)."""
+    system: SeismicSystem = SeismicSystem.SMF
+    span: Quantity
+    """Clear span of the beam between column faces, L_cf."""
+    gravity_load: Quantity | None = None
+    """Uniform factored gravity load on the beam (1.2D + f1 L + 0.2S), force per length."""
+    gravity_shear: Quantity | None = None
+    """Factored gravity shear at the plastic hinge, added to that of ``gravity_load``."""
+    column_axial: Quantity | None = None
+    """Factored axial compression of the columns at the joint (column-beam ratio)."""
+    column_above: bool = True
+    """The column continues above the joint (false at the roof)."""
+    Ry_beam: float | None = Field(default=None, gt=0)
+    """R_y of the beam; omitted: AISC 341-22 Table A3.2 for the beam steel."""
+    Rt_beam: float | None = Field(default=None, gt=0)
+    Ry_column: float | None = Field(default=None, gt=0)
+    Ry_plate: float | None = Field(default=None, gt=0)
+    """R_y of the flange plates (bfp)."""
+    rbs_a: Quantity | None = None
+    """rbs: column face to the start of the cut."""
+    rbs_b: Quantity | None = None
+    """rbs: length of the cut."""
+    rbs_c: Quantity | None = None
+    """rbs: depth of the cut at its center (each flange edge)."""
+    bfp_s1: Quantity | None = None
+    """bfp: column face to the nearest bolt row."""
+    stiffener_thickness: Quantity | None = None
+    """bseep: thickness of the end-plate stiffener (steel ``grade``)."""
+
+    def missing(self) -> list[str]:
+        need = []
+        if self.connection is Prequalified.RBS:
+            need = ["rbs_a", "rbs_b", "rbs_c"]
+        elif self.connection is Prequalified.BFP:
+            need = ["bfp_s1"]
+        elif self.connection is Prequalified.BSEEP:
+            need = ["stiffener_thickness"]
+        return [f"seismic.{n}" for n in need if getattr(self, n) is None]
+
+
 class MomentConnectionInput(_Input):
     type: FlangeDetail
     beam: str | WSectionInput
@@ -165,13 +231,15 @@ class MomentConnectionInput(_Input):
     """Double-sided fillet weld to the column web; omitted: not checked."""
     doubler_weld: Quantity | None = None
     """Fillet weld of the doubler plate to the column flanges; omitted: CJP."""
+    seismic: SeismicInput | None = None
+    """Prequalified seismic connection (AISC 358-22): capacity-design checks."""
 
     def missing(self) -> list[str]:
-        missing: list[str] = []
+        missing: list[str] = self.seismic.missing() if self.seismic is not None else []
         if self.type is FlangeDetail.END_PLATE:
             if self.end_plate is None:
-                return ["end_plate"]
-            return self.end_plate.missing()
+                return [*missing, "end_plate"]
+            return missing + self.end_plate.missing()
         if self.web is None:
             missing.append("web")
         if self.support is ColumnFace.WEB and self.type is FlangeDetail.WELDED_FLANGE:
@@ -253,6 +321,9 @@ def moment_model(project: Project) -> MomentConnection:
             weld_reinforcement=q(e.weld_reinforcement, T), symmetric=e.symmetric)
     top = plate(mc.top)
     bottom = plate(mc.bottom)
+    seismic = None
+    if mc.seismic is not None:
+        seismic = _seismic(project, mc, beam, column, q)
     if mc.type is FlangeDetail.BOLTED_FLANGE_PLATE and bottom is None:
         bottom = top
     return MomentConnection(
@@ -273,4 +344,53 @@ def moment_model(project: Project) -> MomentConnection:
         continuity_plate_web_weld=q(mc.continuity_plate_web_weld, T),
         doubler_weld=q(mc.doubler_weld, T), panel_zone=mc.panel_zone, support=mc.support,
         plate_extension=q(mc.plate_extension),
-        panel_zone_inelastic=mc.panel_zone_inelastic, doubler_plate=q(mc.doubler_plate, T))
+        panel_zone_inelastic=mc.panel_zone_inelastic, doubler_plate=q(mc.doubler_plate, T),
+        seismic=seismic)
+
+
+def _properties(section: str | WSectionInput, shape: IShape) -> tuple[float, float, float,
+                                                                      float | None]:
+    """(Z_x, A, weight per length as a force, nominal depth in) of a beam or column."""
+    if isinstance(section, str):
+        row = aisc_shapes().get(section)
+        weight = to_internal(row["W"] * 9.80665, "N/m", Kind.FORCE_PER_LENGTH)
+        return row["Zx"], row["A"], weight, nominal_depth(row.label)
+    zx, area = section_properties(shape)
+    weight = to_internal(area * 7850e-9 * 9.80665 * 1000, "N/m", Kind.FORCE_PER_LENGTH)
+    return zx, area, weight, None
+
+
+def expected(grade: str, value: float | None, plate: bool = False,
+             tensile: bool = False) -> float:
+    """R_y (or R_t) given by the user or from AISC 341-22 Table A3.2."""
+    if value is not None:
+        return value
+    ratios = expected_ratios(grade, plate)
+    if ratios is None:
+        raise ValueError(f"no AISC 341 R_y/R_t for {grade!r}: give them in seismic")
+    return ratios[1] if tensile else ratios[0]
+
+
+def _seismic(project: Project, mc: MomentConnectionInput, beam: IShape, column: IShape,
+             q) -> Seismic:
+    s = mc.seismic
+    library = project.material_library()
+    beam_grade = mc.beam_grade if isinstance(mc.beam, str) else mc.beam.grade
+    column_grade = mc.column_grade if isinstance(mc.column, str) else mc.column.grade
+    bzx, ba, bw, bdepth = _properties(mc.beam, beam)
+    czx, ca, _, cdepth = _properties(mc.column, column)
+    plate = s.connection is Prequalified.BFP
+    return Seismic(
+        connection=s.connection, system=s.system, span=q(s.span), beam_Zx=bzx, beam_A=ba,
+        beam_weight=bw, column_Zx=czx, column_A=ca,
+        Ry_beam=expected(beam_grade, s.Ry_beam), Rt_beam=expected(beam_grade, s.Rt_beam,
+                                                                 tensile=True),
+        Ry_column=expected(column_grade, s.Ry_column),
+        Ry_plate=expected(mc.grade, s.Ry_plate, plate=True) if plate else 1.0,
+        gravity_load=q(s.gravity_load, Kind.FORCE_PER_LENGTH),
+        gravity_shear=q(s.gravity_shear, Kind.FORCE),
+        column_axial=q(s.column_axial, Kind.FORCE), column_above=s.column_above,
+        beam_depth_label=bdepth, column_depth_label=cdepth, rbs_a=q(s.rbs_a),
+        rbs_b=q(s.rbs_b), rbs_c=q(s.rbs_c), bfp_s1=q(s.bfp_s1),
+        stiffener_thickness=q(s.stiffener_thickness, Kind.THICKNESS),
+        stiffener_Fy=library[mc.grade].Fy)

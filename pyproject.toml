@@ -1,12 +1,11 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling>=1.24", "hatch-fancy-pypi-readme>=24.1"]
 build-backend = "hatchling.build"
 
 [project]
 name = "openconex"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 description = "Free software for the design of steel connections to AISC 360 (base plates, beam-column, beam-beam, splices)"
-readme = "README.md"
 license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
@@ -15,8 +14,15 @@ keywords = ["steel", "connections", "AISC", "base plate", "structural engineerin
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
+    "Environment :: Console",
+    "Environment :: X11 Applications :: Qt",
+    "Natural Language :: Spanish",
+    "Natural Language :: English",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
@@ -50,6 +56,25 @@ openconex-gui = "openconex.gui:main"
 
 [project.urls]
 Repository = "https://github.com/marcel1983/openconex"
+Documentation = "https://github.com/marcel1983/openconex/tree/main/docs"
+Issues = "https://github.com/marcel1983/openconex/issues"
+Releases = "https://github.com/marcel1983/openconex/releases"
+
+# PyPI renders the README without the repository around it: relative links and
+# images are rewritten to absolute GitHub URLs so they still work there.
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '(src|href)="(?!https?://|#)([^"]+)"'
+replacement = '\1="https://raw.githubusercontent.com/marcel1983/openconex/main/\2"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?!https?://|#)([^)]+)\)'
+replacement = '](https://github.com/marcel1983/openconex/blob/main/\1)'
 
 [tool.hatch.version]
 path = "src/openconex/__init__.py"
