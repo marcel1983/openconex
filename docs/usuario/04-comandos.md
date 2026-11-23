@@ -95,6 +95,19 @@ Calcula un proyecto con `moment_connection` en todas sus combinaciones e imprime
 openconex moment examples/moment_bolted_flange_plate.ocnx --html --dxf
 ```
 
+## `openconex splice`: calcular un empalme
+
+```bash
+openconex splice proyecto.ocnx [opciones]
+```
+
+Calcula un proyecto con `splice` (empalme de viga o de columna) en todas sus combinaciones e imprime la verificación que gobierna de cada tipo. Devuelve 0 si todo cumple, 1 si algo no cumple y 2 si el proyecto es de otro tipo. Opciones: `-o`/`--output`, `--lang`, `--units`, `--html`, `--docx`, `--pdf`, `--dxf` (elevación y planta) y `--step`/`--stl`, como en `openconex moment`.
+
+```bash
+openconex splice examples/splice_beam_bolted.ocnx --html --dxf
+openconex splice examples/splice_column_fillers.ocnx --html --dxf --step
+```
+
 ## `openconex beams`: extremos de viga de SAP2000
 
 ```bash
