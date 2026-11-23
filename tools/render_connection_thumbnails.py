@@ -14,6 +14,7 @@ Run with the optional 3D and GUI extras::
 
     python tools/render_connection_thumbnails.py --set base_plate
     python tools/render_connection_thumbnails.py --set shear
+    python tools/render_connection_thumbnails.py --set splice
     python tools/render_connection_thumbnails.py --set comparison
 """
 
@@ -146,6 +147,26 @@ def render_shear(app: QApplication) -> None:
     _render_shear(app, SHEAR_REVIEW, REVIEW_3D)
 
 
+SPLICE = (
+    # family, subtype, asset, margin, yaw
+    ("splice", "beam", "splice_beam", 1.6, 35.0),
+    ("splice", "column", "splice_column", 1.6, 125.0),
+)
+
+
+def render_splices(app: QApplication) -> None:
+    APP_THUMBS.mkdir(parents=True, exist_ok=True)
+    for family, subtype, asset, margin, yaw in SPLICE:
+        parts = parts_3d(build_project(family, subtype))
+        names = tuple(part.name for part in parts if not part.name.startswith("member_"))
+        pixmap = render_parts(parts, SIZE, yaw=yaw, margin=margin,
+                              hide=("member_1", "member_2"), highlight=names,
+                              highlight_color="#ef6c00")
+        path = APP_THUMBS / f"{asset}.png"
+        pixmap.save(str(path), "PNG")
+        print(f"wrote {path.relative_to(ROOT)}")
+
+
 def render_comparison() -> None:
     """Write a small HTML contact sheet for the SVG / 3D comparison."""
     rows = [
@@ -211,7 +232,7 @@ que la galería mantiene su isométrico SVG.</p>
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--set", choices=("base_plate", "shear", "comparison", "all"),
+    parser.add_argument("--set", choices=("base_plate", "shear", "splice", "comparison", "all"),
                         default="base_plate")
     args = parser.parse_args()
     app = QApplication([])
@@ -219,6 +240,8 @@ def main() -> int:
         render_base_plates(app)
     if args.set in {"shear", "all"}:
         render_shear(app)
+    if args.set in {"splice", "all"}:
+        render_splices(app)
     if args.set in {"comparison", "all"}:
         render_comparison()
     return 0

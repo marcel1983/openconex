@@ -1,6 +1,6 @@
 # 3. El archivo de proyecto `.ocnx`
 
-Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `shear_connection` o `moment_connection` (uno de los tres), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
+Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `shear_connection`, `moment_connection` o `splice` (uno de los cuatro), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
 Ejemplos completos en `examples/`:
 
@@ -30,6 +30,8 @@ Ejemplos completos en `examples/`:
 | `examples/moment_end_plate_8es.ocnx` | placa de extremo 8ES con placas de continuidad (AISC DG4, Ej. 4.4) |
 | `examples/moment_column_web.ocnx` | alas soldadas a placas de conexión en el alma de la columna (AISC DG13, Ap. D) |
 | `examples/moment_welded_flange_stiffened.ocnx` | alas soldadas con rigidizadores de altura parcial, doble placa y zona de panel (AISC DG13, Ej. 6-3) |
+| `examples/splice_beam_bolted.ocnx` | empalme de viga W21X62 con cubreplacas apernadas exteriores e interiores |
+| `examples/splice_column_fillers.ocnx` | empalme de columna W14X90 sobre W14X132 con rellenos, extremos fresados y cubreplacas del alma |
 | `examples/moment_seismic_rbs.ocnx` | opción sísmica: sección reducida de viga (RBS), pórtico especial (AISC 358-22 Cap. 5) |
 | `examples/moment_seismic_wuf_w.ocnx` | opción sísmica: ala soldada sin refuerzo y alma soldada (WUF-W, AISC 358-22 Cap. 8) |
 | `examples/moment_seismic_bfp.ocnx` | opción sísmica: placas de ala apernadas (BFP, AISC 358-22 Cap. 7) |
@@ -573,6 +575,29 @@ Bloque opcional de `moment_connection` para pórticos especiales (SMF) e interme
 | `stiffener_thickness` | — | `bseep`: espesor t_s del rigidizador de la placa de extremo (acero `grade`). |
 
 Con `two_sided` se suman los momentos de las dos vigas (iguales) en la zona de panel y en la relación columna-viga. La zona de panel se verifica siempre en SMF (y con `panel_zone` en IMF) con V_c = 0, del lado de la seguridad. Los ejemplos `moment_seismic_*.ocnx` muestran las cinco conexiones. Los límites de precalificación se tomaron de la norma publicada y están pendientes de cotejo (ver [limitaciones](08-limitaciones.md)).
+## Empalme (`splice`)
+
+Empalme apernado de viga o de columna con cubreplacas (Manual AISC Partes 7, 9 y 14). Se calcula con `openconex splice` o en la ventana de empalmes de la interfaz. Los casos de carga llevan las fuerzas en la sección del empalme: `P` (axial, positiva en compresión), `V` (corte en el plano del alma), `M` (momento del eje fuerte) y, solo en columnas, `V_weak` (corte paralelo a las alas). No admiten `M_weak`.
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `type` | (obligatorio) | `beam` (empalme de viga) o `column` (empalme de columna). |
+| `beam` | — | Viga: etiqueta W del catálogo o W genérica; obligatoria con `beam`. |
+| `beam_grade` | `ASTM A992` | Acero de la viga del catálogo. |
+| `upper` | — | Columna superior; obligatoria con `column`. |
+| `lower` | — | Columna inferior; obligatoria con `column`. Los rellenos completan la mitad de la diferencia de peralte, del lado de la columna menos peraltada. |
+| `column_grade` | `ASTM A992` | Acero de las columnas del catálogo. |
+| `grade` | `ASTM A572 Gr. 50` | Acero de las cubreplacas. |
+| `flange` | (obligatorio) | Cubreplacas de ala (ver abajo), iguales en las dos alas y a ambos lados del empalme. |
+| `web` | — | Cubreplacas del alma (ver abajo). Obligatorias en vigas; en columnas, solo si hay corte `V`. |
+| `gap` | 1/2 in (viga), 0 (columna) | Separación entre los extremos de los perfiles. |
+| `finished_ends` | `true` | Columnas: extremos fresados para apoyo directo; la compresión se transmite por aplastamiento y las cubreplacas solo toman tracción. |
+| `filler_developed` | `false` | Columnas: rellenos extendidos y desarrollados (§J5.2): sin reducción del corte de los pernos ni límite de 3/4 in. |
+| `deformation_considered` | `true` | Aplastamiento con deformación en servicio considerada. |
+
+Cubreplacas de ala (`flange`): `bolt` (`diameter`, `grade`, `threads`, `hole`), `rows` (pernos en cada una de las dos líneas, a cada lado), `spacing`, `gage`, `width` y `thickness` (cubreplaca exterior), `lev_member` (del extremo del perfil al primer perno), `lev_plate` (del último perno al extremo de la placa) e, solo en vigas, `inner_width` e `inner_thickness` (dos cubreplacas interiores, una a cada lado del alma, centradas en las líneas de pernos; los pernos pasan a doble corte).
+
+Cubreplacas del alma (`web`): dos placas, una a cada cara del alma, con pernos en doble corte. `bolt`, `rows` (pernos por línea vertical), `spacing` (separación vertical), `columns` (líneas verticales a cada lado, 1 a 4) y `column_spacing` (obligatoria con dos o más), `height` (altura de las placas; los pernos se centran en ella), `thickness` (de cada placa), `lev_member` (del extremo del perfil a la primera línea) y `leh_plate` (de la última línea al extremo de la placa).
 
 ## Casos de carga (`cases`)
 
@@ -585,7 +610,7 @@ Cada caso es un conjunto de fuerzas sin mayorar en la base de la columna (o en e
 | `P` | `0` | Carga axial; **positiva en compresión**. |
 | `V` | `0` | Corte en la dirección de N (eje fuerte). |
 | `M` | `0` | Momento del eje fuerte. |
-| `V_weak` | `0` | Corte en la dirección de B (eje débil). |
+| `V_weak` | `0` | Corte en la dirección de B (eje débil). En empalmes de columna, corte paralelo a las alas. |
 | `M_weak` | `0` | Momento del eje débil; si no es cero, la placa se verifica a flexión biaxial. |
 | `column_V` | `0` | Conexiones de momento con `panel_zone`: corte de piso de la columna sobre el nudo, que descuenta la fuerza de ala en la zona de panel. |
 | `column_P` | `0` | Conexiones de momento con `panel_zone`: carga axial de la columna (§J10.6). |

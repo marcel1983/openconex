@@ -22,7 +22,14 @@ __all__ = ["parts_3d", "write_3d", "write_dxf"]
 
 
 def write_dxf(project: Project, path: str | Path) -> None:
-    """Write the drawing of ``project`` (base plate, shear or moment connection)."""
+    """Write the drawing of ``project`` (base plate, shear or moment connection, splice)."""
+    if project.splice is not None:
+        from openconex.drawing.splice import SpliceDrawing, write_splice_dxf
+        info = project.info
+        write_splice_dxf(project.splice_model(), path, info.unit_system(), info.language,
+                         SpliceDrawing(title=info.name, number=info.number,
+                                       revision=info.revision, date=info.date))
+        return
     if project.moment_connection is not None:
         from openconex.drawing.moment import MomentDrawing, write_moment_dxf
         info = project.info
@@ -55,6 +62,9 @@ def write_dxf(project: Project, path: str | Path) -> None:
 
 def parts_3d(project: Project) -> list[Part]:
     """Solids of ``project`` for the viewer and the STEP/STL writers."""
+    if project.splice is not None:
+        from openconex.geometry3d.splice import splice_parts
+        return splice_parts(project.splice_model())
     if project.moment_connection is not None:
         from openconex.geometry3d.moment import moment_parts
         return moment_parts(project.moment_model())
