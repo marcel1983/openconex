@@ -128,16 +128,17 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
 
 Se admite únicamente en LRFD, con perfiles I y sin momento débil, llave de corte, base débil ni combinaciones ASD.
 
-### 7.1 Tipo II: placa base expuesta embebida en un bloque
+### 7.1 Tipo II: cimiento bajo la placa embebida diseñado para carga vertical
 
-La DG1 Capítulo 5 describe el Tipo II (placa base con anclajes sobre el cimiento y la parte baja de la columna embebida en un bloque de concreto vertido después) sin un método definitivo. OpenConex usa esta hipótesis, documentada en la memoria:
+La DG1 §5.2.2 define el Tipo II como una base empotrada cuyo cimiento bajo la placa embebida se diseña para cargas verticales. Al apoyo horizontal del Tipo I se suma un momento por apoyo vertical, M_VB: la placa embebida apoya hacia abajo en el lado comprimido y su levantamiento queda restringido por el concreto de encima en el lado traccionado. La guía describe tres escenarios de falla del lado traccionado (1: cono de arrancamiento sin refuerzo horizontal soldado, Ec. 5-9; 2: con refuerzo horizontal soldado y sin estribos, resistencia al levantamiento casi nula; 3: con estribos, falla por corte directo), no da un método definitivo y remite a Hassan y Kanvinde (2023). El Ejemplo 5.3-1 es solo de Tipo I.
 
-1. El bloque resiste φM_HB por apoyo horizontal con la Ec. 5-6, con d = `embedment` (altura del bloque sobre la placa), B_f = `foundation_width` y b_j = b_f; el refuerzo horizontal y `damage_limit` se aplican igual que en el Tipo I.
-2. La placa base resiste φM_bp con los anclajes de la cara traccionada a su resistencia de acero T_cap: Y = (T_cap + P)/q_max ≤ N y φM_bp = q_max Y (f + N/2 − Y/2) − P f (DG1 §4.3.7, la misma expresión de la interacción biaxial). Si T_cap + P ≤ 0, φM_bp = 0.
-3. `base_plate.type2_moment`: M_u ≤ φM_HB + φM_bp.
-4. El momento se reparte en proporción a las resistencias, M_bp = M_u φM_bp/(φM_HB + φM_bp), y la placa base se verifica completa (pasos 0 a 6, 8 y 9) con M_bp y los P y V totales. El corte también entra en la Ec. 5-6, de modo que el corte se cuenta dos veces (conservador).
+OpenConex implementa la versión conservadora:
 
-Con un bloque de altura casi nula, φM_HB → 0 y la verificación coincide con la de la placa expuesta (prueba `test_type2_without_blockout_depth_is_the_exposed_plate`).
+1. `base_plate.embedded_moment`: M_u ≤ φM_HB (Ec. 5-6) con b_j = (b_f + B)/2 de la placa embebida, el refuerzo horizontal y `damage_limit` como en el Tipo I. M_VB = 0, que es el límite inferior del escenario 2.
+2. La placa embebida es obligatoria y transmite toda la carga axial (DG1 §5.2.2): con compresión, `embedded_plate_bearing` y `embedded_plate_thickness`; con levantamiento, `embedded_plate_thickness`, `embedded_uplift_breakout` y `embedded_uplift_pullout`, como en el Tipo I. No hay placas de cara.
+3. Sin refuerzo horizontal (escenario 1), la traza del momento informa F_t = (40/9) A_35 √(f'c/d_embed) (Ec. 5-9, método CCD con f'c en psi y longitudes en in; el resultado es en lb). A_35 se toma como el área proyectada de un cono a 35° desde un bloque de 0,3B en el borde traccionado de la placa y de ancho B, con la extensión d_embed/tan 35° limitada por el ancho del cimiento. Es informativa: no entra en ninguna verificación.
+
+Con la misma placa embebida, el Tipo II da el mismo φM_HB que el Tipo I (prueba `test_type2_equals_type1_with_the_same_embedded_plate`).
 
 ## 8. Pedestal como columna corta (si se da `pedestal`)
 
@@ -173,6 +174,6 @@ Código: `connections/base_plate/optimize.py`, función `optimize(bp, combinacio
 
 ## Lo que no hace la verificación completa
 
-- La base empotrada no comprueba el momento débil; el Tipo II se basa en una hipótesis de superposición sin ejemplo publicado.
+- La base empotrada no comprueba el momento débil; el Tipo II desprecia M_VB (conservador) porque la DG1 no da un método definitivo.
 - El pedestal no considera esbeltez, zunchos en espiral ni el traslapo con la zapata.
 - La llave de corte ya se dibuja en DXF/3D y se comprueba su flexión local; no se comprueba la interacción completa placa-llave por elementos finitos.

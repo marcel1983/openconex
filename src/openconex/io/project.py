@@ -322,13 +322,12 @@ class EmbeddedRebarInput(_Input):
 
 
 class EmbeddedBaseInput(_Input):
-    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+    """Embedded base, DG1 Chapter 5: Type I (§5.2.1, §5.3) or Type II (§5.2.2)."""
 
     embedment: Quantity
     """Depth of the column embedded in the concrete below the base plate."""
     foundation_width: Quantity
-    """Width of the concrete foundation (Type II: of the blockout) in the direction of
-    bending."""
+    """Width of the concrete foundation in the direction of bending."""
     face_plate_thickness: Quantity | None = None
     """Face bearing plate thickness; required by Type I, not used by Type II."""
     beta1: float = Field(default=0.85, gt=0.0, le=1.0)
@@ -342,7 +341,8 @@ class EmbeddedBaseInput(_Input):
     damage_limit: bool = False
     """Apply the additional 0.8 factor on M_HB recommended to limit damage."""
     type: Literal["I", "II"] = "I"
-    """I: column embedded in the footing; II: exposed base plate encased in a blockout."""
+    """I: foundation below the embedded base plate not designed for vertical forces;
+    II: it is, and axial compression goes through the embedded base plate (DG1 §5.2)."""
     face_plate_weld: Quantity | None = None
     """Fillet weld of the face bearing plates to the column (Type I; omitted: not checked)."""
 
@@ -543,15 +543,13 @@ class Project(_Input):
             raise ValueError("connection_type 'embedded' requires embedded_base")
         if connection == "exposed" and embedded is not None:
             raise ValueError("embedded_base requires connection_type 'embedded'")
-        type2 = embedded is not None and embedded.type == "II"
-        if connection == "exposed" or type2:
+        if connection == "exposed":
             missing = [name for name, value in (
                 ("N", self.base_plate.N), ("B", self.base_plate.B),
                 ("tp", self.base_plate.tp), ("rod_diameter", self.base_plate.rod_diameter),
                 ("f", self.base_plate.f)) if value is None]
             if missing:
-                kind = "embedded base Type II" if type2 else "exposed base plate"
-                raise ValueError(f"{kind} needs {', '.join(missing)}")
+                raise ValueError(f"exposed base plate needs {', '.join(missing)}")
         has_moment = any(
             self.quantity(case.M, Kind.MOMENT) != 0
             or self.quantity(case.M_weak, Kind.MOMENT) != 0
@@ -596,9 +594,9 @@ class Project(_Input):
                 raise ValueError("embedded base requires LRFD combinations")
             if embedded.type == "I" and embedded.face_plate_thickness is None:
                 raise ValueError("embedded base Type I needs face_plate_thickness")
-            if embedded.type == "II" and embedded.base_plate_width is not None:
-                raise ValueError("embedded base Type II uses the base plate N, B and tp; "
-                                 "omit base_plate_width and base_plate_thickness")
+            if embedded.type == "II" and embedded.base_plate_width is None:
+                raise ValueError("embedded base Type II needs the embedded base plate "
+                                 "(base_plate_width and base_plate_thickness)")
             for value, kind in ((embedded.embedment, Kind.LENGTH),
                                 (embedded.foundation_width, Kind.LENGTH),
                                 (embedded.face_plate_thickness, Kind.THICKNESS),

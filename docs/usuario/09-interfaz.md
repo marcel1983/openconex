@@ -62,7 +62,7 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
 2. Elegir el **tipo de conexión**:
    - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
    - **Base empotrada Tipo I**, con el empotramiento, el pedestal, las placas de cara (y su soldadura opcional), la placa embebida y el refuerzo horizontal.
-   - **Base empotrada Tipo II (bloque de concreto)**, con la placa base expuesta y sus anclajes más la altura y el ancho del bloque.
+   - **Base empotrada Tipo II (cimiento con carga vertical)**, con los mismos campos que el Tipo I salvo las placas de cara, que se desactivan; la placa embebida es obligatoria.
 3. Elegir la **columna** en el desplegable. El campo es editable: se puede escribir una etiqueta AISC (`W12X96`) y el autocompletado filtra el catálogo.
 4. Elegir los materiales en los desplegables:
    - **Grado de columna** y **Acero de la placa**: aceros de AISC o materiales propios del proyecto.

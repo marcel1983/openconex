@@ -515,15 +515,16 @@ def test_gui_type2_embedded_base_round_trip(qapp, tmp_path):
     window = MainWindow()
     window.open_project(EXAMPLE.with_name("base_plate_embedded_type2.ocnx"))
     assert window._connection_combo.currentData() == "embedded_ii"
-    assert not window._plate_group.isHidden()
+    assert window._plate_group.isHidden()
     assert not window.advanced._embedded_group.isHidden()
     assert window.advanced._shear_group.isHidden()
     assert not window.advanced._fields["embedded_base.face_plate_thickness"].edit.isEnabled()
+    assert window.advanced._fields["embedded_base.base_plate_width"].edit.isEnabled()
     target = tmp_path / "type2.ocnx"
     window.save_project_to(target)
     again = load_project(target)
     assert again.base_plate.embedded_base.type == "II"
-    assert again.base_plate.N is not None
+    assert again.base_plate.embedded_base.base_plate_width is not None
     window.calculate()
     assert window.report is not None and window.report.ok
     window.close()

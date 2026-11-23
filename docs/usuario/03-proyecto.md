@@ -16,7 +16,7 @@ Ejemplos completos en `examples/`:
 | `examples/base_plate_anchor_reinforcement.ocnx` | refuerzo de anclaje (DG1 4.7-15) |
 | `examples/base_plate_weak_base.ocnx` | base sísmica débil (DG1 6.4-1) |
 | `examples/base_plate_embedded_base.ocnx` | base empotrada tipo I (DG1 5.3-1) |
-| `examples/base_plate_embedded_type2.ocnx` | base empotrada tipo II: placa base expuesta embebida en un bloque de concreto |
+| `examples/base_plate_embedded_type2.ocnx` | base empotrada tipo II: cimiento bajo la placa embebida diseñado para carga vertical |
 | `examples/base_plate_pedestal.ocnx` | pedestal rectangular diseñado como columna corta (ACI 318-19) |
 | `examples/base_plate_pedestal_round.ocnx` | pedestal circular diseñado como columna corta (ACI 318-19) |
 | `examples/base_plate_hss_square.ocnx` | columna HSS cuadrada |
@@ -138,7 +138,7 @@ La placa es rectangular. `N` va en la dirección del momento del eje fuerte (a l
 | `rod_bending_lever` | ninguno | Distancia desde el anclaje hasta el alma o ala que sirve de apoyo para la flexión de la placa por los anclajes (DG1 Ejemplos 4.7-3 y 4.7-7). Si se omite, no se hace esa verificación. |
 | `reinforcement` | ninguno | Refuerzo de anclaje en tracción (ver más abajo). |
 | `weak_base` | ninguno | Base sísmica débil con anclajes dúctiles (ver más abajo). |
-| `embedded_base` | ninguno | Base empotrada tipo I con placas de cara o tipo II con bloque de concreto (ver más abajo). |
+| `embedded_base` | ninguno | Base empotrada tipo I o tipo II (DG1 Capítulo 5, ver más abajo). |
 | `hef` | `0` | Empotramiento efectivo de los anclajes. Con 0 no se verifican el arrancamiento del concreto ni el empotramiento mínimo con llave de corte. |
 | `pedestal_rebars` | `[]` | Barras longitudinales del pedestal: revisor de interferencias y armadura del pedestal (ver más abajo). |
 | `pedestal` | ninguno | Diseño del pedestal como columna corta según ACI 318-19 (ver más abajo). |
@@ -240,10 +240,10 @@ La verificación es LRFD, requiere el modelo de presión rectangular, no admite 
 
 ### Base empotrada (`embedded_base`)
 
-La DG1 Capítulo 5 describe dos detalles, que se eligen con `type`:
+En los dos tipos de la DG1 Capítulo 5 la columna se empotra en el cimiento y el momento se resiste por apoyo horizontal del concreto sobre las alas; no hay placa base expuesta. Se eligen con `type` según el cimiento bajo la placa embebida (DG1 §5.2):
 
-- **Tipo I** (`"type": "I"`, por defecto): la columna se empotra en el cimiento y el momento se resiste por apoyo horizontal del concreto. Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1). No hay placa base expuesta.
-- **Tipo II** (`"type": "II"`): una placa base expuesta con anclajes sobre el cimiento, con la parte inferior de la columna embebida en un bloque de concreto (*blockout*) vertido después. `embedment` y `foundation_width` son la altura y el ancho del bloque, y la placa, los anclajes y el pedestal se definen con los campos normales de la placa expuesta (`N`, `B`, `tp`, `rod_diameter`, `f`…).
+- **Tipo I** (`"type": "I"`, por defecto): el cimiento bajo la placa embebida no se diseña para cargas verticales (o no hay placa embebida). Las placas de apoyo frontal se apoyan en la cara superior del cimiento y transmiten la compresión axial (ejemplo 5.3-1).
+- **Tipo II** (`"type": "II"`): el cimiento bajo la placa embebida sí se diseña para cargas verticales. La placa embebida es obligatoria y transmite toda la carga axial; no hay placas de cara. El detalle de una placa base expuesta con un bloque de concreto vertido encima (*blockout*) no es un Tipo II: la DG1 normalmente desprecia la flexión del bloque y lo trata en el Apéndice C.
 
 ```json
 "connection_type": "embedded",
@@ -264,13 +264,13 @@ La DG1 Capítulo 5 describe dos detalles, que se eligen con `type`:
 
 | Campo | Por defecto | Significado |
 |---|---|---|
-| `type` | `"I"` | `I`: columna empotrada en el cimiento; `II`: placa base expuesta embebida en un bloque. |
-| `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto (Tipo II: altura del bloque sobre la placa). |
-| `foundation_width` | (obligatorio) | Ancho del cimiento (Tipo II: del bloque) en la dirección del momento. |
+| `type` | `"I"` | `I`: cimiento bajo la placa embebida no diseñado para carga vertical; `II`: diseñado para carga vertical. |
+| `embedment` | (obligatorio) | Profundidad de empotramiento de la columna en el concreto. |
+| `foundation_width` | (obligatorio) | Ancho del cimiento en la dirección del momento. |
 | `face_plate_thickness` | obligatorio en Tipo I | Espesor de las placas de apoyo frontal. No se usa en el Tipo II. |
 | `face_plate_weld` | ninguno | Tamaño del filete de las placas de cara a la columna (Tipo I). Si se omite, no se verifica y se supone CJP o un detalle que desarrolla la placa. |
 | `beta1` | `0.85` | Factor del bloque de compresión del concreto, β1. |
-| `base_plate_width` | ninguno | Ancho B de la placa embebida del fondo (Tipo I, cuadrada). Si se define, `b_j = (b_f + B)/2`. |
+| `base_plate_width` | ninguno (obligatorio en Tipo II) | Ancho B de la placa embebida del fondo (cuadrada). Si se define, `b_j = (b_f + B)/2`. |
 | `base_plate_thickness` | ninguno | Espesor de la placa embebida; obligatorio junto con `base_plate_width`. |
 | `rebar_top` | ninguno | Refuerzo horizontal superior: `area`, `fy` y `depth`. |
 | `rebar_bottom` | ninguno | Refuerzo horizontal inferior: `area`, `fy` y `depth`. |
@@ -284,12 +284,12 @@ Cada capa de refuerzo horizontal se define con:
 | `fy` | Fluencia del refuerzo. |
 | `depth` | Profundidad bajo la cara superior del cimiento. |
 
-En el Tipo I no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada. En el Tipo II son obligatorios, porque la placa base se verifica completa.
+En la base empotrada no son necesarios `N`, `B`, `tp`, `rod_diameter` ni `f`: la verificación ejecuta solo los estados de la base empotrada.
 
 Alcance implementado:
 
 - **Tipo I:** momento por apoyo horizontal (Ec. 5-6), aplastamiento y espesor de las placas de cara, espesor sísmico mínimo `máx(0,75 t_w, 3/8 in)`, soldadura de las placas de cara si se da `face_plate_weld`, y, con placa embebida, su aplastamiento y flexión por la carga axial. Con levantamiento neto exige placa embebida y verifica su flexión, el arrancamiento del concreto (h_ef = `embedment`) y la extracción.
-- **Tipo II:** el momento se reparte entre el bloque (φM_HB) y la placa base (φM_bp, con los anclajes a su resistencia) en proporción a sus resistencias; se verifica la suma y la placa base completa con su parte del momento. Es una hipótesis de OpenConex: la DG1 no da un método definitivo.
+- **Tipo II** (versión conservadora): momento por apoyo horizontal (Ec. 5-6) con `b_j` de la placa embebida; el momento por apoyo vertical M_VB se toma igual a cero, porque la DG1 no da un método definitivo y advierte que con refuerzo horizontal soldado puede ser casi nulo. La placa embebida se verifica a aplastamiento y flexión con la compresión, y a flexión, arrancamiento y extracción con el levantamiento. Sin refuerzo horizontal, la traza informa la fuerza de arrancamiento F_t de la Ec. 5-9 (escenario 1), sin usarla.
 - Solo LRFD, perfiles I y eje fuerte. No admite momento débil, llave de corte, base débil ni combinaciones ASD.
 
 ### Pedestal diseñado como columna (`pedestal`)

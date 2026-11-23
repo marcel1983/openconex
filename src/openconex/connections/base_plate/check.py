@@ -139,19 +139,19 @@ class EmbeddedRebar:
 
 class EmbeddedType(StrEnum):
     TYPE_I = "I"
-    """Column embedded in the footing, with face bearing plates (DG1 §5.2, §5.3)."""
+    """Foundation below the embedded plate not designed for vertical forces (DG1 §5.2.1)."""
     TYPE_II = "II"
-    """Exposed base plate on the footing, encased in a concrete blockout (DG1 Chapter 5)."""
+    """Foundation below the embedded plate designed for vertical forces (DG1 §5.2.2)."""
 
 
 @dataclass(frozen=True)
 class EmbeddedBase:
     """Embedded base, DG1 Chapter 5.
 
-    Type I: ``embedment`` is the depth of the column in the footing and
-    ``foundation_width`` the footing width. Type II: they are the depth and
-    width of the blockout above the base plate; the base plate, anchors and
-    pedestal data are those of the exposed base plate.
+    ``embedment`` is the depth of the column in the footing and
+    ``foundation_width`` the footing width. Type I transfers compression through
+    the face bearing plates; Type II through the embedded base plate, which it
+    requires (``base_plate_width`` and ``base_plate_thickness``).
     """
 
     embedment: float
@@ -223,11 +223,6 @@ class BasePlate:
     pedestal_B: float | None = None
     pedestal: Pedestal | None = None
     """Pedestal designed as a short column; ``None``: the pedestal is not checked."""
-
-    @property
-    def embedded_type1(self) -> bool:
-        """True for a Type I embedded base (no exposed base plate)."""
-        return self.embedded_base is not None and self.embedded_base.type == EmbeddedType.TYPE_I
 
     @property
     def pedestal_shape(self) -> str:
@@ -595,7 +590,7 @@ def _embedded_base_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M:
         raise ValueError("embedded base does not support a shear lug yet")
     embedded = bp.embedded_base
     if embedded.type == EmbeddedType.TYPE_II:
-        return _type2_checks(bp, forces, P_, V, M, method, combo)
+        return _type2_checks(bp, P_, V, M, method, combo)
     if P_ < 0 and embedded.base_plate_width is None:
         raise ValueError("embedded base with net uplift needs an embedded base plate "
                          "(base_plate_width and base_plate_thickness)")
@@ -718,47 +713,62 @@ def _embedded_plate_checks(bp: BasePlate, P_: float, method: Method,
     return out
 
 
-def _type2_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M: float,
-                  method: Method, combo: str) -> list[CheckResult]:
-    """Type II embedded base: exposed base plate encased in a concrete blockout.
+def _type2_checks(bp: BasePlate, P_: float, V: float, M: float, method: Method,
+                  combo: str) -> list[CheckResult]:
+    """Type II embedded base (DG1 §5.2.2), conservative.
 
-    OpenConex hypothesis (DG1 Chapter 5 describes the detail without a
-    definitive method): the two mechanisms act in parallel. The blockout
-    resists φM_HB by horizontal bearing over its depth (Eq. 5-6) and the base
-    plate resists φM_bp with its anchor rods at their tensile strength
-    (DG1 §4.3.7). The moment is shared in proportion to the strengths and the
-    base plate is checked completely for its share, with the whole P and V.
+    The foundation below the embedded base plate is designed for vertical
+    forces, so the plate carries the whole axial force: compression bearing
+    down on it, tension bearing up on the concrete above. DG1 gives no
+    definitive method for the vertical-bearing moment M_VB and notes that it may
+    be negligible when horizontal reinforcement is attached (Scenario 2), so
+    OpenConex takes M_VB = 0 and the moment is resisted by φM_HB (Eq. 5-6) alone.
+    Without attached reinforcement, the breakout force F_t of Eq. 5-9 (Scenario
+    1) is reported in the trace for information only.
     """
-    if bp.N <= 0 or bp.B <= 0 or bp.tp <= 0 or bp.f <= 0:
-        raise ValueError("embedded base Type II needs the base plate N, B, tp and f")
-    results: list[CheckResult] = []
-    mhb = _horizontal_bearing(bp, V, M, combo, None)
-    phi_mhb = max(mhb.capacity, 0.0)
+    embedded, col = bp.embedded_base, bp.column
+    if embedded.base_plate_width is None or embedded.base_plate_thickness is None:
+        raise ValueError("embedded base Type II needs the embedded base plate "
+                         "(base_plate_width and base_plate_thickness)")
+    bj = (col.bf + embedded.base_plate_width) / 2
+    mhb = _horizontal_bearing(bp, V, M, combo, bj)
     c = Calc(method, combo)
-    c.step(r"\phi M_{HB}", "", phi_mhb, Kind.MOMENT, f"{DG1} Eq. 5-6")
-    t_cap = c.step("T_{cap}", "", _face_tension_capacity(bp, bp.rods_per_side, method),
-                   Kind.FORCE, f"{DG1} Example 4.7-14")
-    Y, m_bp = bpl.biaxial_capacity(P_, bp.N, bp.B, bp.f, bp.fc, bp.A2_over_A1, t_cap, method)
-    if Y <= 0:
-        Y, m_bp = 0.0, 0.0
-    elif Y > bp.N:
-        q = bpl.bearing_stress(bp.fc, bp.A2_over_A1, method) * bp.B
-        Y, m_bp = bp.N, q * bp.N * bp.f - P_ * bp.f
-    c.step("Y", r"\frac{T_{cap} + P}{q_{max}} \le N", Y, Kind.LENGTH, f"{DG1} §4.3.7")
-    m_bp = c.step(r"\phi M_{bp}", r"q_{max} Y\left(f + \frac{N}{2} - \frac{Y}{2}\right) - P f",
-                  max(m_bp, 0.0), Kind.MOMENT, f"{DG1} §4.3.7")
-    total = c.step(r"\phi M_n", r"\phi M_{HB} + \phi M_{bp}", phi_mhb + m_bp, Kind.MOMENT,
-                   f"{DG1} Chapter 5")
-    results.append(c.result("base_plate.type2_moment", f"{DG1} Chapter 5", M, total,
-                            Kind.MOMENT))
-    share = m_bp / total if total > 0 else 1.0
-    m_plate = M * share
-    results.append(mhb.model_copy(update={"demand": M - m_plate}))
-    exposed = replace(bp, embedded_base=None)
-    sign = 1.0 if forces.M3 >= 0 else -1.0
-    results += check_base_plate(exposed, forces.model_copy(update={"M3": sign * m_plate}),
-                                method, combo)
+    c.step("M_{VB}", r"0\ \text{(neglected, conservative)}", 0.0, Kind.MOMENT,
+           f"{DG1} §5.2.2")
+    if embedded.rebar_top is None and embedded.rebar_bottom is None:
+        c.step("A_{35}", "", type2_breakout_area(bp), Kind.AREA, f"{DG1} §5.2.2")
+        c.step("F_t", r"\frac{40}{9} A_{35} \sqrt{\frac{f'_c}{d_{embed}}}",
+               type2_breakout_force(bp), Kind.FORCE, f"{DG1} Eq. 5-9 (information only)")
+    results = [mhb.model_copy(update={"steps": (*mhb.steps, *c.steps)})]
+    if P_ != 0:
+        results += _embedded_plate_checks(bp, P_, method, combo)
     return results
+
+
+def type2_breakout_area(bp: BasePlate) -> float:
+    """A_35 of DG1 Eq. 5-9: projected area of the 35° cone above the tension-side block.
+
+    The block is 0.3N long (N = embedded plate width, along the bending) at the
+    plate edge and as wide as the plate; the cone rises d_embed at 35° from the
+    horizontal on every side, limited by the foundation width in both directions.
+    """
+    embedded = bp.embedded_base
+    width, depth = embedded.base_plate_width, embedded.embedment
+    spread = depth / math.tan(math.radians(35.0))
+    side = max((embedded.foundation_width - width) / 2, 0.0)
+    along = 0.3 * width + spread + min(spread, side)
+    across = width + 2 * min(spread, side)
+    return along * across
+
+
+def type2_breakout_force(bp: BasePlate) -> float:
+    """F_t of DG1 Eq. 5-9 (CCD method, f'c in psi and lengths in in, result in lb) [N]."""
+    fc_psi = bp.fc / to_internal(1.0, "psi", Kind.STRESS)
+    inch = to_internal(1.0, "in", Kind.LENGTH)
+    area = type2_breakout_area(bp) / inch**2
+    depth = bp.embedded_base.embedment / inch
+    lb = 40 / 9 * area * math.sqrt(fc_psi / depth)
+    return to_internal(lb, "lbf", Kind.FORCE)
 
 
 def concrete_edges(bp: BasePlate, both_rows: bool = False) -> anchors.Edges:

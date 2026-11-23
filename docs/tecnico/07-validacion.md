@@ -39,7 +39,7 @@ E702.2 usa la transición de φ de ACI 318-05 (ε_t entre ε_y y 0,005); se comp
 - Soldadura de las placas de cara: φR_n = 1,392 D L kip con E70 (Manual AISC, Ec. 8-2a).
 - Placa embebida: misma función que los ejemplos DG1 4.7-1 y 4.7-2 (`plate.compression_design`).
 - Levantamiento: funciones de arrancamiento y extracción de ACI 318-19 ya validadas con DG1 4.7-3 y 4.7-12.
-- Tipo II: φM_HB de la Ec. 5-6 (Ejemplo 5.3-1) más φM_bp de §4.3.7 (Ejemplo 4.7-14). Al no haber ejemplo publicado se prueban la suma, el reparto proporcional y que con un bloque de altura casi nula coincide con la placa expuesta.
+- Tipo II (DG1 §5.2.2): la DG1 no tiene ejemplo resuelto de Tipo II (el 5.3-1 es de Tipo I). Se prueba que φM_HB es el de la Ec. 5-6 con b_j de la placa embebida (la misma función validada con el 5.3-1), que coincide con el Tipo I con la misma placa, que M_VB = 0 y la F_t de la Ec. 5-9 calculada a mano.
 
 ## Optimización global
 

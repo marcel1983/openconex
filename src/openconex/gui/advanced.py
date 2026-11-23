@@ -374,18 +374,17 @@ class BasePlateAdvancedForm(QWidget):
     def set_embedded(self, embedded: bool, type2: bool = False) -> None:
         """Show the embedded form or the exposed-base optional blocks.
 
-        A Type II embedded base keeps the exposed blocks of its base plate, except
-        the shear lug and the weak base.
+        A Type II embedded base has no face bearing plates; it needs the embedded
+        base plate.
         """
         self._embedded_group.setVisible(embedded)
         self._type2 = embedded and type2
         for group in (self._advanced_group, self._pedestal_group,
                       self._pedestal_design_group):
-            group.setVisible(not embedded or type2)
+            group.setVisible(not embedded)
         for group in (self._shear_group, self._reinforcement_group, self._weak_group):
             group.setVisible(not embedded)
-        for key in ("embedded_base.face_plate_thickness", "embedded_base.face_plate_weld",
-                    "embedded_base.base_plate_width", "embedded_base.base_plate_thickness"):
+        for key in ("embedded_base.face_plate_thickness", "embedded_base.face_plate_weld"):
             field = self._fields[key]
             field.edit.setEnabled(not self._type2)
 
@@ -475,7 +474,7 @@ class BasePlateAdvancedForm(QWidget):
             key: text for key in ("left", "right", "bottom", "top")
             if (text := self._read(f"edges.{key}", errors, required=False)) is not None
         }
-        exposed_blocks = not embedded or type2
+        exposed_blocks = not embedded
         bp.pedestal_rebars = self._read_rebars(errors) if exposed_blocks else []
         bp.pedestal = self._read_pedestal(errors) if exposed_blocks else None
 
@@ -497,11 +496,9 @@ class BasePlateAdvancedForm(QWidget):
                                      maximum=1.0)
             if beta1 <= 0:
                 errors.append("β1 debe ser mayor que cero")
-            width = (None if type2 else
-                     self._read("embedded_base.base_plate_width", errors, required=False))
-            thickness = (None if type2 else
-                         self._read("embedded_base.base_plate_thickness", errors,
-                                    required=False))
+            width = self._read("embedded_base.base_plate_width", errors, required=type2)
+            thickness = self._read("embedded_base.base_plate_thickness", errors,
+                                   required=type2)
             if (width is None) != (thickness is None):
                 errors.append("La placa embebida necesita ancho y espesor, o ninguno")
             top = self._read_layer(self._layer_top, "embedded_base.rebar_top", errors)

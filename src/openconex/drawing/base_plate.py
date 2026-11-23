@@ -154,14 +154,6 @@ def _hss_shape(sheet: _Sheet, kind: HSSKind, d, bf, t, cx, cy, layer):
         sheet.rect(cx - d / 2 + t, cy - bf / 2 + t, cx + d / 2 - t, cy + bf / 2 - t, layer)
 
 
-def _blockout(bp: BasePlate) -> tuple[float, float] | None:
-    """(width, depth) of the Type II embedded-base blockout, if any."""
-    embedded = bp.embedded_base
-    if embedded is None or embedded.type != "II":
-        return None
-    return embedded.foundation_width, embedded.embedment
-
-
 def _draw_plan(s: _Sheet, bp: BasePlate, col, N, B, pN, pB, rods, d_rod, hole,
                w_size, w_t, h, top, lang):
     def t(key, **kw):
@@ -174,10 +166,6 @@ def _draw_plan(s: _Sheet, bp: BasePlate, col, N, B, pN, pB, rods, d_rod, hole,
     for bar in bp.pedestal_rebars:
         s.msp.add_circle((s.u(bar.x), s.u(bar.y)), s.u(bar.diameter) / 2,
                          dxfattribs={"layer": "BP-CONCRETO"})
-    blockout = _blockout(bp)
-    if blockout:
-        w = s.u(blockout[0])
-        s.rect(-w / 2, -w / 2, w / 2, w / 2, "BP-CONCRETO")
     s.rect(-N / 2, -B / 2, N / 2, B / 2, "BP-PLACA")
     if isinstance(col, HSSShape):
         _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
@@ -224,11 +212,6 @@ def _draw_elevation(s: _Sheet, bp: BasePlate, opt: BasePlateDrawing, col, N, pN,
             s.msp.add_line((-reach, y), (reach, y), dxfattribs={"layer": "BP-CONCRETO"})
             y -= s.u(ped.tie_spacing)
             k += 1
-    blockout = _blockout(bp)
-    if blockout:
-        w, depth = s.u(blockout[0]), s.u(blockout[1])
-        s.rect(-w / 2, y0, w / 2, y0 + grout + s.u(bp.tp) + depth, "BP-CONCRETO")
-        stub = max(stub, grout + depth + 2 * h)
     s.rect(-N / 2, y0, N / 2, y0 + grout, "BP-CONCRETO")
     s.rect(-N / 2, y0 + grout, N / 2, y0 + grout + s.u(bp.tp), "BP-PLACA")
     d, tf = s.u(col.d), s.u(col.tf)

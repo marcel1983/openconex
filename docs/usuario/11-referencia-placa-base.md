@@ -105,7 +105,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
 | `embedded_base` | Base empotrada Tipo I o Tipo II de la DG1 Capítulo 5. | Active el bloque y defina empotramiento, cimiento y placas de cara. | Ejecuta solo las comprobaciones de la base empotrada. | — | PB |
-| `embedded_base.type` | I: columna empotrada en la zapata; II: placa base expuesta embebida en un bloque. | Escriba I o II; por defecto I. | El Tipo II suma la placa base y el apoyo horizontal del bloque. | I | PB |
+| `embedded_base.type` | I: el cimiento bajo la placa embebida no se diseña para carga vertical; II: sí se diseña (DG1 §5.2). | Escriba I o II; por defecto I. El Tipo II necesita la placa embebida. | El Tipo II lleva la compresión por la placa embebida en vez de las placas de cara; M_VB se toma igual a cero (conservador). | I | PB |
 | `embedded_base.face_plate_weld` | Filete de las placas de apoyo frontal a la columna (Tipo I). | Escriba el tamaño o déjelo vacío para suponer CJP. | Añade la verificación de la soldadura (AISC 360-22 §J2.4). | — | PB |
 | `embedded_base.embedment` | Profundidad de empotramiento de la columna. | Escriba la profundidad; debe ser positiva. | Afecta el apoyo horizontal y el momento resistente. | — | PB |
 | `embedded_base.foundation_width` | Ancho del cimiento de concreto. | Escriba el ancho; debe ser positivo. | Afecta el apoyo horizontal y las presiones. | — | PB |

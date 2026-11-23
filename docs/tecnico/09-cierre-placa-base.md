@@ -10,7 +10,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Refuerzo de anclaje: integrado con capacidad, desarrollo y empotramiento (`reinforcement`).
 - Base sísmica débil: integrada con anclajes dúctiles y diseño por capacidad (`weak_base`).
 - Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con refuerzo horizontal y placa embebida opcionales, soldadura de las placas de cara, flexión de la placa embebida, levantamiento, entradas, revisión y figuras específicas.
-- Base empotrada tipo II (`embedded_base.type = "II"`): placa base expuesta embebida en un bloque, por superposición de mecanismos (hipótesis de OpenConex).
+- Base empotrada tipo II (`embedded_base.type = "II"`, DG1 §5.2.2): cimiento bajo la placa embebida diseñado para carga vertical; versión conservadora con M_VB = 0.
 - Pedestal como columna corta (`pedestal`): flexocompresión, axial, corte, cuantías, estribos y esbeltez según ACI 318-19; pedestal rectangular o circular.
 - Optimización global (`--optimize global` y GUI): diámetro y número de anclajes, N, B y tp, con traza.
 - El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
@@ -24,7 +24,7 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, gancho, desarrollo recto y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
-| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I completo (soldadura, placa embebida, levantamiento) y Tipo II por superposición |
+| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I completo (soldadura, placa embebida, levantamiento) y Tipo II conservador (M_VB = 0) |
 | Pedestal como columna | `pedestal.pedestal_checks` | ACI E702.2; StructurePoint | Rectangular y circular, LRFD |
 | Llave de corte en DXF/3D | - | 4.7-5 | Integrada en DXF y 3D |
 | Flexión local de placa por llave | `transfer.lug_plate_bending` | 4.7-5 | Integrada con ancho efectivo b_sl |
@@ -66,4 +66,4 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - La interacción del modelo triangular con biaxial y levantamiento puede requerir un tratamiento específico; por eso se aplica por eje solo con compresión y el levantamiento usa el rectangular.
 - Las bases sísmicas no son solo una conexión de funciones: requieren diseño por capacidad y nuevos estados límite.
 - El HSS circular con momento no tiene una referencia de aceptación; se rechaza.
-- El Tipo II de la base empotrada no tiene ejemplo publicado: se documenta como hipótesis y se marca como parcial en la matriz de verificación. El HSS rectangular/cuadrado está validado contra el Ejemplo 2 del Steel Tube Institute (2024).
+- El Tipo II de la base empotrada no tiene ejemplo publicado (la DG1 no da un método definitivo): se desprecia M_VB, de modo que el momento usa la misma Ec. 5-6 validada con el Ejemplo 5.3-1. El HSS rectangular/cuadrado está validado contra el Ejemplo 2 del Steel Tube Institute (2024).

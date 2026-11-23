@@ -413,7 +413,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self._connection_combo = QComboBox()
         self._connection_combo.addItem("Placa base expuesta", "exposed")
         self._connection_combo.addItem("Base empotrada Tipo I", "embedded")
-        self._connection_combo.addItem("Base empotrada Tipo II (bloque de concreto)",
+        self._connection_combo.addItem("Base empotrada Tipo II (cimiento con carga vertical)",
                                        "embedded_ii")
         layout.addRow("Tipo", self._connection_combo)
         self._tip(self._connection_combo, "connection_type")
@@ -680,7 +680,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
 
     def _on_connection_changed(self, *_args: object) -> None:
         embedded, type2 = self._connection_mode()
-        self._plate_group.setVisible(not embedded or type2)
+        self._plate_group.setVisible(not embedded)
         if self.advanced is not None:
             self.advanced.set_embedded(embedded, type2)
         for widget in (self.opt_action, self.global_opt_action, self._optimize_button):
@@ -1507,8 +1507,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
                 return None
             bp.column_grade = grade
 
-        is_embedded, type2 = self._connection_mode()
-        embedded = is_embedded and not type2  # no exposed base plate
+        embedded, type2 = self._connection_mode()
         errors: list[str] = []
         required = {"fc"} if embedded else set(REQUIRED_QUANTITY_FIELDS)
         for key, (edit, label, kind) in self._quantity_fields.items():
@@ -1555,7 +1554,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         for key, box in self._plate_boxes.items():
             setattr(bp, key, box.isChecked())
         if self.advanced is not None:
-            self.advanced.apply(data, errors, is_embedded, type2)
+            self.advanced.apply(data, errors, embedded, type2)
         self._apply_combinations(data, errors)
         if errors:
             QMessageBox.warning(self, "Datos incompletos", "\n".join(errors))

@@ -329,9 +329,11 @@ _FIELDS = [
        "Ejecuta solo las comprobaciones de la base empotrada.",
        "—", "PB"),
     _f("embedded_base.type", "Tipo de base empotrada", "Base empotrada",
-       "I: columna empotrada en la zapata; II: placa base expuesta embebida en un bloque.",
-       "Escriba I o II; por defecto I.",
-       "El Tipo II suma la placa base y el apoyo horizontal del bloque.",
+       "I: el cimiento bajo la placa embebida no se diseña para carga vertical; "
+       "II: sí se diseña (DG1 §5.2).",
+       "Escriba I o II; por defecto I. El Tipo II necesita la placa embebida.",
+       "El Tipo II lleva la compresión por la placa embebida en vez de las placas de cara; "
+       "M_VB se toma igual a cero (conservador).",
        "I", "PB"),
     _f("embedded_base.face_plate_weld", "Soldadura de placa de cara", "Base empotrada",
        "Filete de las placas de apoyo frontal a la columna (Tipo I).",

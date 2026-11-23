@@ -127,12 +127,6 @@ def base_plate_parts(bp: BasePlate, grout: float = 38.1, pedestal_N: float | Non
         column = _fuse_all([*flanges, web])
     parts.append(Part("column", column))
     parts += _pedestal_reinforcement(bp, pn, pb, depth)
-    embedded = bp.embedded_base
-    if embedded is not None and embedded.type == "II":
-        # Concrete blockout around the column, above the base plate (DG1 Chapter 5).
-        w = embedded.foundation_width
-        blockout = _box(-w / 2, -w / 2, 0.0, w, w, z_top + embedded.embedment)
-        parts.append(Part("pedestal_blockout", _cut_all(blockout, [column])))
     if bp.shear_lug:
         lug = bp.shear_lug
         h_lug = grout + lug.embedment
@@ -230,6 +224,8 @@ def embedded_base_parts(bp: BasePlate, foundation_length: float | None = None,
             -width / 2, -width / 2, z0 - embedded.base_plate_thickness, width, width,
             embedded.base_plate_thickness)))
     tp = embedded.face_plate_thickness
+    if tp <= 0:  # Type II: compression through the embedded base plate
+        return parts
     x0, x1 = -col.d / 2 + col.tf, col.d / 2 - col.tf
     # Face bearing plates bear on the top of the foundation (DG1 §5.3).
     parts.append(Part("face_plate_front", _box(

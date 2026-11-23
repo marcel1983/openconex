@@ -47,7 +47,7 @@ def write_dxf(project: Project, path: str | Path) -> None:
                     project.quantity(data.pedestal_B, Kind.LENGTH)),
         grout=project.quantity(data.grout, Kind.LENGTH),
         title=info.name, number=info.number, revision=info.revision, date=info.date)
-    if bp.embedded_type1:
+    if bp.embedded_base is not None:
         write_embedded_base_dxf(bp, path, info.unit_system(), info.language, options)
     else:
         write_base_plate_dxf(bp, path, info.unit_system(), info.language, options)
@@ -62,7 +62,7 @@ def parts_3d(project: Project) -> list[Part]:
         from openconex.geometry3d.shear import shear_parts
         return shear_parts(project.shear_model())
     bp = project.base_plate_model()
-    if bp.embedded_type1:
+    if bp.embedded_base is not None:
         return embedded_base_parts(bp)
     data = project.base_plate
     return base_plate_parts(
