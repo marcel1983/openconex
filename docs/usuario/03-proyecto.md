@@ -29,6 +29,11 @@ Ejemplos completos en `examples/`:
 | `examples/moment_welded_flange_stiffened.ocnx` | alas soldadas con rigidizadores de altura parcial, doble placa y zona de panel (AISC DG13, Ej. 6-3) |
 | `examples/splice_beam_bolted.ocnx` | empalme de viga W21X62 con cubreplacas apernadas exteriores e interiores |
 | `examples/splice_column_fillers.ocnx` | empalme de columna W14X90 sobre W14X132 con rellenos, extremos fresados y cubreplacas del alma |
+| `examples/moment_seismic_rbs.ocnx` | opción sísmica: sección reducida de viga (RBS), pórtico especial (AISC 358-22 Cap. 5) |
+| `examples/moment_seismic_wuf_w.ocnx` | opción sísmica: ala soldada sin refuerzo y alma soldada (WUF-W, AISC 358-22 Cap. 8) |
+| `examples/moment_seismic_bfp.ocnx` | opción sísmica: placas de ala apernadas (BFP, AISC 358-22 Cap. 7) |
+| `examples/moment_seismic_bueep.ocnx` | opción sísmica: placa de extremo extendida 4E sin rigidizar (BUEEP, AISC 358-22 Cap. 6) |
+| `examples/moment_seismic_bseep_8es.ocnx` | opción sísmica: placa de extremo extendida 8ES rigidizada (BSEEP, AISC 358-22 Cap. 6) |
 | `examples/shear_single_plate.ocnx` | conexión de corte: placa simple convencional (AISC II.A-17A) |
 | `examples/shear_extended_single_plate_axial.ocnx` | conexión de corte: placa simple extendida con tracción axial (AISC II.A-19B) |
 | `examples/shear_double_angle_coped.ocnx` | conexión de corte: doble ángulo apernado en viga destajada (AISC II.A-4) |
@@ -463,6 +468,7 @@ Conexión de momento totalmente restringida de una viga al ala de una columna (M
 | `support` | `flange` | Cara de la columna: `flange` (ala, eje fuerte) o `web` (alma, eje débil; solo `welded_flange`, con `top` y `bottom` como placas de conexión, o `bolted_flange_plate`; sin zona de panel ni rigidizadores). |
 | `plate_extension` | `3/4 in` | Alma de la columna: prolongación de las placas más allá de las puntas de las alas. |
 | `panel_zone` | `false` | Verifica la zona de panel de la columna (§J10.6) con `column_V` y `column_P` de los casos. La demanda es la fuerza de ala (de las dos vigas con `two_sided`) menos el corte de piso. |
+| `seismic` | — | Opción sísmica precalificada (AISC 358-22): ver [más abajo](#opción-sísmica-precalificada-seismic). |
 | `panel_zone_inelastic` | `false` | El análisis de estabilidad considera la deformación de la zona de panel (Ec. J10-11 y J10-12). |
 | `doubler_plate` | — | Espesor total de las dobles placas del alma en la zona de panel (acero `grade`): suma 0,60 F_y d_c t_d a la resistencia. |
 | `continuity_plate` | — | Espesor de los rigidizadores transversales (placas de continuidad) de la columna, un par a la altura de cada ala de la viga, del acero `grade`. Con ellos las verificaciones locales de la columna pasan a no aplicables y se verifican los rigidizadores (AISC DG13); en placas de extremo, el ala de la columna se verifica rigidizada (DG4). |
@@ -504,6 +510,33 @@ Placa soldada al extremo de la viga y apernada al ala de la columna, con dos per
 
 Las dimensiones probadas en los ensayos están en las Tablas 3-6 y 4-7 de la Guía; fuera de ese rango el mecanismo puede cambiar (el programa no las limita).
 
+### Opción sísmica precalificada (`seismic`)
+
+Bloque opcional de `moment_connection` para pórticos especiales (SMF) e intermedios (IMF) con conexiones precalificadas de AISC 358-22 (diseño por capacidad, solo LRFD). Además de las verificaciones de cada combinación con los momentos del análisis, se agregan una vez, en la combinación `AISC 358`, las verificaciones con el momento probable de la rótula M_pr = C_pr R_y F_y Z_e y el momento en la cara de la columna M_f = M_pr + V_u S_h ([catálogo](../tecnico/04-verificaciones.md#conexiones-sísmicas-precalificadas-connectionsmomentseismicpy)). Cada conexión exige un tipo de conexión de momento al ala de la columna (`support: flange`):
+
+| `connection` | `type` que exige | Notas |
+|---|---|---|
+| `rbs` | `welded_flange` | Sección reducida de viga (Cap. 5); necesita `rbs_a`, `rbs_b` y `rbs_c`. |
+| `wuf_w` | `welded_flange` | Ala soldada sin refuerzo y alma soldada (Cap. 8); rótula en la cara de la columna. |
+| `bfp` | `bolted_flange_plate` | Placas de ala apernadas (Cap. 7); necesita `bfp_s1`. Usa las placas, los pernos y las distancias de la conexión. |
+| `bueep` | `end_plate` con `layout: extended_4` | Placa de extremo extendida sin rigidizar 4E (Cap. 6). |
+| `bseep` | `end_plate` con `extended_4_stiffened` o `extended_8_stiffened` | Placa de extremo extendida rigidizada 4ES u 8ES (Cap. 6); necesita `stiffener_thickness`. La altura del rigidizador es `pext`. |
+
+| Campo | Por defecto | Significado |
+|---|---|---|
+| `connection` | (obligatorio) | Conexión precalificada (tabla anterior). |
+| `system` | `smf` | `smf` (pórtico especial, AISC 341 §E3) o `imf` (intermedio, §E2): cambia la relación luz/peralte mínima, la esbeltez (muy dúctil o moderadamente dúctil) y, solo en SMF, la relación columna-viga y el espesor de la zona de panel. |
+| `span` | (obligatorio) | Luz libre L_cf de la viga entre caras de columnas. |
+| `gravity_load` | — | Carga gravitacional mayorada uniforme w_u sobre la viga (1,2D + f₁L + 0,2S), fuerza por longitud: V_gravedad = w_u L_h/2. |
+| `gravity_shear` | — | Corte gravitacional mayorado adicional en la rótula (se suma al de `gravity_load`). |
+| `column_axial` | — | Compresión mayorada P_uc de las columnas en el nudo (relación columna-viga, esbeltez del alma y zona de panel). |
+| `column_above` | `true` | La columna continúa sobre el nudo (`false` en la cubierta: un solo momento de columna en la relación). |
+| `Ry_beam`, `Rt_beam`, `Ry_column`, `Ry_plate` | — | R_y y R_t de la viga, R_y de la columna y R_y de las placas de ala (`bfp`); sin ellos, la Tabla A3.2 de AISC 341-22 para el acero de cada pieza (obligatorios con aceros propios). |
+| `rbs_a`, `rbs_b`, `rbs_c` | — | `rbs`: distancia a de la cara de la columna al inicio del corte, largo b del corte y profundidad c en su centro (en cada borde del ala). |
+| `bfp_s1` | — | `bfp`: distancia S₁ de la cara de la columna a la fila de pernos más cercana (también es la longitud libre de la placa en compresión). |
+| `stiffener_thickness` | — | `bseep`: espesor t_s del rigidizador de la placa de extremo (acero `grade`). |
+
+Con `two_sided` se suman los momentos de las dos vigas (iguales) en la zona de panel y en la relación columna-viga. La zona de panel se verifica siempre en SMF (y con `panel_zone` en IMF) con V_c = 0, del lado de la seguridad. Los ejemplos `moment_seismic_*.ocnx` muestran las cinco conexiones. Los límites de precalificación se tomaron de la norma publicada y están pendientes de cotejo (ver [limitaciones](08-limitaciones.md)).
 ## Empalme (`splice`)
 
 Empalme apernado de viga o de columna con cubreplacas (Manual AISC Partes 7, 9 y 14). Se calcula con `openconex splice` o en la ventana de empalmes de la interfaz. Los casos de carga llevan las fuerzas en la sección del empalme: `P` (axial, positiva en compresión), `V` (corte en el plano del alma), `M` (momento del eje fuerte) y, solo en columnas, `V_weak` (corte paralelo a las alas). No admiten `M_weak`.

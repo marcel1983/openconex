@@ -1,0 +1,67 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "Ejemplo: placa de extremo extendida sin rigidizar 4E (BUEEP), pórtico especial (AISC 358-22, Cap. 6)",
+    "number": "OC-0210",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-23",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": "W24X62",
+    "column": "W14X257",
+    "end_plate": {
+      "layout": "extended_4",
+      "bolt": {
+        "diameter": "1.25 in",
+        "grade": "ASTM F3125 Gr. A490",
+        "threads": "X"
+      },
+      "width": "10 in",
+      "thickness": "1.5 in",
+      "gage": "5.5 in",
+      "pf": "2 in",
+      "pf_o": "2 in",
+      "pext": "5 in"
+    },
+    "doubler_plate": "1/2 in",
+    "two_sided": true,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "seismic": {
+      "connection": "bueep",
+      "system": "smf",
+      "span": "26 ft",
+      "gravity_load": "2.0 kip/ft",
+      "column_axial": "400 kip"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "25 kip",
+      "M": "120 kip*ft",
+      "column_V": "30 kip",
+      "column_P": "300 kip"
+    },
+    {
+      "name": "E",
+      "type": "E",
+      "V": "20 kip",
+      "M": "350 kip*ft",
+      "column_V": "60 kip",
+      "column_P": "50 kip"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "SDS": 1.0,
+    "include_code": true
+  }
+}

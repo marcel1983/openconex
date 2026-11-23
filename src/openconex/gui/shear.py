@@ -47,6 +47,7 @@ from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
     populate_recent_menu,
+    watch_changes,
 )
 from openconex.gui.viewer3d import Viewer3D
 from openconex.help import help_text
@@ -95,16 +96,17 @@ STIFFENER_FIELDS = ("width", "thickness", "weld", "length")
 HIDDEN_FIELDS = ("seat_plate_width", "seat_plate_thickness", "seat_plate_weld",
                  "top_angle_leg", "top_angle_thickness", "top_angle_length",
                  "top_angle_bolts", "top_angle_weld")
-# Viewer-only offsets for the exploded inspection view [mm], in viewer axes.
+# Viewer-only offsets for the exploded inspection view [mm], in the model axes
+# of the shear connection (x along the beam, y up, z across the web).
 EXPLODE_BY_TYPE = {
-    "double_angle": {"beam": (0.0, -250.0, 0.0)},
-    "single_plate": {"beam": (0.0, -200.0, 0.0)},
-    "extended_single_plate": {"beam": (0.0, -200.0, 0.0)},
-    "end_plate": {"beam": (80.0, -260.0, 0.0),
+    "double_angle": {"beam": (0.0, 0.0, -250.0)},
+    "single_plate": {"beam": (0.0, 0.0, -200.0)},
+    "extended_single_plate": {"beam": (0.0, 0.0, -200.0)},
+    "end_plate": {"beam": (80.0, 0.0, -260.0),
                   "end_plate": (80.0, 0.0, 0.0),
                   "support_bolt*": (80.0, 0.0, 0.0)},
-    "seated": {"beam": (80.0, 0.0, 220.0)},
-    "stiffened_seat": {"beam": (80.0, 0.0, 240.0)},
+    "seated": {"beam": (80.0, 220.0, 0.0)},
+    "stiffened_seat": {"beam": (80.0, 240.0, 0.0)},
     "skewed_bent_plate": None,
 }
 CASE_TYPES = [t.value for t in LoadType]
@@ -148,6 +150,8 @@ class ShearWindow(ProjectSessionMixin, QMainWindow):
         self._build_body()
         self._fill(self.project)
         self._init_session(self._form)
+        # The 3D tab follows the form: it regenerates shortly after each edit.
+        watch_changes(self._form, self.viewer.schedule_update)
         self._set_clean()
         self.statusBar().showMessage("Edite la conexión y pulse Calcular (F5).")
 
@@ -255,7 +259,7 @@ class ShearWindow(ProjectSessionMixin, QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figures)
         self.tabs.addTab(figure_scroll, "Figuras")
-        self.viewer = Viewer3D(lambda: parts_3d(self.project), swap_yz=True,
+        self.viewer = Viewer3D(parts_3d, snapshot=self.project_from_form, y_up=True,
                                explode=self._explode_for_current_type())
         self.tabs.addTab(self.viewer, "3D")
         for index, key in enumerate(("tab.summary", "tab.details", "tab.figures", "tab.viewer")):

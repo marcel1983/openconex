@@ -123,6 +123,10 @@ Diferencias documentadas:
 
 Diferencias documentadas: la base de perfiles de la 16ª ed. da d = 13,9 in para la W14×53 (13,92 in en la Guía), P_uf = 172,2 kips (la Guía redondea R_ust a 49 kips), y en la Solución A la Guía escribe l_mín = 1,23 in para el corte del alma sin sumar el recorte de ¾ in (1,98 in con él), que la Solución B sí suma.
 
+## AISC 358-22 (opción sísmica)
+
+No hay todavía un ejemplo publicado transcrito: los ejemplos de conexiones precalificadas están en el AISC Seismic Design Manual, que no se pudo consultar. `tests/moment/test_seismic_aisc358.py` compara las cinco conexiones (`examples/moment_seismic_*.ocnx`) con cálculos a mano independientes en kip e in a partir de las dimensiones de la base de perfiles: M_pr, V_u, M_f, Z_RBS, M_pe, φ_vV_n, la relación columna-viga, el espesor de la zona de panel y de las placas de continuidad (RBS), S_h = 0 (WUF-W), el diámetro máximo, los pernos, la fluencia y la rotura de las placas (BFP), M_np, Y_p de la 4E con la DG16 Tabla 4-2, la extensión y los pernos de compresión (4E), y el rigidizador de la 8ES. Estas pruebas comprueban la programación de las ecuaciones, no las ecuaciones ni los límites de precalificación, que siguen pendientes de cotejo con AISC 358-22, AISC 341-22 (Tablas A3.2 y D1.1) y los ejemplos del Seismic Design Manual. En la matriz figuran como parciales.
+
 ## Conexiones al alma de la columna
 
 La DG13 (Apéndice D) da reglas de detalle y el modelo de fuerzas, pero no un ejemplo resuelto. `tests/moment/test_column_web.py` comprueba los espesores mínimos (t_f + 1/4 in y t_f + 3/8 in) y la prolongación de 3/4 in de la guía, y las resistencias (fluencia de la placa, soldaduras a las alas y rotura del alma en la placa simple) contra cálculos manuales con AISC 360-22. En la matriz figuran como parciales.

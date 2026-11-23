@@ -23,6 +23,11 @@ MOMENT_CODES = [
     "(2002, rev. 2016)",
     "ASCE/SEI 7-22, Minimum Design Loads and Associated Criteria, Chapter 2",
 ]
+SEISMIC_CODES = [
+    "ANSI/AISC 358-22, Prequalified Connections for Special and Intermediate Steel Moment "
+    "Frames for Seismic Applications",
+    "ANSI/AISC 341-22, Seismic Provisions for Structural Steel Buildings",
+]
 
 
 def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
@@ -91,6 +96,22 @@ def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
                          f"2 × {mc.rows} × Ø {q(mc.bolt.diameter)} {mc.bolt.grade} @ "
                          f"{q(mc.spacing)}, g = {q(mc.gage)}, l_ev {q(mc.plate_lev)} / "
                          f"{q(mc.beam_lev)}"]))
+    sz = mc.seismic
+    if sz is not None:
+        sm = model.seismic
+        rows.append(Row([tr("input.seismic_connection", lang),
+                         f"{tr(f'seismic.connection.{sz.connection.value}', lang)}; "
+                         f"{tr(f'seismic.system.{sz.system.value}', lang)}"]))
+        data = [f"L_cf = {q(sz.span)}",
+                f"w_u = {fmt(sm.gravity_load, Kind.FORCE_PER_LENGTH, units)}",
+                f"V_g = {fmt(sm.gravity_shear, Kind.FORCE, units)}",
+                f"P_uc = {fmt(sm.column_axial, Kind.FORCE, units)}",
+                f"R_y = {sm.Ry_beam:g} / {sm.Ry_column:g}"]
+        for name, label in (("rbs_a", "a"), ("rbs_b", "b"), ("rbs_c", "c"), ("bfp_s1", "S_1"),
+                            ("stiffener_thickness", "t_s")):
+            if getattr(sz, name) is not None:
+                data.append(f"{label} = {q(getattr(sz, name))}")
+        rows.append(Row([tr("input.seismic_data", lang), ", ".join(data)]))
     return rows
 
 
@@ -153,6 +174,9 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
                        tr("report.assumption_moment_scope", lang)]
     if mc.type is FlangeDetail.WELDED_FLANGE:
         assumptions.append(tr("report.assumption_moment_cjp", lang))
+    if mc.seismic is not None:
+        assumptions += [tr("report.assumption_aisc358", lang),
+                        tr("report.assumption_aisc358_scope", lang)]
     today = today or dt.date.today()
     return Report(
         language=lang, units=units, title=tr("report.title", lang),
@@ -161,7 +185,8 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
         info=[(tr("report.project", lang), info.name or "—")] + [
             (tr(f"report.{k}", lang), getattr(info, k) or "—")
             for k in ("number", "client", "engineer", "revision", "date")],
-        codes=MOMENT_CODES, assumptions=assumptions, inputs=_inputs(project, lang, units),
+        codes=MOMENT_CODES + (SEISMIC_CODES if mc.seismic else []),
+        assumptions=assumptions, inputs=_inputs(project, lang, units),
         cases=cases,
         case_headers=["ID", tr("report.item", lang), "V", "M"] + (["P"] if end_plate else [])
         + (["V_c", "P_c"] if mc.panel_zone else []),

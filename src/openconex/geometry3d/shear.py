@@ -55,18 +55,25 @@ def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate, *,
     alpha = parse_skew(el.skew)
     leg_a = a.leg_beam or a.width * 0.6
     leg_b = b.leg_beam or b.width * 0.6
-    length = max(leg_a, leg_b) + 2 * INCH
+    length = max(max(leg_a, leg_b) + 2 * INCH, 1.25 * d, 18 * INCH)
     support_t = support.tw if support is not None and conn.support_element == "web" else (
         support.tf if support is not None else 0.25 * INCH)
     support_width = max(2 * max(a.width, b.width), 12 * INCH)
     parts: list[Part] = []
 
+    # The skewed beam end is cut parallel to the support face, 1/2 in clear of
+    # it: a square end rotated about the web would push one flange tip
+    # through the support.
+    back = bf
     section = _fuse_all([
-        _box(0.0, 0.0, -bf / 2, length, tf, bf),
-        _box(0.0, d - tf, -bf / 2, length, tf, bf),
-        _box(0.0, tf, -tw / 2, length, d - 2 * tf, tw),
+        _box(-back, 0.0, -bf / 2, length + back, tf, bf),
+        _box(-back, d - tf, -bf / 2, length + back, tf, bf),
+        _box(-back, tf, -tw / 2, length + back, d - 2 * tf, tw),
     ])
-    parts.append(Part("beam", _rotate_y(section, alpha)))
+    clear = INCH / 2
+    behind = 4 * (length + back)
+    parts.append(Part("beam", _cut_all(_rotate_y(section, alpha), [
+        _box(-behind, -1.0, -behind, behind + clear, d + 2.0, 2 * behind)])))
     parts.append(Part("support", _box(-support_t, 0.0, -support_width / 2, support_t, d,
                                       support_width)))
     if context:
@@ -79,6 +86,10 @@ def _bent_plate_parts(conn: ShearConnection, el: SkewedBentPlate, *,
         z = sign * tw / 2
         bolted = _box(0.0, y0, z if sign > 0 else z - plate.width, t, height, plate.width)
         welded = _rotate_y(_box(0.0, y0, z if sign > 0 else z - t, leg, height, t), alpha)
+        # Trim the part of the welded leg that the rotation swings behind the
+        # support face.
+        welded = _cut_all(welded, [_box(-4 * leg, y0 - 1.0, -4 * leg, 4 * leg,
+                                        height + 2.0, 8 * leg)])
         parts.append(Part(f"bent_plate_{name}", _fuse_all([bolted, welded])))
 
     r = a.bolt.diameter / 2
@@ -202,12 +213,38 @@ def shear_parts(conn: ShearConnection, *, context: str | None = None) -> list[Pa
                                                 y_1 - y_0, width)))
     # bolts
     r = lay.bolt_diameter / 2 if lay.bolt_diameter else 0.375 * INCH
-    grip = tw + 2 * t + 2 * r
+    # The bolts through the web cross the plies that are really there: the web
+    # and one plate (single plates) or the web and both angles, and stick out
+    # about a head or nut height (≈ r) on each side.
+    z_back = -side - (t if lay.two_angles else 0.0)
+    z_front = side + t
     for i, (x, y) in enumerate(lay.bolts):
-        parts.append(Part(f"bolt{i + 1}", _cylinder_z(x, y, -grip / 2 - r, r, grip + 2 * r)))
-    gage = 5.5 * INCH if isinstance(el, (EndPlate, DoubleAngle)) else 0.0
+        parts.append(Part(f"bolt{i + 1}", _cylinder_z(x, y, z_back - r, r,
+                                                      z_front - z_back + 2 * r)))
+    if isinstance(el, (EndPlate, DoubleAngle)):
+        gages: tuple[float, ...] = (-2.75 * INCH, 2.75 * INCH)
+    elif isinstance(el, SeatedAngle) and el.bolts >= 2:
+        # Two bolts per row in the seat's vertical leg, symmetric about the web.
+        half_gage = min(2.75 * INCH, el.length / 2 - 1.25 * INCH)
+        gages = (-half_gage, half_gage)
+    else:
+        gages = (0.0,)
     for i, y in enumerate(lay.support_bolts):
-        for j, z in enumerate((-gage / 2, gage / 2) if gage else (0.0,)):
-            parts.append(Part(f"support_bolt{i + 1}{'ab'[j]}",
-                              _cylinder_x(-t_sup - r, y, z, r, t_sup + t + 3 * r)))
-    return parts
+        for j, z in enumerate(gages):
+            suffix = "ab"[j] if len(gages) > 1 else "a"
+            parts.append(Part(f"support_bolt{i + 1}{suffix}",
+                              _cylinder_x(-t_sup - r, y, z, r, t_sup + t + 2 * r)))
+    return _merge_same_name(parts)
+
+
+def _merge_same_name(parts: list[Part]) -> list[Part]:
+    """Fuse the legs of one angle (layout rectangles with the same name) into one solid.
+
+    The elevation layout gives each leg of the seat and of the top angle as a
+    rectangle; the solid model must show (and export) one angle per piece.
+    """
+    groups: dict[str, list[object]] = {}
+    for part in parts:
+        groups.setdefault(part.name, []).append(part.shape)
+    return [Part(name, shapes[0] if len(shapes) == 1 else _fuse_all(shapes))
+            for name, shapes in groups.items()]

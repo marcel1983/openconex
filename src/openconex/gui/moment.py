@@ -37,6 +37,7 @@ from PySide6.QtWidgets import (
 
 from openconex.connections.moment.end_plate import EndPlateLayout
 from openconex.connections.moment.fr_moment import FlangeDetail
+from openconex.connections.moment.seismic import Prequalified, SeismicSystem
 from openconex.core.loads import LoadType, Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
@@ -44,6 +45,7 @@ from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
     populate_recent_menu,
+    watch_changes,
 )
 from openconex.gui.viewer3d import Viewer3D
 from openconex.help import help_text
@@ -106,6 +108,24 @@ FLANGE_BOLT_FIELDS = (("spacing", "Separación s"), ("gage", "Gramil g"),
                       ("plate_lev", "l_ev de la placa"), ("beam_lev", "l_ev de la viga"))
 
 
+SEISMIC_FIELDS = [
+    ("span", "Luz libre entre caras de columnas L_cf"),
+    ("gravity_load", "Carga gravitacional mayorada w_u (1,2D + f₁L + 0,2S)"),
+    ("gravity_shear", "Corte gravitacional adicional en la rótula"),
+    ("column_axial", "Compresión mayorada de la columna P_uc"),
+    ("rbs_a", "RBS: distancia a de la cara al corte"),
+    ("rbs_b", "RBS: largo b del corte"),
+    ("rbs_c", "RBS: profundidad c del corte"),
+    ("bfp_s1", "BFP: cara de la columna a la primera fila S₁"),
+    ("stiffener_thickness", "BSEEP: espesor del rigidizador"),
+    ("Ry_beam", "R_y de la viga (vacío: AISC 341 Tabla A3.2)"),
+    ("Rt_beam", "R_t de la viga"),
+    ("Ry_column", "R_y de la columna"),
+    ("Ry_plate", "R_y de las placas de ala (BFP)"),
+]
+"""Fields of the AISC 358 group of the moment window."""
+
+
 def _text(value) -> str:
     return "" if value is None else str(value)
 
@@ -127,6 +147,8 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         self._build_body()
         self._fill(self.project)
         self._init_session(self._form)
+        # The 3D tab follows the form: it regenerates shortly after each edit.
+        watch_changes(self._form, self.viewer.schedule_update)
         self._set_clean()
         self.statusBar().showMessage("Edite la conexión y pulse Calcular (F5).")
 
@@ -280,6 +302,25 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         form.addRow(self.ep_symmetric)
         layout.addWidget(self.end_plate_group)
 
+        self.seismic_group = QGroupBox("Opción sísmica precalificada (AISC 358-22)")
+        self.seismic_group.setCheckable(True)
+        self.seismic_group.setChecked(False)
+        form = QFormLayout(self.seismic_group)
+        self.seismic_connection = QComboBox()
+        for item in Prequalified:
+            self.seismic_connection.addItem(tr(f"seismic.connection.{item.value}", "es"),
+                                            item.value)
+        form.addRow("Conexión", self.seismic_connection)
+        self.seismic_system = QComboBox()
+        for item in SeismicSystem:
+            self.seismic_system.addItem(tr(f"seismic.system.{item.value}", "es"), item.value)
+        form.addRow("Sistema", self.seismic_system)
+        self.seismic_column_above = QCheckBox("La columna continúa sobre el nudo")
+        self.seismic_column_above.setChecked(True)
+        form.addRow(self.seismic_column_above)
+        self._seismic = {key: self._line(form, label) for key, label in SEISMIC_FIELDS}
+        layout.addWidget(self.seismic_group)
+
         self.bolts_group = QGroupBox("Pernos de ala")
         form = QFormLayout(self.bolts_group)
         self.flange_bolt = self._line(form, "Diámetro de perno")
@@ -326,7 +367,7 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figures)
         self.tabs.addTab(figure_scroll, "Figuras")
-        self.viewer = Viewer3D(lambda: parts_3d(self.project))
+        self.viewer = Viewer3D(parts_3d, snapshot=self.project_from_form)
         self.tabs.addTab(self.viewer, "3D")
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(scroll)
@@ -422,6 +463,19 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
                 value = None if plate is None else getattr(plate, name)
                 fields[name].setText("" if value in (None, 0, 0.0) else _text(value))
             fields["transverse_weld"].setChecked(bool(plate and plate.transverse_weld))
+        sz = mc.seismic
+        self.seismic_group.setChecked(sz is not None)
+        if sz is not None:
+            self.seismic_connection.setCurrentIndex(
+                self.seismic_connection.findData(sz.connection.value))
+            self.seismic_system.setCurrentIndex(self.seismic_system.findData(sz.system.value))
+        self.seismic_column_above.setChecked(sz.column_above if sz else True)
+        for key, edit in self._seismic.items():
+            edit.setText(_text(getattr(sz, key)) if sz else "")
+        self._bolt_extra = {
+            key: {k: v for k, v in bolt.model_dump().items() if k in ("threads", "hole")}
+            | ({"grade": bolt.grade} if key == "flange" else {})
+            for key, bolt in (("flange", mc.bolt), ("end_plate", ep and ep.bolt)) if bolt}
         self.flange_bolt.setText(_text(mc.bolt.diameter) if mc.bolt else "")
         self.flange_rows.setValue(max(mc.rows, 1))
         for key, edit in self._flange.items():
@@ -466,7 +520,8 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         connection["panel_zone_inelastic"] = self.panel_inelastic.isChecked()
         if detail is FlangeDetail.END_PLATE:
             plate = {"layout": self.ep_layout.currentData(),
-                     "bolt": {"diameter": self.ep_bolt.text().strip(),
+                     "bolt": {**getattr(self, "_bolt_extra", {}).get("end_plate", {}),
+                              "diameter": self.ep_bolt.text().strip(),
                               "grade": self.ep_bolt_grade.text().strip()
                               or "ASTM F3125 Gr. A325"},
                      "snug_tight": self.ep_snug.isChecked(),
@@ -486,8 +541,19 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
                          if fields[name].text().strip()}
                 plate["transverse_weld"] = fields["transverse_weld"].isChecked()
                 connection[key] = plate
+        if self.seismic_group.isChecked():
+            seismic: dict = {"connection": self.seismic_connection.currentData(),
+                             "system": self.seismic_system.currentData(),
+                             "column_above": self.seismic_column_above.isChecked()}
+            for key, edit in self._seismic.items():
+                text = edit.text().strip()
+                if text:
+                    seismic[key] = float(text.replace(",", ".")) if key.startswith("R") \
+                        else text
+            connection["seismic"] = seismic
         if detail is FlangeDetail.BOLTED_FLANGE_PLATE:
-            connection["bolt"] = {"diameter": self.flange_bolt.text().strip()}
+            connection["bolt"] = {**getattr(self, "_bolt_extra", {}).get("flange", {}),
+                                  "diameter": self.flange_bolt.text().strip()}
             connection["rows"] = self.flange_rows.value()
             connection.update({k: e.text().strip() for k, e in self._flange.items()})
         cases = []

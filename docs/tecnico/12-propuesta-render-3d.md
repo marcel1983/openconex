@@ -1,6 +1,6 @@
 # Propuesta: visor 3D con z-buffer y vista de conexión
 
-**Estado:** aprobada. Fases 1–2 implementadas juntas en 0.5.19; fase 3 pendiente.  
+**Estado:** aprobada. Fases 1–2 implementadas juntas en 0.5.19. De la fase 3, las aristas vivas están hechas (2026-11-23, junto con la actualización automática del modelo); el plano de corte y la transparencia siguen pendientes.  
 **Fecha:** 2026-11-12.  
 **Base:** OpenConex 0.5.15.
 

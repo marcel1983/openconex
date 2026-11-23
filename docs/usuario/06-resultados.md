@@ -9,6 +9,8 @@ OK     0.465  Espesor de placa en la interfaz de compresión (CU3 1.2CM+CV+SX+0.
 NG     1.243  Corte por fricción (CU18 0.9CM-SY-0.3SX)
 ```
 
+Con la opción sísmica de una conexión de momento (`seismic`), las verificaciones de AISC 358 aparecen con la combinación `AISC 358`: se calculan una vez con el momento probable M_pr y no con los casos de carga.
+
 `OK` o `NG` indica si cumple. El número es la relación demanda/capacidad; cumple si es ≤ 1. Al final aparecen los archivos escritos.
 
 ## Memoria de cálculo (`--html`, `--docx`, `--pdf`)

@@ -43,6 +43,7 @@ from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
     populate_recent_menu,
+    watch_changes,
 )
 from openconex.gui.start_data import SPLICE_BEAM as BEAM_TEMPLATE
 from openconex.gui.start_data import SPLICE_COLUMN as COLUMN_TEMPLATE
@@ -96,6 +97,8 @@ class SpliceWindow(ProjectSessionMixin, QMainWindow):
         self._build_body()
         self._fill(self.project)
         self._init_session(self._form)
+        # The 3D tab follows the form: it regenerates shortly after each edit.
+        watch_changes(self._form, self.viewer.schedule_update)
         self._set_clean()
         self.statusBar().showMessage("Edite el empalme y pulse Calcular (F5).")
 
@@ -263,7 +266,7 @@ class SpliceWindow(ProjectSessionMixin, QMainWindow):
         figure_scroll.setWidgetResizable(True)
         figure_scroll.setWidget(self.figures)
         self.tabs.addTab(figure_scroll, "Figuras")
-        self.viewer = Viewer3D(lambda: parts_3d(self.project))
+        self.viewer = Viewer3D(parts_3d, snapshot=self.project_from_form)
         self.tabs.addTab(self.viewer, "3D")
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.addWidget(scroll)

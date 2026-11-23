@@ -172,7 +172,8 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `base.ui.viewer` | Visor 3D del conjunto. | Gire, haga zoom o seleccione piezas. | No cambia el cálculo. | — | PB |
 | `geometry.undo` | Deshace el último cambio del editor gráfico. | Pulse Deshacer o Ctrl+Z. | Restaura la geometría anterior; no cambia el cálculo hasta Calcular. | — | PB |
 | `geometry.redo` | Rehace el cambio deshecho. | Pulse Rehacer o Ctrl+Y. | Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular. | — | PB |
-| `viewer.refresh` | Recarga el modelo 3D con el proyecto actual. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | PB |
+| `viewer.refresh` | Regenera el modelo 3D con los datos del formulario, aunque no hayan cambiado. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | todas |
+| `viewer.auto` | Regenera el modelo 3D poco después de cada cambio del formulario, sin pulsar Calcular ni Actualizar. | Marque o desmarque Automático en la barra del visor 3D. | Solo cambia la vista; el cálculo sigue usando Calcular. | — | todas |
 | `viewer.reset` | Restablece la cámara del visor 3D. | Pulse Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
 | `viewer.iso` | Vuelve a la vista isométrica de la conexión. | Pulse Iso en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
 | `viewer.front` | Mira la conexión de frente. | Pulse Frente en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
