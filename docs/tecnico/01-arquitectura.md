@@ -48,6 +48,18 @@ Igual que el de corte: `io/moment_project.py` valida y convierte `moment_connect
 3. `check_shear_envelope` combina las fuerzas de cada combinación y llama a `check_shear_connection`. Con `P` < 0 (tracción) usa la variante axial de la placa simple o del doble ángulo; la compresión, o la tracción en otro tipo, devuelven un resultado `shear_connection.*` que no cumple. Si hay destaje, agrega las verificaciones de `coped_beam`.
 4. `report.shear.build_shear_report` arma la memoria con el mismo `Report` que la placa base; `drawing.shear` y `geometry3d.shear` escriben el plano y el modelo.
 
+## Flujo del visor 3D (`gui.viewer3d`)
+
+1. Cada ventana conecta todos los campos de su formulario (`session.watch_changes`) a `Viewer3D.schedule_update`, que reinicia un temporizador de 300 ms (`AUTO_DELAY_MS`).
+2. Al vencer, si la pestaña está visible, `update_model` lee el proyecto del formulario en el hilo de la interfaz (`snapshot`: `project_from_form` en corte y momento, `_viewer_project` en placa base, sin diálogos). Si la pestaña está oculta, el modelo queda pendiente y se genera al mostrarla.
+3. La clave de caché es el JSON del proyecto sin casos, combinaciones ni generador. Si coincide con el modelo en pantalla no se hace nada; si está entre los ocho últimos (`CACHE_SIZE`), se muestra al instante.
+4. Si no, un único `_MeshWorker` en `QThreadPool` llama a `parts_3d` y a `geometry3d.mesh.tessellate_parts(max_edge=None, edges=True)`: triángulos de OpenCASCADE (deflexión 0,35 mm y 0,3 rad) y aristas vivas (`feature_edges`, ángulo entre caras > 35°). Los cambios que llegan mientras trabaja se agrupan en una sola actualización posterior, que vuelve a leer el formulario.
+5. El canvas OpenGL dibuja esos triángulos con z-buffer y, en una segunda pasada, las aristas (`GL_LINES`, con `glPolygonOffset` en las caras). El canvas `QPainter` de respaldo recibe la malla subdividida a 40 mm (`subdivide_meshes`) que necesita el algoritmo del pintor; las normales se calculan una vez por modelo, no en cada cuadro.
+6. Las conexiones de corte (eje y vertical) se giran con `y_up_to_z_up`, (x, y, z) → (x, −z, y), una rotación sin reflexión; las vistas estándar se reflejan en el giro (`180° − yaw`) para mirar desde el lado de la placa. Los desplazamientos de **Separar** (`EXPLODE_BY_TYPE`) están en los ejes del modelo y se aplican antes del giro.
+7. La lista de piezas conserva las ocultas y la seleccionada; la cámara solo se reencuadra si el modelo nuevo no cabe en la vista o es mucho más pequeño (`_keeps_framing`).
+
+Las miniaturas de la galería (`render_parts`) siguen usando el canvas `QPainter` con su propia convención de ejes.
+
 ## Flujo de una importación (`openconex supports`)
 
 1. `io.csi.read_tables` lee cada hoja del Excel como tabla (título, campos, unidades, filas).

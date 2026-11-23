@@ -9,22 +9,36 @@ from dataclasses import dataclass
 
 from openconex.geometry3d.base_plate import Part
 
-__all__ = ["MeshPart", "tessellate_parts"]
+__all__ = ["MAX_EDGE", "MeshPart", "feature_edges", "subdivide_meshes",
+           "tessellate_parts"]
 
 Point = tuple[float, float, float]
 Triangle = tuple[Point, Point, Point]
+Segment = tuple[Point, Point]
 
 # Large planar faces are only two triangles.  The painter's algorithm sorts by
 # triangle depth, so a huge face can be drawn over a nearer small part.  Split
-# long triangles to keep the depth comparison local.  The viewer uses the
-# default (interactive); the gallery asks for a finer 25 mm mesh.
+# long triangles to keep the depth comparison local.  Only the QPainter canvas
+# (fallback and gallery) needs it: the OpenGL canvas has a depth buffer and
+# draws the triangles exactly as OpenCASCADE produced them.
 MAX_EDGE = 40.0
+
+# Angular deflection of the tessellation [rad]: about 21 facets on a bolt, so
+# rods and bolts look round without a visible polygon.
+ANGULAR_DEFLECTION = 0.3
+
+# Edges whose adjacent faces meet at more than this angle are drawn as lines.
+# It must stay above the facet angle of curved faces (ANGULAR_DEFLECTION ≈ 17°)
+# so that cylinders show only their outline, not their facets.
+SHARP_ANGLE = 35.0
 
 
 @dataclass(frozen=True)
 class MeshPart:
     name: str
     triangles: tuple[Triangle, ...]
+    edges: tuple[Segment, ...] = ()
+    """Sharp (feature) edges of the solid, for the outline pass."""
 
 
 def _midpoint(a: Point, b: Point) -> Point:
@@ -50,15 +64,75 @@ def _subdivide(triangle: Triangle, max_edge: float,
             for part in _subdivide(child, max_edge, depth + 1)]
 
 
-def _subdivide_triangles(triangles: list[Triangle],
+def _subdivide_triangles(triangles: tuple[Triangle, ...] | list[Triangle],
                          max_edge: float) -> tuple[Triangle, ...]:
     return tuple(part for triangle in triangles
                  for part in _subdivide(triangle, max_edge))
 
 
+def subdivide_meshes(meshes: list[MeshPart], max_edge: float = MAX_EDGE) -> list[MeshPart]:
+    """Meshes for the painter's algorithm: long triangles split, edges kept."""
+    return [MeshPart(mesh.name, _subdivide_triangles(mesh.triangles, max_edge), mesh.edges)
+            for mesh in meshes]
+
+
+def _unit_normal(p0: Point, p1: Point, p2: Point) -> Point | None:
+    ax, ay, az = p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2]
+    bx, by, bz = p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2]
+    nx, ny, nz = ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx
+    length = math.sqrt(nx * nx + ny * ny + nz * nz)
+    if length <= 1e-12:
+        return None
+    return nx / length, ny / length, nz / length
+
+
+def feature_edges(triangles: tuple[Triangle, ...] | list[Triangle],
+                  angle: float = SHARP_ANGLE) -> tuple[Segment, ...]:
+    """Edges of a closed triangle mesh where the surface folds by more than ``angle``.
+
+    Edges shared by coplanar triangles (the internal triangulation, or two
+    faces that a boolean fuse left side by side) are not features. Edges with
+    a single triangle are kept: they are the outline of an open patch.
+    """
+    cos_limit = math.cos(math.radians(angle))
+    normals: dict[tuple[Point, Point], list[Point]] = {}
+    ends: dict[tuple[Point, Point], Segment] = {}
+
+    def key(point: Point) -> Point:
+        return (round(point[0], 4), round(point[1], 4), round(point[2], 4))
+
+    for triangle in triangles:
+        normal = _unit_normal(*triangle)
+        if normal is None:
+            continue
+        for a, b in ((triangle[0], triangle[1]), (triangle[1], triangle[2]),
+                     (triangle[2], triangle[0])):
+            ka, kb = key(a), key(b)
+            edge = (ka, kb) if ka <= kb else (kb, ka)
+            normals.setdefault(edge, []).append(normal)
+            ends.setdefault(edge, (a, b))
+    out: list[Segment] = []
+    for edge, faces in normals.items():
+        if len(faces) == 1:
+            out.append(ends[edge])
+            continue
+        first = faces[0]
+        if any(first[0] * other[0] + first[1] * other[1] + first[2] * other[2] < cos_limit
+               for other in faces[1:]):
+            out.append(ends[edge])
+    return tuple(out)
+
+
 def tessellate_parts(parts: list[Part], deflection: float = 0.35,
-                     max_edge: float = MAX_EDGE) -> list[MeshPart]:
-    """Triangulate every part; faces without a mesh are skipped."""
+                     max_edge: float | None = MAX_EDGE, *,
+                     angular: float = ANGULAR_DEFLECTION,
+                     edges: bool = False) -> list[MeshPart]:
+    """Triangulate every part; faces without a mesh are skipped.
+
+    ``max_edge=None`` keeps the OpenCASCADE triangles (OpenGL canvas); a value
+    splits long triangles for the painter's algorithm. ``edges=True`` also
+    returns the sharp edges of each solid for the outline pass.
+    """
     from OCP.BRep import BRep_Tool
     from OCP.BRepMesh import BRepMesh_IncrementalMesh
     from OCP.TopAbs import TopAbs_FACE, TopAbs_REVERSED
@@ -68,7 +142,7 @@ def tessellate_parts(parts: list[Part], deflection: float = 0.35,
 
     meshes: list[MeshPart] = []
     for part in parts:
-        BRepMesh_IncrementalMesh(part.shape, deflection)
+        BRepMesh_IncrementalMesh(part.shape, deflection, False, angular, True)
         explorer = TopExp_Explorer(part.shape, TopAbs_FACE)
         triangles: list[Triangle] = []
         while explorer.More():
@@ -90,6 +164,8 @@ def tessellate_parts(parts: list[Part], deflection: float = 0.35,
                         triangles.append((nodes[a - 1], nodes[b - 1], nodes[c - 1]))
             explorer.Next()
         if triangles:
-            meshes.append(MeshPart(part.name,
-                                   _subdivide_triangles(triangles, max_edge)))
+            outline = feature_edges(triangles) if edges else ()
+            mesh = (tuple(triangles) if max_edge is None
+                    else _subdivide_triangles(triangles, max_edge))
+            meshes.append(MeshPart(part.name, mesh, outline))
     return meshes

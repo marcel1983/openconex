@@ -108,13 +108,28 @@ La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
 - **Doble clic** o **Ajustar vista** para volver a la vista isométrica.
 - **Iso**, **Frente**, **Planta** y **Lado** colocan la cámara en una vista estándar.
 - **Separar**, en las conexiones de corte, separa la viga del apoyo para ver la placa, los ángulos o el asiento. Es solo una vista de inspección: no modifica el proyecto ni la exportación.
-- La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla.
+- La lista **Piezas** permite ocultar o mostrar cada sólido y resaltar una pieza al seleccionarla. Las piezas ocultas y la seleccionada se conservan cuando el modelo se actualiza.
+- **Automático** (marcado por defecto) regenera el modelo poco después de cada cambio del formulario; **Actualizar** lo regenera en el momento aunque nada haya cambiado.
 
-El visor usa OpenGL con búfer de profundidad: las caras posteriores quedan ocultas por píxel, sin los dientes de sierra que aparecían cuando el ala de una viga tapaba un ángulo. El render se hace en un búfer con antialiasing y se compone sobre la ventana. Los elementos de la conexión se resaltan en naranja y la placa base también; la viga, el apoyo y la columna quedan en gris azulado.
+### Actualización automática
 
-Si OpenGL no está disponible (escritorio remoto, máquina virtual o controlador antiguo), el visor cambia automáticamente a la vista simplificada con `QPainter` y lo indica en la barra de estado. También se puede forzar con la variable de entorno `OPENCONEX_SOFTWARE_3D=1`.
+El 3D sigue al formulario, no al último cálculo: al cambiar un espesor, un perfil, el número de pernos o el tipo de conexión, el modelo se regenera unos 0,3 s después del último cambio, sin pulsar **Calcular** ni **Actualizar**. Funciona igual en las ventanas de placa base, corte y momento.
 
-El modelo se genera en segundo plano al entrar en la pestaña, con las piezas de `geometry3d.base_plate` (`base_plate_parts` o `embedded_base_parts`). Funciona con placa expuesta y base empotrada. La exportación STEP/STL no cambia.
+- El modelo se genera en segundo plano; el anterior sigue en pantalla hasta que el nuevo está listo, así que no hay parpadeo.
+- Si se escribe varias veces seguidas, se genera un solo modelo con el último valor. Mientras se genera, los cambios nuevos se agrupan en una única actualización posterior.
+- Los últimos ocho modelos quedan en memoria: deshacer un cambio muestra el modelo anterior al instante (la barra indica «desde la caché»). Los cambios de cargas y combinaciones no regeneran el 3D.
+- Si el formulario tiene un dato no válido, el 3D conserva el último modelo correcto y la barra de la pestaña indica qué dato falta o está mal.
+- Si la pestaña 3D no está a la vista, el modelo se regenera al abrirla. La cámara (giro, zoom y desplazamiento) se mantiene; solo se reencuadra si el modelo nuevo ya no cabe en la vista o se vuelve mucho más pequeño.
+
+### Representación
+
+El visor usa OpenGL con búfer de profundidad: las caras posteriores quedan ocultas por píxel, sin los dientes de sierra que aparecían cuando el ala de una viga tapaba un ángulo. El render se hace en un búfer con antialiasing y se compone sobre la ventana. Las aristas vivas de cada sólido se dibujan como líneas oscuras, de modo que se distinguen las piezas que se tocan (un ángulo sobre el alma, una tuerca sobre la arandela) y las alas de un ángulo; no se dibuja la triangulación ni las facetas de los cilindros. Los elementos de la conexión se resaltan en naranja y la placa base también; la viga, el apoyo y la columna quedan en gris azulado.
+
+Las conexiones de corte se modelan con el eje y vertical; el visor las gira para que la vertical sea z, sin reflejarlas: las placas y los ángulos aparecen del lado real del alma y el esviaje de la placa doblada en su sentido real, igual que en el plano. Por eso la vista isométrica de corte mira la conexión desde el lado de la placa.
+
+Si OpenGL no está disponible (escritorio remoto, máquina virtual o controlador antiguo), el visor cambia automáticamente a la vista simplificada con `QPainter` y lo indica en la barra de estado. También se puede forzar con la variable de entorno `OPENCONEX_SOFTWARE_3D=1`. La vista simplificada no dibuja las aristas.
+
+Las piezas son las mismas que exporta STEP/STL (`geometry3d.base_plate`, `geometry3d.shear` y `geometry3d.moment`). Funciona con placa expuesta, base empotrada, conexiones de corte y conexiones de momento.
 
 ## Tipos de conexión
 

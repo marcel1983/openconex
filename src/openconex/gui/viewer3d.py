@@ -1,17 +1,37 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
-"""Interactive 3D viewer for base plate solids (OCP + QPainter)."""
+"""Interactive 3D viewer for the connection solids (OCP + OpenGL or QPainter).
+
+The viewer follows the form: every change restarts a short timer and, when it
+fires, the window's ``snapshot`` (the project read from the form) is meshed in
+a worker thread.  Only one worker runs at a time, edits made meanwhile are
+coalesced into a single follow-up update, and the meshes of the last models
+are cached by the project content, so undoing a change is instant.  The
+previous model stays on screen until the new one is ready.
+"""
 
 from __future__ import annotations
 
 import math
+import time
+from collections import OrderedDict
 from collections.abc import Callable
 from typing import Any
 
-from PySide6.QtCore import QObject, QPointF, QRunnable, QSize, Qt, QThreadPool, Signal
+from PySide6.QtCore import (
+    QObject,
+    QPointF,
+    QRunnable,
+    QSize,
+    Qt,
+    QThreadPool,
+    QTimer,
+    Signal,
+)
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
@@ -23,10 +43,11 @@ from PySide6.QtWidgets import (
 )
 
 from openconex.geometry3d.base_plate import Part
-from openconex.geometry3d.mesh import MeshPart, tessellate_parts
+from openconex.geometry3d.mesh import MeshPart, subdivide_meshes, tessellate_parts
 from openconex.help import help_text
 
-__all__ = ["Viewer3D", "part_color", "render_parts", "view_angles"]
+__all__ = ["AUTO_DELAY_MS", "Viewer3D", "part_color", "render_parts", "view_angles",
+           "y_up_to_z_up"]
 
 VIEW_ANGLES = {
     "iso": (35.0, 25.0),
@@ -34,6 +55,14 @@ VIEW_ANGLES = {
     "top": (0.0, 89.0),
     "side": (90.0, 0.0),
 }
+
+AUTO_DELAY_MS = 300
+"""Pause after the last edit before the 3D model is regenerated [ms]."""
+
+CACHE_SIZE = 8
+"""Models (by project content) whose meshes are kept for instant re-display."""
+
+HINT = "Arrastre para girar · rueda para zoom · doble clic para ajustar"
 
 
 def view_angles(name: str) -> tuple[float, float]:
@@ -69,44 +98,143 @@ def part_color(name: str) -> QColor:
     return QColor("#607d8b")
 
 
-class _ViewCanvas(QWidget):
-    """Orthographic canvas with painter's-algorithm triangle rendering."""
+def mesh_bounds(meshes: list[MeshPart]) -> tuple[tuple[float, float, float], float] | None:
+    """Centre of the bounding box and radius of the enclosing sphere."""
+    xs: list[float] = []
+    ys: list[float] = []
+    zs: list[float] = []
+    for mesh in meshes:
+        for triangle in mesh.triangles:
+            for point in triangle:
+                xs.append(point[0])
+                ys.append(point[1])
+                zs.append(point[2])
+    if not xs:
+        return None
+    center = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, (min(zs) + max(zs)) / 2)
+    radius = math.sqrt(max((x - center[0]) ** 2 + (y - center[1]) ** 2
+                           + (z - center[2]) ** 2 for x, y, z in zip(xs, ys, zs,
+                                                                     strict=True)))
+    return center, radius or 1.0
 
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._meshes: list[MeshPart] = []
-        self._hidden: set[str] = set()
-        self._highlight: set[str] = set()
-        self._highlight_color = QColor("#1565c0")
-        self._selected: str | None = None
-        self._yaw = 35.0
-        self._pitch = 25.0
+
+def _keeps_framing(old_center: tuple[float, float, float], old_radius: float,
+                   center: tuple[float, float, float], radius: float) -> bool:
+    """Whether a model update can keep the camera target and scale.
+
+    Small edits (a plate a bit thicker, one more bolt) should not make the
+    view jump; the camera is refitted only when the new model would no longer
+    fit, or would look much smaller than before.
+    """
+    return (math.dist(old_center, center) + radius <= 1.1 * old_radius
+            and radius >= 0.6 * old_radius)
+
+
+class _CameraMixin:
+    """Orbit camera shared by the QPainter and OpenGL canvases."""
+
+    _meshes: list[MeshPart]
+
+    def _init_camera(self) -> None:
+        self._home = VIEW_ANGLES["iso"]
+        self._flip_yaw = False
+        self._yaw, self._pitch = self._home
         self._zoom = 1.0
         self._pan = QPointF()
         self._center = (0.0, 0.0, 0.0)
         self._radius = 1.0
-        self._message = "Sin modelo 3D."
         self._last: QPointF | None = None
         self._mode = ""
         self._show_hint = True
+
+    def set_flip_yaw(self, flip: bool) -> None:
+        """Mirror the standard yaw angles (models drawn with the beam toward -y)."""
+        self._flip_yaw = bool(flip)
+        self._home = self._angles("iso")
+
+    def _angles(self, name: str) -> tuple[float, float]:
+        yaw, pitch = view_angles(name)
+        return (180.0 - yaw if self._flip_yaw else yaw), pitch
+
+    def _fit(self, meshes: list[MeshPart], first: bool, refit: bool) -> None:
+        bounds = mesh_bounds(meshes)
+        if bounds is None:
+            if first:
+                self._center, self._radius = (0.0, 0.0, 0.0), 1.0
+            return
+        center, radius = bounds
+        if first or refit or not _keeps_framing(self._center, self._radius, center, radius):
+            self._center, self._radius = center, radius
+
+    def reset_view(self) -> None:
+        self._yaw, self._pitch = self._home
+        self._zoom = 1.0
+        self._pan = QPointF()
+        self.update()  # type: ignore[attr-defined]
+
+    def set_view(self, name: str) -> None:
+        self._yaw, self._pitch = self._angles(name)
+        self._zoom = 1.0
+        self._pan = QPointF()
+        self.update()  # type: ignore[attr-defined]
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        self._last = event.position()
+        self._mode = "rotate" if event.button() == Qt.MouseButton.LeftButton else "pan"
+        self.setCursor(Qt.CursorShape.ClosedHandCursor)  # type: ignore[attr-defined]
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        if self._last is None:
+            return
+        delta = event.position() - self._last
+        self._last = event.position()
+        if self._mode == "rotate":
+            self._yaw += delta.x() * 0.55
+            self._pitch = max(-89.0, min(89.0, self._pitch + delta.y() * 0.55))
+        elif self._mode == "pan":
+            self._pan += delta
+        self.update()  # type: ignore[attr-defined]
+
+    def mouseReleaseEvent(self, _event) -> None:  # noqa: N802
+        self._last = None
+        self._mode = ""
+        self.setCursor(Qt.CursorShape.OpenHandCursor)  # type: ignore[attr-defined]
+
+    def mouseDoubleClickEvent(self, _event) -> None:  # noqa: N802
+        self.reset_view()
+
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        factor = 1.0015 ** event.angleDelta().y()
+        self._zoom = max(0.2, min(8.0, self._zoom * factor))
+        self.update()  # type: ignore[attr-defined]
+
+
+class _ViewCanvas(_CameraMixin, QWidget):
+    """Orthographic canvas with painter's-algorithm triangle rendering."""
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._init_camera()
+        self._meshes: list[MeshPart] = []
+        self._normals: list[tuple[tuple[float, float, float], ...]] = []
+        self._hidden: set[str] = set()
+        self._highlight: set[str] = set()
+        self._highlight_color = QColor("#1565c0")
+        self._selected: str | None = None
+        self._message = "Sin modelo 3D."
         self.setMinimumSize(420, 320)
         self.setCursor(Qt.CursorShape.OpenHandCursor)
 
-    def set_meshes(self, meshes: list[MeshPart], message: str = "") -> None:
+    def set_meshes(self, meshes: list[MeshPart], message: str = "",
+                   refit: bool = False) -> None:
         first = not self._meshes
         self._meshes = meshes
+        # Face normals do not change while the camera moves: compute them once.
+        self._normals = [tuple(_normal(*triangle) for triangle in mesh.triangles)
+                         for mesh in meshes]
         self._message = message or ("Sin modelo 3D." if not meshes else "")
-        points = [point for mesh in meshes for tri in mesh.triangles for point in tri]
-        if points:
-            xs, ys, zs = zip(*points, strict=False)
-            self._center = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2,
-                            (min(zs) + max(zs)) / 2)
-            self._radius = max(
-                math.dist(point, self._center) for point in points) or 1.0
-        else:
-            self._center = (0.0, 0.0, 0.0)
-            self._radius = 1.0
-        if first:
+        self._fit(meshes, first, refit)
+        if first and meshes:
             self.reset_view()
         self.update()
 
@@ -116,19 +244,6 @@ class _ViewCanvas(QWidget):
 
     def set_selected(self, name: str | None) -> None:
         self._selected = name
-        self.update()
-
-    def reset_view(self) -> None:
-        self._yaw = 35.0
-        self._pitch = 25.0
-        self._zoom = 1.0
-        self._pan = QPointF()
-        self.update()
-
-    def set_view(self, name: str) -> None:
-        self._yaw, self._pitch = view_angles(name)
-        self._zoom = 1.0
-        self._pan = QPointF()
         self.update()
 
     def paintEvent(self, _event) -> None:  # noqa: N802
@@ -150,44 +265,44 @@ class _ViewCanvas(QWidget):
         ox, oy, oz = self._center
         # Outward normal of a face must point toward the camera; culling the
         # rest removes hidden surfaces and most painter-order flicker.
-        view = (cpitch * syaw, cpitch * cyaw, spitch)
-        light_dir = (-0.35, 0.45, 0.82)
-        triangles: list[tuple[float, int, QPolygonF, QColor, str]] = []
+        vx, vy, vz = cpitch * syaw, cpitch * cyaw, spitch
+        lx, ly, lz = -0.35, 0.45, 0.82
+        triangles: list[tuple[float, int, QPolygonF, QColor]] = []
         for part_index, mesh in enumerate(self._meshes):
             if mesh.name in self._hidden:
                 continue
             color = (self._highlight_color if mesh.name in self._highlight
                      else part_color(mesh.name))
-            for p0, p1, p2 in mesh.triangles:
-                normal = _normal(p0, p1, p2)
-                if (normal[0] * view[0] + normal[1] * view[1]
-                        + normal[2] * view[2]) <= 1e-9:
+            selected = self._selected == mesh.name
+            normals = (self._normals[part_index] if part_index < len(self._normals)
+                       else tuple(_normal(*t) for t in mesh.triangles))
+            tints: dict[int, QColor] = {}
+            for (p0, p1, p2), normal in zip(mesh.triangles, normals, strict=False):
+                if normal[0] * vx + normal[1] * vy + normal[2] * vz <= 1e-9:
                     continue
-                points = []
+                polygon = QPolygonF()
+                depth = 0.0
                 for point in (p0, p1, p2):
                     x, y, z = point[0] - ox, point[1] - oy, point[2] - oz
                     x1 = x * cyaw - y * syaw
                     y1 = x * syaw + y * cyaw
-                    z1 = z
-                    screen_x = cx + x1 * scale
-                    screen_y = cy - (z1 * cpitch - y1 * spitch) * scale
-                    depth = z1 * spitch + y1 * cpitch
-                    points.append((screen_x, screen_y, depth))
-                depth = sum(point[2] for point in points) / 3
-                light = max(0.0, normal[0] * light_dir[0]
-                            + normal[1] * light_dir[1]
-                            + normal[2] * light_dir[2])
+                    polygon.append(QPointF(cx + x1 * scale,
+                                           cy - (z * cpitch - y1 * spitch) * scale))
+                    depth += z * spitch + y1 * cpitch
+                light = max(0.0, normal[0] * lx + normal[1] * ly + normal[2] * lz)
                 shade = 0.55 + 0.45 * min(light, 1.0)
-                tint = QColor(color)
-                tint = tint.lighter(int(100 + shade * 70)) if self._selected == mesh.name \
-                    else tint.darker(int(120 - shade * 40))
-                polygon = QPolygonF([QPointF(point[0], point[1]) for point in points])
+                # QColor.lighter/darker take whole percentages: share one
+                # QColor per percentage instead of creating one per triangle.
+                factor = int(100 + shade * 70) if selected else int(120 - shade * 40)
+                tint = tints.get(factor)
+                if tint is None:
+                    tint = color.lighter(factor) if selected else color.darker(factor)
+                    tints[factor] = tint
                 # A tiny part bias keeps coplanar faces from flickering while
                 # the model rotates.
-                triangles.append((depth + part_index * 0.001, part_index,
-                                  polygon, tint, mesh.name))
+                triangles.append((depth / 3 + part_index * 0.001, part_index, polygon, tint))
         triangles.sort(key=lambda item: (item[0], item[1]))
-        for _depth, _part, polygon, tint, _name in triangles:
+        for _depth, _part, polygon, tint in triangles:
             painter.setBrush(QBrush(tint))
             # Same-colour outline closes antialiasing seams without drawing
             # the triangulation as a wireframe.
@@ -196,39 +311,24 @@ class _ViewCanvas(QWidget):
         if self._show_hint:
             painter.setPen(QColor("#455a64"))
             painter.setFont(QFont("Segoe UI", 9))
-            painter.drawText(12, height - 12, "Arrastre para girar · rueda para zoom · "
-                                               "doble clic para ajustar")
+            painter.drawText(12, height - 12, HINT)
         painter.end()
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802
-        self._last = event.position()
-        self._mode = "rotate" if event.button() == Qt.MouseButton.LeftButton else "pan"
-        self.setCursor(Qt.CursorShape.ClosedHandCursor)
 
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802
-        if self._last is None:
-            return
-        delta = event.position() - self._last
-        self._last = event.position()
-        if self._mode == "rotate":
-            self._yaw += delta.x() * 0.55
-            self._pitch = max(-89.0, min(89.0, self._pitch + delta.y() * 0.55))
-        elif self._mode == "pan":
-            self._pan += delta
-        self.update()
+def y_up_to_z_up(meshes: list[MeshPart]) -> list[MeshPart]:
+    """Rotate a y-up model (shear connections) so that z is vertical.
 
-    def mouseReleaseEvent(self, _event) -> None:  # noqa: N802
-        self._last = None
-        self._mode = ""
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
+    (x, y, z) → (x, −z, y) is a rotation of +90° about x, not a reflection:
+    the connection is shown as built (plates on their real side of the web,
+    the skew in its real direction) and the triangle winding stays valid.
+    """
+    def turn(point):
+        return (point[0], -point[2], point[1])
 
-    def mouseDoubleClickEvent(self, _event) -> None:  # noqa: N802
-        self.reset_view()
-
-    def wheelEvent(self, event) -> None:  # noqa: N802
-        factor = 1.0015 ** event.angleDelta().y()
-        self._zoom = max(0.2, min(8.0, self._zoom * factor))
-        self.update()
+    return [MeshPart(mesh.name,
+                     tuple((turn(p0), turn(p1), turn(p2)) for p0, p1, p2 in mesh.triangles),
+                     tuple((turn(a), turn(b)) for a, b in mesh.edges))
+            for mesh in meshes]
 
 
 def _swap_yz_meshes(meshes: list[MeshPart]) -> list[MeshPart]:
@@ -265,11 +365,14 @@ def _explode_meshes(meshes: list[MeshPart],
             moved.append(mesh)
             continue
         dx, dy, dz = shift
-        triangles = [((p0[0] + dx, p0[1] + dy, p0[2] + dz),
-                      (p1[0] + dx, p1[1] + dy, p1[2] + dz),
-                      (p2[0] + dx, p2[1] + dy, p2[2] + dz))
-                     for p0, p1, p2 in mesh.triangles]
-        moved.append(MeshPart(mesh.name, tuple(triangles)))
+
+        def move(point, dx=dx, dy=dy, dz=dz):
+            return (point[0] + dx, point[1] + dy, point[2] + dz)
+
+        moved.append(MeshPart(
+            mesh.name,
+            tuple((move(p0), move(p1), move(p2)) for p0, p1, p2 in mesh.triangles),
+            tuple((move(a), move(b)) for a, b in mesh.edges)))
     return moved
 
 
@@ -360,47 +463,98 @@ def _opengl_available() -> bool:
         return False
 
 
+def _default_key(value: Any) -> str:
+    """Cache key of a snapshot: the JSON of a pydantic model, else its repr."""
+    dump = getattr(value, "model_dump_json", None)
+    if callable(dump):
+        try:
+            return str(dump(exclude={"cases", "combinations", "generator"}))
+        except Exception:
+            return str(dump())
+    return repr(value)
+
+
+_NO_VALUE = object()
+
+
 class _WorkerSignals(QObject):
     done = Signal(int, object, str)
 
 
 class _MeshWorker(QRunnable):
-    def __init__(self, generation: int, build: Callable[[], list[Part]],
-                 signals: _WorkerSignals) -> None:
+    """Build the solids and mesh them off the GUI thread."""
+
+    def __init__(self, generation: int, build: Callable[..., list[Part]], value: Any,
+                 subdivide: bool, signals: _WorkerSignals) -> None:
         super().__init__()
         self._generation = generation
         self._build = build
+        self._value = value
+        self._subdivide = subdivide
         self._signals = signals
 
     def run(self) -> None:
+        started = time.perf_counter()
         try:
-            meshes = tessellate_parts(self._build())
+            parts = self._build() if self._value is _NO_VALUE else self._build(self._value)
+            meshes = tessellate_parts(parts, max_edge=None, edges=True)
+            painter = subdivide_meshes(meshes) if self._subdivide else None
             error = ""
         except Exception as exc:  # keep the GUI alive if OCP or a part fails
-            meshes = []
-            error = str(exc)
-        self._signals.done.emit(self._generation, meshes, error)
+            meshes, painter = [], None
+            error = str(exc) or type(exc).__name__
+        self._signals.done.emit(self._generation,
+                                (meshes, painter, time.perf_counter() - started), error)
 
 
 class Viewer3D(QWidget):
-    """3D tab: asynchronous meshing, part visibility and selection."""
+    """3D tab: automatic asynchronous meshing, part visibility and selection.
 
-    def __init__(self, build: Callable[[], list[Part]],
-                 parent: QWidget | None = None, swap_yz: bool = False,
+    ``build`` returns the OCP parts. With ``snapshot``, the viewer reads the
+    model in the GUI thread (``snapshot()``, typically the project read from
+    the form), calls ``build(value)`` in a worker thread and caches the meshes
+    by ``key(value)``. Without it, ``build()`` is called in the worker on
+    every update. ``y_up`` rotates models whose vertical axis is y (shear
+    connections). ``explode`` offsets are in the model axes.
+    """
+
+    model_updated = Signal()
+    """Emitted when a new model is on screen (or failed to build)."""
+
+    def __init__(self, build: Callable[..., list[Part]],
+                 parent: QWidget | None = None, *,
+                 snapshot: Callable[[], Any] | None = None,
+                 key: Callable[[Any], str] | None = None,
+                 y_up: bool = False,
                  explode: dict[str, tuple[float, float, float]]
                  | Callable[[], dict[str, tuple[float, float, float]] | None]
                  | None = None,
-                 use_opengl: bool | None = None) -> None:
+                 use_opengl: bool | None = None,
+                 delay_ms: int = AUTO_DELAY_MS) -> None:
         super().__init__(parent)
         self._build = build
-        self._swap_yz = swap_yz
+        self._snapshot = snapshot
+        self._key = key or _default_key
+        self._y_up = y_up
         self._generation = 0
+        self._running = False
+        self._pending: bool | None = None
+        """``None``: nothing queued; otherwise the ``force`` flag of the queued update."""
+        self._stale = snapshot is not None
         self._signals = _WorkerSignals()
         self._signals.done.connect(self._on_done)
         self._pool = QThreadPool.globalInstance()
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(delay_ms)
+        self._timer.timeout.connect(self._on_timer)
+        self._cache: OrderedDict[str, list[MeshPart]] = OrderedDict()
+        self._current_key: str | None = None
+        self._pending_key: str | None = None
         self._explode_spec = explode
         self._exploded = False
-        self._base_meshes: list[MeshPart] = []
+        self._model: list[MeshPart] | None = None
+        self._painter_model: list[MeshPart] | None = None
         self._hidden: set[str] = set()
         self._selected: str | None = None
         self._use_opengl = _opengl_available() if use_opengl is None else use_opengl
@@ -410,16 +564,21 @@ class Viewer3D(QWidget):
 
     # -- construction -----------------------------------------------------------
     def _make_canvas(self) -> Any:
+        canvas: Any = None
         if self._use_opengl:
             try:
                 from .viewer3d_gl import OpenGLCanvas
 
                 canvas = OpenGLCanvas()
                 canvas.failed.connect(self._on_gl_failed)
-                return canvas
             except Exception:
                 self._use_opengl = False
-        return _ViewCanvas()
+                canvas = None
+        if canvas is None:
+            canvas = _ViewCanvas()
+        canvas.set_flip_yaw(self._y_up)
+        canvas.reset_view()
+        return canvas
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -432,11 +591,11 @@ class Viewer3D(QWidget):
         reset.setToolTip(help_text("viewer.reset"))
         bar.addWidget(refresh)
         bar.addWidget(reset)
-        for label, key in (("Iso", "iso"), ("Frente", "front"),
-                           ("Planta", "top"), ("Lado", "side")):
+        for label, name in (("Iso", "iso"), ("Frente", "front"),
+                            ("Planta", "top"), ("Lado", "side")):
             view = QPushButton(label)
-            view.setToolTip(help_text(f"viewer.{key}"))
-            view.clicked.connect(lambda _=False, name=key: self._canvas.set_view(name))
+            view.setToolTip(help_text(f"viewer.{name}"))
+            view.clicked.connect(lambda _=False, name=name: self._canvas.set_view(name))
             bar.addWidget(view)
         if self._explode_spec is not None:
             self._explode_button = QPushButton("Separar")
@@ -444,7 +603,15 @@ class Viewer3D(QWidget):
             self._explode_button.setToolTip(help_text("viewer.explode"))
             self._explode_button.toggled.connect(self._on_explode_toggled)
             bar.addWidget(self._explode_button)
-        self._status = QLabel("Seleccione un proyecto y pulse Actualizar.")
+        self._auto = QCheckBox("Automático")
+        self._auto.setChecked(True)
+        self._auto.setToolTip(help_text("viewer.auto"))
+        self._auto.toggled.connect(self._on_auto_toggled)
+        self._auto.setVisible(self._snapshot is not None)
+        bar.addWidget(self._auto)
+        self._status = QLabel("El modelo 3D se genera al abrir esta pestaña."
+                              if self._snapshot is not None
+                              else "Seleccione un proyecto y pulse Actualizar.")
         self._status.setWordWrap(True)
         bar.addWidget(self._status, 1)
         layout.addLayout(bar)
@@ -468,7 +635,9 @@ class Viewer3D(QWidget):
         splitter.addWidget(side)
         splitter.setSizes([700, 220])
         layout.addWidget(splitter, 1)
-        self._canvas.set_meshes([], "Pulse Actualizar para generar el modelo 3D.")
+        self._canvas.set_meshes([], "El modelo 3D se genera automáticamente."
+                                if self._snapshot is not None
+                                else "Pulse Actualizar para generar el modelo 3D.")
 
     # -- camera and view controls ----------------------------------------------
     def _reset_view(self) -> None:
@@ -478,7 +647,7 @@ class Viewer3D(QWidget):
         self._explode_spec = spec
         self._update_explode_visibility()
         if self._exploded:
-            self._refresh_canvas()
+            self._refresh_canvas(refit=True)
 
     def _update_explode_visibility(self) -> None:
         if self._explode_button is None:
@@ -492,7 +661,7 @@ class Viewer3D(QWidget):
 
     def _on_explode_toggled(self, checked: bool) -> None:
         self._exploded = bool(checked)
-        self._refresh_canvas()
+        self._refresh_canvas(refit=True)
 
     def _current_explode(self) -> dict[str, tuple[float, float, float]] | None:
         if not self._exploded:
@@ -501,75 +670,195 @@ class Viewer3D(QWidget):
         return spec() if callable(spec) else spec
 
     def _canvas_meshes(self) -> list[MeshPart]:
-        return _explode_meshes(self._base_meshes, self._current_explode())
+        if self._model is None:
+            return []
+        meshes = self._model
+        if not self._use_opengl:
+            # The painter's algorithm needs the long triangles split.
+            if self._painter_model is None:
+                self._painter_model = subdivide_meshes(self._model)
+            meshes = self._painter_model
+        meshes = _explode_meshes(meshes, self._current_explode())
+        return y_up_to_z_up(meshes) if self._y_up else meshes
 
-    def _refresh_canvas(self, message: str = "") -> None:
-        self._canvas.set_meshes(self._canvas_meshes(), message)
+    def _refresh_canvas(self, message: str = "", refit: bool = False) -> None:
+        self._canvas.set_meshes(self._canvas_meshes(), message, refit)
+
+    # -- automatic updates --------------------------------------------------------
+    @property
+    def auto_update(self) -> bool:
+        return self._auto.isChecked()
+
+    def set_auto_update(self, enabled: bool) -> None:
+        self._auto.setChecked(enabled)
+
+    def _on_auto_toggled(self, enabled: bool) -> None:
+        if enabled and self._stale:
+            self.schedule_update()
+
+    def schedule_update(self, *_args: object) -> None:
+        """Regenerate the model shortly after the last call (connect to form edits)."""
+        if self._snapshot is None:
+            return
+        self._stale = True
+        if self.auto_update:
+            self._timer.start()
+
+    def _on_timer(self) -> None:
+        if self.isVisible():
+            self.update_model()
+        # Hidden: stays stale and is rebuilt when the tab is shown.
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        if self._stale and self._snapshot is not None and (
+                self.auto_update or self._model is None):
+            QTimer.singleShot(0, self.update_model)
+
+    @property
+    def is_busy(self) -> bool:
+        """A worker is meshing or an update is waiting for the timer."""
+        return self._running or self._pending is not None or self._timer.isActive()
 
     # -- model loading ----------------------------------------------------------
     def load_model(self) -> None:
+        """Rebuild the model now, without using the cache (button Actualizar)."""
+        self.update_model(force=True)
+
+    def update_model(self, force: bool = False) -> None:
+        """Show the current model: from the cache, or meshed in the background."""
+        self._timer.stop()
+        if self._running:
+            # One worker at a time: queue a single follow-up that will read the
+            # form again when the current one finishes.
+            self._pending = bool(force or self._pending)
+            return
+        value: Any = _NO_VALUE
+        key: str | None = None
+        if self._snapshot is not None:
+            try:
+                value = self._snapshot()
+            except Exception as exc:
+                self._stale = False
+                self._show_problem(f"Modelo 3D sin actualizar: {exc}")
+                return
+            try:
+                key = self._key(value)
+            except Exception:
+                key = None
+        self._stale = False
+        if not force and key is not None:
+            if key == self._current_key and self._model is not None:
+                return
+            cached = self._cache.get(key)
+            if cached is not None:
+                self._cache.move_to_end(key)
+                self._show(cached, None, key, "desde la caché")
+                return
         self._generation += 1
-        generation = self._generation
-        self._status.setText("Generando modelo 3D…")
-        self._base_meshes = []
-        self._hidden = set()
-        self._selected = None
-        self._canvas.set_hidden(set())
-        self._canvas.set_selected(None)
-        self._canvas.set_meshes([], "Generando modelo 3D…")
-        self._pool.start(_MeshWorker(generation, self._build, self._signals))
+        self._running = True
+        self._pending_key = key
+        self._status.setText("Actualizando modelo 3D…" if self._model
+                             else "Generando modelo 3D…")
+        if self._model is None:
+            self._canvas.set_meshes([], "Generando modelo 3D…")
+        self._pool.start(_MeshWorker(self._generation, self._build, value,
+                                     not self._use_opengl, self._signals))
+
+    def _show_problem(self, text: str) -> None:
+        """Keep the last good model on screen and explain why it is not current."""
+        self._status.setText(text)
+        if self._model is None:
+            self._canvas.set_meshes([], text)
+        self.model_updated.emit()
+
+    def _on_done(self, generation: int, result: tuple, error: str) -> None:
+        self._running = False
+        if generation == self._generation:
+            meshes, painter, seconds = result
+            key = self._pending_key
+            if error:
+                if self._model is None:
+                    self._canvas.set_meshes([], f"No se pudo generar el modelo 3D:\n{error}")
+                    self._status.setText("No se pudo generar el modelo 3D.")
+                else:
+                    self._status.setText(f"No se pudo actualizar el modelo 3D: {error}")
+                self._current_key = None
+                self.model_updated.emit()
+            else:
+                if key is not None:
+                    self._cache[key] = meshes
+                    self._cache.move_to_end(key)
+                    while len(self._cache) > CACHE_SIZE:
+                        self._cache.popitem(last=False)
+                self._show(meshes, painter, key, f"{seconds:.2f} s".replace(".", ","))
+        if self._pending is not None:
+            force = self._pending
+            self._pending = None
+            self.update_model(force=force)
 
     def set_meshes(self, meshes: list[MeshPart], message: str = "") -> None:
         """Populate the viewer synchronously (used by tests and callers)."""
-        if self._swap_yz:
-            meshes = _swap_yz_meshes(meshes)
-        self._base_meshes = meshes
-        self._hidden = set()
-        self._selected = None
-        self._refresh_canvas(message)
-        self._canvas.set_hidden(set())
-        self._canvas.set_selected(None)
-        self._list.blockSignals(True)
-        self._list.clear()
-        for mesh in meshes:
-            item = QListWidgetItem(mesh.name)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Checked)
-            item.setForeground(QBrush(part_color(mesh.name)))
-            self._list.addItem(item)
-        self._list.blockSignals(False)
-        triangles = sum(len(mesh.triangles) for mesh in meshes)
-        self._status.setText(f"{len(meshes)} piezas · {triangles} triángulos")
+        self._generation += 1  # a running worker's result is now stale
+        self._show(meshes, None, None, "", message)
 
-    def _on_done(self, generation: int, meshes: list[MeshPart], error: str) -> None:
-        if generation != self._generation:
-            return
-        if error:
-            self._base_meshes = []
-            self._canvas.set_meshes([], f"No se pudo generar el modelo 3D:\n{error}")
-            self._status.setText("No se pudo generar el modelo 3D.")
-            return
-        self.set_meshes(meshes)
+    def _show(self, meshes: list[MeshPart], painter: list[MeshPart] | None,
+              key: str | None, note: str, message: str = "") -> None:
+        refit = self._model is None
+        self._model = meshes
+        self._painter_model = painter
+        self._current_key = key
+        names = [mesh.name for mesh in meshes]
+        self._hidden &= set(names)
+        if self._selected not in names:
+            self._selected = None
+        self._refresh_canvas(message, refit=refit)
+        self._canvas.set_hidden(self._hidden)
+        self._canvas.set_selected(self._selected)
+        self._fill_list(names)
+        triangles = sum(len(mesh.triangles) for mesh in meshes)
+        status = f"{len(meshes)} piezas · {triangles} triángulos"
+        self._status.setText(f"{status} · {note}" if note else status)
+        self.model_updated.emit()
+
+    def _fill_list(self, names: list[str]) -> None:
+        current = [self._list.item(row).text() for row in range(self._list.count())]
+        self._list.blockSignals(True)
+        if current != names:
+            self._list.clear()
+            for name in names:
+                item = QListWidgetItem(name)
+                item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setForeground(QBrush(part_color(name)))
+                self._list.addItem(item)
+        for row in range(self._list.count()):
+            item = self._list.item(row)
+            item.setCheckState(Qt.CheckState.Unchecked if item.text() in self._hidden
+                               else Qt.CheckState.Checked)
+            if item.text() == self._selected:
+                self._list.setCurrentRow(row)
+        if self._selected is None:
+            self._list.setCurrentRow(-1)
+        self._list.blockSignals(False)
 
     # -- OpenGL fallback --------------------------------------------------------
     def _on_gl_failed(self, _reason: str) -> None:
         if not self._use_opengl:
             return
         old = self._canvas
+        self._use_opengl = False
         new = _ViewCanvas()
+        new.set_flip_yaw(self._y_up)
         new.set_meshes(self._canvas_meshes())
         new._hidden = set(self._hidden)
         new._selected = self._selected
-        for attribute in ("_yaw", "_pitch", "_zoom", "_pan"):
+        for attribute in ("_yaw", "_pitch", "_zoom", "_pan", "_center", "_radius"):
             if hasattr(old, attribute):
                 setattr(new, attribute, getattr(old, attribute))
-        new._center = getattr(old, "_center", new._center)
-        new._radius = getattr(old, "_radius", new._radius)
         new.update()
         self._splitter.replaceWidget(0, new)
         old.deleteLater()
         self._canvas = new
-        self._use_opengl = False
         self._status.setText("Vista simplificada: OpenGL no disponible.")
 
     # -- list interactions ------------------------------------------------------
