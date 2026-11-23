@@ -12,7 +12,7 @@ from __future__ import annotations
 from openconex.connections.moment.fr_moment import MomentConnection
 from openconex.drawing.moment import moment_layout
 
-from .base_plate import Part, _box, _fuse_all, _require
+from .base_plate import Part, _box, _cut_all, _fuse_all, _require
 from .shear import _cylinder_z
 
 __all__ = ["moment_parts"]
@@ -66,9 +66,18 @@ def _parts(mc: MomentConnection) -> list[Part]:
     d, tf, tw, bf = beam.d, beam.tf, beam.tw, beam.bf
     length = lay.beam_length
     x0 = lay.beam_x0
-    parts = [Part("beam", _fuse_all([_box(x0, 0, -bf / 2, length, tf, bf),
-                                     _box(x0, d - tf, -bf / 2, length, tf, bf),
-                                     _box(x0, tf, -tw / 2, length, d - 2 * tf, tw)]))]
+    beam_solid = _fuse_all([_box(x0, 0, -bf / 2, length, tf, bf),
+                            _box(x0, d - tf, -bf / 2, length, tf, bf),
+                            _box(x0, tf, -tw / 2, length, d - 2 * tf, tw)])
+    sz = mc.seismic
+    if sz is not None and sz.connection.value == "rbs" and sz.rbs_c > 0:
+        # circular cuts of the reduced beam section (AISC 358 §5.8), both flanges
+        R = (4 * sz.rbs_c**2 + sz.rbs_b**2) / (8 * sz.rbs_c)
+        xc = x0 + sz.rbs_a + sz.rbs_b / 2
+        beam_solid = _cut_all(beam_solid, [
+            _cylinder_y(xc, -1.0, side * (bf / 2 + R - sz.rbs_c), R, d + 2.0)
+            for side in (1, -1)])
+    parts = [Part("beam", beam_solid)]
     ys = [y for p in lay.plates for y in (p[1], p[3])] + [0.0, d]
     lo, hi = min(ys) - 150.0, max(ys) + 150.0
     cbf, ctf, ctw, cd = col.bf, col.tf, col.tw, col.d
