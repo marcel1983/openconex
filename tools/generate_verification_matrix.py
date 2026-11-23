@@ -51,6 +51,7 @@ FAMILY = {
     "Placas de extremo de momento": "placa_extremo_momento",
     "Conexiones al alma de la columna": "alma_columna",
     "Rigidización de la columna": "rigidizacion_columna",
+    "Empalmes": "empalmes",
     "Anclajes": "anclajes",
     "Pernos": "pernos",
     "Soldaduras": "soldaduras",
@@ -78,6 +79,7 @@ REFERENCE = {
     "alma_columna": "AISC DG13, Apéndice D (reglas de detalle; sin ejemplo resuelto)",
     "placa_extremo_momento": ("AISC DG16 (2002, rev. 2016), ejemplos 3.2.1 a 4.2.5; "
                               "AISC DG4 2.ª ed., ejemplos 4E A, 4E B y 8ES"),
+    "empalmes": "sin ejemplo publicado en el proyecto (AISC 360-22 Cap. J y F13)",
     "anclajes": "ACI 318-19 Cap. 17; DG1 4.7-3 a 4.7-6 y 4.7-15",
     "pernos": "AISC 360-22 §J3; Manual Tablas 7-6 a 7-14 y 14-2",
     "soldaduras": "AISC 360-22 §J2; Manual Tablas 8-3 a 8-11",
@@ -105,6 +107,7 @@ TEST = {
     "alma_columna": "tests/moment/test_column_web.py",
     "placa_extremo_momento": ("tests/moment/test_end_plate_dg16.py; "
                               "tests/moment/test_end_plate_dg4.py"),
+    "empalmes": "tests/splice/test_splice.py",
     "anclajes": "tests/kernel/test_anchors.py",
     "pernos": "tests/kernel/test_bolts.py",
     "soldaduras": "tests/kernel/test_welds.py",
@@ -165,6 +168,17 @@ PARTIAL: dict[str, str] = {
     "moment.end_plate_web_weld_tension": _DG16_PARTIAL,
     "moment.end_plate_flange_weld": _DG16_PARTIAL,
 }
+
+_SPLICE_PARTIAL = ("sin ejemplo publicado: comparado con el cálculo independiente "
+                   "docs/verificacion/calculos/empalmes.py o con las fórmulas del núcleo")
+SPLICE_CALC = "docs/verificacion/calculos/empalmes.py"
+SPLICE_INDEPENDENT = (
+    "flange_bolts", "upper_flange_bolts", "lower_flange_bolts",
+    "flange_plate_tension_yielding", "flange_plate_tension_rupture",
+    "flange_plate_compression", "beam_flange_block_shear", "beam_flexural_rupture",
+    "web_plate_shear_yielding", "web_plate_shear_rupture", "web_plate_block_shear",
+    "web_plate_flexural_yielding", "web_plate_flexural_rupture", "column_flange_bearing",
+    "column_web_bearing")
 
 NO_APLICA = {"shear_connection.axial_compression", "shear_connection.axial_unsupported"}
 
@@ -307,7 +321,7 @@ def status_of(check_id: str, family: str) -> str:
         return "no aplica"
     if check_id in DIFFERENCE:
         return "diferencia aceptada"
-    if check_id in PARTIAL:
+    if check_id in PARTIAL or family == "empalmes":
         return "parcial"
     if family in {"pernos", "soldaduras", "elementos", "fuerzas_concentradas"}:
         return "validado"
@@ -344,7 +358,8 @@ def main() -> int:
             check_id, ("Otros", "Ver catálogo técnico", "—"))
         family = family_of(section)
         status = status_of(check_id, family)
-        note = DIFFERENCE.get(check_id) or PARTIAL.get(check_id)
+        note = DIFFERENCE.get(check_id) or PARTIAL.get(check_id) or (
+            _SPLICE_PARTIAL if family == "empalmes" else None)
         if note:
             description = f"{description} ({note})"
         notes = NOTES.get(check_id, "")
@@ -358,7 +373,9 @@ def main() -> int:
             "formula": description,
             "referencia_publicada": REFERENCE.get(family, "—"),
             "test": TEST_OVERRIDE.get(check_id, TEST.get(family, "—")),
-            "calculo_independiente": INDEPENDENT.get(check_id, "pendiente"),
+            "calculo_independiente": INDEPENDENT.get(check_id) or (
+                SPLICE_CALC if check_id.removeprefix("splice.") in SPLICE_INDEPENDENT
+                and check_id.startswith("splice.") else "pendiente"),
             "software_externo": "pendiente",
             "estado": status,
             "riesgo": risk_of(check_id, family, status),

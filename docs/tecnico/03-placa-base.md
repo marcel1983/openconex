@@ -4,7 +4,7 @@ Código: `connections/base_plate/check.py` (`check_base_plate`) con los modelos 
 
 Para cada combinación se calculan las fuerzas P, V = √(V2² + V3²), M = |M3| y M2 = |M2|, y se siguen estos pasos.
 
-Si el proyecto define `connection_type = "embedded"`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta.
+Si el proyecto define `connection_type = "embedded"` con `embedded_base.type = "I"`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta. Con `type = "II"` se ejecutan los pasos de la sección 7 y, además, los pasos 0 a 8 de la placa expuesta con su parte del momento.
 
 ## 0. Llave de corte (si la hay)
 
@@ -122,9 +122,37 @@ La base empotrada tipo I se verifica con `seismic.embedded_base_moment` y `seism
 - **Detalle sísmico:** t_p ≥ máx(0,75 t_w, 3/8 in) (AISC 341-22 §F3.5b.4).
 - Las placas de apoyo frontal se sitúan en la cara superior del cimiento, no en el fondo del empotramiento (DG1 Fig. 5-1 y §5.3).
 
-Se modela el Tipo I con refuerzo horizontal opcional y placa embebida opcional. La placa embebida solo interviene en `b_j` y en las figuras; no se comprueba su flexión por apoyo vertical ni la tracción. No se verifica la soldadura de las placas de apoyo frontal: se supone CJP o un detalle capaz de desarrollar la fluencia de la placa. El Tipo II no está implementado. Se admite únicamente en LRFD, con perfiles I y sin momento débil, levantamiento neto, llave de corte, base débil ni combinaciones ASD.
+- **Soldadura de las placas de cara** (si se da `face_plate_weld`, AISC 360-22 §J2.4, Ec. J2-4): cada placa se suelda al alma y a la cara interior de las dos alas, L = 2(d − 2t_f) + 2(b_f − t_w); φR_n = 0,75 · 0,60 F_EXX · 0,707 w · L ≥ P. No se usa el incremento direccional (k_ds = 1). Sin `face_plate_weld` se supone CJP o un detalle que desarrolla la placa.
+- **Placa embebida** (si se da `base_plate_width`, cuadrada B × B): se verifica con la carga axial completa como una placa de compresión concéntrica (DG1 §4.3.1, Ec. 4-10 a 4-15): aplastamiento P ≤ φ_c P_p con `A2_over_A1` y espesor t ≥ l √(2|P|/(0,9 F_y B²)). Es conservador, porque las placas de cara también toman P.
+- **Levantamiento neto** (P < 0): exige placa embebida. La placa trabaja como la cabeza de un anclaje con h_ef = `embedment`: arrancamiento del concreto (ACI 318-19 §17.6.2) con separación igual al ancho de la placa y bordes (`foundation_width` − B)/2, extracción N_p = 8 A_brg f'c con A_brg = B² − A_columna (§17.6.3) y flexión de la placa con la misma expresión de la Ec. 4-15 y la fuerza T = −P. Las placas de cara no se verifican porque no hay compresión.
 
-## 8. Revisor de interferencias en planta
+Se admite únicamente en LRFD, con perfiles I y sin momento débil, llave de corte, base débil ni combinaciones ASD.
+
+### 7.1 Tipo II: cimiento bajo la placa embebida diseñado para carga vertical
+
+La DG1 §5.2.2 define el Tipo II como una base empotrada cuyo cimiento bajo la placa embebida se diseña para cargas verticales. Al apoyo horizontal del Tipo I se suma un momento por apoyo vertical, M_VB: la placa embebida apoya hacia abajo en el lado comprimido y su levantamiento queda restringido por el concreto de encima en el lado traccionado. La guía describe tres escenarios de falla del lado traccionado (1: cono de arrancamiento sin refuerzo horizontal soldado, Ec. 5-9; 2: con refuerzo horizontal soldado y sin estribos, resistencia al levantamiento casi nula; 3: con estribos, falla por corte directo), no da un método definitivo y remite a Hassan y Kanvinde (2023). El Ejemplo 5.3-1 es solo de Tipo I.
+
+OpenConex implementa la versión conservadora:
+
+1. `base_plate.embedded_moment`: M_u ≤ φM_HB (Ec. 5-6) con b_j = (b_f + B)/2 de la placa embebida, el refuerzo horizontal y `damage_limit` como en el Tipo I. M_VB = 0, que es el límite inferior del escenario 2.
+2. La placa embebida es obligatoria y transmite toda la carga axial (DG1 §5.2.2): con compresión, `embedded_plate_bearing` y `embedded_plate_thickness`; con levantamiento, `embedded_plate_thickness`, `embedded_uplift_breakout` y `embedded_uplift_pullout`, como en el Tipo I. No hay placas de cara.
+3. Sin refuerzo horizontal (escenario 1), la traza del momento informa F_t = (40/9) A_35 √(f'c/d_embed) (Ec. 5-9, método CCD con f'c en psi y longitudes en in; el resultado es en lb). A_35 se toma como el área proyectada de un cono a 35° desde un bloque de 0,3B en el borde traccionado de la placa y de ancho B, con la extensión d_embed/tan 35° limitada por el ancho del cimiento. Es informativa: no entra en ninguna verificación.
+
+Con la misma placa embebida, el Tipo II da el mismo φM_HB que el Tipo I (prueba `test_type2_equals_type1_with_the_same_embedded_plate`).
+
+## 8. Pedestal como columna corta (si se da `pedestal`)
+
+Código: `connections/base_plate/pedestal.py`. Solo combinaciones LRFD. La sección es el pedestal completo (`pedestal_N` × `pedestal_B`, o círculo de diámetro `pedestal_N`) y las barras son `pedestal_rebars`.
+
+- **Momento de diseño** en la base del pedestal: M_x = |M3| + |V2| h y M_y = |M2| + |V3| h, con h = `height`.
+- **Flexocompresión** (ACI 318-19 §22.2): compatibilidad de deformaciones con ε_cu = 0,003, bloque 0,85 f'c sobre a = β1 c (β1 de la Tabla 22.2.2.4.3), barras elastoplásticas con E_s = 29 000 ksi y descuento del concreto desplazado por las barras comprimidas dentro del bloque. En el pedestal circular el bloque es un segmento circular. Para la P_u de la combinación se busca por bisección la profundidad c que cumple φ(c)P_n(c) = P_u, con φ de la Tabla 21.2.2 (miembros con estribos: 0,65 a 0,90 según ε_t), y la capacidad es φM_n(c). Se evalúan los dos sentidos del momento y se toma el menor. Fuera de [φP_nt, φP_n,max] la capacidad es cero.
+- **Biaxial:** M_x/φM_nx + M_y/φM_ny ≤ 1, contorno de carga lineal, conservador frente al de Bresler (ACI 318-19 R22.4).
+- **Axial** (§22.4.2): P_o = 0,85 f'c (A_g − A_st) + f_y A_st; φP_n,max = 0,65 · 0,80 P_o (Tabla 22.4.2.1); en tracción φP_nt = 0,90 f_y A_st.
+- **Corte** (§22.5), en cada dirección con carga: d = h/2 + máxima distancia de una barra traccionada al centro (rectangular) o d = 0,8D y b_w = D (circular, §22.5.2.2). Con A_v ≥ A_v,min = máx(0,75√f'c, 50) b_w s/f_yt: V_c = (2λ√f'c + N_u/6A_g) b_w d (Tabla 22.5.5.1(a)); si no, V_c = (8λ_s λ ρ_w^(1/3) √f'c + N_u/6A_g) b_w d (c). N_u/6A_g ≤ 0,05 f'c, 0 ≤ V_c ≤ 5λ√f'c b_w d. V_s = A_v f_yt d/s ≤ 8√f'c b_w d con f_yt ≤ 60 ksi. φ = 0,75.
+- **Detalles:** ρ_min ≤ ρ_g ≤ 0,08 (§10.6.1.1; ρ_min = `min_ratio`, 0,01 por defecto), s ≤ mín(16 d_b, 48 d_estribo, b_min) (§25.7.2.1) y h/b_min ≤ 3 (definición de pedestal, §2.3); por encima de 3 hay que considerar esbeltez, que no se calcula.
+- **Pedestal circular:** las distancias de los anclajes al borde, para el arrancamiento y el corte, son las del rectángulo inscrito en el círculo con bordes iguales e, (f + e)² + (s/2 + e)² = R² (`pedestal.round_edges`). Sus áreas proyectadas quedan dentro del concreto, por lo que es conservador. A2/A1 se limita con k = D/√(N² + B²), el rectángulo semejante a la placa inscrito en el círculo.
+
+## 9. Revisor de interferencias en planta
 
 Para la placa base expuesta se comprueba la huella cuadrada de la arandela de placa (Manual AISC Tabla 14-2) frente a:
 
@@ -135,8 +163,17 @@ Para la placa base expuesta se comprueba la huella cuadrada de la arandela de pl
 
 Son verificaciones geométricas, no dependen de las cargas y se repiten para cada combinación para que aparezcan en la memoria.
 
+## 10. Optimización
+
+Código: `connections/base_plate/optimize.py`, función `optimize(bp, combinaciones, fuerzas, mode)`, compartida por `openconex baseplate --optimize` y la GUI.
+
+- **Local** (`check.optimize_base_plate`): descenso por coordenadas desde la placa actual; reduce N y B en pasos de 1 in y tp en pasos de 1/4 in mientras toda la envolvente cumpla. Los anclajes no se mueven.
+- **Global** (`optimize_global`): explora disposiciones de anclajes, diámetros estándar (3/4 a 2 in) desde el actual y 2, 3 o 4 barras por fila. Para cada una conserva la distancia de los anclajes al borde de la placa (o la mínima de la Tabla J3.4 y la media arandela de la Tabla 14-2, si es mayor), agranda la placa si hace falta hasta que cumple y luego hace el descenso por coordenadas sobre N, B (1 in) y tp (1/8 in, mínimo 3/8 in), moviendo `f` y `rod_spacing` con los bordes. También son candidatas la placa inicial y el resultado local. Se elige el menor peso de acero (placa + barras, de h_ef a la tuerca superior), con desempate por N, B, tp y diámetro.
+- **Garantías:** una candidata solo se acepta si ninguna verificación de ninguna combinación da NG (`check_envelope`, incluidos interferencias y pedestal); el resultado no pesa más que la placa inicial ni que el óptimo local; la búsqueda es determinista. La traza (`OptimizationResult.trace`) guarda cada disposición con N, B, tp, peso, si cumple, la verificación que gobierna y el número de evaluaciones.
+- **Optimalidad:** la prueba `test_global_optimum_matches_brute_force_on_a_small_grid` compara el resultado con una búsqueda exhaustiva en una malla de N, B y tp para una disposición.
+
 ## Lo que no hace la verificación completa
 
-- La base empotrada no comprueba el levantamiento neto, el momento débil ni el Tipo II.
-- No se verifica la soldadura de las placas de apoyo frontal ni la flexión de la placa embebida por apoyo vertical.
+- La base empotrada no comprueba el momento débil; el Tipo II desprecia M_VB (conservador) porque la DG1 no da un método definitivo.
+- El pedestal no considera esbeltez, zunchos en espiral ni el traslapo con la zapata.
 - La llave de corte ya se dibuja en DXF/3D y se comprueba su flexión local; no se comprueba la interacción completa placa-llave por elementos finitos.

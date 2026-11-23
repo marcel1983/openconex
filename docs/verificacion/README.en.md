@@ -14,13 +14,13 @@ The complete list of checks, with equations and clauses, is in the [technical ca
 
 ## 1.1 Traceability matrix
 
-`docs/verificacion/matriz-verificacion.csv` has one row per check in the catalog (289 identifiers). Columns: `check_id`, `familia`, `clausula`, `formula`, `referencia_publicada`, `test`, `calculo_independiente`, `software_externo`, `estado`, `riesgo` and `notas`. It is generated with:
+`docs/verificacion/matriz-verificacion.csv` has one row per check in the catalog (334 identifiers). Columns: `check_id`, `familia`, `clausula`, `formula`, `referencia_publicada`, `test`, `calculo_independiente`, `software_externo`, `estado`, `riesgo` and `notas`. It is generated with:
 
 ```bash
 python tools/generate_verification_matrix.py
 ```
 
-Today **223** checks are validated against published examples, tables or manual calculations, **6** have an accepted and documented difference and **3** do not apply. **57** are partial: five moment end-plate checks that the DG16 and DG4 examples do not compute, five column-web connection checks that DG13 covers without a worked example (all use AISC 360-22 formulas validated in the kernel), and the 47 checks of the seismic option (AISC 358-22), checked against the text of AISC 358-22 and AISC 341-22 and by hand calculations, but still without a Seismic Design Manual example. Commercial-software comparison is still pending for every row. **46** checks have an independent calculation: seats (`docs/verificacion/calculos/asientos.py`, six values from II.A-12A, II.A-13 and II.A-14), double angle/single plate (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 values from II.A-1A and II.A-17A), base plate (`docs/verificacion/calculos/placa_base.py`, 59 values from DG1 4.7-1, 4.7-10 and 4.7-14), anchors (`docs/verificacion/calculos/anclajes.py`, 39 values from DG1 4.7-4, 4.7-9 and 4.7-15), extended plate/coped beam (`docs/verificacion/calculos/placa_extendida_viga_destajada.py`, 29 values from II.A-4/6/7 and II.A-19A) and concentrated forces (`tests/kernel/test_local.py`, five manual §J10 values). All five scripts support `--check`. The status and risk columns are an honest snapshot, not a closure statement.
+Today **236** checks are validated against published examples, tables or manual calculations, **6** have an accepted and documented difference and **3** do not apply. **89** are partial: five moment end-plate checks that the DG16 and DG4 examples do not compute, five column-web connection checks that DG13 covers without a worked example (all use AISC 360-22 formulas validated in the kernel), 32 splice checks, and the 47 checks of the seismic option (AISC 358-22), checked against the text of AISC 358-22 and AISC 341-22 and by hand calculations, but still without a Seismic Design Manual example. Commercial-software comparison is still pending for every row. **46** checks have an independent calculation: seats (`docs/verificacion/calculos/asientos.py`, six values from II.A-12A, II.A-13 and II.A-14), double angle/single plate (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 values from II.A-1A and II.A-17A), base plate (`docs/verificacion/calculos/placa_base.py`, 59 values from DG1 4.7-1, 4.7-10 and 4.7-14), anchors (`docs/verificacion/calculos/anclajes.py`, 39 values from DG1 4.7-4, 4.7-9 and 4.7-15), extended plate/coped beam (`docs/verificacion/calculos/placa_extendida_viga_destajada.py`, 29 values from II.A-4/6/7 and II.A-19A) and concentrated forces (`tests/kernel/test_local.py`, five manual §J10 values). All five scripts support `--check`. The status and risk columns are an honest snapshot, not a closure statement.
 
 ## 2. Published references
 
@@ -81,8 +81,8 @@ Scope limitations are in [Scope and limitations](../usuario/08-limitaciones.md).
 
 - Round HSS with moment is rejected; rectangular/square HSS is validated against STI.
 - Effective area applies only to I-shapes in concentric compression.
-- Type II embedded base is not implemented because DG1 does not present a definitive method.
-- The pedestal is not designed as a column and its shear is not checked as an element.
+- Type II embedded base (DG1 §5.2.2) neglects the vertical-bearing moment M_VB (conservative), because DG1 presents neither a definitive method nor a worked example.
+- The pedestal is designed as a short column (rectangular or round) without slenderness effects; its shear has no published example.
 - The plate–shear lug interaction uses an effective width, without finite-element validation.
 
 ## 7. Reproduction

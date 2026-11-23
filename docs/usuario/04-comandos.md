@@ -15,7 +15,8 @@ Calcula todas las combinaciones del proyecto, imprime la verificación que gobie
 | `-o`, `--output RUTA` | Ruta de las salidas, sin extensión (por defecto, la del proyecto). |
 | `--lang es\|en` | Idioma de la memoria y los planos (por defecto, `info.language`). |
 | `--units SISTEMA` | Sistema de unidades de las salidas: `SI_kN_m`, `SI_N_mm`, `MKS` o `US` (por defecto, `info.units`). |
-| `--optimize` | Optimiza N, B y tp de la placa expuesta antes de comprobar y generar las salidas. |
+| `--optimize [local\|global]` | Optimiza la placa expuesta antes de comprobar y generar las salidas. Sin valor, `local`. |
+| `--save RUTA` | Con `--optimize`, guarda el proyecto optimizado (`.ocnx`). |
 | `--html` | Memoria HTML. |
 | `--docx` | Memoria Word. |
 | `--pdf` | Memoria PDF (requiere el extra `pdf`). |
@@ -23,7 +24,15 @@ Calcula todas las combinaciones del proyecto, imprime la verificación que gobie
 | `--step` | Modelo 3D STEP (requiere el extra `3d`). |
 | `--stl` | Modelo 3D STL (requiere el extra `3d`). |
 
-`--optimize` reduce N, B y tp desde la placa actual en pasos de 1 in y 0,25 in respectivamente, manteniendo todas las combinaciones y el revisor de interferencias en cumplimiento. Es una optimización local determinista, no una búsqueda global.
+`--optimize local` reduce N, B y tp desde la placa actual en pasos de 1 in y 0,25 in respectivamente, con los anclajes fijos, manteniendo todas las combinaciones y el revisor de interferencias en cumplimiento.
+
+`--optimize global` además explora otras disposiciones de anclajes: diámetros estándar desde el actual hasta 2 in y 2, 3 o 4 barras por fila. Para cada disposición busca la placa más liviana (N, B en pasos de 1 in, tp en pasos de 1/8 in, mínimo 3/8 in), con los anclajes a la misma distancia del borde que en la placa inicial (o la mínima de la Tabla J3.4 y la arandela, si es mayor). El objetivo es el peso de acero de la placa y los anclajes. Una solución solo se acepta si todas las verificaciones de todas las combinaciones cumplen, y el resultado nunca pesa más que el inicial ni que el de la optimización local. La búsqueda es determinista: el mismo proyecto da siempre el mismo resultado.
+
+Ambos modos imprimen la traza de la búsqueda (una línea por disposición: N, B, tp, peso, ratio y verificación que gobierna) y escriben los valores elegidos (`N`, `B`, `tp`, `f`, `rod_spacing`, `rod_diameter`, `rods_per_side`) en el proyecto antes de calcular. La interfaz usa el mismo motor.
+
+```bash
+openconex baseplate proyecto.ocnx --optimize global --save proyecto-optimizado.ocnx --html
+```
 
 ## `openconex shear`: calcular una conexión de corte
 
@@ -93,6 +102,19 @@ Calcula un proyecto con `moment_connection` en todas sus combinaciones e imprime
 
 ```bash
 openconex moment examples/moment_bolted_flange_plate.ocnx --html --dxf
+```
+
+## `openconex splice`: calcular un empalme
+
+```bash
+openconex splice proyecto.ocnx [opciones]
+```
+
+Calcula un proyecto con `splice` (empalme de viga o de columna) en todas sus combinaciones e imprime la verificación que gobierna de cada tipo. Devuelve 0 si todo cumple, 1 si algo no cumple y 2 si el proyecto es de otro tipo. Opciones: `-o`/`--output`, `--lang`, `--units`, `--html`, `--docx`, `--pdf`, `--dxf` (elevación y planta) y `--step`/`--stl`, como en `openconex moment`.
+
+```bash
+openconex splice examples/splice_beam_bolted.ocnx --html --dxf
+openconex splice examples/splice_column_fillers.ocnx --html --dxf --step
 ```
 
 ## `openconex beams`: extremos de viga de SAP2000

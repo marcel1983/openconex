@@ -159,7 +159,13 @@ def _draw_plan(s: _Sheet, bp: BasePlate, col, N, B, pN, pB, rods, d_rod, hole,
     def t(key, **kw):
         return tr(f"drawing.{key}", lang, **kw)
 
-    s.rect(-pN / 2, -pB / 2, pN / 2, pB / 2, "BP-CONCRETO")
+    if bp.pedestal_shape == "round":
+        s.msp.add_circle((0, 0), pN / 2, dxfattribs={"layer": "BP-CONCRETO"})
+    else:
+        s.rect(-pN / 2, -pB / 2, pN / 2, pB / 2, "BP-CONCRETO")
+    for bar in bp.pedestal_rebars:
+        s.msp.add_circle((s.u(bar.x), s.u(bar.y)), s.u(bar.diameter) / 2,
+                         dxfattribs={"layer": "BP-CONCRETO"})
     s.rect(-N / 2, -B / 2, N / 2, B / 2, "BP-PLACA")
     if isinstance(col, HSSShape):
         _hss_shape(s, col.kind, s.u(col.d), s.u(col.bf), s.u(col.t), 0, 0, "BP-COLUMNA")
@@ -193,8 +199,19 @@ def _draw_elevation(s: _Sheet, bp: BasePlate, opt: BasePlateDrawing, col, N, pN,
     y0 = -top - 14 * h - max(s.u(bp.hef), pB / 2)
     hef = s.u(bp.hef) if bp.hef else 12 * d_rod
     stub = s.u(opt.column_stub) if opt.column_stub else 1.2 * s.u(col.d)
-    conc_depth = hef + 4 * h
+    conc_depth = s.u(bp.pedestal.height) if bp.pedestal is not None else hef + 4 * h
     s.rect(-pN / 2, y0 - conc_depth, pN / 2, y0, "BP-CONCRETO")
+    for x in sorted({round(s.u(bar.x), 6) for bar in bp.pedestal_rebars}):
+        s.msp.add_line((x, y0 - conc_depth + 2 * h), (x, y0 - 2 * h),
+                       dxfattribs={"layer": "BP-CONCRETO"})
+    ped = bp.pedestal
+    if ped is not None and ped.tie_diameter and ped.tie_spacing and bp.pedestal_rebars:
+        reach = max(abs(s.u(bar.x)) for bar in bp.pedestal_rebars)
+        y, k = y0 - 2 * h, 0
+        while y > y0 - conc_depth + 2 * h and k < 60:
+            s.msp.add_line((-reach, y), (reach, y), dxfattribs={"layer": "BP-CONCRETO"})
+            y -= s.u(ped.tie_spacing)
+            k += 1
     s.rect(-N / 2, y0, N / 2, y0 + grout, "BP-CONCRETO")
     s.rect(-N / 2, y0 + grout, N / 2, y0 + grout + s.u(bp.tp), "BP-PLACA")
     d, tf = s.u(col.d), s.u(col.tf)

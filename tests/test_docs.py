@@ -54,12 +54,13 @@ def test_every_command_and_option_is_documented():
 
 MODELS = [project.ProjectInfo, project.MaterialInput, project.BasePlateInput,
           project.WSectionInput, project.HSSSectionInput, project.ShearLugInput,
-          project.ReinforcementInput, project.PedestalRebarInput,
+          project.ReinforcementInput, project.PedestalRebarInput, project.PedestalInput,
           project.WeakBaseInput, project.EmbeddedBaseInput,
           project.EmbeddedRebarInput, project.LoadCaseInput,
           project.CombinationOptions, project.CustomCombinationInput,
           project.ShearConnectionInput, project.CopeInput, project.BoltInput,
-          project.DoublerPlateInput, project.LongitudinalStiffenerInput]
+          project.DoublerPlateInput, project.LongitudinalStiffenerInput,
+          project.SpliceInput, project.FlangeSpliceInput, project.WebSpliceInput]
 
 
 @pytest.mark.parametrize("model", MODELS, ids=lambda m: m.__name__)

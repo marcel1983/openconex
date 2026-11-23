@@ -35,7 +35,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from openconex.connections.base_plate.check import optimize_base_plate
+from openconex.connections.base_plate.optimize import optimize
 from openconex.core.loads import Method
 from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
@@ -52,6 +52,7 @@ from openconex.gui.library import (
     MaterialLibraryDialog,
     SectionLibraryDialog,
 )
+from openconex.gui.optimization import OptimizationDialog
 from openconex.gui.quantity import (
     convert_project,
     convert_section,
@@ -225,6 +226,9 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         file_menu.addAction(action("Nueva conexión de momento…",
                                    lambda: self.open_moment_window(), "",
                                    "main.file.moment"))
+        file_menu.addAction(action("Nuevo empalme…",
+                                   lambda: self.open_splice_window(), "",
+                                   "main.file.splice"))
         file_menu.addSeparator()
         file_menu.addAction(action("Importar SAP2000 / ETABS…", self.import_csi_dialog,
                                    "", "main.file.import_csi"))
@@ -262,6 +266,9 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self.opt_action = action("Optimizar N, B y tp", self.optimize, "",
                                  "main.calc.optimize")
         calc_menu.addAction(self.opt_action)
+        self.global_opt_action = action("Optimización global…", self.optimize_global, "",
+                                        "main.calc.optimize_global")
+        calc_menu.addAction(self.global_opt_action)
         calc_menu.addSeparator()
         calc_menu.addAction(action("Calcular lote…", self.calculate_batch_dialog, "",
                                    "main.calc.batch"))
@@ -412,6 +419,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self._connection_combo = QComboBox()
         self._connection_combo.addItem("Placa base expuesta", "exposed")
         self._connection_combo.addItem("Base empotrada Tipo I", "embedded")
+        self._connection_combo.addItem("Base empotrada Tipo II (cimiento con carga vertical)",
+                                       "embedded_ii")
         layout.addRow("Tipo", self._connection_combo)
         self._tip(self._connection_combo, "connection_type")
 
@@ -565,7 +574,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         calculate = QPushButton("Calcular")
         calculate.clicked.connect(self.calculate)
         self._optimize_button = QPushButton("Optimizar")
-        self._optimize_button.clicked.connect(self.optimize)
+        self._optimize_button.clicked.connect(lambda: self.optimize("local"))
         layout.addWidget(calculate)
         layout.addWidget(self._optimize_button)
         layout.addStretch(1)
@@ -670,15 +679,21 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         return errors
 
     # -- connection type and combinations ---------------------------------------
+    def _connection_mode(self) -> tuple[bool, bool]:
+        """(embedded, Type II) for the selected connection."""
+        data = self._connection_combo.currentData()
+        return data in ("embedded", "embedded_ii"), data == "embedded_ii"
+
     def _on_connection_changed(self, *_args: object) -> None:
-        embedded = self._connection_combo.currentData() == "embedded"
+        embedded, type2 = self._connection_mode()
         self._plate_group.setVisible(not embedded)
         if self.advanced is not None:
-            self.advanced.set_embedded(embedded)
-        self.opt_action.setEnabled(not embedded)
-        self._optimize_button.setEnabled(not embedded)
+            self.advanced.set_embedded(embedded, type2)
+        for widget in (self.opt_action, self.global_opt_action, self._optimize_button):
+            widget.setEnabled(not embedded)
         if hasattr(self, "statusBar"):
-            kind = "base empotrada Tipo I" if embedded else "placa base expuesta"
+            kind = ("base empotrada Tipo II" if type2 else
+                    "base empotrada Tipo I" if embedded else "placa base expuesta")
             self.statusBar().showMessage(f"Conexión: {kind}")
 
     def _fill_combinations(self, project: Project) -> None:
@@ -1204,6 +1219,10 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             add_recent_project(path)
             self.open_moment_window(project, path)
             return
+        if project.splice is not None:
+            add_recent_project(path)
+            self.open_splice_window(project, path)
+            return
         if not self.maybe_save():
             return
         self.project = project
@@ -1260,6 +1279,8 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             self.open_project_model(selection.project)
         elif selection.kind == "shear" and selection.project is not None:
             self.open_shear_window(selection.project)
+        elif selection.kind == "splice" and selection.project is not None:
+            self.open_splice_window(selection.project)
 
     def open_shear_window(self, project: Project | None = None,
                           path: str | Path | None = None):
@@ -1281,6 +1302,17 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self._moment_windows = [*getattr(self, "_moment_windows", []), window]
         window.show()
         self.statusBar().showMessage("Conexión de momento abierta en otra ventana.")
+        return window
+
+    def open_splice_window(self, project: Project | None = None,
+                           path: str | Path | None = None):
+        """Open a beam or column splice project in its own window."""
+        from openconex.gui.splice import SpliceWindow
+        window = SpliceWindow(project, path, parent=self)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        self._splice_windows = [*getattr(self, "_splice_windows", []), window]
+        window.show()
+        self.statusBar().showMessage("Empalme abierto en otra ventana.")
         return window
 
     def import_csi_dialog(self, file: str = "") -> None:
@@ -1420,7 +1452,9 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
 
         bp = project.base_plate
         embedded = bp.connection_type == "embedded" or bp.embedded_base is not None
-        index = self._connection_combo.findData("embedded" if embedded else "exposed")
+        type2 = embedded and bp.embedded_base is not None and bp.embedded_base.type == "II"
+        index = self._connection_combo.findData(
+            "embedded_ii" if type2 else "embedded" if embedded else "exposed")
         with QSignalBlocker(self._connection_combo):
             self._connection_combo.setCurrentIndex(index if index >= 0 else 0)
         if self.advanced is not None:
@@ -1511,7 +1545,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
                 return None
             bp.column_grade = grade
 
-        embedded = self._connection_combo.currentData() == "embedded"
+        embedded, type2 = self._connection_mode()
         errors: list[str] = []
         required = {"fc"} if embedded else set(REQUIRED_QUANTITY_FIELDS)
         for key, (edit, label, kind) in self._quantity_fields.items():
@@ -1558,7 +1592,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         for key, box in self._plate_boxes.items():
             setattr(bp, key, box.isChecked())
         if self.advanced is not None:
-            self.advanced.apply(data, errors, embedded)
+            self.advanced.apply(data, errors, embedded, type2)
         self._apply_combinations(data, errors)
         if errors:
             self._form_problem(quiet, "warning", "Datos incompletos", "\n".join(errors))
@@ -1612,21 +1646,31 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         self._set_export_enabled(True)
         self.statusBar().showMessage("Cálculo correcto." if report.ok else "Hay verificaciones NG.")
 
-    def optimize(self) -> None:
+    def optimize(self, mode: str = "local") -> None:
+        """Optimize with the engine shared with ``openconex baseplate --optimize``."""
         project = self._project_from_form()
         if project is None:
             return
         try:
-            bp = optimize_base_plate(project.base_plate_model(),
-                                     project.load_combinations(), project.case_forces())
-            project.base_plate.N = format_quantity(bp.N, Kind.LENGTH, self._units)
-            project.base_plate.B = format_quantity(bp.B, Kind.LENGTH, self._units)
-            project.base_plate.tp = format_quantity(bp.tp, Kind.THICKNESS, self._units)
+            result = optimize(project.base_plate_model(), project.load_combinations(),
+                              project.case_forces(), mode)
+        except Exception as exc:
+            QMessageBox.critical(self, "Error al optimizar", str(exc))
+            return
+        if mode == "global":
+            dialog = OptimizationDialog(result, self._units, self)
+            if dialog.exec() != QDialog.DialogCode.Accepted:
+                return
+        try:
+            project.apply_base_plate_geometry(result.best)
             self.project = project
             self._fill_form(project)
             self.calculate()
         except Exception as exc:
             QMessageBox.critical(self, "Error al optimizar", str(exc))
+
+    def optimize_global(self) -> None:
+        self.optimize("global")
 
     def calculate_batch_dialog(self) -> None:
         dialog = BatchDialog(self)
@@ -1845,6 +1889,10 @@ def main(argv: list[str] | None = None) -> int:
                 from openconex.gui.moment import MomentWindow
 
                 window = MomentWindow(project, selection.path)
+            elif project.splice is not None:
+                from openconex.gui.splice import SpliceWindow
+
+                window = SpliceWindow(project, selection.path)
             else:
                 window = MainWindow()
                 window.open_project_model(project, selection.path)
@@ -1855,6 +1903,10 @@ def main(argv: list[str] | None = None) -> int:
             from openconex.gui.shear import ShearWindow
 
             window = ShearWindow(selection.project)
+        elif selection.kind == "splice" and selection.project is not None:
+            from openconex.gui.splice import SpliceWindow
+
+            window = SpliceWindow(selection.project)
         if window is None:
             return 0
         window.show()

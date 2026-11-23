@@ -21,6 +21,8 @@ from openconex.connections.base_plate.check import (
     BearingAreaModel,
     EmbeddedBase,
     EmbeddedRebar,
+    EmbeddedType,
+    Pedestal,
     PedestalRebar,
     PressureModel,
     Reinforcement,
@@ -60,8 +62,14 @@ from openconex.io.shear_project import (
     LongitudinalStiffenerInput,
     ShearConnectionInput,
 )
+from openconex.io.splice_project import (
+    FlangeSpliceInput,
+    SpliceInput,
+    SpliceType,
+    WebSpliceInput,
+)
 from openconex.kernel.anchors import Edges
-from openconex.units import PRESETS, Kind, UnitSystem, parse, to_internal
+from openconex.units import PRESETS, Kind, UnitSystem, format_value, parse, to_internal
 
 __all__ = [
     "FORMAT_VERSION",
@@ -77,24 +85,28 @@ __all__ = [
     "EmbeddedBaseInput",
     "EmbeddedRebarInput",
     "FlangePlateInput",
+    "FlangeSpliceInput",
     "HSSSectionInput",
     "LoadCaseInput",
     "LongitudinalStiffenerInput",
     "MaterialInput",
     "MomentConnectionInput",
+    "PedestalInput",
     "PedestalRebarInput",
     "Project",
     "ProjectInfo",
     "ReinforcementInput",
     "ShearConnectionInput",
+    "SpliceInput",
     "WSectionInput",
     "WeakBaseInput",
     "WebPlateInput",
+    "WebSpliceInput",
     "load_project",
     "save_project",
 ]
 
-FORMAT_VERSION = 13
+FORMAT_VERSION = 14
 Quantity = str | float
 
 
@@ -203,6 +215,7 @@ class WSectionInput(_Input):
 
 ShearConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 MomentConnectionInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
+SpliceInput.model_rebuild(_types_namespace={"WSectionInput": WSectionInput})
 
 
 class HSSSectionInput(_Input):
@@ -284,6 +297,31 @@ class PedestalRebarInput(_Input):
     diameter: Quantity
 
 
+class PedestalInput(_Input):
+    """Concrete pedestal designed as a short tied column (ACI 318-19).
+
+    The plan size is ``pedestal_N`` × ``pedestal_B`` of the base plate; for a
+    round pedestal ``pedestal_N`` is the diameter and ``pedestal_B`` is omitted
+    or equal. The longitudinal bars are ``pedestal_rebars``.
+    """
+
+    shape: Literal["rectangular", "round"] = "rectangular"
+    height: Quantity
+    """From the top of the footing to the top of the pedestal."""
+    fy: Quantity = "60 ksi"
+    """Yield strength of the longitudinal bars."""
+    tie_diameter: Quantity | None = None
+    """Tie (hoop) bar diameter; omitted: no transverse reinforcement."""
+    tie_spacing: Quantity | None = None
+    tie_fy: Quantity = "60 ksi"
+    tie_legs: int = Field(default=2, ge=1)
+    """Tie legs crossing each shear plane."""
+    min_ratio: float = Field(default=0.01, gt=0.0, le=0.08)
+    """Minimum longitudinal ratio ρ_g (ACI 318-19 §10.6.1.1: 0.01)."""
+    lightweight: float = Field(default=1.0, gt=0.0, le=1.0)
+    """λ of the concrete (1.0: normalweight)."""
+
+
 class EmbeddedRebarInput(_Input):
     """Horizontal reinforcement layer of an embedded base."""
 
@@ -294,13 +332,14 @@ class EmbeddedRebarInput(_Input):
 
 
 class EmbeddedBaseInput(_Input):
-    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+    """Embedded base, DG1 Chapter 5: Type I (§5.2.1, §5.3) or Type II (§5.2.2)."""
 
     embedment: Quantity
     """Depth of the column embedded in the concrete below the base plate."""
     foundation_width: Quantity
     """Width of the concrete foundation in the direction of bending."""
-    face_plate_thickness: Quantity
+    face_plate_thickness: Quantity | None = None
+    """Face bearing plate thickness; required by Type I, not used by Type II."""
     beta1: float = Field(default=0.85, gt=0.0, le=1.0)
     """Concrete stress-block factor used in the horizontal bearing equation."""
     base_plate_width: Quantity | None = None
@@ -311,6 +350,11 @@ class EmbeddedBaseInput(_Input):
     rebar_bottom: EmbeddedRebarInput | None = None
     damage_limit: bool = False
     """Apply the additional 0.8 factor on M_HB recommended to limit damage."""
+    type: Literal["I", "II"] = "I"
+    """I: foundation below the embedded base plate not designed for vertical forces;
+    II: it is, and axial compression goes through the embedded base plate (DG1 §5.2)."""
+    face_plate_weld: Quantity | None = None
+    """Fillet weld of the face bearing plates to the column (Type I; omitted: not checked)."""
 
 
 class WeakBaseInput(_Input):
@@ -352,6 +396,8 @@ class BasePlateInput(_Input):
     rod_spacing: Quantity = 0.0
     hef: Quantity = 0.0
     pedestal_rebars: list[PedestalRebarInput] = Field(default_factory=list)
+    pedestal: PedestalInput | None = None
+    """Design of the pedestal as a short column; omitted: the pedestal is not checked."""
     reinforcement: ReinforcementInput | None = None
     weak_base: WeakBaseInput | None = None
     embedded_base: EmbeddedBaseInput | None = None
@@ -435,8 +481,10 @@ class Project(_Input):
     shear_connection: ShearConnectionInput | None = None
     """Beam-end shear connection."""
     moment_connection: MomentConnectionInput | None = None
-    """Beam-to-column moment connection. A project holds exactly one of ``base_plate``,
-    ``shear_connection`` and ``moment_connection``."""
+    """Beam-to-column moment connection."""
+    splice: SpliceInput | None = None
+    """Beam or column splice. A project holds exactly one of ``base_plate``,
+    ``shear_connection``, ``moment_connection`` and ``splice``."""
     cases: list[LoadCaseInput]
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
@@ -461,11 +509,11 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
-        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection)
-                  if b is not None]
+        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection,
+                              self.splice) if b is not None]
         if len(blocks) != 1:
-            raise ValueError("a project needs exactly one of base_plate, shear_connection or "
-                             "moment_connection")
+            raise ValueError("a project needs exactly one of base_plate, shear_connection, "
+                             "moment_connection or splice")
         if self.moment_connection is None and any(
                 self.quantity(c.column_V, Kind.FORCE) or self.quantity(c.column_P, Kind.FORCE)
                 for c in self.cases):
@@ -474,6 +522,8 @@ class Project(_Input):
             return self._validate_shear()
         if self.moment_connection is not None:
             return self._validate_moment()
+        if self.splice is not None:
+            return self._validate_splice()
         library = self.material_library()
         if self.base_plate.plate_grade not in library:
             raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
@@ -556,10 +606,16 @@ class Project(_Input):
                  and Method.ASD in self.combinations.methods)
                     or any(c.method is Method.ASD for c in self.combinations.custom)):
                 raise ValueError("embedded base requires LRFD combinations")
+            if embedded.type == "I" and embedded.face_plate_thickness is None:
+                raise ValueError("embedded base Type I needs face_plate_thickness")
+            if embedded.type == "II" and embedded.base_plate_width is None:
+                raise ValueError("embedded base Type II needs the embedded base plate "
+                                 "(base_plate_width and base_plate_thickness)")
             for value, kind in ((embedded.embedment, Kind.LENGTH),
                                 (embedded.foundation_width, Kind.LENGTH),
-                                (embedded.face_plate_thickness, Kind.THICKNESS)):
-                if self.quantity(value, kind) <= 0:
+                                (embedded.face_plate_thickness, Kind.THICKNESS),
+                                (embedded.face_plate_weld, Kind.THICKNESS)):
+                if value is not None and self.quantity(value, kind) <= 0:
                     raise ValueError("embedded base dimensions must be positive")
             if embedded.beta1 <= 0:
                 raise ValueError("embedded base beta1 must be positive")
@@ -581,6 +637,7 @@ class Project(_Input):
         for bar in self.base_plate.pedestal_rebars:
             if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
                 raise ValueError("pedestal rebar diameter must be positive")
+        self._validate_pedestal(embedded)
         reinforcement = self.base_plate.reinforcement
         if reinforcement is not None:
             for value, kind in ((reinforcement.area, Kind.AREA),
@@ -592,6 +649,36 @@ class Project(_Input):
                 if self.quantity(value, kind) <= 0:
                     raise ValueError("reinforcement dimensions and strengths must be positive")
         return self
+
+    def _validate_pedestal(self, embedded: EmbeddedBaseInput | None) -> None:
+        bp, pedestal = self.base_plate, self.base_plate.pedestal
+        if pedestal is None:
+            return
+        if embedded is not None and embedded.type == "I":
+            raise ValueError("pedestal design is not used by the embedded base Type I")
+        if pedestal.shape == "round":
+            if bp.pedestal_N is None:
+                raise ValueError("a round pedestal needs its diameter in pedestal_N")
+            if (bp.pedestal_B is not None and abs(
+                    self.quantity(bp.pedestal_B, Kind.LENGTH)
+                    - self.quantity(bp.pedestal_N, Kind.LENGTH)) > 1e-6):
+                raise ValueError("a round pedestal uses pedestal_N as its diameter; "
+                                 "omit pedestal_B or make it equal")
+        elif bp.pedestal_N is None or bp.pedestal_B is None:
+            raise ValueError("pedestal design needs pedestal_N and pedestal_B")
+        if not bp.pedestal_rebars:
+            raise ValueError("pedestal design needs the longitudinal bars in pedestal_rebars")
+        if self.quantity(pedestal.height, Kind.LENGTH) <= 0:
+            raise ValueError("pedestal height must be positive")
+        ties = (pedestal.tie_diameter, pedestal.tie_spacing)
+        if (ties[0] is None) != (ties[1] is None):
+            raise ValueError("pedestal ties need both tie_diameter and tie_spacing")
+        if ties[0] is not None and (self.quantity(ties[0], Kind.LENGTH) <= 0
+                                    or self.quantity(ties[1], Kind.LENGTH) <= 0):
+            raise ValueError("pedestal tie diameter and spacing must be positive")
+        for value in (pedestal.fy, pedestal.tie_fy):
+            if self.quantity(value, Kind.STRESS) <= 0:
+                raise ValueError("pedestal bar strengths must be positive")
 
     def _validate_shear(self) -> Project:
         sc = self.shear_connection
@@ -702,6 +789,46 @@ class Project(_Input):
             raise ValueError("moment connections take only V and M load cases "
                              "(and P for end plates)")
         return self
+
+    def _validate_splice(self) -> Project:
+        sp = self.splice
+        missing = sp.missing()
+        if missing:
+            raise ValueError(f"{sp.type.value} splice needs {', '.join(missing)}")
+        library = self.material_library()
+        for grade in (sp.grade, sp.beam_grade, sp.column_grade):
+            if grade not in library:
+                raise ValueError(f"unknown material: {grade!r}")
+        for section in (sp.beam, sp.upper, sp.lower):
+            if section is not None and not isinstance(section, str) and \
+                    section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
+        bolts = self.bolt_library()
+        for bolt in (sp.flange.bolt, sp.web.bolt if sp.web else None):
+            if bolt is not None and bolt.grade not in bolts:
+                raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
+        F, M = Kind.FORCE, Kind.MOMENT
+        if any(self.quantity(c.M_weak, M) for c in self.cases):
+            raise ValueError("splices take no weak-axis moment M_weak")
+        if sp.type is SpliceType.BEAM:
+            if sp.upper is not None or sp.lower is not None:
+                raise ValueError("beam splices take beam, not upper and lower")
+            if any(self.quantity(c.V_weak, F) for c in self.cases):
+                raise ValueError("beam splices take only P, V and M load cases")
+        else:
+            if sp.beam is not None:
+                raise ValueError("column splices take upper and lower, not beam")
+            if sp.flange.inner_width is not None:
+                raise ValueError("column splices take no inner flange plates")
+            if sp.web is None and any(self.quantity(c.V, F) for c in self.cases):
+                raise ValueError("column splice with strong-axis shear V needs web plates "
+                                 "(web)")
+        return self
+
+    def splice_model(self):
+        """Engine model of the splice (:class:`BeamSplice` or :class:`ColumnSplice`)."""
+        from openconex.io.splice_project import splice_model
+        return splice_model(self)
 
     def _validate_seismic(self) -> None:
         from openconex.io.moment_project import PREQUALIFIED_DETAIL, PREQUALIFIED_LAYOUTS
@@ -815,6 +942,23 @@ class Project(_Input):
             return parse(str(value), kind, units)
         return parse(value, kind, units)
 
+    def apply_base_plate_geometry(self, bp: BasePlate) -> None:
+        """Write the plate, rod layout and anchor positions of ``bp`` into ``base_plate``.
+
+        Used after an optimization by the CLI and the GUI; values are written as
+        text in the project unit system.
+        """
+        data, units = self.base_plate, self.info.unit_system()
+        L, T = Kind.LENGTH, Kind.THICKNESS
+
+        def text(value: float, kind: Kind) -> str:
+            return format_value(value, kind, units, precision=4)
+
+        data.N, data.B, data.tp = text(bp.N, L), text(bp.B, L), text(bp.tp, T)
+        data.f, data.rod_spacing = text(bp.f, L), text(bp.rod_spacing, L)
+        data.rod_diameter = text(bp.rod.diameter, L)
+        data.rods_per_side = bp.rods_per_side
+
     def column_model(self,
                      library: dict[str, SteelGrade] | None = None) -> IShape | HSSShape:
         """Column section of the project: catalog label or generic dimensions."""
@@ -870,7 +1014,8 @@ class Project(_Input):
                           else self.quantity(bp.bearing_area, Kind.AREA)),
             A2_over_A1=bp.A2_over_A1, edges=edges,
             pedestal_N=None if bp.pedestal_N is None else self.quantity(bp.pedestal_N, L),
-            pedestal_B=None if bp.pedestal_B is None else self.quantity(bp.pedestal_B, L),
+            pedestal_B=self._pedestal_width(),
+            pedestal=self._pedestal(),
             washer_thickness=(None if bp.washer_thickness is None
                               else self.quantity(bp.washer_thickness, T)),
             grout_pad=bp.grout_pad,
@@ -879,6 +1024,26 @@ class Project(_Input):
             friction_mu=bp.friction_mu, cracked=bp.cracked, seismic=bp.seismic,
             shear_lug=self._shear_lug(electrodes), materials=library,
         )
+
+    def _pedestal_width(self) -> float | None:
+        bp = self.base_plate
+        if bp.pedestal is not None and bp.pedestal.shape == "round" and bp.pedestal_N is not None:
+            return self.quantity(bp.pedestal_N, Kind.LENGTH)
+        return None if bp.pedestal_B is None else self.quantity(bp.pedestal_B, Kind.LENGTH)
+
+    def _pedestal(self) -> Pedestal | None:
+        pedestal, L = self.base_plate.pedestal, Kind.LENGTH
+        if pedestal is None:
+            return None
+        return Pedestal(
+            height=self.quantity(pedestal.height, L),
+            fy=self.quantity(pedestal.fy, Kind.STRESS), shape=pedestal.shape,
+            tie_diameter=(0.0 if pedestal.tie_diameter is None
+                          else self.quantity(pedestal.tie_diameter, L)),
+            tie_spacing=(0.0 if pedestal.tie_spacing is None
+                         else self.quantity(pedestal.tie_spacing, L)),
+            tie_fy=self.quantity(pedestal.tie_fy, Kind.STRESS), tie_legs=pedestal.tie_legs,
+            min_ratio=pedestal.min_ratio, lightweight=pedestal.lightweight)
 
     def _reinforcement(self) -> Reinforcement | None:
         reinforcement, L = self.base_plate.reinforcement, Kind.LENGTH
@@ -916,8 +1081,9 @@ class Project(_Input):
         return EmbeddedBase(
             embedment=self.quantity(embedded.embedment, Kind.LENGTH),
             foundation_width=self.quantity(embedded.foundation_width, Kind.LENGTH),
-            face_plate_thickness=self.quantity(embedded.face_plate_thickness,
-                                               Kind.THICKNESS),
+            face_plate_thickness=(0.0 if embedded.face_plate_thickness is None else
+                                  self.quantity(embedded.face_plate_thickness,
+                                                Kind.THICKNESS)),
             beta1=embedded.beta1,
             base_plate_width=(None if embedded.base_plate_width is None else
                               self.quantity(embedded.base_plate_width, Kind.LENGTH)),
@@ -926,7 +1092,9 @@ class Project(_Input):
                                                 Kind.THICKNESS)),
             rebar_top=layer(embedded.rebar_top),
             rebar_bottom=layer(embedded.rebar_bottom),
-            damage_limit=embedded.damage_limit)
+            damage_limit=embedded.damage_limit, type=EmbeddedType(embedded.type),
+            face_plate_weld=(None if embedded.face_plate_weld is None else
+                             self.quantity(embedded.face_plate_weld, Kind.THICKNESS)))
 
     def _shear_lug(self, electrodes: dict[str, WeldElectrode]) -> ShearLug | None:
         lug, L = self.base_plate.shear_lug, Kind.LENGTH

@@ -32,7 +32,7 @@ El HTML se abre en cualquier navegador y se imprime a PDF desde él. El DOCX se 
 DXF R2013, a escala 1:1 en la unidad de longitud del proyecto (mm o in), legible en AutoCAD, BricsCAD, LibreCAD o QCAD:
 
 - **Planta:** placa, columna, anclajes con agujeros y arandelas, llave de corte en línea oculta y cotas.
-- **Elevación:** placa, mortero, pedestal, anclajes con su empotramiento y llave de corte con su profundidad embebida.
+- **Elevación:** placa, mortero, pedestal (con su altura, barras y estribos si se diseña), anclajes con su empotramiento, llave de corte con su profundidad embebida.
 - **Lista de materiales:** placa, barras de anclaje, tuercas hexagonales pesadas, arandelas de placa y llave de corte.
 - **Notas y cajetín** con los datos de `info`.
 
@@ -46,8 +46,12 @@ Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `
 
 `openconex moment --dxf` dibuja la elevación hacia el alma de la viga: las alas de la columna, la viga, las placas de ala y del alma (o la placa de extremo con sus rigidizadores), los rigidizadores transversales de la columna y, en el 3D, la doble placa, los pernos, las soldaduras, cotas principales y notas. Es esquemático, sin lista de materiales. Capas: `MC-VIGA`, `MC-COLUMNA`, `MC-PLACA`, `MC-PERNO`, `MC-SOLDADURA`, `MC-COTAS` y `MC-TEXTO`. La memoria incluye esta elevación y el isométrico, y en los casos muestra `V` y `M` (y `P` con placa de extremo, y `V_c` y `P_c` con zona de panel). Con placa de extremo, la memoria cita la AISC Design Guide 16 y la traza indica si la placa se trató como gruesa (sin efecto palanca) o delgada (con efecto palanca).
 
+### Plano de un empalme
+
+`openconex splice --dxf` dibuja la elevación hacia el alma (la viga horizontal y la columna vertical, con la columna inferior abajo) y la planta del ala: los dos perfiles con su separación, las cubreplacas de ala (exterior e interiores) y del alma, los rellenos de la columna, los pernos, el eje del empalme, la cota del largo de la cubreplaca y notas con los perfiles, las placas y la cantidad de pernos. Es esquemático, sin lista de materiales. Capas: `SP-PERFIL`, `SP-PLACA`, `SP-RELLENO`, `SP-PERNO`, `SP-EJES`, `SP-COTAS` y `SP-TEXTO`. La memoria incluye este dibujo y el isométrico, y en los casos muestra `P`, `V` y `M` (y `V_weak` en columnas).
+
 ## Modelo 3D (`--step`, `--stl`)
 
-Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.
+Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal (rectangular o circular), barras longitudinales y estribos del pedestal y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.
 
 En una conexión de corte: viga (con destajes), apoyo, placa, ángulos, asiento o rigidizador, y pernos. Las soldaduras no se modelan.

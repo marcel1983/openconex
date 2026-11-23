@@ -36,15 +36,15 @@ def _baseplate(args: argparse.Namespace) -> int:
     """Check a base plate project and write the requested outputs."""
     from pathlib import Path
 
-    from openconex.connections.base_plate.check import optimize_base_plate
+    from openconex.connections.base_plate.optimize import optimize
     from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
     from openconex.io.project import load_project
     from openconex.report.builder import build_base_plate_report
 
     project = load_project(args.project)
     if project.base_plate is None:
-        print("error: this project has no base plate; use 'openconex shear' or "
-              "'openconex moment'", file=sys.stderr)
+        print("error: this project has no base plate; use 'openconex shear', "
+              "'openconex moment' or 'openconex splice'", file=sys.stderr)
         return 2
     if args.lang:
         project.info.language = args.lang
@@ -55,15 +55,19 @@ def _baseplate(args: argparse.Namespace) -> int:
             print("error: --optimize is only available for exposed base plates",
                   file=sys.stderr)
             return 2
-        optimized = optimize_base_plate(
-            project.base_plate_model(), project.load_combinations(), project.case_forces())
-        units = project.info.unit_system()
-        project.base_plate.N = format_value(optimized.N, Kind.LENGTH, units, precision=4)
-        project.base_plate.B = format_value(optimized.B, Kind.LENGTH, units, precision=4)
-        project.base_plate.tp = format_value(optimized.tp, Kind.THICKNESS, units,
-                                             precision=4)
-        print(f"Optimized: N={project.base_plate.N}, B={project.base_plate.B}, "
-              f"tp={project.base_plate.tp}")
+        result = optimize(project.base_plate_model(), project.load_combinations(),
+                          project.case_forces(), args.optimize)
+        project.apply_base_plate_geometry(result.best)
+        _print_trace(result, project.info.unit_system())
+        data = project.base_plate
+        print(f"Optimized: N={data.N}, B={data.B}, tp={data.tp}, "
+              f"rods={2 * data.rods_per_side} × {data.rod_diameter}, f={data.f}, "
+              f"rod_spacing={data.rod_spacing} ({args.optimize})")
+        if args.save:
+            from openconex.io.project import save_project
+            Path(args.save).parent.mkdir(parents=True, exist_ok=True)
+            save_project(project, args.save)
+            print(f"-> {args.save}")
     report = build_base_plate_report(project)
     out = Path(args.output or Path(args.project).with_suffix(""))
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -115,6 +119,18 @@ def _baseplate(args: argparse.Namespace) -> int:
     return 0 if report.ok else 1
 
 
+def _print_trace(result, units) -> None:
+    """Search trace of the optimization, one line per explored layout."""
+    print(f"{'layout':14} {'N':>10} {'B':>10} {'tp':>10} {'kg':>8} {'ratio':>6}  governing")
+    for row in result.trace:
+        cells = [format_value(row.N, Kind.LENGTH, units, precision=4),
+                 format_value(row.B, Kind.LENGTH, units, precision=4),
+                 format_value(row.tp, Kind.THICKNESS, units, precision=3)]
+        status = f"{row.ratio:6.3f}" if row.ok else "    NG"
+        print(f"{row.label:14} {cells[0]:>10} {cells[1]:>10} {cells[2]:>10} "
+              f"{row.weight:8.1f} {status}  {row.governing}")
+
+
 def _shear(args: argparse.Namespace) -> int:
     """Check a beam-end shear connection project and write the requested outputs."""
     from pathlib import Path
@@ -125,8 +141,8 @@ def _shear(args: argparse.Namespace) -> int:
 
     project = load_project(args.project)
     if project.shear_connection is None:
-        print("error: this project has no shear connection; use 'openconex baseplate' or "
-              "'openconex moment'", file=sys.stderr)
+        print("error: this project has no shear connection; use 'openconex baseplate', "
+              "'openconex moment' or 'openconex splice'", file=sys.stderr)
         return 2
     if project.shear_connection.type.value == "skewed_bent_plate" and \
             (args.dxf or args.step or args.stl):
@@ -182,8 +198,8 @@ def _moment(args: argparse.Namespace) -> int:
 
     project = load_project(args.project)
     if project.moment_connection is None:
-        print("error: this project has no moment connection; use 'openconex baseplate' or "
-              "'openconex shear'", file=sys.stderr)
+        print("error: this project has no moment connection; use 'openconex baseplate', "
+              "'openconex shear' or 'openconex splice'", file=sys.stderr)
         return 2
     if args.lang:
         project.info.language = args.lang
@@ -213,6 +229,58 @@ def _moment(args: argparse.Namespace) -> int:
         from openconex.geometry3d.base_plate import write_step, write_stl
         from openconex.geometry3d.moment import moment_parts
         parts = moment_parts(conn)
+        if args.step:
+            written.append(write_step(parts, out.with_suffix(".step")))
+        if args.stl:
+            written.append(write_stl(parts, out.with_suffix(".stl")))
+    for row in report.summary:
+        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
+    for path in written:
+        print(f"-> {path}")
+    return 0 if report.ok else 1
+
+
+def _splice(args: argparse.Namespace) -> int:
+    """Check a beam or column splice project and write the requested outputs."""
+    from pathlib import Path
+
+    from openconex.drawing.splice import SpliceDrawing, write_splice_dxf
+    from openconex.io.project import load_project
+    from openconex.report.splice import build_splice_report
+
+    project = load_project(args.project)
+    if project.splice is None:
+        print("error: this project has no splice; use 'openconex baseplate', "
+              "'openconex shear' or 'openconex moment'", file=sys.stderr)
+        return 2
+    if args.lang:
+        project.info.language = args.lang
+    if args.units:
+        project.info.units = args.units
+    report = build_splice_report(project)
+    out = Path(args.output or Path(args.project).with_suffix(""))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    written = []
+    if args.html:
+        from openconex.report.html import write_html
+        written.append(write_html(report, out.with_suffix(".html")))
+    if args.docx:
+        from openconex.report.docx import write_docx
+        written.append(write_docx(report, out.with_suffix(".docx")))
+    if args.pdf:
+        from openconex.report.pdf import write_pdf
+        written.append(write_pdf(report, out.with_suffix(".pdf")))
+    info = project.info
+    conn = project.splice_model()
+    if args.dxf:
+        options = SpliceDrawing(title=info.name, number=info.number, revision=info.revision,
+                                date=info.date)
+        written.append(write_splice_dxf(conn, out.with_suffix(".dxf"), info.unit_system(),
+                                        info.language, options))
+    if args.step or args.stl:
+        from openconex.geometry3d.base_plate import write_step, write_stl
+        from openconex.geometry3d.splice import splice_parts
+        parts = splice_parts(conn)
         if args.step:
             written.append(write_step(parts, out.with_suffix(".step")))
         if args.stl:
@@ -380,8 +448,12 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("-o", "--output", help="output path without extension")
     bp.add_argument("--lang", choices=["es", "en"], help="report language")
     bp.add_argument("--units", choices=sorted(PRESETS), help="unit system of the outputs")
-    bp.add_argument("--optimize", action="store_true",
-                    help="optimize N, B and tp before checking the exposed base plate")
+    bp.add_argument("--optimize", nargs="?", const="local", choices=["local", "global"],
+                    help="optimize before checking the exposed base plate: 'local' (default) "
+                         "reduces N, B and tp; 'global' also explores rod diameters and "
+                         "rods per row")
+    bp.add_argument("--save", metavar="PATH",
+                    help="with --optimize, save the optimized project (.ocnx)")
     for flag, text in (("html", "HTML report"), ("docx", "Word report"),
                        ("pdf", "PDF report (needs openconex[pdf])"), ("dxf", "DXF drawing"),
                        ("step", "STEP 3D model (needs openconex[3d])"),
@@ -415,6 +487,19 @@ def build_parser() -> argparse.ArgumentParser:
                        ("stl", "STL 3D model (needs openconex[3d])")):
         mo.add_argument(f"--{flag}", action="store_true", help=text)
     mo.set_defaults(func=_moment)
+
+    spl = sub.add_parser("splice",
+                         help="check a beam or column splice project (.ocnx) and write outputs")
+    spl.add_argument("project", help="project file (.ocnx)")
+    spl.add_argument("-o", "--output", help="output path without extension")
+    spl.add_argument("--lang", choices=["es", "en"], help="report language")
+    spl.add_argument("--units", choices=sorted(PRESETS), help="unit system of the outputs")
+    for flag, text in (("html", "HTML report"), ("docx", "Word report"),
+                       ("pdf", "PDF report (needs openconex[pdf])"), ("dxf", "DXF drawing"),
+                       ("step", "STEP 3D model (needs openconex[3d])"),
+                       ("stl", "STL 3D model (needs openconex[3d])")):
+        spl.add_argument(f"--{flag}", action="store_true", help=text)
+    spl.set_defaults(func=_splice)
 
     sup = sub.add_parser("supports",
                          help="list supports and reactions exported from SAP2000 / ETABS (.xlsx)")

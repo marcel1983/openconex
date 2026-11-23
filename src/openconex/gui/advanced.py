@@ -31,6 +31,7 @@ from openconex.help import help_text
 from openconex.io.project import (
     EmbeddedBaseInput,
     EmbeddedRebarInput,
+    PedestalInput,
     PedestalRebarInput,
     Project,
     ReinforcementInput,
@@ -89,6 +90,7 @@ class BasePlateAdvancedForm(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._build_advanced_group())
         layout.addWidget(self._build_pedestal_group())
+        layout.addWidget(self._build_pedestal_design_group())
         layout.addWidget(self._build_shear_group())
         layout.addWidget(self._build_reinforcement_group())
         layout.addWidget(self._build_weak_group())
@@ -204,6 +206,35 @@ class BasePlateAdvancedForm(QWidget):
         self._pedestal_group = group
         return group
 
+    def _build_pedestal_design_group(self) -> QGroupBox:
+        group = QGroupBox("Diseño del pedestal como columna (ACI 318-19)")
+        group.setCheckable(True)
+        group.setChecked(False)
+        layout = QFormLayout(group)
+        self._pedestal_shape = QComboBox()
+        self._pedestal_shape.addItem("Rectangular (N × B)", "rectangular")
+        self._pedestal_shape.addItem("Circular (diámetro = pedestal N)", "round")
+        self._tip(self._pedestal_shape, "pedestal.shape")
+        layout.addRow("Forma", self._pedestal_shape)
+        self._add(layout, "pedestal.height", "Altura del pedestal", Kind.LENGTH)
+        self._add(layout, "pedestal.fy", "fy de barras longitudinales", Kind.STRESS)
+        self._add(layout, "pedestal.tie_diameter", "Diámetro del estribo", Kind.LENGTH,
+                  required=False)
+        self._add(layout, "pedestal.tie_spacing", "Separación de estribos", Kind.LENGTH,
+                  required=False)
+        self._add(layout, "pedestal.tie_fy", "fyt de estribos", Kind.STRESS)
+        self._tie_legs = QLineEdit("2")
+        self._tip(self._tie_legs, "pedestal.tie_legs")
+        layout.addRow("Ramas por plano de corte", self._tie_legs)
+        self._min_ratio = QLineEdit("0.01")
+        self._tip(self._min_ratio, "pedestal.min_ratio")
+        layout.addRow("ρ mínimo", self._min_ratio)
+        note = QLabel("Usa las barras de la tabla anterior. Solo combinaciones LRFD.")
+        note.setWordWrap(True)
+        layout.addRow(note)
+        self._pedestal_design_group = group
+        return group
+
     def _build_shear_group(self) -> QGroupBox:
         group = QGroupBox("Llave de corte")
         group.setCheckable(True)
@@ -266,13 +297,15 @@ class BasePlateAdvancedForm(QWidget):
         return group
 
     def _build_embedded_group(self) -> QGroupBox:
-        group = QGroupBox("Base empotrada Tipo I")
+        group = QGroupBox("Base empotrada")
         layout = QFormLayout(group)
         self._add(layout, "embedded_base.embedment", "Empotramiento", Kind.LENGTH)
         self._add(layout, "embedded_base.foundation_width", "Ancho del pedestal",
                   Kind.LENGTH)
         self._add(layout, "embedded_base.face_plate_thickness",
                   "Espesor de placa frontal", Kind.THICKNESS)
+        self._add(layout, "embedded_base.face_plate_weld",
+                  "Soldadura de placa frontal", Kind.THICKNESS, required=False)
         self._beta1 = QLineEdit("0.85")
         self._beta1.setToolTip("Factor del bloque de compresión del concreto (0 < β1 ≤ 1).")
         self._tip(self._beta1, "embedded_base.beta1")
@@ -338,12 +371,22 @@ class BasePlateAdvancedForm(QWidget):
                         combo.addItem(current)
                         combo.setCurrentIndex(combo.count() - 1)
 
-    def set_embedded(self, embedded: bool) -> None:
-        """Show the embedded form or the exposed-base optional blocks."""
+    def set_embedded(self, embedded: bool, type2: bool = False) -> None:
+        """Show the embedded form or the exposed-base optional blocks.
+
+        A Type II embedded base has no face bearing plates; it needs the embedded
+        base plate.
+        """
         self._embedded_group.setVisible(embedded)
-        for group in (self._advanced_group, self._pedestal_group, self._shear_group,
-                      self._reinforcement_group, self._weak_group):
+        self._type2 = embedded and type2
+        for group in (self._advanced_group, self._pedestal_group,
+                      self._pedestal_design_group):
             group.setVisible(not embedded)
+        for group in (self._shear_group, self._reinforcement_group, self._weak_group):
+            group.setVisible(not embedded)
+        for key in ("embedded_base.face_plate_thickness", "embedded_base.face_plate_weld"):
+            field = self._fields[key]
+            field.edit.setEnabled(not self._type2)
 
     # -- load and apply ---------------------------------------------------------
     def load(self, project: Project) -> None:
@@ -386,6 +429,18 @@ class BasePlateAdvancedForm(QWidget):
         self._layer_bottom.setChecked(embedded is not None
                                       and embedded.rebar_bottom is not None)
 
+        pedestal = bp.pedestal
+        self._pedestal_design_group.setChecked(pedestal is not None)
+        self._select(self._pedestal_shape, "rectangular" if pedestal is None
+                     else pedestal.shape)
+        self._tie_legs.setText("2" if pedestal is None else str(pedestal.tie_legs))
+        self._min_ratio.setText("0.01" if pedestal is None else f"{pedestal.min_ratio:g}")
+        for key, default in (("pedestal.fy", "60 ksi"), ("pedestal.tie_fy", "60 ksi")):
+            field = self._fields[key]
+            if not field.edit.text():
+                value = project.quantity(default, Kind.STRESS)
+                field.edit.setText(format_quantity(value, Kind.STRESS, self._units))
+
         self._rebar_table.setRowCount(0)
         for bar in bp.pedestal_rebars:
             row = self._rebar_table.rowCount()
@@ -404,7 +459,8 @@ class BasePlateAdvancedForm(QWidget):
         if index >= 0:
             combo.setCurrentIndex(index)
 
-    def apply(self, data: Project, errors: list[str], embedded: bool) -> None:
+    def apply(self, data: Project, errors: list[str], embedded: bool,
+              type2: bool = False) -> None:
         bp = data.base_plate
         bp.pressure_model = PressureModel(self._pressure.currentData())
         bp.bearing_area_model = BearingAreaModel(self._bearing.currentData())
@@ -418,7 +474,9 @@ class BasePlateAdvancedForm(QWidget):
             key: text for key in ("left", "right", "bottom", "top")
             if (text := self._read(f"edges.{key}", errors, required=False)) is not None
         }
-        bp.pedestal_rebars = [] if embedded else self._read_rebars(errors)
+        exposed_blocks = not embedded
+        bp.pedestal_rebars = self._read_rebars(errors) if exposed_blocks else []
+        bp.pedestal = self._read_pedestal(errors) if exposed_blocks else None
 
         bp.shear_lug = None
         bp.reinforcement = None
@@ -429,14 +487,18 @@ class BasePlateAdvancedForm(QWidget):
             start = len(errors)
             embedment = self._read("embedded_base.embedment", errors)
             foundation = self._read("embedded_base.foundation_width", errors)
-            face = self._read("embedded_base.face_plate_thickness", errors)
+            face = (None if type2 else
+                    self._read("embedded_base.face_plate_thickness", errors))
+            face_weld = (None if type2 else
+                         self._read("embedded_base.face_plate_weld", errors,
+                                    required=False))
             beta1 = self._read_float(self._beta1, "β1", errors, 0.85, minimum=0.0,
                                      maximum=1.0)
             if beta1 <= 0:
                 errors.append("β1 debe ser mayor que cero")
-            width = self._read("embedded_base.base_plate_width", errors, required=False)
+            width = self._read("embedded_base.base_plate_width", errors, required=type2)
             thickness = self._read("embedded_base.base_plate_thickness", errors,
-                                   required=False)
+                                   required=type2)
             if (width is None) != (thickness is None):
                 errors.append("La placa embebida necesita ancho y espesor, o ninguno")
             top = self._read_layer(self._layer_top, "embedded_base.rebar_top", errors)
@@ -448,7 +510,8 @@ class BasePlateAdvancedForm(QWidget):
                     face_plate_thickness=face, beta1=beta1,
                     base_plate_width=width, base_plate_thickness=thickness,
                     rebar_top=top, rebar_bottom=bottom,
-                    damage_limit=self._damage.isChecked())
+                    damage_limit=self._damage.isChecked(),
+                    type="II" if type2 else "I", face_plate_weld=face_weld)
             return
 
         bp.connection_type = "exposed"
@@ -521,6 +584,27 @@ class BasePlateAdvancedForm(QWidget):
         if maximum is not None and value > maximum:
             errors.append(f"{label}: debe ser menor o igual que {maximum:g}")
         return value
+
+    def _read_pedestal(self, errors: list[str]) -> PedestalInput | None:
+        if not self._pedestal_design_group.isChecked():
+            return None
+        start = len(errors)
+        height = self._read("pedestal.height", errors)
+        fy = self._read("pedestal.fy", errors)
+        tie_d = self._read("pedestal.tie_diameter", errors, required=False)
+        tie_s = self._read("pedestal.tie_spacing", errors, required=False)
+        tie_fy = self._read("pedestal.tie_fy", errors)
+        if (tie_d is None) != (tie_s is None):
+            errors.append("Los estribos del pedestal necesitan diámetro y separación")
+        legs = self._read_float(self._tie_legs, "Ramas por plano de corte", errors, 2,
+                                minimum=1)
+        ratio = self._read_float(self._min_ratio, "ρ mínimo", errors, 0.01,
+                                 minimum=0.0001, maximum=0.08)
+        if len(errors) > start:
+            return None
+        return PedestalInput(shape=self._pedestal_shape.currentData(), height=height,
+                             fy=fy, tie_diameter=tie_d, tie_spacing=tie_s, tie_fy=tie_fy,
+                             tie_legs=int(legs), min_ratio=ratio)
 
     def _read_layer(self, group: QGroupBox, prefix: str,
                     errors: list[str]) -> EmbeddedRebarInput | None:

@@ -20,6 +20,7 @@ from openconex.io.project import (
     EmbeddedBaseInput,
     EmbeddedRebarInput,
     LongitudinalStiffenerInput,
+    PedestalInput,
     PedestalRebarInput,
     ReinforcementInput,
     ShearConnectionInput,
@@ -66,6 +67,7 @@ def test_every_base_plate_field_has_help():
     keys = set(BasePlateInput.model_fields)
     for model, prefix in (
             (PedestalRebarInput, "pedestal_rebars"),
+            (PedestalInput, "pedestal"),
             (ReinforcementInput, "reinforcement"),
             (WeakBaseInput, "weak_base"),
             (EmbeddedBaseInput, "embedded_base"),
