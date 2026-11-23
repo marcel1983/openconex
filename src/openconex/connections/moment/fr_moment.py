@@ -42,7 +42,7 @@ from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.model import BoltSpec, IShape
 from openconex.kernel import bolts, elements, local
 from openconex.kernel.bolts import clear_distance
-from openconex.kernel.design import FLEXURE, Calc
+from openconex.kernel.design import FLEXURE, Calc, Resistance
 from openconex.kernel.welds import fillet_weld_group_concentric, fillet_weld_per_length
 from openconex.units import Kind, from_internal, to_internal
 
@@ -378,7 +378,11 @@ def _welded(mc: MomentConnection, M: float, method: Method, combo: str) -> list[
 
 # -- column ------------------------------------------------------------------------------
 def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, combo: str,
-                   column_shear: float | None, column_axial: float) -> list[CheckResult]:
+                   column_shear: float | None, column_axial: float,
+                   panel_force: float | None = None,
+                   panel_resistance: Resistance | None = None) -> list[CheckResult]:
+    """Column limit states for the flange force ``P``; the panel zone takes
+    ``panel_force`` when given (AISC 341 §E3.6f.1 reduces only the local force)."""
     col = mc.column
     near = mc.column_near_end
     local_checks = [
@@ -404,7 +408,8 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
     if mc.doubler_plate > 0:
         out += doubler_checks(mc, method, combo)
     if column_shear is not None:
-        out += panel_zone_check(mc, P, column_shear, column_axial, method, combo)
+        out += panel_zone_check(mc, P if panel_force is None else panel_force, column_shear,
+                                column_axial, method, combo, panel_resistance)
     return out
 
 

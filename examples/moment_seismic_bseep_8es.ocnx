@@ -11,7 +11,7 @@
   },
   "moment_connection": {
     "type": "end_plate",
-    "beam": "W30X108",
+    "beam": "W30X116",
     "column": "W14X426",
     "end_plate": {
       "layout": "extended_8_stiffened",

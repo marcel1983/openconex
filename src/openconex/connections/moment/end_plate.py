@@ -615,7 +615,8 @@ def _column_yield_parameter(mc: MomentConnection, c: Calc, stiffened: bool) -> f
 
 def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: Method,
                             combo: str, column_shear: float | None,
-                            column_axial: float) -> list[CheckResult]:
+                            column_axial: float,
+                            panel_resistance: Resistance | None = None) -> list[CheckResult]:
     """Column side of an end-plate connection (Design Guide 4, Steps 14 to 20).
 
     Flange bending (Eq. 3.20 to 3.22) for the 4E, 4ES and 8ES layouts; web local
@@ -677,6 +678,7 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
         out += doubler_checks(mc, method, combo)
     if column_shear is not None:
         from .panel_zone import panel_zone_check
-        out += panel_zone_check(mc, Ffu, column_shear, column_axial, method, combo)
+        out += panel_zone_check(mc, Ffu, column_shear, column_axial, method, combo,
+                                panel_resistance)
     return out
 

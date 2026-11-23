@@ -722,13 +722,27 @@ class Project(_Input):
                    s.Ry_beam is not None and s.Rt_beam is not None, False),
                   (mc.column_grade if isinstance(mc.column, str) else mc.column.grade,
                    s.Ry_column is not None, False)]
-        if s.connection.value == "bfp":
+        from openconex.io.moment_project import needs_plate_ratio
+        tcp = mc.continuity_plate
+        if needs_plate_ratio(mc, 0.0 if tcp is None else self.quantity(tcp, Kind.THICKNESS)):
             grades.append((mc.grade, s.Ry_plate is not None, True))
         for grade, given, plate in grades:
             if not given and expected_ratios(grade, plate) is None:
                 raise ValueError(f"no AISC 341 R_y/R_t for {grade!r}: give them in seismic")
         if self.quantity(s.span, Kind.LENGTH) <= 0:
             raise ValueError("seismic span must be positive")
+        if s.connection.value == "bfp":
+            # AISC 358-22 §7.4.1 and §7.4.4
+            if mc.grade not in ("ASTM A36", "ASTM A572 Gr. 50"):
+                raise ValueError("AISC 358 bfp flange plates must be ASTM A36 or "
+                                 "A572 Gr. 50")
+            bolt = mc.bolt
+            if bolt is not None and ("A490" not in bolt.grade and "F2280" not in bolt.grade):
+                raise ValueError("AISC 358 bfp flange bolts must be ASTM F3125 A490 or "
+                                 "F2280")
+            if bolt is not None and bolt.threads.value != "X":
+                raise ValueError("AISC 358 bfp flange bolts must have the threads excluded "
+                                 "from the shear plane (threads X)")
         if s.connection.value == "rbs" and s.rbs_c is not None and \
                 self.quantity(s.rbs_c, Kind.LENGTH) <= 0:
             raise ValueError("seismic rbs_c must be positive")
