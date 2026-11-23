@@ -52,7 +52,9 @@ def test_cope_reinforcement_is_preserved(app):
 
 
 def test_explode_offsets_by_connection_type():
-    assert EXPLODE_BY_TYPE["double_angle"] == {"beam": (0.0, -250.0, 0.0)}
+    # Model axes of the shear connection: the beam moves across the web (z).
+    assert EXPLODE_BY_TYPE["double_angle"] == {"beam": (0.0, 0.0, -250.0)}
+    assert EXPLODE_BY_TYPE["seated"] == {"beam": (80.0, 220.0, 0.0)}
     assert EXPLODE_BY_TYPE["end_plate"]["support_bolt*"] == (80.0, 0.0, 0.0)
     assert EXPLODE_BY_TYPE["skewed_bent_plate"] is None
 

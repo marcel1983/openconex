@@ -15,7 +15,7 @@ import math
 from array import array
 from typing import Any
 
-from PySide6.QtCore import QPointF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
     QFont,
@@ -35,7 +35,7 @@ from PySide6.QtOpenGL import (
 from PySide6.QtOpenGLWidgets import QOpenGLWidget
 from PySide6.QtWidgets import QWidget
 
-from .viewer3d import MeshPart, _normal, part_color, view_angles
+from .viewer3d import HINT, MeshPart, _CameraMixin, _normal, part_color
 
 __all__ = ["OpenGLCanvas", "gl_available"]
 
@@ -47,6 +47,8 @@ GL_LESS = 0x0201
 GL_MULTISAMPLE = 0x809D
 GL_COLOR_BUFFER_BIT = 0x4000
 GL_DEPTH_BUFFER_BIT = 0x0100
+GL_LINES = 0x0001
+GL_POLYGON_OFFSET_FILL = 0x8037
 
 _VERTEX_SHADER = """#version 150
 in vec3 a_pos;
@@ -64,8 +66,13 @@ _FRAGMENT_SHADER = """#version 150
 in vec3 v_norm;
 uniform vec3 u_color;
 uniform vec3 u_light;
+uniform float u_flat;
 out vec4 frag;
 void main() {
+    if (u_flat > 0.5) {
+        frag = vec4(u_color, 1.0);
+        return;
+    }
     vec3 n = normalize(v_norm);
     if (!gl_FrontFacing) {
         n = -n;
@@ -103,8 +110,14 @@ def gl_available() -> bool:
     return (actual.majorVersion(), actual.minorVersion()) >= (3, 2)
 
 
-class OpenGLCanvas(QOpenGLWidget):
-    """Depth-buffered, flat-shaded view of the tessellated connection."""
+class OpenGLCanvas(_CameraMixin, QOpenGLWidget):
+    """Depth-buffered, flat-shaded view of the tessellated connection.
+
+    A second pass draws the sharp edges of each solid as dark lines, so plates
+    that touch (an angle on a beam web, a nut on a washer) read as separate
+    pieces. Faces are pushed back with a polygon offset so that the lines are
+    not hidden by the faces they bound.
+    """
 
     failed = Signal(str)
 
@@ -115,22 +128,17 @@ class OpenGLCanvas(QOpenGLWidget):
         fmt.setProfile(QSurfaceFormat.OpenGLContextProfile.CoreProfile)
         fmt.setDepthBufferSize(24)
         self.setFormat(fmt)
+        self._init_camera()
         self._meshes: list[MeshPart] = []
         self._message = "Sin modelo 3D."
         self._hidden: set[str] = set()
         self._selected: str | None = None
-        self._show_hint = True
-        self._yaw = 35.0
-        self._pitch = 25.0
-        self._zoom = 1.0
-        self._pan = QPointF()
-        self._center = (0.0, 0.0, 0.0)
-        self._radius = 1.0
-        self._last: QPointF | None = None
-        self._mode = ""
         self._program: QOpenGLShaderProgram | None = None
         self._vbo: QOpenGLBuffer | None = None
         self._vao: QOpenGLVertexArrayObject | None = None
+        self._edge_vbo: QOpenGLBuffer | None = None
+        self._edge_vao: QOpenGLVertexArrayObject | None = None
+        self._edge_ranges: list[tuple[str, int, int]] = []
         self._gl: Any = None
         self._ready = False
         self._error = ""
@@ -141,19 +149,14 @@ class OpenGLCanvas(QOpenGLWidget):
         self.setCursor(Qt.CursorShape.OpenHandCursor)
 
     # -- public API shared with the QPainter canvas -------------------------
-    def set_meshes(self, meshes: list[MeshPart], message: str = "") -> None:
+    def set_meshes(self, meshes: list[MeshPart], message: str = "",
+                   refit: bool = False) -> None:
+        first = not self._meshes
         self._meshes = meshes
         self._message = message or ("Sin modelo 3D." if not meshes else "")
-        points = [point for mesh in meshes for tri in mesh.triangles for point in tri]
-        if points:
-            xs, ys, zs = zip(*points, strict=False)
-            self._center = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2,
-                            (min(zs) + max(zs)) / 2)
-            self._radius = max(
-                math.dist(point, self._center) for point in points) or 1.0
-        else:
-            self._center = (0.0, 0.0, 0.0)
-            self._radius = 1.0
+        self._fit(meshes, first, refit)
+        if first and meshes:
+            self.reset_view()
         if self._ready:
             self.makeCurrent()
             try:
@@ -168,19 +171,6 @@ class OpenGLCanvas(QOpenGLWidget):
 
     def set_selected(self, name: str | None) -> None:
         self._selected = name
-        self.update()
-
-    def reset_view(self) -> None:
-        self._yaw = 35.0
-        self._pitch = 25.0
-        self._zoom = 1.0
-        self._pan = QPointF()
-        self.update()
-
-    def set_view(self, name: str) -> None:
-        self._yaw, self._pitch = view_angles(name)
-        self._zoom = 1.0
-        self._pan = QPointF()
         self.update()
 
     # -- GL lifecycle -------------------------------------------------------
@@ -203,6 +193,10 @@ class OpenGLCanvas(QOpenGLWidget):
             self._vbo.create()
             self._vao = QOpenGLVertexArrayObject()
             self._vao.create()
+            self._edge_vbo = QOpenGLBuffer(QOpenGLBuffer.Type.VertexBuffer)
+            self._edge_vbo.create()
+            self._edge_vao = QOpenGLVertexArrayObject()
+            self._edge_vao.create()
             self._ready = True
             self._upload()
         except Exception as exc:  # keep the window usable with the fallback
@@ -223,18 +217,35 @@ class OpenGLCanvas(QOpenGLWidget):
                 for point in (p0, p1, p2):
                     data.extend((point[0], point[1], point[2], n[0], n[1], n[2]))
             ranges.append((mesh.name, first, len(data) // 6 - first))
+        self._fill(self._vbo, self._vao, data)
+        self._ranges = ranges
+        if self._edge_vbo is None or self._edge_vao is None:
+            return
+        lines = array("f")
+        edge_ranges: list[tuple[str, int, int]] = []
+        for mesh in self._meshes:
+            first = len(lines) // 6
+            for a, b in mesh.edges:
+                lines.extend((a[0], a[1], a[2], 0.0, 0.0, 1.0,
+                              b[0], b[1], b[2], 0.0, 0.0, 1.0))
+            edge_ranges.append((mesh.name, first, len(lines) // 6 - first))
+        self._fill(self._edge_vbo, self._edge_vao, lines)
+        self._edge_ranges = edge_ranges
+
+    def _fill(self, vbo: QOpenGLBuffer, vao: QOpenGLVertexArrayObject, data: array) -> None:
+        assert self._program is not None
         raw = data.tobytes()
-        self._vbo.bind()
-        self._vbo.allocate(raw, len(raw))
-        self._vao.bind()
+        vbo.bind()
+        vbo.allocate(raw, len(raw))
+        vao.bind()
         self._program.bind()
         self._program.enableAttributeArray(0)
         self._program.setAttributeBuffer(0, GL_FLOAT, 0, 3, 24)
         self._program.enableAttributeArray(1)
         self._program.setAttributeBuffer(1, GL_FLOAT, 12, 3, 24)
         self._program.release()
-        self._vao.release()
-        self._ranges = ranges
+        vao.release()
+        vbo.release()
 
     def _matrices(self) -> tuple[QMatrix4x4, QMatrix4x4]:
         width, height = max(1, self.width()), max(1, self.height())
@@ -302,10 +313,15 @@ class OpenGLCanvas(QOpenGLWidget):
             mvp, view = self._matrices()
             assert self._program is not None
             assert self._vao is not None
-            self._program.bind()
-            self._program.setUniformValue("u_mvp", mvp)  # type: ignore[call-overload]
-            self._program.setUniformValue("u_view", view)  # type: ignore[call-overload]
-            self._program.setUniformValue("u_light", QVector3D(-0.40, 0.50, 0.75))  # type: ignore[call-overload]
+            program = self._program
+            program.bind()
+            program.setUniformValue("u_mvp", mvp)  # type: ignore[call-overload]
+            program.setUniformValue("u_view", view)  # type: ignore[call-overload]
+            program.setUniformValue("u_light", QVector3D(-0.40, 0.50, 0.75))  # type: ignore[call-overload]
+            program.setUniformValue1f("u_flat", 0.0)  # type: ignore[call-overload]
+            # Push the faces back a little so that the outline wins the depth test.
+            self._gl.glEnable(GL_POLYGON_OFFSET_FILL)
+            self._gl.glPolygonOffset(1.0, 1.0)
             self._vao.bind()
             for name, first, count in self._ranges:
                 if name in self._hidden:
@@ -313,11 +329,23 @@ class OpenGLCanvas(QOpenGLWidget):
                 color = part_color(name)
                 if name == self._selected:
                     color = color.lighter(135)
-                self._program.setUniformValue(  # type: ignore[call-overload]
+                program.setUniformValue(  # type: ignore[call-overload]
                     "u_color", QVector3D(color.redF(), color.greenF(), color.blueF()))
                 self._gl.glDrawArrays(GL_TRIANGLES, first, count)
             self._vao.release()
-            self._program.release()
+            self._gl.glDisable(GL_POLYGON_OFFSET_FILL)
+            if self._edge_vao is not None and self._edge_ranges:
+                program.setUniformValue1f("u_flat", 1.0)  # type: ignore[call-overload]
+                self._edge_vao.bind()
+                for name, first, count in self._edge_ranges:
+                    if name in self._hidden or not count:
+                        continue
+                    color = part_color(name).darker(260 if name != self._selected else 180)
+                    program.setUniformValue(  # type: ignore[call-overload]
+                        "u_color", QVector3D(color.redF(), color.greenF(), color.blueF()))
+                    self._gl.glDrawArrays(GL_LINES, first, count)
+                self._edge_vao.release()
+            program.release()
         if fbo is not None:
             fbo.release()
             image = fbo.toImage()
@@ -337,37 +365,5 @@ class OpenGLCanvas(QOpenGLWidget):
         elif self._show_hint:
             painter.setPen(QColor("#455a64"))
             painter.setFont(QFont("Segoe UI", 9))
-            painter.drawText(12, self.height() - 12,
-                             "Arrastre para girar · rueda para zoom · "
-                             "doble clic para ajustar")
+            painter.drawText(12, self.height() - 12, HINT)
         painter.end()
-
-    # -- interaction --------------------------------------------------------
-    def mousePressEvent(self, event) -> None:  # noqa: N802
-        self._last = event.position()
-        self._mode = "rotate" if event.button() == Qt.MouseButton.LeftButton else "pan"
-        self.setCursor(Qt.CursorShape.ClosedHandCursor)
-
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802
-        if self._last is None:
-            return
-        delta = event.position() - self._last
-        self._last = event.position()
-        if self._mode == "rotate":
-            self._yaw += delta.x() * 0.55
-            self._pitch = max(-89.0, min(89.0, self._pitch + delta.y() * 0.55))
-        elif self._mode == "pan":
-            self._pan += delta
-        self.update()
-
-    def mouseReleaseEvent(self, _event) -> None:  # noqa: N802
-        self._last = None
-        self.setCursor(Qt.CursorShape.OpenHandCursor)
-
-    def mouseDoubleClickEvent(self, _event) -> None:  # noqa: N802
-        self.reset_view()
-
-    def wheelEvent(self, event) -> None:  # noqa: N802
-        factor = 1.0015 ** event.angleDelta().y()
-        self._zoom = max(0.2, min(8.0, self._zoom * factor))
-        self.update()
