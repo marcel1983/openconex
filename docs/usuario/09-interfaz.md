@@ -61,7 +61,8 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
 1. Elegir una tarjeta en la **pantalla de inicio** o **Archivo > Abrir** para cargar un `.ocnx`.
 2. Elegir el **tipo de conexión**:
    - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
-   - **Base empotrada Tipo I**, con el empotramiento, el pedestal y el refuerzo horizontal.
+   - **Base empotrada Tipo I**, con el empotramiento, el pedestal, las placas de cara (y su soldadura opcional), la placa embebida y el refuerzo horizontal.
+   - **Base empotrada Tipo II (bloque de concreto)**, con la placa base expuesta y sus anclajes más la altura y el ancho del bloque.
 3. Elegir la **columna** en el desplegable. El campo es editable: se puede escribir una etiqueta AISC (`W12X96`) y el autocompletado filtra el catálogo.
 4. Elegir los materiales en los desplegables:
    - **Grado de columna** y **Acero de la placa**: aceros de AISC o materiales propios del proyecto.
@@ -72,7 +73,8 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
    - **Llave de corte**;
    - **Refuerzo de anclaje**;
    - **Base débil sísmica**;
-   - **Barras del pedestal**.
+   - **Barras del pedestal**;
+   - **Diseño del pedestal como columna (ACI 318-19)**: forma, altura, acero y estribos.
 7. Añadir, modificar o eliminar casos de carga en la tabla.
 8. Revisar **Combinaciones**: métodos LRFD/ASD, generación ASCE 7-22, `SDS`, `ρ` y `Ω0`.
 9. Pulsar **Calcular** o `F5`.
@@ -83,7 +85,7 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
 11. **Archivo > Guardar** o **Guardar como** para conservar los cambios.
 12. **Exportar** para generar HTML, DOCX, PDF, DXF, STEP o STL.
 
-El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. Se desactiva en las bases empotradas.
+El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. **Cálculo > Optimización global…** usa el mismo motor que `openconex baseplate --optimize global`: prueba diámetros y número de anclajes, muestra la traza de la búsqueda (disposición, N, B, tp, peso, ratio y verificación que gobierna) y aplica la mejor solución al pulsar **Aplicar**. Ambos se desactivan en las bases empotradas.
 
 ## Geometría
 

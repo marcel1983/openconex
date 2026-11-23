@@ -40,14 +40,18 @@ from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
 from openconex.units import Kind, to_internal
 
+from . import pedestal as ped_mod
 from . import plate as bpl
 from . import seismic, transfer
+from .pedestal import Pedestal, PedestalShape
 
 __all__ = [
     "BasePlate",
     "BearingAreaModel",
     "EmbeddedBase",
     "EmbeddedRebar",
+    "EmbeddedType",
+    "Pedestal",
     "PedestalRebar",
     "PressureModel",
     "Reinforcement",
@@ -133,9 +137,22 @@ class EmbeddedRebar:
     depth: float
 
 
+class EmbeddedType(StrEnum):
+    TYPE_I = "I"
+    """Column embedded in the footing, with face bearing plates (DG1 §5.2, §5.3)."""
+    TYPE_II = "II"
+    """Exposed base plate on the footing, encased in a concrete blockout (DG1 Chapter 5)."""
+
+
 @dataclass(frozen=True)
 class EmbeddedBase:
-    """Type I embedded base with face bearing plates, DG1 §5.2 and §5.3."""
+    """Embedded base, DG1 Chapter 5.
+
+    Type I: ``embedment`` is the depth of the column in the footing and
+    ``foundation_width`` the footing width. Type II: they are the depth and
+    width of the blockout above the base plate; the base plate, anchors and
+    pedestal data are those of the exposed base plate.
+    """
 
     embedment: float
     foundation_width: float
@@ -146,6 +163,9 @@ class EmbeddedBase:
     rebar_top: EmbeddedRebar | None = None
     rebar_bottom: EmbeddedRebar | None = None
     damage_limit: bool = False
+    type: EmbeddedType = EmbeddedType.TYPE_I
+    face_plate_weld: float | None = None
+    """Fillet weld of the face bearing plates (None: CJP or a detail developing the plate)."""
 
 
 @dataclass(frozen=True)
@@ -201,6 +221,17 @@ class BasePlate:
     pedestal_N: float | None = None
     """Pedestal size along N (None: not given; edges then come only from ``edges``)."""
     pedestal_B: float | None = None
+    pedestal: Pedestal | None = None
+    """Pedestal designed as a short column; ``None``: the pedestal is not checked."""
+
+    @property
+    def embedded_type1(self) -> bool:
+        """True for a Type I embedded base (no exposed base plate)."""
+        return self.embedded_base is not None and self.embedded_base.type == EmbeddedType.TYPE_I
+
+    @property
+    def pedestal_shape(self) -> str:
+        return self.pedestal.shape if self.pedestal else PedestalShape.RECTANGULAR
 
     @property
     def Fy(self) -> float:
@@ -549,9 +580,9 @@ def _lug_bearing(bp: BasePlate, P_: float, V: float, method: Method,
     return check.model_copy(update={"steps": (*c.steps, *check.steps)})
 
 
-def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: float,
-                          method: Method, combo: str) -> list[CheckResult]:
-    """Checks of a Type I embedded base (DG1 §5.2 and §5.3)."""
+def _embedded_base_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M: float,
+                          M2: float, method: Method, combo: str) -> list[CheckResult]:
+    """Checks of a Type I or Type II embedded base (DG1 Chapter 5)."""
     if method is not Method.LRFD:
         raise ValueError("embedded base requires LRFD")
     if isinstance(bp.column, HSSShape):
@@ -562,18 +593,15 @@ def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: floa
         raise ValueError("embedded base and weak base cannot be combined")
     if bp.shear_lug is not None:
         raise ValueError("embedded base does not support a shear lug yet")
-    if P_ < 0:
-        raise ValueError("embedded base does not support net uplift yet")
     embedded = bp.embedded_base
+    if embedded.type == EmbeddedType.TYPE_II:
+        return _type2_checks(bp, forces, P_, V, M, method, combo)
+    if P_ < 0 and embedded.base_plate_width is None:
+        raise ValueError("embedded base with net uplift needs an embedded base plate "
+                         "(base_plate_width and base_plate_thickness)")
     col = bp.column
     bj = (col.bf + embedded.base_plate_width) / 2 if embedded.base_plate_width else None
-    fields = {}
-    for name, layer in (("top", embedded.rebar_top), ("bottom", embedded.rebar_bottom)):
-        fields[f"F_rebar_{name}"] = layer.area * layer.fy if layer else 0.0
-        fields[f"d_rebar_{name}"] = layer.depth if layer else 0.0
-    results = [seismic.embedded_base_moment(
-        V, embedded.embedment, col.bf, embedded.foundation_width, bp.fc, M,
-        embedded.beta1, combo, bj=bj, damage_limit=embedded.damage_limit, **fields)]
+    results = [_horizontal_bearing(bp, V, M, combo, bj)]
     face = seismic.face_plate_design(P_, col.d, col.bf, col.tf, col.tw, bp.fc, bp.Fy)
     if P_ > 0:
         c = Calc(method, combo)
@@ -589,12 +617,147 @@ def _embedded_base_checks(bp: BasePlate, P_: float, V: float, M: float, M2: floa
         results.append(c.result("base_plate.face_plate_thickness", f"{DG1} §5.3",
                                 face["tp_min"], embedded.face_plate_thickness,
                                 Kind.THICKNESS))
+        if embedded.face_plate_weld:
+            results.append(_face_plate_weld(bp, P_, method, combo))
     c = Calc(method, combo)
     c.step("t_{p,min,seismic}", r"\max(0.75t_w,\ 3/8\ in)", face["tp_min_seismic"],
            Kind.THICKNESS, "AISC 341-22 §F3.5b.4")
     results.append(c.result("base_plate.face_plate_seismic",
                             "AISC 341-22 §F3.5b.4", face["tp_min_seismic"],
                             embedded.face_plate_thickness, Kind.THICKNESS))
+    if embedded.base_plate_width:
+        results += _embedded_plate_checks(bp, P_, method, combo)
+    return results
+
+
+def _horizontal_bearing(bp: BasePlate, V: float, M: float, combo: str,
+                        bj: float | None) -> CheckResult:
+    """φM_HB of the embedment (DG1 Eq. 5-6) with the optional horizontal reinforcement."""
+    embedded, col = bp.embedded_base, bp.column
+    fields = {}
+    for name, layer in (("top", embedded.rebar_top), ("bottom", embedded.rebar_bottom)):
+        fields[f"F_rebar_{name}"] = layer.area * layer.fy if layer else 0.0
+        fields[f"d_rebar_{name}"] = layer.depth if layer else 0.0
+    return seismic.embedded_base_moment(
+        V, embedded.embedment, col.bf, embedded.foundation_width, bp.fc, M,
+        embedded.beta1, combo, bj=bj, damage_limit=embedded.damage_limit, **fields)
+
+
+def _electrode_strength(bp: BasePlate) -> float:
+    from openconex.core.materials import ELECTRODES
+    library = {**ELECTRODES, **bp.electrodes}
+    return library[bp.electrode].FEXX
+
+
+def _face_plate_weld(bp: BasePlate, P_: float, method: Method, combo: str) -> CheckResult:
+    """Fillet welds of the face bearing plates to the column (AISC 360-22 §J2.4).
+
+    Each of the two plates is welded along the web and the inside faces of both
+    flanges, L = 2(d - 2t_f) + 2(b_f - t_w); the welds carry the bearing force P.
+    The directional strength increase is not used (k_ds = 1.0).
+    """
+    col, w = bp.column, bp.embedded_base.face_plate_weld
+    c = Calc(method, combo)
+    length = c.step("L_w", r"2(d - 2t_f) + 2(b_f - t_w)",
+                    2 * (col.d - 2 * col.tf) + 2 * (col.bf - col.tw), Kind.LENGTH,
+                    f"{DG1} §5.3")
+    fexx = c.step("F_{EXX}", "", _electrode_strength(bp), Kind.STRESS, "AISC 360-22 §J2.4")
+    rn = c.step("R_n", r"0.60 F_{EXX} (0.707 w) L_w", 0.6 * fexx * 0.707 * w * length,
+                Kind.FORCE, "AISC 360-22 Eq. J2-4", w=(w, Kind.THICKNESS))
+    cap = c.step(r"\phi R_n", r"0.75 R_n", 0.75 * rn, Kind.FORCE, "AISC 360-22 §J2.4")
+    return c.result("base_plate.face_plate_weld", "AISC 360-22 §J2.4", P_, cap, Kind.FORCE)
+
+
+def _embedded_plate_checks(bp: BasePlate, P_: float, method: Method,
+                           combo: str) -> list[CheckResult]:
+    """Embedded base plate at the bottom of the column: bearing, bending and uplift."""
+    embedded, col = bp.embedded_base, bp.column
+    width = embedded.base_plate_width
+    tp = embedded.base_plate_thickness
+    if tp is None:
+        raise ValueError("embedded base plate needs base_plate_thickness")
+    out: list[CheckResult] = []
+    load = abs(P_)
+    if load == 0:
+        return out
+    comp = bpl.compression_design(load, col.d, col.bf, width, width, bp.Fy, bp.fc,
+                                  bp.A2_over_A1, method)
+    c = Calc(method, combo)
+    c.step("N = B", "", width, Kind.LENGTH, f"{DG1} §5.2")
+    c.step("m", r"\frac{N - 0.95d}{2}", comp.m, Kind.LENGTH, f"{DG1} Eq. 4-10")
+    c.step("n", r"\frac{B - 0.8b_f}{2}", comp.n, Kind.LENGTH, f"{DG1} Eq. 4-11")
+    c.step(r"\lambda n'", "", comp.lambda_n_prime, Kind.LENGTH, f"{DG1} Eq. 4-12")
+    c.step("l", r"\max(m, n, \lambda n')", comp.l_crit, Kind.LENGTH, f"{DG1} §4.3.1")
+    if P_ > 0:
+        cb = Calc(method, combo)
+        cb.step("f_{p(max)}", r"\phi_c 0.85 f'_c \sqrt{A_2/A_1}", comp.fp_max, Kind.STRESS,
+                "AISC 360-22 §J8")
+        out.append(cb.result("base_plate.embedded_plate_bearing", "AISC 360-22 §J8", P_,
+                             comp.Pp_available, Kind.FORCE))
+        c.step("t_{p,req}", r"l\sqrt{\frac{2P_u}{\phi F_y B N}}", comp.tp_req,
+               Kind.THICKNESS, f"{DG1} Eq. 4-15")
+        out.append(c.result("base_plate.embedded_plate_thickness", f"{DG1} Eq. 4-15",
+                            comp.tp_req, tp, Kind.THICKNESS))
+        return out
+    T = load
+    c.step("T_u", "-P_u", T, Kind.FORCE)
+    c.step("t_{p,req}", r"l\sqrt{\frac{2T_u}{\phi F_y B N}}", comp.tp_req, Kind.THICKNESS,
+           f"{DG1} Eq. 4-15")
+    out.append(c.result("base_plate.embedded_plate_thickness", f"{DG1} Eq. 4-15",
+                        comp.tp_req, tp, Kind.THICKNESS))
+    side = max((embedded.foundation_width - width) / 2, 0.0)
+    edges = anchors.Edges(left=side, right=side, bottom=side, top=side)
+    breakout = anchors.breakout_tension(embedded.embedment, bp.fc, T, method, span_x=width,
+                                        span_y=width, edges=edges, cracked=bp.cracked,
+                                        seismic=bp.seismic, combo=combo)
+    out.append(_renamed(breakout, "embedded_uplift_breakout"))
+    column_area = 2 * col.bf * col.tf + (col.d - 2 * col.tf) * col.tw
+    pull = anchors.pullout(width * width - column_area, bp.fc, T, method, bp.cracked,
+                           bp.seismic, combo)
+    out.append(_renamed(pull, "embedded_uplift_pullout"))
+    return out
+
+
+def _type2_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M: float,
+                  method: Method, combo: str) -> list[CheckResult]:
+    """Type II embedded base: exposed base plate encased in a concrete blockout.
+
+    OpenConex hypothesis (DG1 Chapter 5 describes the detail without a
+    definitive method): the two mechanisms act in parallel. The blockout
+    resists φM_HB by horizontal bearing over its depth (Eq. 5-6) and the base
+    plate resists φM_bp with its anchor rods at their tensile strength
+    (DG1 §4.3.7). The moment is shared in proportion to the strengths and the
+    base plate is checked completely for its share, with the whole P and V.
+    """
+    if bp.N <= 0 or bp.B <= 0 or bp.tp <= 0 or bp.f <= 0:
+        raise ValueError("embedded base Type II needs the base plate N, B, tp and f")
+    results: list[CheckResult] = []
+    mhb = _horizontal_bearing(bp, V, M, combo, None)
+    phi_mhb = max(mhb.capacity, 0.0)
+    c = Calc(method, combo)
+    c.step(r"\phi M_{HB}", "", phi_mhb, Kind.MOMENT, f"{DG1} Eq. 5-6")
+    t_cap = c.step("T_{cap}", "", _face_tension_capacity(bp, bp.rods_per_side, method),
+                   Kind.FORCE, f"{DG1} Example 4.7-14")
+    Y, m_bp = bpl.biaxial_capacity(P_, bp.N, bp.B, bp.f, bp.fc, bp.A2_over_A1, t_cap, method)
+    if Y <= 0:
+        Y, m_bp = 0.0, 0.0
+    elif Y > bp.N:
+        q = bpl.bearing_stress(bp.fc, bp.A2_over_A1, method) * bp.B
+        Y, m_bp = bp.N, q * bp.N * bp.f - P_ * bp.f
+    c.step("Y", r"\frac{T_{cap} + P}{q_{max}} \le N", Y, Kind.LENGTH, f"{DG1} §4.3.7")
+    m_bp = c.step(r"\phi M_{bp}", r"q_{max} Y\left(f + \frac{N}{2} - \frac{Y}{2}\right) - P f",
+                  max(m_bp, 0.0), Kind.MOMENT, f"{DG1} §4.3.7")
+    total = c.step(r"\phi M_n", r"\phi M_{HB} + \phi M_{bp}", phi_mhb + m_bp, Kind.MOMENT,
+                   f"{DG1} Chapter 5")
+    results.append(c.result("base_plate.type2_moment", f"{DG1} Chapter 5", M, total,
+                            Kind.MOMENT))
+    share = m_bp / total if total > 0 else 1.0
+    m_plate = M * share
+    results.append(mhb.model_copy(update={"demand": M - m_plate}))
+    exposed = replace(bp, embedded_base=None)
+    sign = 1.0 if forces.M3 >= 0 else -1.0
+    results += check_base_plate(exposed, forces.model_copy(update={"M3": sign * m_plate}),
+                                method, combo)
     return results
 
 
@@ -607,6 +770,9 @@ def concrete_edges(bp: BasePlate, both_rows: bool = False) -> anchors.Edges:
     """
     if bp.edges.values() or not (bp.pedestal_N and bp.pedestal_B):
         return bp.edges
+    if bp.pedestal_shape == PedestalShape.ROUND:
+        e = ped_mod.round_edges(bp.pedestal_N / 2, bp.f, bp.rod_spacing / 2)
+        return anchors.Edges(left=e, right=e, bottom=e, top=e if both_rows else e + 2 * bp.f)
     side = max((bp.pedestal_B - bp.rod_spacing) / 2, 0.0)
     near = max(bp.pedestal_N / 2 - bp.f, 0.0)
     far = near if both_rows else bp.pedestal_N / 2 + bp.f
@@ -616,8 +782,12 @@ def concrete_edges(bp: BasePlate, both_rows: bool = False) -> anchors.Edges:
 def _a2_over_a1(bp: BasePlate, method: Method, combo: str) -> CheckResult:
     """A2/A1 used ≤ the largest concentric, similar area inside the pedestal (§J8)."""
     c = Calc(method, combo)
-    k = c.step("k", r"\min(N_{ped}/N,\ B_{ped}/B)",
-               min(bp.pedestal_N / bp.N, bp.pedestal_B / bp.B), clause="AISC 360-22 §J8")
+    if bp.pedestal_shape == PedestalShape.ROUND:
+        k = c.step("k", r"\frac{D_{ped}}{\sqrt{N^2 + B^2}}",
+                   bp.pedestal_N / math.hypot(bp.N, bp.B), clause="AISC 360-22 §J8")
+    else:
+        k = c.step("k", r"\min(N_{ped}/N,\ B_{ped}/B)",
+                   min(bp.pedestal_N / bp.N, bp.pedestal_B / bp.B), clause="AISC 360-22 §J8")
     limit = c.step(r"(A_2/A_1)_{max}", r"\min(k^2,\ 4)", min(k * k, 4.0), clause="AISC 360-22 §J8")
     return c.result("base_plate.a2_over_a1", "AISC 360-22 §J8", bp.A2_over_A1, limit,
                     Kind.DIMENSIONLESS)
@@ -686,7 +856,7 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         raise ValueError(
             "round HSS with moment is not supported; only axial compression is validated")
     if bp.embedded_base is not None:
-        return _embedded_base_checks(bp, P_, V, M, M2, method, combo)
+        return _embedded_base_checks(bp, forces, P_, V, M, M2, method, combo)
     lug_shear = (0.0, 0.0)
     rod_shear = (abs(forces.V2), abs(forces.V3))
     if bp.shear_lug:
@@ -840,6 +1010,13 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
         weld = FilletWeld(size=bp.flange_weld, length=col.bf, electrode=bp.electrode,
                           electrodes=bp.electrodes)
         results.append(transfer.flange_weld_for_moment(M, col.d, weld, method, combo))
+    if bp.pedestal is not None:
+        if not (bp.pedestal_N and bp.pedestal_B):
+            raise ValueError("pedestal design needs pedestal_N and pedestal_B")
+        results += ped_mod.pedestal_checks(
+            bp.pedestal, bp.pedestal_N, bp.pedestal_B,
+            [(bar.x, bar.y, bar.diameter) for bar in bp.pedestal_rebars], bp.fc, P_,
+            forces.V2, forces.V3, forces.M3, forces.M2, method, combo)
     return results
 
 

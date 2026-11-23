@@ -100,11 +100,11 @@ def base_plate_figures(project: Project, bp: BasePlate, lang: str,
                        units: UnitSystem) -> list[Figure]:
     """Plan, elevation and isometric figures of the connection."""
     options = _options(project)
-    embedded = bp.embedded_base
+    embedded = bp.embedded_type1
     figures = []
     for key, view in (("plan", "plan"), ("elevation", "elevation")):
         doc = (embedded_base_dxf(bp, units, lang, options, view=view)
-               if embedded is not None else
+               if embedded else
                base_plate_dxf(bp, units, lang, options, view=view))
         svg = dxf_to_svg(doc)
         figures.append(Figure(
@@ -112,7 +112,7 @@ def base_plate_figures(project: Project, bp: BasePlate, lang: str,
             caption=tr(f"report.figure_{key}", lang),
             svg=svg, png=svg_to_png(svg)))
     if occ_available():
-        if embedded is not None:
+        if embedded:
             parts = embedded_base_parts(bp, options.pedestal_B)
         else:
             parts = base_plate_parts(bp, options.grout, options.pedestal_N,

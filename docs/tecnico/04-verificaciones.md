@@ -36,6 +36,20 @@ Columna **Placa base**: ✔ la usa `check_base_plate`; — solo existe en la bib
 | `base_plate.face_plate_bearing` | Aplastamiento del concreto en las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
 | `base_plate.face_plate_thickness` | Espesor de las placas de cara | DG1 §5.3 | ✔ con `embedded_base` |
 | `base_plate.face_plate_seismic` | Espesor sísmico mínimo de las placas de cara, máx(0,75 t_w, 3/8 in) | AISC 341-22 §F3.5b.4 | ✔ con `embedded_base` |
+| `base_plate.face_plate_weld` | Soldadura de filete de las placas de cara, L = 2(d − 2t_f) + 2(b_f − t_w), demanda P | AISC 360-22 §J2.4, Ec. J2-4 | ✔ Tipo I con `face_plate_weld` |
+| `base_plate.embedded_plate_bearing` | Aplastamiento bajo la placa embebida, P ≤ φP_p | AISC 360-22 §J8 | ✔ Tipo I con placa embebida |
+| `base_plate.embedded_plate_thickness` | Espesor de la placa embebida, t ≥ l √(2|P|/(φF_y B²)) | DG1 Ec. 4-15 | ✔ Tipo I con placa embebida |
+| `base_plate.embedded_uplift_breakout` | Arrancamiento del concreto por levantamiento, h_ef = empotramiento, cabeza = placa embebida | ACI 318-19 §17.6.2 | ✔ Tipo I con P < 0 |
+| `base_plate.embedded_uplift_pullout` | Extracción de la placa embebida, N_p = 8 A_brg f'c | ACI 318-19 §17.6.3 | ✔ Tipo I con P < 0 |
+| `base_plate.type2_moment` | Base empotrada Tipo II: M_u ≤ φM_HB (bloque) + φM_bp (placa base) | DG1 Cap. 5, Ec. 5-6, §4.3.7 | ✔ Tipo II |
+| `base_plate.pedestal_slenderness` | Pedestal: h/b_min ≤ 3 | ACI 318-19 §2.3 | ✔ con `pedestal` |
+| `base_plate.pedestal_reinforcement_min` | Pedestal: ρ_g ≥ `min_ratio` | ACI 318-19 §10.6.1.1 | ✔ con `pedestal` |
+| `base_plate.pedestal_reinforcement_max` | Pedestal: ρ_g ≤ 0,08 | ACI 318-19 §10.6.1.1 | ✔ con `pedestal` |
+| `base_plate.pedestal_axial` | Pedestal: P_u ≤ 0,65(0,80 P_o) o tracción ≤ 0,90 f_y A_st | ACI 318-19 §22.4 | ✔ con `pedestal` |
+| `base_plate.pedestal_flexure` | Pedestal: M_u + V_u h ≤ φM_n(P_u) por compatibilidad de deformaciones; biaxial con contorno lineal | ACI 318-19 §22.2, §22.4, Tabla 21.2.2 | ✔ con `pedestal` |
+| `base_plate.pedestal_shear` | Pedestal: corte en la dirección N, φ(V_c + V_s) | ACI 318-19 §22.5 | ✔ con `pedestal` y V |
+| `base_plate.pedestal_shear_weak` | Pedestal: corte en la dirección B | ACI 318-19 §22.5 | ✔ con `pedestal` y V débil |
+| `base_plate.pedestal_tie_spacing` | Pedestal: s ≤ mín(16 d_b, 48 d_estribo, b_min) | ACI 318-19 §25.7.2.1 | ✔ con estribos |
 
 ## Doble ángulo apernado (`connections/shear/double_angle.py`)
 

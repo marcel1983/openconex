@@ -9,7 +9,10 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Área efectiva: integrada para compresión concéntrica de perfiles I (`bearing_area_model = "effective"`).
 - Refuerzo de anclaje: integrado con capacidad, desarrollo y empotramiento (`reinforcement`).
 - Base sísmica débil: integrada con anclajes dúctiles y diseño por capacidad (`weak_base`).
-- Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con refuerzo horizontal y placa embebida opcionales, entradas, revisión y figuras específicas.
+- Base empotrada tipo I: tipo de conexión propio (`connection_type = "embedded"`), con refuerzo horizontal y placa embebida opcionales, soldadura de las placas de cara, flexión de la placa embebida, levantamiento, entradas, revisión y figuras específicas.
+- Base empotrada tipo II (`embedded_base.type = "II"`): placa base expuesta embebida en un bloque, por superposición de mecanismos (hipótesis de OpenConex).
+- Pedestal como columna corta (`pedestal`): flexocompresión, axial, corte, cuantías, estribos y esbeltez según ACI 318-19; pedestal rectangular o circular.
+- Optimización global (`--optimize global` y GUI): diámetro y número de anclajes, N, B y tp, con traza.
 - El resto de funciones de la DG1 existe en la biblioteca y está validado a nivel de función, pero todavía no se usa desde el proyecto.
 
 ## Matriz de cierre
@@ -21,11 +24,13 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 | Flexión de placa por anclajes | `transfer.plate_bending_at_rods` | 4.7-3, 4.7-7 | Integrada con brazo explícito |
 | Refuerzo de anclaje | `anchors.anchor_reinforcement` | 4.7-15 | Integrado con capacidad, gancho, desarrollo recto y empotramiento |
 | Base sísmica débil | `seismic.ductile_anchors` | 6.4-1 | Integrada en el proyecto y la memoria |
-| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I con refuerzo horizontal y placa embebida opcionales |
+| Base empotrada | `seismic.embedded_base_moment`, `seismic.face_plate_design` | 5.3-1 | Tipo I completo (soldadura, placa embebida, levantamiento) y Tipo II por superposición |
+| Pedestal como columna | `pedestal.pedestal_checks` | ACI E702.2; StructurePoint | Rectangular y circular, LRFD |
 | Llave de corte en DXF/3D | - | 4.7-5 | Integrada en DXF y 3D |
 | Flexión local de placa por llave | `transfer.lug_plate_bending` | 4.7-5 | Integrada con ancho efectivo b_sl |
 | HSS con momento | `plate.rectangular_bending` | STI Ejemplo 2 | Validado en HSS rectangular/cuadrado; circular rechazado |
 | Optimización N/B/tp | `plate.optimize_plan`, `check.optimize_base_plate` | — | Integrada en `baseplate --optimize` |
+| Optimización global | `optimize.optimize_global` | — | `baseplate --optimize global` y GUI, con traza |
 | Figuras de memoria | `report/figures.py`, `drawing`, `geometry3d` | — | Planta, elevación e isométrico integrados |
 | Revisor de interferencias | `connections/base_plate/interference.py` | - | Columna, borde, llave y barras del pedestal |
 
@@ -34,8 +39,8 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 - Los valores por defecto siguen siendo `pressure_model = "rectangular"` y `bearing_area_model = "plate"`; los proyectos existentes no cambian.
 - `pressure_model = "triangular"` se aplica a cada eje con `P > 0`, incluido el eje débil con las dimensiones giradas. Las combinaciones con levantamiento usan el modelo rectangular.
 - `bearing_area_model = "effective"` solo se aplica a compresión concéntrica de perfiles I. No se admite en HSS, con momento, con levantamiento ni junto con el modelo triangular.
-- La base empotrada es LRFD, solo para perfiles I, sin momento débil, levantamiento neto, llave de corte ni base débil. No se verifica la soldadura de las placas de apoyo frontal ni el Tipo II.
-- La optimización de N/B/tp es local y determinista; parte de la placa actual y reduce dimensiones mientras todas las combinaciones sigan cumpliendo.
+- La base empotrada es LRFD, solo para perfiles I, sin momento débil, llave de corte ni base débil. El Tipo I con levantamiento exige placa embebida.
+- La optimización local de N/B/tp parte de la placa actual y reduce dimensiones mientras todas las combinaciones sigan cumpliendo; la global además cambia la disposición de anclajes. Ambas son deterministas y comparten el motor `optimize.optimize`.
 - La memoria muestra una hipótesis específica cuando se usa cualquiera de los dos modelos.
 
 ## Orden de implementación
@@ -60,4 +65,5 @@ Objetivo: completar la placa base para la versión 1.0 sin reescribir las ecuaci
 
 - La interacción del modelo triangular con biaxial y levantamiento puede requerir un tratamiento específico; por eso se aplica por eje solo con compresión y el levantamiento usa el rectangular.
 - Las bases sísmicas no son solo una conexión de funciones: requieren diseño por capacidad y nuevos estados límite.
-- El HSS circular con momento no tiene una referencia de aceptación; se rechaza. El HSS rectangular/cuadrado está validado contra el Ejemplo 2 del Steel Tube Institute (2024).
+- El HSS circular con momento no tiene una referencia de aceptación; se rechaza.
+- El Tipo II de la base empotrada no tiene ejemplo publicado: se documenta como hipótesis y se marca como parcial en la matriz de verificación. El HSS rectangular/cuadrado está validado contra el Ejemplo 2 del Steel Tube Institute (2024).

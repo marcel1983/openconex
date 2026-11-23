@@ -10,7 +10,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
-| `connection_type` | Tipo de base: placa base expuesta o base empotrada. | Seleccione Placa base expuesta o Base empotrada Tipo I. | Determina qué comprobaciones se ejecutan y qué campos son obligatorios. | exposed | PB |
+| `connection_type` | Tipo de base: placa base expuesta o base empotrada. | Seleccione Placa base expuesta, Base empotrada Tipo I o Tipo II. | Determina qué comprobaciones se ejecutan y qué campos son obligatorios. | exposed | PB |
 | `column` | Columna que apoya en la placa. | Elija una etiqueta AISC (W, M, S, HP, HSS o PIPE) o escriba una sección genérica W/HSS. | Aporta d, bf, tf, tw y el material; afecta presiones, anclajes y rigidizadores. | — | PB |
 | `column_grade` | Acero de la columna del catálogo. | Elija un acero de la biblioteca. Para HSS y PIPE use ASTM A500 Gr. C (rectangular) o (round). | Define Fy y Fu de la columna para las comprobaciones de placa y soldadura. | ASTM A992 | PB |
 
@@ -63,10 +63,20 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 |---|---|---|---|---|---|
 | `pedestal_N` | Largo del pedestal de concreto. | Escriba N del pedestal; déjelo vacío si no hay pedestal. | Se usa para bordes, planos y límite de A2/A1. | — | PB |
 | `pedestal_B` | Ancho del pedestal de concreto. | Escriba B del pedestal; déjelo vacío si no hay pedestal. | Se usa para bordes, planos y límite de A2/A1. | — | PB |
-| `pedestal_rebars` | Barras longitudinales para el revisor de interferencias. | Agregue filas con x, y y diámetro. | No cambia el cálculo; revisa interferencias geométricas. | [] | PB |
-| `pedestal_rebars.x` | Coordenada x de la barra en planta. | Escriba la coordenada respecto al centro. | No cambia el cálculo; se usa en el revisor. | — | PB |
-| `pedestal_rebars.y` | Coordenada y de la barra en planta. | Escriba la coordenada respecto al centro. | No cambia el cálculo; se usa en el revisor. | — | PB |
-| `pedestal_rebars.diameter` | Diámetro de la barra longitudinal. | Escriba el diámetro. | No cambia el cálculo; se usa en el revisor. | — | PB |
+| `pedestal_rebars` | Barras longitudinales del pedestal. | Agregue filas con x, y y diámetro. | Se usan en el revisor de interferencias y, con el bloque pedestal, como armadura de la columna corta. | [] | PB |
+| `pedestal_rebars.x` | Coordenada x de la barra en planta. | Escriba la coordenada respecto al centro. | Se usa en el revisor y en el diseño del pedestal. | — | PB |
+| `pedestal_rebars.y` | Coordenada y de la barra en planta. | Escriba la coordenada respecto al centro. | Se usa en el revisor y en el diseño del pedestal. | — | PB |
+| `pedestal_rebars.diameter` | Diámetro de la barra longitudinal. | Escriba el diámetro. | Se usa en el revisor y como área de acero del pedestal. | — | PB |
+| `pedestal` | Diseño del pedestal como columna corta según ACI 318-19. | Active el bloque y defina altura, acero y estribos; requiere pedestal_N, pedestal_B y pedestal_rebars. | Añade flexocompresión, corte, cuantía, estribos y esbeltez del pedestal (LRFD). | — | PB |
+| `pedestal.shape` | Rectangular o circular; otras formas se rechazan. | Elija rectangular o round; en circular, pedestal_N es el diámetro. | Cambia la sección, las distancias al borde y A2/A1. | rectangular | PB |
+| `pedestal.height` | Altura desde la zapata hasta la cara superior del pedestal. | Escriba la altura; debe ser positiva. | El momento de diseño es M + V h; controla la esbeltez h/b ≤ 3. | — | PB |
+| `pedestal.fy` | Fluencia de las barras longitudinales. | Escriba la tensión; por defecto 60 ksi. | Afecta la resistencia a flexocompresión. | 60 ksi | PB |
+| `pedestal.tie_diameter` | Diámetro de los estribos cerrados. | Escriba el diámetro o déjelo vacío si no hay estribos. | Afecta V_s y la separación máxima. | — | PB |
+| `pedestal.tie_spacing` | Separación vertical de los estribos. | Escriba la separación junto con el diámetro. | Afecta V_s, A_v,min y la verificación de separación. | — | PB |
+| `pedestal.tie_fy` | Fluencia de los estribos (limitada a 60 ksi en corte). | Escriba la tensión; por defecto 60 ksi. | Afecta V_s. | 60 ksi | PB |
+| `pedestal.tie_legs` | Ramas de estribo que cruzan cada plano de corte. | Escriba un entero ≥ 1; por defecto 2. | Afecta A_v y V_s. | 2 | PB |
+| `pedestal.min_ratio` | Cuantía longitudinal mínima ρ_g. | Escriba el valor; por defecto 0,01 (ACI 318-19 §10.6.1.1). | Afecta la verificación de cuantía mínima. | 0.01 | PB |
+| `pedestal.lightweight` | Factor de concreto liviano λ. | Escriba 1,0 para concreto de peso normal. | Afecta V_c. | 1.0 | PB |
 
 ### Refuerzo
 
@@ -94,7 +104,9 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
-| `embedded_base` | Base empotrada Tipo I de la DG1 Capítulo 5. | Active el bloque y defina empotramiento, cimiento y placas de cara. | Ejecuta solo las comprobaciones de la base empotrada. | — | PB |
+| `embedded_base` | Base empotrada Tipo I o Tipo II de la DG1 Capítulo 5. | Active el bloque y defina empotramiento, cimiento y placas de cara. | Ejecuta solo las comprobaciones de la base empotrada. | — | PB |
+| `embedded_base.type` | I: columna empotrada en la zapata; II: placa base expuesta embebida en un bloque. | Escriba I o II; por defecto I. | El Tipo II suma la placa base y el apoyo horizontal del bloque. | I | PB |
+| `embedded_base.face_plate_weld` | Filete de las placas de apoyo frontal a la columna (Tipo I). | Escriba el tamaño o déjelo vacío para suponer CJP. | Añade la verificación de la soldadura (AISC 360-22 §J2.4). | — | PB |
 | `embedded_base.embedment` | Profundidad de empotramiento de la columna. | Escriba la profundidad; debe ser positiva. | Afecta el apoyo horizontal y el momento resistente. | — | PB |
 | `embedded_base.foundation_width` | Ancho del cimiento de concreto. | Escriba el ancho; debe ser positivo. | Afecta el apoyo horizontal y las presiones. | — | PB |
 | `embedded_base.face_plate_thickness` | Espesor de las placas de apoyo frontal. | Escriba el espesor; debe ser positivo. | Afecta el aplastamiento y la flexión de la placa de cara. | — | PB |
@@ -146,6 +158,7 @@ Esta página se genera desde `src/openconex/help_base.py`. Cada entrada responde
 | `main.units.configure` | Configura la unidad de cada magnitud. | Unidades → Configurar por magnitud. | Cambia la presentación y la conversión. | — | todas |
 | `main.calc.run` | Calcula el proyecto actual. | Cálculo → Calcular o F5. | Actualiza el resumen y las figuras. | — | todas |
 | `main.calc.optimize` | Optimiza N, B y tp. | Cálculo → Optimizar N, B y tp. | Busca dimensiones menores con las mismas comprobaciones. | — | PB |
+| `main.calc.optimize_global` | Busca la placa más liviana probando diámetros y número de anclajes. | Cálculo → Optimización global…; revise la traza y pulse Aplicar. | Cambia N, B, tp, f, separación, diámetro y barras por lado. | — | PB |
 | `main.calc.batch` | Calcula una carpeta de proyectos. | Cálculo → Calcular lote. | Genera reportes y un resumen Excel. | — | todas |
 | `main.export.html` | Memoria en HTML. | Exportar → Memoria HTML. | Incluye datos, verificaciones y figuras. | — | todas |
 | `main.export.docx` | Memoria en DOCX. | Exportar → Memoria Word. | Incluye tablas y figuras. | — | todas |

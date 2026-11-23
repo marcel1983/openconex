@@ -36,7 +36,7 @@ def _baseplate(args: argparse.Namespace) -> int:
     """Check a base plate project and write the requested outputs."""
     from pathlib import Path
 
-    from openconex.connections.base_plate.check import optimize_base_plate
+    from openconex.connections.base_plate.optimize import optimize
     from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
     from openconex.io.project import load_project
     from openconex.report.builder import build_base_plate_report
@@ -55,15 +55,19 @@ def _baseplate(args: argparse.Namespace) -> int:
             print("error: --optimize is only available for exposed base plates",
                   file=sys.stderr)
             return 2
-        optimized = optimize_base_plate(
-            project.base_plate_model(), project.load_combinations(), project.case_forces())
-        units = project.info.unit_system()
-        project.base_plate.N = format_value(optimized.N, Kind.LENGTH, units, precision=4)
-        project.base_plate.B = format_value(optimized.B, Kind.LENGTH, units, precision=4)
-        project.base_plate.tp = format_value(optimized.tp, Kind.THICKNESS, units,
-                                             precision=4)
-        print(f"Optimized: N={project.base_plate.N}, B={project.base_plate.B}, "
-              f"tp={project.base_plate.tp}")
+        result = optimize(project.base_plate_model(), project.load_combinations(),
+                          project.case_forces(), args.optimize)
+        project.apply_base_plate_geometry(result.best)
+        _print_trace(result, project.info.unit_system())
+        data = project.base_plate
+        print(f"Optimized: N={data.N}, B={data.B}, tp={data.tp}, "
+              f"rods={2 * data.rods_per_side} × {data.rod_diameter}, f={data.f}, "
+              f"rod_spacing={data.rod_spacing} ({args.optimize})")
+        if args.save:
+            from openconex.io.project import save_project
+            Path(args.save).parent.mkdir(parents=True, exist_ok=True)
+            save_project(project, args.save)
+            print(f"-> {args.save}")
     report = build_base_plate_report(project)
     out = Path(args.output or Path(args.project).with_suffix(""))
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -86,7 +90,7 @@ def _baseplate(args: argparse.Namespace) -> int:
         options = BasePlateDrawing(
             pedestal_N=q(data.pedestal_N), pedestal_B=q(data.pedestal_B), grout=q(data.grout),
             title=info.name, number=info.number, revision=info.revision, date=info.date)
-        if bp.embedded_base is not None:
+        if bp.embedded_type1:
             from openconex.drawing.embedded_base import write_embedded_base_dxf
             written.append(write_embedded_base_dxf(
                 bp, out.with_suffix(".dxf"), info.unit_system(), info.language, options))
@@ -102,7 +106,7 @@ def _baseplate(args: argparse.Namespace) -> int:
             write_stl,
         )
         parts = (embedded_base_parts(bp, q(data.pedestal_B))
-                 if bp.embedded_base is not None else
+                 if bp.embedded_type1 else
                  base_plate_parts(bp, q(data.grout), q(data.pedestal_N), q(data.pedestal_B)))
         if args.step:
             written.append(write_step(parts, out.with_suffix(".step")))
@@ -113,6 +117,18 @@ def _baseplate(args: argparse.Namespace) -> int:
     for path in written:
         print(f"-> {path}")
     return 0 if report.ok else 1
+
+
+def _print_trace(result, units) -> None:
+    """Search trace of the optimization, one line per explored layout."""
+    print(f"{'layout':14} {'N':>10} {'B':>10} {'tp':>10} {'kg':>8} {'ratio':>6}  governing")
+    for row in result.trace:
+        cells = [format_value(row.N, Kind.LENGTH, units, precision=4),
+                 format_value(row.B, Kind.LENGTH, units, precision=4),
+                 format_value(row.tp, Kind.THICKNESS, units, precision=3)]
+        status = f"{row.ratio:6.3f}" if row.ok else "    NG"
+        print(f"{row.label:14} {cells[0]:>10} {cells[1]:>10} {cells[2]:>10} "
+              f"{row.weight:8.1f} {status}  {row.governing}")
 
 
 def _shear(args: argparse.Namespace) -> int:
@@ -380,8 +396,12 @@ def build_parser() -> argparse.ArgumentParser:
     bp.add_argument("-o", "--output", help="output path without extension")
     bp.add_argument("--lang", choices=["es", "en"], help="report language")
     bp.add_argument("--units", choices=sorted(PRESETS), help="unit system of the outputs")
-    bp.add_argument("--optimize", action="store_true",
-                    help="optimize N, B and tp before checking the exposed base plate")
+    bp.add_argument("--optimize", nargs="?", const="local", choices=["local", "global"],
+                    help="optimize before checking the exposed base plate: 'local' (default) "
+                         "reduces N, B and tp; 'global' also explores rod diameters and "
+                         "rods per row")
+    bp.add_argument("--save", metavar="PATH",
+                    help="with --optimize, save the optimized project (.ocnx)")
     for flag, text in (("html", "HTML report"), ("docx", "Word report"),
                        ("pdf", "PDF report (needs openconex[pdf])"), ("dxf", "DXF drawing"),
                        ("step", "STEP 3D model (needs openconex[3d])"),

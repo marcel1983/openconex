@@ -30,7 +30,7 @@ El HTML se abre en cualquier navegador y se imprime a PDF desde él. El DOCX se 
 DXF R2013, a escala 1:1 en la unidad de longitud del proyecto (mm o in), legible en AutoCAD, BricsCAD, LibreCAD o QCAD:
 
 - **Planta:** placa, columna, anclajes con agujeros y arandelas, llave de corte en línea oculta y cotas.
-- **Elevación:** placa, mortero, pedestal, anclajes con su empotramiento y llave de corte con su profundidad embebida.
+- **Elevación:** placa, mortero, pedestal (con su altura, barras y estribos si se diseña), anclajes con su empotramiento, llave de corte con su profundidad embebida y, en la base empotrada Tipo II, el bloque de concreto.
 - **Lista de materiales:** placa, barras de anclaje, tuercas hexagonales pesadas, arandelas de placa y llave de corte.
 - **Notas y cajetín** con los datos de `info`.
 
@@ -46,6 +46,6 @@ Capas: `BP-PLACA`, `BP-COLUMNA`, `BP-ANCLAJE`, `BP-LLAVE` (solo si hay llave), `
 
 ## Modelo 3D (`--step`, `--stl`)
 
-Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.
+Sólidos de placa, columna (tramo corto), anclajes, tuercas, arandelas, mortero, pedestal (rectangular o circular), barras longitudinales y estribos del pedestal, bloque de concreto del Tipo II y llave de corte, en mm. Cada pieza es un sólido aparte. STEP sirve para programas de detallado y BIM; STL para visualización.
 
 En una conexión de corte: viga (con destajes), apoyo, placa, ángulos, asiento o rigidizador, y pernos. Las soldaduras no se modelan.

@@ -157,6 +157,11 @@ def convert_project(project: Project, old: UnitSystem, new: UnitSystem) -> Proje
                 ("clear_cover", Kind.LENGTH), ("anchor_to_bar", Kind.LENGTH),
                 ("le", Kind.LENGTH)):
             _convert_field(bp.reinforcement, field, kind, old, new)
+    if bp.pedestal is not None:
+        for field, kind in (("height", Kind.LENGTH), ("fy", Kind.STRESS),
+                            ("tie_diameter", Kind.LENGTH), ("tie_spacing", Kind.LENGTH),
+                            ("tie_fy", Kind.STRESS)):
+            _convert_field(bp.pedestal, field, kind, old, new)
     if bp.weak_base is not None:
         _convert_field(bp.weak_base, "reduced_diameter", Kind.LENGTH, old, new)
         _convert_field(bp.weak_base, "stretch_length", Kind.LENGTH, old, new)
@@ -166,7 +171,8 @@ def convert_project(project: Project, old: UnitSystem, new: UnitSystem) -> Proje
                 ("embedment", Kind.LENGTH), ("foundation_width", Kind.LENGTH),
                 ("face_plate_thickness", Kind.THICKNESS),
                 ("base_plate_width", Kind.LENGTH),
-                ("base_plate_thickness", Kind.THICKNESS)):
+                ("base_plate_thickness", Kind.THICKNESS),
+                ("face_plate_weld", Kind.THICKNESS)):
             _convert_field(embedded, field, kind, old, new)
         _convert_optional_layer(embedded.rebar_top, old, new)
         _convert_optional_layer(embedded.rebar_bottom, old, new)

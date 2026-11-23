@@ -92,6 +92,12 @@ def _check_column(bp: BasePlate, positions: list[tuple[float, float]], half: flo
                     clearance, Kind.LENGTH)
 
 
+def required_plate_edge(bp: BasePlate) -> float:
+    """Minimum rod-to-plate-edge distance: max(Table J3.4, half the plate washer)."""
+    d_in = from_internal(bp.rod.diameter, Kind.LENGTH, "in")
+    return max(min_edge_distance(d_in), _washer_size(bp) / 2)
+
+
 def _check_plate_edge(bp: BasePlate, positions: list[tuple[float, float]], half: float,
                       method: Method, combo: str) -> CheckResult:
     d_in = from_internal(bp.rod.diameter, Kind.LENGTH, "in")

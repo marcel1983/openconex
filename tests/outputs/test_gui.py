@@ -509,3 +509,67 @@ def test_library_dialogs(qapp):
     assert materials._weld_table.rowCount() == 2
     materials.close()
     window.close()
+
+
+def test_gui_type2_embedded_base_round_trip(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_embedded_type2.ocnx"))
+    assert window._connection_combo.currentData() == "embedded_ii"
+    assert not window._plate_group.isHidden()
+    assert not window.advanced._embedded_group.isHidden()
+    assert window.advanced._shear_group.isHidden()
+    assert not window.advanced._fields["embedded_base.face_plate_thickness"].edit.isEnabled()
+    target = tmp_path / "type2.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.embedded_base.type == "II"
+    assert again.base_plate.N is not None
+    window.calculate()
+    assert window.report is not None and window.report.ok
+    window.close()
+
+
+def test_gui_pedestal_design_round_trip(qapp, tmp_path):
+    window = MainWindow()
+    window.open_project(EXAMPLE.with_name("base_plate_pedestal_round.ocnx"))
+    advanced = window.advanced
+    assert advanced._pedestal_design_group.isChecked()
+    assert advanced._pedestal_shape.currentData() == "round"
+    advanced._fields["pedestal.tie_spacing"].edit.setText("10")
+    target = tmp_path / "pedestal.ocnx"
+    window.save_project_to(target)
+    again = load_project(target)
+    assert again.base_plate.pedestal.shape == "round"
+    assert again.base_plate.pedestal.tie_spacing == "10"
+    window.calculate()
+    assert any(r.id == "base_plate.pedestal_flexure" for r in window.report.results)
+    window.close()
+
+
+def test_gui_global_optimization_uses_the_shared_engine(qapp, monkeypatch):
+    from openconex.connections.base_plate.optimize import steel_weight
+    from openconex.gui import app as app_module
+    from openconex.gui.optimization import OptimizationDialog, trace_rows
+
+    window = MainWindow()
+    window.open_project(EXAMPLE)
+    before = steel_weight(window.project.base_plate_model())
+    shown = {}
+
+    def accept(self):
+        shown["rows"] = self.table.rowCount()
+        return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(OptimizationDialog, "exec", accept)
+    monkeypatch.setattr(app_module, "OptimizationDialog", OptimizationDialog)
+    window.optimize_global()
+    assert shown["rows"] > 5
+    after = window.project.base_plate_model()
+    assert steel_weight(after) < before
+    assert window.report is not None and window.report.ok
+    from openconex.connections.base_plate.optimize import optimize
+    project = window.project
+    rows = trace_rows(optimize(project.base_plate_model(), project.load_combinations(),
+                               project.case_forces(), "global"), window._units)
+    assert rows[0][0] == "initial"
+    window.close()
