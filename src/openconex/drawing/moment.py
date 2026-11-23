@@ -114,7 +114,11 @@ def _end_plate_layout(mc: MomentConnection, lay: MomentLayout) -> None:
 def moment_layout(mc: MomentConnection) -> MomentLayout:
     beam, col = mc.beam, mc.column
     d = beam.d
-    lay = MomentLayout(beam_d=d, beam_tf=beam.tf, beam_length=max(1.5 * d, 30 * INCH),
+    length = max(1.5 * d, 30 * INCH)
+    sz = mc.seismic
+    if sz is not None and sz.connection.value == "rbs":  # show the whole reduced section
+        length = max(length, sz.rbs_a + sz.rbs_b + d / 2)
+    lay = MomentLayout(beam_d=d, beam_tf=beam.tf, beam_length=length,
                        column_d=col.d, column_tf=col.tf)
     if mc.detail is FlangeDetail.END_PLATE:
         _end_plate_layout(mc, lay)
@@ -236,6 +240,12 @@ def _draw(s: _Sheet, mc: MomentConnection, lay: MomentLayout, opt: MomentDrawing
         lines.append(f"PL {q(ep.thickness)} × {q(ep.width)} × {q(y_1 - y_0)}")
         lines.append(f"{tr('input.bolts', lang)}: {2 * len(lay.end_plate_rows)} × Ø "
                      f"{q(ep.bolt.diameter)} {ep.bolt.grade}, g = {q(ep.gage)}")
+    sz = mc.seismic
+    if sz is not None:
+        lines.append(tr(f"seismic.connection.{sz.connection.value}", lang) + " · "
+                     + tr(f"seismic.system.{sz.system.value}", lang))
+        if sz.connection.value == "rbs":
+            lines.append(f"RBS: a = {q(sz.rbs_a)}, b = {q(sz.rbs_b)}, c = {q(sz.rbs_c)}")
     y = lo - 3 * s.text_h
     for line in lines:
         s.text(line, -cd, y, layer="MC-TEXTO")
