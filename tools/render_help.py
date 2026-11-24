@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
-"""Regenerate the user reference page from ``openconex.help``."""
+"""Regenerate the user reference pages from the help catalog (``i18n/help.es.toml``)."""
 
 from __future__ import annotations
 

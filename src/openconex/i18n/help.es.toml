@@ -1,0 +1,2512 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 The OpenConex contributors
+#
+# Ayuda de la interfaz en español: información sobre herramientas, diálogo de
+# ayuda y páginas de referencia (docs/usuario/10 y 11, generadas con
+# tools/render_help.py). Cada entrada responde qué es (what), cómo se usa (how)
+# y cómo afecta al cálculo (effect). default y types son opcionales
+# ("—" y "todas" si faltan). Una traducción sería help.<idioma>.toml con las
+# mismas claves.
+
+legend = "DA: doble ángulo; PS: placa simple; PSE: placa simple extendida; PE: placa de extremo; AS: asiento; AR: asiento rigidizado; PD: placa doblada; PB: placa base; todas: cualquier tipo."
+
+tooltip = "{what}\nCómo se usa: {how}\nEfecto en el cálculo: {effect}"
+table_header = ["Campo / acción", "Qué es", "Cómo se usa", "Efecto en el cálculo", "Defecto", "Tipos"]
+types_label = "Tipos"
+menus_heading = "Menús, botones y controles"
+reading_heading = "Cómo leer una verificación"
+
+# Páginas de referencia (docs/usuario) ----------------------------------------
+
+[pages.shear]
+title = "Referencia de la conexión de corte"
+intro = "Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada responde qué es, cómo se usa y cómo afecta al cálculo. Si añade un campo o una acción, actualice la fuente y vuelva a generar la página con `python tools/render_help.py`."
+fields_heading = "Campos del proyecto y de la conexión"
+groups = ["Proyecto", "Conexión", "Pernos", "Geometría", "Destaje", "Placa doblada", "Asiento", "Avanzado"]
+checks_heading = "Verificaciones"
+reading = [
+    "**Demanda:** fuerza o momento de la combinación.",
+    "**Capacidad:** resistencia disponible con φ o Ω.",
+    "**Relación:** demanda/capacidad; debe ser ≤ 1,00.",
+    "**Estado:** OK, NG o n/a.",
+    "**Referencia:** cláusula AISC y, en la pestaña Verificaciones, la traza completa.",
+]
+closing = "Las fórmulas y los valores intermedios de cada verificación están en la memoria y en `docs/tecnico/04-verificaciones.md`."
+
+[pages.base]
+title = "Referencia de la placa base"
+intro = "Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada responde qué es, cómo se usa y cómo afecta al cálculo. Si añade un campo o una acción, actualice la fuente y vuelva a generar la página con `python tools/render_help.py`."
+fields_heading = "Campos"
+groups = ["Conexión", "Placa base", "Anclajes", "Concreto", "Pedestal", "Refuerzo", "Base débil", "Base empotrada", "Llave de corte", "Menú principal", "Controles", "Diálogos"]
+reading = [
+    "**Demanda:** fuerza o momento de la combinación.",
+    "**Capacidad:** resistencia disponible con φ o Ω.",
+    "**Relación:** demanda/capacidad; debe ser ≤ 1,00.",
+    "**Estado:** OK, NG o n/a.",
+    "**Referencia:** cláusula y traza completa en la pestaña Verificaciones.",
+]
+closing = ""
+
+# Conexión de corte: campos -------------------------------------------------
+
+[[shear.fields]]
+key = "project.name"
+label = "Nombre"
+group = "Proyecto"
+what = "Nombre del proyecto."
+how = "Escríbalo en Datos del proyecto; se imprime en la memoria."
+effect = "No interviene en el cálculo; identifica el documento."
+
+[[shear.fields]]
+key = "project.number"
+label = "Número"
+group = "Proyecto"
+what = "Número o código del proyecto."
+how = "Escríbalo en Datos del proyecto."
+effect = "No interviene en el cálculo."
+
+[[shear.fields]]
+key = "project.client"
+label = "Cliente"
+group = "Proyecto"
+what = "Cliente del proyecto."
+how = "Escríbalo en Datos del proyecto."
+effect = "No interviene en el cálculo."
+
+[[shear.fields]]
+key = "project.engineer"
+label = "Ingeniero"
+group = "Proyecto"
+what = "Profesional responsable."
+how = "Escríbalo en Datos del proyecto."
+effect = "No interviene en el cálculo."
+
+[[shear.fields]]
+key = "project.revision"
+label = "Revisión"
+group = "Proyecto"
+what = "Revisión del documento."
+how = "Escríbala en Datos del proyecto."
+effect = "No interviene en el cálculo."
+default = "0"
+
+[[shear.fields]]
+key = "project.date"
+label = "Fecha"
+group = "Proyecto"
+what = "Fecha del documento."
+how = "Escríbala en Datos del proyecto."
+effect = "No interviene en el cálculo."
+
+[[shear.fields]]
+key = "ui.language"
+label = "Idioma"
+group = "Proyecto"
+what = "Idioma de la memoria y del plano."
+how = "Seleccione español o inglés en Datos del proyecto."
+effect = "No cambia las fórmulas; cambia los textos y las unidades de presentación."
+default = "es"
+
+[[shear.fields]]
+key = "ui.units"
+label = "Unidades"
+group = "Proyecto"
+what = "Sistema de unidades del proyecto (US, SI, MKS…)."
+how = "Seleccione un preset o escriba valores con su unidad."
+effect = "Convierte los valores guardados; el cálculo interno es siempre el mismo."
+default = "SI_kN_m"
+
+[[shear.fields]]
+key = "type"
+label = "Tipo de conexión"
+group = "Conexión"
+what = "Tipología resistente que se va a calcular."
+how = "Seleccione el tipo en el desplegable; la ventana muestra solo los campos aplicables."
+effect = "Determina qué comprobaciones se ejecutan y qué campos son obligatorios."
+default = "single_plate"
+
+[[shear.fields]]
+key = "beam"
+label = "Viga"
+group = "Conexión"
+what = "Sección de la viga que llega a la conexión."
+how = "Elija una etiqueta del catálogo AISC o escriba una sección W genérica."
+effect = "Aporta tw, d, tf, bf y el material; afecta pernos, placa, destaje y viga."
+
+[[shear.fields]]
+key = "beam_grade"
+label = "Acero de la viga"
+group = "Conexión"
+what = "Grado del acero de la viga del catálogo."
+how = "Escríbalo o elija uno de la biblioteca de materiales."
+effect = "Define Fy y Fu de la viga para las comprobaciones del alma y del destaje."
+default = "ASTM A992"
+
+[[shear.fields]]
+key = "support"
+label = "Apoyo"
+group = "Conexión"
+what = "Columna o viga principal que recibe la conexión."
+how = "Elija una etiqueta del catálogo o una sección W genérica."
+effect = "Aporta el espesor del ala o del alma y su Fu para aplastamiento y soldadura."
+
+[[shear.fields]]
+key = "support_grade"
+label = "Acero del apoyo"
+group = "Conexión"
+what = "Grado del acero del apoyo del catálogo."
+how = "Escríbalo o elija uno de la biblioteca."
+effect = "Define Fy y Fu del apoyo para aplastamiento, desgarro y soldadura."
+default = "ASTM A992"
+
+[[shear.fields]]
+key = "support_element"
+label = "Unido al"
+group = "Conexión"
+what = "Parte del apoyo a la que se conecta la placa o el ángulo."
+how = "Seleccione Ala o Alma."
+effect = "Elige el espesor del apoyo: tf para ala, tw para alma."
+default = "flange"
+
+[[shear.fields]]
+key = "grade"
+label = "Material de placa o ángulo"
+group = "Conexión"
+what = "Acero de la placa, los ángulos o el rigidizador."
+how = "Escríbalo o elija uno de la biblioteca."
+effect = "Define Fy y Fu de la placa o ángulo en todas sus comprobaciones."
+default = "ASTM A572 Gr. 50"
+
+[[shear.fields]]
+key = "electrode"
+label = "Electrodo"
+group = "Conexión"
+what = "Clasificación del electrodo de las soldaduras."
+how = "Escríbalo o elija uno de la biblioteca (E60XX, E70XX…)."
+effect = "Define FEXX y el coeficiente C1 de la Tabla 8-3; afecta la capacidad de soldadura."
+default = "E70XX"
+
+[[shear.fields]]
+key = "deformation_considered"
+label = "Deformación en el agujero"
+group = "Conexión"
+what = "Indica si se considera la deformación en servicio en el aplastamiento."
+how = "Marque la casilla para usar 2,4 d t Fu; desmárquela para 3,0 d t Fu."
+effect = "Cambia la capacidad de aplastamiento de la placa y del alma."
+default = "true"
+
+[[shear.fields]]
+key = "bolt"
+label = "Pernos"
+group = "Pernos"
+what = "Grupo de pernos de la conexión."
+how = "Abra el bloque de pernos y defina diámetro, grado, roscas y agujero."
+effect = "Afecta corte, aplastamiento, desgarro y bloque de corte."
+
+[[shear.fields]]
+key = "bolt.diameter"
+label = "Diámetro"
+group = "Pernos"
+what = "Diámetro nominal del perno."
+how = "Escriba el diámetro (por ejemplo, 3/4 in)."
+effect = "Afecta el área, el corte, el aplastamiento y las distancias mínimas."
+default = "3/4 in"
+
+[[shear.fields]]
+key = "bolt.grade"
+label = "Grado del perno"
+group = "Pernos"
+what = "Especificación del perno (A325, A490, F1852…)."
+how = "Elija un grado de la biblioteca de pernos."
+effect = "Define Fnv, Fnt y Fu; afecta corte, tracción y aplastamiento."
+default = "ASTM F3125 Gr. A325"
+
+[[shear.fields]]
+key = "bolt.threads"
+label = "Roscas"
+group = "Pernos"
+what = "Condición de roscas en el plano de corte."
+how = "Seleccione N (incluidas) o X (excluidas)."
+effect = "Cambia Fnv y por tanto la capacidad a corte del perno."
+default = "N"
+
+[[shear.fields]]
+key = "bolt.hole"
+label = "Agujero"
+group = "Pernos"
+what = "Tipo de agujero: estándar, sobredimensionado o alargado."
+how = "Seleccione el tipo; el programa usa sus dimensiones para aplastamiento y áreas netas."
+effect = "Afecta aplastamiento, desgarro y áreas netas de placa y alma."
+default = "STD"
+
+[[shear.fields]]
+key = "cope"
+label = "Destaje"
+group = "Destaje"
+what = "Recorte del extremo de la viga."
+how = "Active el bloque de destaje y defina sus dimensiones."
+effect = "Activa las comprobaciones de la sección destajada y del bloque de corte del alma."
+
+[[shear.fields]]
+key = "cope.c"
+label = "Largo c"
+group = "Destaje"
+what = "Longitud del destaje medida desde el apoyo."
+how = "Escriba c; debe ser mayor que cero."
+effect = "Afecta la esbeltez, la flexión y el bloque de corte de la viga destajada."
+
+[[shear.fields]]
+key = "cope.dc"
+label = "Profundidad superior"
+group = "Destaje"
+what = "Profundidad del destaje en el ala superior."
+how = "Escriba dc; use 0 si no hay destaje superior."
+effect = "Reduce el canto útil y cambia S, Z y la resistencia a flexión."
+
+[[shear.fields]]
+key = "cope.dc_bottom"
+label = "Profundidad inferior"
+group = "Destaje"
+what = "Profundidad del destaje en el ala inferior."
+how = "Escriba dc,inf; use 0 para destaje solo superior."
+effect = "Cambia la sección destajada y las comprobaciones de flexión."
+default = "0"
+
+[[shear.fields]]
+key = "cope.setback"
+label = "Holgura"
+group = "Destaje"
+what = "Separación entre el apoyo y el extremo de la viga."
+how = "Escriba la holgura; por defecto 1/2 in."
+effect = "La reacción se aplica a e = c + holgura; afecta el momento del destaje."
+default = "0.5 in"
+
+[[shear.fields]]
+key = "cope.lev"
+label = "l_ev del destaje"
+group = "Destaje"
+what = "Distancia vertical desde el borde del destaje al primer perno."
+how = "Escriba l_ev si comprueba el bloque de corte del alma."
+effect = "Se usa en el bloque de corte del alma destajada."
+
+[[shear.fields]]
+key = "cope.leh"
+label = "l_eh del destaje"
+group = "Destaje"
+what = "Distancia horizontal desde el extremo de la viga a la línea de pernos."
+how = "Escriba l_eh; el programa resta la tolerancia de longitud."
+effect = "Se usa en el bloque de corte del alma destajada."
+
+[[shear.fields]]
+key = "cope.doubler"
+label = "Placa doble"
+group = "Destaje"
+what = "Placa soldada al alma destajada para reforzarla."
+how = "Active la placa doble y defina espesor, profundidad, separación y soldadura."
+effect = "Aumenta la sección y la resistencia a flexión y corte del destaje."
+
+[[shear.fields]]
+key = "cope.doubler.thickness"
+label = "Espesor de placa doble"
+group = "Destaje"
+what = "Espesor de la placa doble."
+how = "Escriba el espesor; debe ser positivo."
+effect = "Aumenta A, I, S y Z de la sección reforzada."
+
+[[shear.fields]]
+key = "cope.doubler.depth"
+label = "Profundidad de placa doble"
+group = "Destaje"
+what = "Altura de la placa doble."
+how = "Escriba la profundidad; debe ser positiva."
+effect = "Aumenta la sección reforzada y la resistencia a flexión."
+
+[[shear.fields]]
+key = "cope.doubler.gap"
+label = "Separación de placa doble"
+group = "Destaje"
+what = "Distancia desde la línea del destaje a la cara de la placa."
+how = "Escriba la separación; por defecto 1/2 in."
+effect = "Cambia la posición del centro de gravedad y el flujo de soldadura."
+default = "0.5 in"
+
+[[shear.fields]]
+key = "cope.doubler.weld"
+label = "Soldadura de placa doble"
+group = "Destaje"
+what = "Filete de soldadura en cada lado de la placa doble."
+how = "Escriba el tamaño; debe ser positivo."
+effect = "Se comprueba el flujo de corte Q/I y la capacidad del filete."
+default = "3/16 in"
+
+[[shear.fields]]
+key = "cope.stiffener"
+label = "Rigidizador longitudinal"
+group = "Destaje"
+what = "Rigidizador soldado a lo largo de la línea del destaje."
+how = "Active el rigidizador y defina ancho, espesor, soldadura y longitud."
+effect = "Aumenta la sección y estabiliza el ala comprimida."
+
+[[shear.fields]]
+key = "cope.stiffener.width"
+label = "Ancho del rigidizador"
+group = "Destaje"
+what = "Ancho del rigidizador."
+how = "Escriba el ancho; debe ser positivo."
+effect = "Aumenta la sección reforzada y el momento plástico."
+
+[[shear.fields]]
+key = "cope.stiffener.thickness"
+label = "Espesor del rigidizador"
+group = "Destaje"
+what = "Espesor del rigidizador."
+how = "Escriba el espesor; debe ser positivo."
+effect = "Afecta la esbeltez y la sección reforzada."
+
+[[shear.fields]]
+key = "cope.stiffener.weld"
+label = "Soldadura del rigidizador"
+group = "Destaje"
+what = "Filete del rigidizador a la línea del destaje."
+how = "Escriba el tamaño; debe ser positivo."
+effect = "Se comprueba el flujo de corte y la capacidad del filete."
+default = "1/4 in"
+
+[[shear.fields]]
+key = "cope.stiffener.length"
+label = "Longitud del rigidizador"
+group = "Destaje"
+what = "Longitud del rigidizador a lo largo de la viga."
+how = "Déjela vacía para usar c + dc."
+effect = "Cambia la longitud de soldadura y el peso, no la sección resistente."
+default = "c + dc"
+
+[[shear.fields]]
+key = "rows"
+label = "Filas de pernos"
+group = "Geometría"
+what = "Número de pernos por línea vertical."
+how = "Escriba un entero positivo; en la placa de extremo son filas de dos pernos. Debe cumplirse 2 l_ev + (filas - 1) s ≤ largo."
+effect = "Afecta el grupo de pernos, el área neta y el bloque de corte."
+
+[[shear.fields]]
+key = "lines"
+label = "Líneas de pernos"
+group = "Geometría"
+what = "Número de líneas verticales de la placa simple extendida."
+how = "Use 1 o 2; con 2 debe definir el gramil."
+effect = "Duplica el grupo de pernos y cambia el bloque de corte."
+default = "1"
+types = "PSE"
+
+[[shear.fields]]
+key = "spacing"
+label = "Separación s"
+group = "Geometría"
+what = "Distancia vertical entre pernos."
+how = "Escriba la separación; el mínimo es 2⅔d y el grupo debe caber en el largo."
+effect = "Afecta aplastamiento interior, desgarro y bloque de corte."
+
+[[shear.fields]]
+key = "gage"
+label = "Gramil g"
+group = "Geometría"
+what = "Separación entre líneas de pernos o gramil de los ángulos."
+how = "En placa extendida con dos líneas, escriba la separación; en doble ángulo con tracción, el gramil de las alas."
+effect = "Cambia el grupo de pernos y el brazo de palanca de la tracción."
+types = "PSE, DA"
+
+[[shear.fields]]
+key = "length"
+label = "Largo"
+group = "Geometría"
+what = "Largo de la placa, ángulo, asiento o rigidizador."
+how = "Escriba el largo; debe alojar el grupo de pernos: largo ≥ 2 l_ev + (filas - 1) s."
+effect = "Afecta corte, bloque de corte, soldadura y peso."
+
+[[shear.fields]]
+key = "thickness"
+label = "Espesor"
+group = "Geometría"
+what = "Espesor de la placa, ángulo, asiento o rigidizador."
+how = "Escriba el espesor; debe ser positivo."
+effect = "Afecta todas las capacidades de la placa y el tamaño máximo de soldadura."
+
+[[shear.fields]]
+key = "lev"
+label = "l_ev"
+group = "Geometría"
+what = "Distancia vertical del perno extremo al borde."
+how = "Escriba la distancia al borde superior o inferior; el mínimo es la Tabla J3.4."
+effect = "Afecta el desgarro del perno de borde y el espacio disponible."
+
+[[shear.fields]]
+key = "leh"
+label = "l_eh"
+group = "Geometría"
+what = "Distancia horizontal al borde de la placa."
+how = "En el doble ángulo, es la distancia en el ala sobre el alma de la viga; el mínimo es la Tabla J3.4."
+effect = "Afecta el desgarro y el bloque de corte."
+
+[[shear.fields]]
+key = "leh_support"
+label = "l_eh en el apoyo"
+group = "Geometría"
+what = "Distancia horizontal al borde en las alas salientes del ángulo."
+how = "Escriba l_eh del lado del apoyo; el mínimo es la Tabla J3.4."
+effect = "Afecta el desgarro del ángulo en el apoyo."
+types = "DA"
+
+[[shear.fields]]
+key = "a"
+label = "Distancia a"
+group = "Geometría"
+what = "Distancia de la soldadura a la primera línea de pernos."
+how = "Escriba a; debe ser positiva."
+effect = "Genera el momento excéntrico V·a y cambia el grupo de pernos."
+types = "PS, PSE"
+
+[[shear.fields]]
+key = "weld"
+label = "Soldadura"
+group = "Geometría"
+what = "Tamaño del filete de soldadura."
+how = "Escriba el tamaño; debe ser positivo."
+effect = "Afecta la capacidad de soldadura y el espesor mínimo del apoyo."
+
+[[shear.fields]]
+key = "support_weld"
+label = "Soldadura al apoyo"
+group = "Geometría"
+what = "Soldadura de los ángulos o del asiento al apoyo."
+how = "Escriba el tamaño; si existe, reemplaza los pernos del apoyo."
+effect = "Activa la comprobación de soldadura y desactiva los pernos del apoyo."
+types = "DA, AS"
+
+[[shear.fields]]
+key = "beam_weld"
+label = "Soldadura al alma de la viga"
+group = "Geometría"
+what = "Soldadura de los ángulos al alma de la viga."
+how = "Escriba el tamaño; requiere el ala sobre el alma."
+effect = "Reemplaza los pernos del lado de la viga por soldadura."
+types = "DA"
+
+[[shear.fields]]
+key = "beam_leg"
+label = "Ala sobre el alma"
+group = "Geometría"
+what = "Ancho del ala del ángulo soldada al alma de la viga."
+how = "Escriba el ancho; se usa con beam_weld."
+effect = "Define la geometría del grupo de soldadura en C."
+types = "DA"
+
+[[shear.fields]]
+key = "outstanding_leg"
+label = "Ala saliente"
+group = "Geometría"
+what = "Ancho del ala saliente del ángulo."
+how = "Escriba el ancho; se usa con soldadura al apoyo o tracción."
+effect = "Define el brazo de palanca de la soldadura y la tracción."
+types = "DA"
+
+[[shear.fields]]
+key = "beam_leh"
+label = "Extremo de viga a pernos"
+group = "Geometría"
+what = "Distancia del extremo de la viga a la línea de pernos."
+how = "Escriba la distancia; se usa en el desgarro del alma con tracción."
+effect = "Afecta el desgarro del alma de la viga bajo carga axial."
+types = "DA, PS, PSE"
+
+[[shear.fields]]
+key = "offset"
+label = "Desplazamiento"
+group = "Geometría"
+what = "Separación entre los ejes de dos vigas back-to-back."
+how = "Escriba el desplazamiento; active la fila de pernos compartida."
+effect = "Añade la comprobación de la fila compartida para 2R."
+default = "0"
+types = "DA"
+
+[[shear.fields]]
+key = "skew"
+label = "Esviaje"
+group = "Placa doblada"
+what = "Ángulo entre la viga y el apoyo, escrito como 6:12, grados o radianes."
+how = "Escriba el esviaje; se usa en el plano y el 3D."
+effect = "No cambia las fórmulas resistentes; cambia la geometría dibujada."
+types = "PD"
+
+[[shear.fields]]
+key = "row_distance"
+label = "Distancia entre filas"
+group = "Placa doblada"
+what = "Distancia entre las dos filas verticales de pernos."
+how = "Escriba la distancia; junto con load_offset define el reparto."
+effect = "Define el reparto A/B por estática simple."
+types = "PD"
+
+[[shear.fields]]
+key = "load_offset"
+label = "Línea de carga a fila B"
+group = "Placa doblada"
+what = "Distancia de la línea de carga a la fila de pernos B."
+how = "Escriba la distancia; debe ser menor que row_distance."
+effect = "Define share_a = load_offset/row_distance y por tanto la demanda de cada placa."
+types = "PD"
+
+[[shear.fields]]
+key = "share_a"
+label = "Fracción de carga A"
+group = "Placa doblada"
+what = "Fracción de la reacción que toma la placa A."
+how = "Escriba un valor entre 0 y 1; sustituye al reparto geométrico."
+effect = "Cambia la demanda de la placa A y, por diferencia, la de B."
+types = "PD"
+
+[[shear.fields]]
+key = "share_b"
+label = "Fracción de carga B"
+group = "Placa doblada"
+what = "Fracción de la reacción que toma la placa B."
+how = "Escriba un valor entre 0 y 1; alternativa a share_a."
+effect = "Cambia la demanda de la placa B; la memoria avisa si es menor que 0,66."
+types = "PD"
+
+[[shear.fields]]
+key = "plate_a_width"
+label = "Ancho de placa A"
+group = "Placa doblada"
+what = "Ancho de la placa A a lo largo del apoyo."
+how = "Escriba el ancho; se usa en el plano, el 3D y la lista de materiales."
+effect = "No cambia las fórmulas; cambia la geometría y el peso."
+types = "PD"
+
+[[shear.fields]]
+key = "plate_b_width"
+label = "Ancho de placa B"
+group = "Placa doblada"
+what = "Ancho de la placa B a lo largo del apoyo."
+how = "Escriba el ancho; se usa en el plano, el 3D y la lista de materiales."
+effect = "No cambia las fórmulas; cambia la geometría y el peso."
+types = "PD"
+
+[[shear.fields]]
+key = "plate_a_leg"
+label = "Ala soldada A"
+group = "Placa doblada"
+what = "Longitud del ala de la placa A soldada al alma de la viga."
+how = "Escriba la longitud; se usa en el plano y el 3D."
+effect = "No cambia las fórmulas; cambia la geometría y el peso."
+types = "PD"
+
+[[shear.fields]]
+key = "plate_b_leg"
+label = "Ala soldada B"
+group = "Placa doblada"
+what = "Longitud del ala de la placa B soldada al alma de la viga."
+how = "Escriba la longitud; se usa en el plano y el 3D."
+effect = "No cambia las fórmulas; cambia la geometría y el peso."
+types = "PD"
+
+[[shear.fields]]
+key = "bend_radius"
+label = "Radio de doblez"
+group = "Placa doblada"
+what = "Radio interior de la doblez."
+how = "Escriba el radio; se guarda para el plano y el 3D."
+effect = "No se usa en las fórmulas; el 3D lo representa con esquina aguda."
+types = "PD"
+
+[[shear.fields]]
+key = "weld_return"
+label = "Retorno de soldadura"
+group = "Placa doblada"
+what = "Longitud de los retornos superior e inferior de la soldadura en C."
+how = "Escriba la longitud; debe ser positiva."
+effect = "Cambia el coeficiente C y la capacidad del grupo de soldadura."
+types = "PD"
+
+[[shear.fields]]
+key = "weld_offset"
+label = "Línea de soldadura a carga"
+group = "Placa doblada"
+what = "Distancia de la soldadura vertical a la línea de carga."
+how = "Escriba la distancia; debe ser positiva."
+effect = "Define la excentricidad del grupo de soldadura en C."
+types = "PD"
+
+[[shear.fields]]
+key = "leg"
+label = "Ala horizontal"
+group = "Asiento"
+what = "Ancho del ala horizontal del asiento."
+how = "Escriba el ancho; debe ser positivo."
+effect = "Afecta la longitud de apoyo y la flexión del ala."
+types = "AS, AR"
+
+[[shear.fields]]
+key = "vertical_leg"
+label = "Ala vertical"
+group = "Asiento"
+what = "Altura del ala vertical del asiento soldado."
+how = "Escriba la altura; se usa con soldadura al apoyo."
+effect = "Afecta el grupo de soldadura y la geometría del asiento."
+types = "AS"
+
+[[shear.fields]]
+key = "bolts"
+label = "Pernos del asiento"
+group = "Asiento"
+what = "Número de pernos del ala vertical."
+how = "Escriba un entero positivo."
+effect = "Afecta la capacidad de los pernos del asiento."
+default = "4"
+types = "AS"
+
+[[shear.fields]]
+key = "bearing_length"
+label = "Longitud de apoyo"
+group = "Asiento"
+what = "Longitud de apoyo usada en la flexión del ala."
+how = "Déjela vacía para usar la mínima requerida."
+effect = "Cambia el momento del ala del asiento."
+types = "AS"
+
+[[shear.fields]]
+key = "width"
+label = "Ancho del rigidizador"
+group = "Asiento"
+what = "Ancho W del rigidizador del asiento rigidizado."
+how = "Escriba el ancho; debe ser positivo."
+effect = "Afecta el aplastamiento y la flexión del asiento."
+types = "AR"
+
+[[shear.fields]]
+key = "two_sided"
+label = "Asientos a ambos lados"
+group = "Asiento"
+what = "Indica si hay un asiento a cada lado del alma."
+how = "Marque la casilla si corresponde."
+effect = "Duplica la capacidad del asiento y cambia el espesor mínimo del apoyo."
+default = "false"
+types = "AR"
+
+[[shear.fields]]
+key = "seat_plate_width"
+label = "Ancho de placa de asiento"
+group = "Asiento"
+what = "Ancho de la placa de asiento del asiento rigidizado."
+how = "Déjelo vacío para usar W + 1 in."
+effect = "Cambia el peso y la geometría; la comprobación de aplastamiento usa W."
+default = "W + 1 in"
+types = "AR"
+
+[[shear.fields]]
+key = "seat_plate_thickness"
+label = "Espesor de placa de asiento"
+group = "Asiento"
+what = "Espesor de la placa de asiento."
+how = "Déjelo vacío para usar 3/8 in."
+effect = "Cambia el peso y la geometría de la placa."
+default = "3/8 in"
+types = "AR"
+
+[[shear.fields]]
+key = "seat_plate_weld"
+label = "Soldadura de placa de asiento"
+group = "Asiento"
+what = "Filete de la placa de asiento al rigidizador."
+how = "Déjelo vacío para usar 5/16 in."
+effect = "Cambia la longitud y capacidad de la soldadura."
+default = "5/16 in"
+types = "AR"
+
+[[shear.fields]]
+key = "top_angle_leg"
+label = "Ala del ángulo superior"
+group = "Asiento"
+what = "Ala del ángulo de estabilidad superior."
+how = "Déjela vacía para usar 4 in."
+effect = "Detalle estándar; no toma carga."
+default = "4 in"
+types = "AS, AR"
+
+[[shear.fields]]
+key = "top_angle_thickness"
+label = "Espesor del ángulo superior"
+group = "Asiento"
+what = "Espesor del ángulo de estabilidad."
+how = "Déjelo vacío para usar 1/4 in."
+effect = "Detalle estándar; no toma carga."
+default = "1/4 in"
+types = "AS, AR"
+
+[[shear.fields]]
+key = "top_angle_length"
+label = "Largo del ángulo superior"
+group = "Asiento"
+what = "Longitud del ángulo de estabilidad a lo largo de la viga."
+how = "Déjela vacía para usar 4 in."
+effect = "Detalle estándar; no toma carga."
+default = "4 in"
+types = "AS, AR"
+
+[[shear.fields]]
+key = "top_angle_bolts"
+label = "Pernos del ángulo superior"
+group = "Asiento"
+what = "Pernos por ala del ángulo de estabilidad apernado."
+how = "Use 2 o más."
+effect = "Detalle estándar; no toma carga."
+default = "2"
+types = "AS"
+
+[[shear.fields]]
+key = "top_angle_weld"
+label = "Soldadura del ángulo superior"
+group = "Asiento"
+what = "Filete del ángulo de estabilidad al apoyo."
+how = "Déjelo vacío para usar 3/16 in."
+effect = "Detalle estándar; no toma carga."
+default = "3/16 in"
+types = "AS, AR"
+
+[[shear.fields]]
+key = "beam_area"
+label = "Área de la viga"
+group = "Avanzado"
+what = "Área bruta de una viga genérica."
+how = "Úsela solo con secciones genéricas y carga axial."
+effect = "Se usa en las comprobaciones de tracción de la viga."
+types = "DA, PS, PSE"
+
+# Conexión de corte: menús, botones y controles -----------------------------
+
+[[shear.menus]]
+key = "menu.file.new"
+label = "Archivo → Nuevo"
+group = "Menú Archivo"
+what = "Crea un proyecto nuevo con la plantilla de placa simple."
+how = "Archivo → Nuevo (Ctrl+N)."
+effect = "Descarta el proyecto actual y carga la plantilla."
+
+[[shear.menus]]
+key = "menu.file.open"
+label = "Archivo → Abrir"
+group = "Menú Archivo"
+what = "Abre un proyecto .ocnx existente."
+how = "Archivo → Abrir (Ctrl+O) y elija el archivo."
+effect = "Carga todos los datos y recalcula la ventana."
+
+[[shear.menus]]
+key = "menu.file.recent"
+label = "Archivo → Abrir reciente"
+group = "Menú Archivo"
+what = "Lista los últimos proyectos abiertos o guardados."
+how = "Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía."
+effect = "Carga el proyecto en esta ventana si es del mismo tipo."
+
+[[shear.menus]]
+key = "menu.file.save"
+label = "Archivo → Guardar"
+group = "Menú Archivo"
+what = "Guarda el proyecto en el archivo actual."
+how = "Archivo → Guardar (Ctrl+S)."
+effect = "Escribe el .ocnx con los valores del formulario."
+
+[[shear.menus]]
+key = "menu.file.save_as"
+label = "Archivo → Guardar como"
+group = "Menú Archivo"
+what = "Guarda el proyecto con otro nombre."
+how = "Archivo → Guardar como y elija la ruta."
+effect = "Crea un archivo nuevo; no modifica el original."
+
+[[shear.menus]]
+key = "menu.calc.run"
+label = "Cálculo → Calcular"
+group = "Menú Cálculo"
+what = "Ejecuta todas las comprobaciones del proyecto."
+how = "Cálculo → Calcular o F5."
+effect = "Actualiza el resumen, las verificaciones y las figuras."
+
+[[shear.menus]]
+key = "menu.export.html"
+label = "Exportar → Memoria HTML"
+group = "Menú Exportar"
+what = "Genera la memoria de cálculo en HTML."
+how = "Exportar → Memoria HTML y elija el archivo."
+effect = "Incluye datos, combinaciones, verificaciones y figuras."
+
+[[shear.menus]]
+key = "menu.export.docx"
+label = "Exportar → Memoria Word"
+group = "Menú Exportar"
+what = "Genera la memoria de cálculo en DOCX."
+how = "Exportar → Memoria Word y elija el archivo."
+effect = "Incluye textos, tablas y figuras rasterizadas."
+
+[[shear.menus]]
+key = "menu.export.pdf"
+label = "Exportar → Memoria PDF"
+group = "Menú Exportar"
+what = "Genera la memoria de cálculo en PDF."
+how = "Exportar → Memoria PDF y elija el archivo."
+effect = "Requiere el extra de PDF; produce el documento imprimible."
+
+[[shear.menus]]
+key = "menu.export.dxf"
+label = "Exportar → Plano DXF"
+group = "Menú Exportar"
+what = "Genera el plano de la conexión."
+how = "Exportar → Plano DXF y elija el archivo."
+effect = "En II.A-10 produce la planta; en el resto, la elevación."
+
+[[shear.menus]]
+key = "menu.export.step"
+label = "Exportar → Modelo STEP"
+group = "Menú Exportar"
+what = "Exporta el modelo 3D en STEP."
+how = "Exportar → Modelo STEP y elija el archivo."
+effect = "Requiere el extra 3D; el archivo se abre en CAD."
+
+[[shear.menus]]
+key = "menu.export.stl"
+label = "Exportar → Modelo STL"
+group = "Menú Exportar"
+what = "Exporta el modelo 3D en STL."
+how = "Exportar → Modelo STL y elija el archivo."
+effect = "Requiere el extra 3D; el archivo se usa para impresión o visores."
+
+[[shear.menus]]
+key = "menu.help.guide"
+label = "Ayuda → Guía rápida"
+group = "Menú Ayuda"
+what = "Resumen del flujo de trabajo de la ventana."
+how = "Ayuda → Guía rápida o F1."
+effect = "No calcula; explica cómo introducir datos y calcular."
+
+[[shear.menus]]
+key = "menu.help.fields"
+label = "Ayuda → Referencia de campos"
+group = "Menú Ayuda"
+what = "Lista buscable de todos los campos."
+how = "Ayuda → Referencia de campos."
+effect = "Muestra qué es, cómo se usa y cómo afecta cada campo."
+
+[[shear.menus]]
+key = "menu.help.menus"
+label = "Ayuda → Menús y acciones"
+group = "Menú Ayuda"
+what = "Lista de menús, botones y acciones."
+how = "Ayuda → Menús y acciones."
+effect = "Explica qué hace cada acción y cuándo se usa."
+
+[[shear.menus]]
+key = "menu.help.checks"
+label = "Ayuda → Verificaciones"
+group = "Menú Ayuda"
+what = "Guía para leer la tabla de verificaciones."
+how = "Ayuda → Verificaciones."
+effect = "Explica demanda, capacidad, relación, estado y referencia."
+
+[[shear.menus]]
+key = "menu.help.about"
+label = "Ayuda → Acerca de"
+group = "Menú Ayuda"
+what = "Versión, licencia y aviso de responsabilidad."
+how = "Ayuda → Acerca de."
+effect = "No calcula; muestra información del programa."
+
+[[shear.menus]]
+key = "action.calculate"
+label = "Botón Calcular"
+group = "Acciones"
+what = "Ejecuta el cálculo con los datos del formulario."
+how = "Pulse Calcular o F5."
+effect = "Valida el proyecto, calcula y llena el resumen."
+
+[[shear.menus]]
+key = "tab.summary"
+label = "Pestaña Resumen"
+group = "Acciones"
+what = "Tabla de verificaciones gobernantes."
+how = "Revise la pestaña Resumen después de calcular."
+effect = "Muestra demanda, capacidad, relación y estado por combinación."
+
+[[shear.menus]]
+key = "tab.details"
+label = "Pestaña Verificaciones"
+group = "Acciones"
+what = "Traza de cálculo de cada verificación."
+how = "Seleccione una fila del resumen y revise esta pestaña."
+effect = "Muestra fórmulas, valores intermedios y cláusulas."
+
+[[shear.menus]]
+key = "tab.figures"
+label = "Pestaña Figuras"
+group = "Acciones"
+what = "Plano y figuras de la conexión."
+how = "Revise la pestaña Figuras después de calcular."
+effect = "Muestra el DXF convertido a imagen y el isométrico si está disponible."
+
+[[shear.menus]]
+key = "tab.viewer"
+label = "Pestaña 3D"
+group = "Acciones"
+what = "Visor 3D interactivo con caras ocultas y superficies sombreadas."
+how = "Gire, haga zoom o seleccione piezas; los elementos de conexión se resaltan en naranja y los pernos en gris oscuro."
+effect = "Muestra el modelo 3D; no cambia el cálculo."
+
+[[shear.menus]]
+key = "ui.type"
+label = "Selector de tipo"
+group = "Controles"
+what = "Elige la tipología de conexión."
+how = "Seleccione un tipo en el desplegable."
+effect = "Muestra solo los campos aplicables y activa sus comprobaciones."
+
+[[shear.menus]]
+key = "ui.methods"
+label = "Métodos LRFD/ASD"
+group = "Controles"
+what = "Métodos de diseño que se van a calcular."
+how = "Marque LRFD, ASD o ambos."
+effect = "Genera las combinaciones y verifica con los factores correspondientes."
+default = "LRFD"
+
+[[shear.menus]]
+key = "ui.cases"
+label = "Casos de carga"
+group = "Controles"
+what = "Cargas D, L, S, W o combinaciones propias."
+how = "Agregue filas con nombre, tipo, V y P."
+effect = "Las cargas se combinan y producen la demanda de cada verificación."
+
+[[shear.menus]]
+key = "ui.combinations"
+label = "Combinaciones"
+group = "Controles"
+what = "Combinaciones ASCE 7 o personalizadas."
+how = "Active las combinaciones de código o defina factores propios."
+effect = "Cada combinación se calcula por separado y se reporta la gobernante."
+
+# Conexión de corte: verificaciones -----------------------------------------
+
+[[shear.checks]]
+key = "checks.summary"
+label = "Resumen de verificaciones"
+group = "Verificaciones"
+what = "Tabla con la verificación gobernante de cada estado límite."
+how = "Lea de izquierda a derecha: verificación, combinación, demanda, capacidad, relación y estado."
+effect = "Una relación ≤ 1,00 es OK; > 1,00 es NG."
+
+[[shear.checks]]
+key = "checks.ratio"
+label = "Relación demanda/capacidad"
+group = "Verificaciones"
+what = "Cociente entre la demanda y la capacidad disponible."
+how = "Compare con 1,00; el valor más alto gobierna el diseño."
+effect = "Resume el margen; no es un porcentaje de utilización de la sección."
+
+[[shear.checks]]
+key = "checks.status"
+label = "Estado"
+group = "Verificaciones"
+what = "Resultado OK, NG o n/a."
+how = "OK: cumple; NG: no cumple; n/a: no aplica al tipo o a la combinación."
+effect = "Determina si la conexión cumple globalmente."
+
+[[shear.checks]]
+key = "checks.clause"
+label = "Referencia normativa"
+group = "Verificaciones"
+what = "Cláusula o tabla AISC que define la comprobación."
+how = "Use la referencia para auditar la fórmula en la memoria o en el código."
+effect = "No cambia el resultado; permite trazabilidad."
+
+[[shear.checks]]
+key = "checks.details"
+label = "Traza de cálculo"
+group = "Verificaciones"
+what = "Pasos simbólicos con sus valores y unidades."
+how = "Seleccione una verificación en el resumen y lea la pestaña Verificaciones."
+effect = "Muestra cómo se obtuvo la capacidad y qué términos gobernaron."
+
+[[shear.checks]]
+key = "checks.bent_plate"
+label = "Verificaciones de placa doblada"
+group = "Verificaciones"
+what = "Pernos, corte, bloque de corte y soldadura de cada placa A/B."
+how = "Revise las filas plate_a.* y plate_b.* del resumen."
+effect = "Cada placa se comprueba con su fracción de la reacción."
+types = "PD"
+
+[[shear.checks]]
+key = "checks.weld"
+label = "Verificaciones de soldadura"
+group = "Verificaciones"
+what = "Soldadura de filete por centro instantáneo o grupo en C."
+how = "Revise las filas weld.* y las referencias J2.4 y Tabla 8-8."
+effect = "La capacidad depende del tamaño, la longitud, la excentricidad y FEXX."
+
+[[shear.checks]]
+key = "checks.coped"
+label = "Verificaciones del destaje"
+group = "Verificaciones"
+what = "Flexión, corte y bloque de corte de la viga destajada."
+how = "Active el bloque Destaje y revise las filas coped_beam.*."
+effect = "La sección destajada y el refuerzo cambian la capacidad."
+
+# Placa base: campos --------------------------------------------------------
+
+[[base.fields]]
+key = "connection_type"
+label = "Tipo de conexión"
+group = "Conexión"
+what = "Tipo de base: placa base expuesta o base empotrada."
+how = "Seleccione Placa base expuesta, Base empotrada Tipo I o Tipo II."
+effect = "Determina qué comprobaciones se ejecutan y qué campos son obligatorios."
+default = "exposed"
+types = "PB"
+
+[[base.fields]]
+key = "column"
+label = "Columna"
+group = "Conexión"
+what = "Columna que apoya en la placa."
+how = "Elija una etiqueta AISC (W, M, S, HP, HSS o PIPE) o escriba una sección genérica W/HSS."
+effect = "Aporta d, bf, tf, tw y el material; afecta presiones, anclajes y rigidizadores."
+types = "PB"
+
+[[base.fields]]
+key = "column_grade"
+label = "Grado de columna"
+group = "Conexión"
+what = "Acero de la columna del catálogo."
+how = "Elija un acero de la biblioteca. Para HSS y PIPE use ASTM A500 Gr. C (rectangular) o (round)."
+effect = "Define Fy y Fu de la columna para las comprobaciones de placa y soldadura."
+default = "ASTM A992"
+types = "PB"
+
+[[base.fields]]
+key = "N"
+label = "Largo N"
+group = "Placa base"
+what = "Largo de la placa en la dirección del eje fuerte."
+how = "Escriba N; debe ser positivo."
+effect = "Afecta el área de apoyo, la presión, la flexión de la placa y el brazo de los anclajes."
+types = "PB"
+
+[[base.fields]]
+key = "B"
+label = "Ancho B"
+group = "Placa base"
+what = "Ancho de la placa en la dirección perpendicular."
+how = "Escriba B; debe ser positivo."
+effect = "Afecta el área de apoyo, la presión y la flexión en el eje débil."
+types = "PB"
+
+[[base.fields]]
+key = "tp"
+label = "Espesor tp"
+group = "Placa base"
+what = "Espesor de la placa base."
+how = "Escriba tp; debe ser positivo."
+effect = "Afecta la flexión de la placa, el aplastamiento y la soldadura."
+types = "PB"
+
+[[base.fields]]
+key = "plate_grade"
+label = "Acero de la placa"
+group = "Placa base"
+what = "Acero de la placa base."
+how = "Elija un acero de la biblioteca."
+effect = "Define Fy y Fu de la placa para flexión, corte y soldadura."
+default = "ASTM A572 Gr. 50"
+types = "PB"
+
+[[base.fields]]
+key = "fc"
+label = "f'c"
+group = "Concreto"
+what = "Resistencia especificada del concreto."
+how = "Escriba f'c; debe ser positiva."
+effect = "Define la capacidad de aplastamiento y las resistencias de anclaje."
+types = "PB"
+
+[[base.fields]]
+key = "A2_over_A1"
+label = "A2/A1"
+group = "Concreto"
+what = "Relación entre el área de apoyo del concreto y la de la placa."
+how = "Escriba un valor entre 1 y 4."
+effect = "Aumenta la capacidad de aplastamiento según √(A2/A1) ≤ 2."
+default = "1.0"
+types = "PB"
+
+[[base.fields]]
+key = "bearing_area"
+label = "Área de apoyo del anclaje"
+group = "Anclajes"
+what = "Área de la tuerca o placa embebida para la extracción."
+how = "Déjela vacía para usar la tuerca hexagonal pesada."
+effect = "Afecta la resistencia a la extracción del concreto."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_N"
+label = "Pedestal N"
+group = "Pedestal"
+what = "Largo del pedestal de concreto."
+how = "Escriba N del pedestal; déjelo vacío si no hay pedestal."
+effect = "Se usa para bordes, planos y límite de A2/A1."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_B"
+label = "Pedestal B"
+group = "Pedestal"
+what = "Ancho del pedestal de concreto."
+how = "Escriba B del pedestal; déjelo vacío si no hay pedestal."
+effect = "Se usa para bordes, planos y límite de A2/A1."
+types = "PB"
+
+[[base.fields]]
+key = "grout"
+label = "Mortero"
+group = "Placa base"
+what = "Espesor del mortero de nivelación."
+how = "Escriba el espesor; por defecto 1,5 in."
+effect = "Se usa en planos, en el brazo de la llave de corte y en la geometría 3D."
+default = "1.5 in"
+types = "PB"
+
+[[base.fields]]
+key = "rod_diameter"
+label = "Diámetro de anclaje"
+group = "Anclajes"
+what = "Diámetro de las barras de anclaje."
+how = "Escriba el diámetro; debe ser positivo."
+effect = "Afecta tracción, corte, flexión y capacidad del concreto."
+types = "PB"
+
+[[base.fields]]
+key = "rod_grade"
+label = "Grado de anclaje"
+group = "Anclajes"
+what = "Material de las barras de anclaje."
+how = "Elija un grado de la biblioteca de pernos."
+effect = "Define Fy, Fu y Fnt/Fnv de las barras."
+default = "ASTM F1554 Gr. 36"
+types = "PB"
+
+[[base.fields]]
+key = "rods_per_side"
+label = "Barras por lado"
+group = "Anclajes"
+what = "Número de barras en cada fila."
+how = "Escriba un entero; normalmente 2 o 4."
+effect = "Afecta la tracción total, el cortante y la geometría."
+default = "2"
+types = "PB"
+
+[[base.fields]]
+key = "f"
+label = "Distancia f"
+group = "Anclajes"
+what = "Distancia del eje de la columna a cada fila de anclajes."
+how = "Escriba la distancia; debe ser positiva."
+effect = "Define el brazo del momento y la tracción de los anclajes."
+types = "PB"
+
+[[base.fields]]
+key = "rod_spacing"
+label = "Separación de barras"
+group = "Anclajes"
+what = "Distancia entre las barras extremas de una fila."
+how = "Escriba la separación; 0 si hay una barra por fila."
+effect = "Afecta el eje débil y la distribución de tracción."
+default = "0"
+types = "PB"
+
+[[base.fields]]
+key = "rod_bending_lever"
+label = "Brazo de flexión del anclaje"
+group = "Anclajes"
+what = "Distancia del anclaje al alma o ala que sirve de apoyo."
+how = "Déjelo vacío para no verificar la flexión de la placa por anclajes."
+effect = "Activa la comprobación de flexión de la placa por los anclajes."
+types = "PB"
+
+[[base.fields]]
+key = "hef"
+label = "Empotramiento hef"
+group = "Anclajes"
+what = "Empotramiento efectivo de los anclajes."
+how = "Escriba hef; 0 desactiva arrancamiento y empotramiento mínimo."
+effect = "Afecta arrancamiento del concreto, extracción y llave de corte."
+default = "0"
+types = "PB"
+
+[[base.fields]]
+key = "washer_thickness"
+label = "Espesor de arandela"
+group = "Anclajes"
+what = "Espesor de arandelas de placa soldadas."
+how = "Déjelo vacío si no hay arandelas soldadas."
+effect = "Con arandelas soldadas, el corte se reparte entre todas las barras."
+types = "PB"
+
+[[base.fields]]
+key = "flange_weld"
+label = "Soldadura de alas"
+group = "Placa base"
+what = "Filete de soldadura en las alas de la columna."
+how = "Déjelo vacío si no se comprueba."
+effect = "Se verifica para el momento de la columna."
+types = "PB"
+
+[[base.fields]]
+key = "grout_pad"
+label = "Con mortero"
+group = "Placa base"
+what = "Indica si hay mortero bajo la placa."
+how = "Marque la casilla si existe mortero."
+effect = "Reduce la resistencia a corte del acero del anclaje (ACI 17.7.1.2.1)."
+default = "true"
+types = "PB"
+
+[[base.fields]]
+key = "friction_mu"
+label = "Coeficiente de fricción"
+group = "Placa base"
+what = "Coeficiente para el corte transmitido por fricción."
+how = "Escriba μ; por defecto 0,4."
+effect = "Afecta la fracción de corte tomada por fricción."
+default = "0.4"
+types = "PB"
+
+[[base.fields]]
+key = "cracked"
+label = "Concreto fisurado"
+group = "Concreto"
+what = "Indica concreto fisurado."
+how = "Marque la casilla si corresponde."
+effect = "Aplica el factor de ACI 17.6.2.5 a la tracción del concreto."
+default = "true"
+types = "PB"
+
+[[base.fields]]
+key = "seismic"
+label = "Opción sísmica"
+group = "Concreto"
+what = "Activa el factor sísmico de las resistencias del concreto."
+how = "Marque la casilla para diseño sísmico."
+effect = "Aplica 0,75 a las resistencias de tracción (ACI 17.10.5.4)."
+default = "false"
+types = "PB"
+
+[[base.fields]]
+key = "pressure_model"
+label = "Modelo de presión"
+group = "Concreto"
+what = "Distribución de presiones bajo la placa."
+how = "Elija rectangular (DG1 §4.3) o triangular (DG1 Apéndice B.2)."
+effect = "Cambia la presión de contacto y el momento de la placa."
+default = "rectangular"
+types = "PB"
+
+[[base.fields]]
+key = "bearing_area_model"
+label = "Área de apoyo"
+group = "Concreto"
+what = "Área usada para el aplastamiento."
+how = "Elija plate (B×N) o effective (área efectiva bajo la columna)."
+effect = "Cambia la capacidad de aplastamiento en compresión concéntrica."
+default = "plate"
+types = "PB"
+
+[[base.fields]]
+key = "edges"
+label = "Bordes del concreto"
+group = "Concreto"
+what = "Distancias de los anclajes extremos a los bordes."
+how = "Defina left, right, bottom y top; las omitidas se toman lejanas."
+effect = "Afecta arrancamiento, desprendimiento lateral y corte hacia el borde."
+default = "{}"
+types = "PB"
+
+[[base.fields]]
+key = "edges.left"
+label = "Borde izquierdo"
+group = "Concreto"
+what = "Distancia del anclaje izquierdo al borde."
+how = "Escriba la distancia; vacío = lejano."
+effect = "Afecta el concreto en tracción y corte."
+types = "PB"
+
+[[base.fields]]
+key = "edges.right"
+label = "Borde derecho"
+group = "Concreto"
+what = "Distancia del anclaje derecho al borde."
+how = "Escriba la distancia; vacío = lejano."
+effect = "Afecta el concreto en tracción y corte."
+types = "PB"
+
+[[base.fields]]
+key = "edges.bottom"
+label = "Borde inferior"
+group = "Concreto"
+what = "Distancia de la fila traccionada al borde inferior."
+how = "Escriba la distancia; vacío = lejano."
+effect = "Afecta el arrancamiento y el corte hacia el borde."
+types = "PB"
+
+[[base.fields]]
+key = "edges.top"
+label = "Borde superior"
+group = "Concreto"
+what = "Distancia de la fila comprimida al borde superior."
+how = "Escriba la distancia; vacío = lejano."
+effect = "Afecta el desprendimiento lateral."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_rebars"
+label = "Barras del pedestal"
+group = "Pedestal"
+what = "Barras longitudinales del pedestal."
+how = "Agregue filas con x, y y diámetro."
+effect = "Se usan en el revisor de interferencias y, con el bloque pedestal, como armadura de la columna corta."
+default = "[]"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_rebars.x"
+label = "x de la barra"
+group = "Pedestal"
+what = "Coordenada x de la barra en planta."
+how = "Escriba la coordenada respecto al centro."
+effect = "Se usa en el revisor y en el diseño del pedestal."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_rebars.y"
+label = "y de la barra"
+group = "Pedestal"
+what = "Coordenada y de la barra en planta."
+how = "Escriba la coordenada respecto al centro."
+effect = "Se usa en el revisor y en el diseño del pedestal."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal_rebars.diameter"
+label = "Diámetro de la barra"
+group = "Pedestal"
+what = "Diámetro de la barra longitudinal."
+how = "Escriba el diámetro."
+effect = "Se usa en el revisor y como área de acero del pedestal."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal"
+label = "Diseño del pedestal"
+group = "Pedestal"
+what = "Diseño del pedestal como columna corta según ACI 318-19."
+how = "Active el bloque y defina altura, acero y estribos; requiere pedestal_N, pedestal_B y pedestal_rebars."
+effect = "Añade flexocompresión, corte, cuantía, estribos y esbeltez del pedestal (LRFD)."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.shape"
+label = "Forma del pedestal"
+group = "Pedestal"
+what = "Rectangular o circular; otras formas se rechazan."
+how = "Elija rectangular o round; en circular, pedestal_N es el diámetro."
+effect = "Cambia la sección, las distancias al borde y A2/A1."
+default = "rectangular"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.height"
+label = "Altura del pedestal"
+group = "Pedestal"
+what = "Altura desde la zapata hasta la cara superior del pedestal."
+how = "Escriba la altura; debe ser positiva."
+effect = "El momento de diseño es M + V h; controla la esbeltez h/b ≤ 3."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.fy"
+label = "fy longitudinal"
+group = "Pedestal"
+what = "Fluencia de las barras longitudinales."
+how = "Escriba la tensión; por defecto 60 ksi."
+effect = "Afecta la resistencia a flexocompresión."
+default = "60 ksi"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.tie_diameter"
+label = "Diámetro del estribo"
+group = "Pedestal"
+what = "Diámetro de los estribos cerrados."
+how = "Escriba el diámetro o déjelo vacío si no hay estribos."
+effect = "Afecta V_s y la separación máxima."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.tie_spacing"
+label = "Separación de estribos"
+group = "Pedestal"
+what = "Separación vertical de los estribos."
+how = "Escriba la separación junto con el diámetro."
+effect = "Afecta V_s, A_v,min y la verificación de separación."
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.tie_fy"
+label = "fyt de estribos"
+group = "Pedestal"
+what = "Fluencia de los estribos (limitada a 60 ksi en corte)."
+how = "Escriba la tensión; por defecto 60 ksi."
+effect = "Afecta V_s."
+default = "60 ksi"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.tie_legs"
+label = "Ramas del estribo"
+group = "Pedestal"
+what = "Ramas de estribo que cruzan cada plano de corte."
+how = "Escriba un entero ≥ 1; por defecto 2."
+effect = "Afecta A_v y V_s."
+default = "2"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.min_ratio"
+label = "Cuantía mínima"
+group = "Pedestal"
+what = "Cuantía longitudinal mínima ρ_g."
+how = "Escriba el valor; por defecto 0,01 (ACI 318-19 §10.6.1.1)."
+effect = "Afecta la verificación de cuantía mínima."
+default = "0.01"
+types = "PB"
+
+[[base.fields]]
+key = "pedestal.lightweight"
+label = "λ del concreto"
+group = "Pedestal"
+what = "Factor de concreto liviano λ."
+how = "Escriba 1,0 para concreto de peso normal."
+effect = "Afecta V_c."
+default = "1.0"
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement"
+label = "Refuerzo de anclaje"
+group = "Refuerzo"
+what = "Refuerzo horizontal para la tracción de los anclajes."
+how = "Active el bloque y defina barras, área, fy, db, recubrimiento, desarrollo y le."
+effect = "Añade las comprobaciones de tracción y desarrollo del refuerzo."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.bars"
+label = "Barras"
+group = "Refuerzo"
+what = "Designación o número de barras del refuerzo."
+how = "Escriba la designación; se usa en la memoria y los planos."
+effect = "No cambia las fórmulas; identifica el refuerzo."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.area"
+label = "Área"
+group = "Refuerzo"
+what = "Área total del refuerzo."
+how = "Escriba el área; debe ser positiva."
+effect = "Afecta la tracción y el desarrollo del refuerzo."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.fy"
+label = "fy"
+group = "Refuerzo"
+what = "Fluencia del refuerzo."
+how = "Escriba fy; debe ser positiva."
+effect = "Afecta la capacidad de tracción del refuerzo."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.db"
+label = "db"
+group = "Refuerzo"
+what = "Diámetro de la barra de refuerzo."
+how = "Escriba db; debe ser positivo."
+effect = "Afecta el desarrollo y la separación."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.clear_cover"
+label = "Recubrimiento"
+group = "Refuerzo"
+what = "Recubrimiento libre del refuerzo."
+how = "Escriba el recubrimiento; por defecto 2 in."
+effect = "Afecta el desarrollo y la longitud disponible."
+default = "2 in"
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.anchor_to_bar"
+label = "Anclaje a barra"
+group = "Refuerzo"
+what = "Distancia del anclaje a la barra de refuerzo."
+how = "Escriba la distancia; debe ser positiva."
+effect = "Afecta la transmisión de tracción al refuerzo."
+types = "PB"
+
+[[base.fields]]
+key = "reinforcement.le"
+label = "Desarrollo le"
+group = "Refuerzo"
+what = "Longitud de desarrollo disponible."
+how = "Escriba le; debe ser positiva."
+effect = "Se compara con la longitud requerida."
+types = "PB"
+
+[[base.fields]]
+key = "weak_base"
+label = "Base sísmica débil"
+group = "Base débil"
+what = "Base con anclajes de sección reducida (upset-thread)."
+how = "Active el bloque y defina diámetro reducido, longitud y Rt."
+effect = "Añade las comprobaciones de anclajes dúctiles de la DG1 §6.4."
+types = "PB"
+
+[[base.fields]]
+key = "weak_base.reduced_diameter"
+label = "Diámetro reducido"
+group = "Base débil"
+what = "Diámetro de la sección reducida del anclaje."
+how = "Escriba el diámetro; debe ser positivo."
+effect = "Define la fluencia del anclaje dúctil."
+types = "PB"
+
+[[base.fields]]
+key = "weak_base.stretch_length"
+label = "Longitud de estiramiento"
+group = "Base débil"
+what = "Longitud de la sección reducida."
+how = "Escriba la longitud; debe ser positiva."
+effect = "Afecta la ductilidad y la capacidad de estiramiento."
+types = "PB"
+
+[[base.fields]]
+key = "weak_base.Rt"
+label = "Rt"
+group = "Base débil"
+what = "Relación de resistencia del anclaje."
+how = "Escriba Rt; por defecto 1,2."
+effect = "Afecta la sobrerresistencia usada en la jerarquía."
+default = "1.2"
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base"
+label = "Base empotrada"
+group = "Base empotrada"
+what = "Base empotrada Tipo I o Tipo II de la DG1 Capítulo 5."
+how = "Active el bloque y defina empotramiento, cimiento y placas de cara."
+effect = "Ejecuta solo las comprobaciones de la base empotrada."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.type"
+label = "Tipo de base empotrada"
+group = "Base empotrada"
+what = "I: el cimiento bajo la placa embebida no se diseña para carga vertical; II: sí se diseña (DG1 §5.2)."
+how = "Escriba I o II; por defecto I. El Tipo II necesita la placa embebida."
+effect = "El Tipo II lleva la compresión por la placa embebida en vez de las placas de cara; M_VB se toma igual a cero (conservador)."
+default = "I"
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.face_plate_weld"
+label = "Soldadura de placa de cara"
+group = "Base empotrada"
+what = "Filete de las placas de apoyo frontal a la columna (Tipo I)."
+how = "Escriba el tamaño o déjelo vacío para suponer CJP."
+effect = "Añade la verificación de la soldadura (AISC 360-22 §J2.4)."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.embedment"
+label = "Empotramiento"
+group = "Base empotrada"
+what = "Profundidad de empotramiento de la columna."
+how = "Escriba la profundidad; debe ser positiva."
+effect = "Afecta el apoyo horizontal y el momento resistente."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.foundation_width"
+label = "Ancho del cimiento"
+group = "Base empotrada"
+what = "Ancho del cimiento de concreto."
+how = "Escriba el ancho; debe ser positivo."
+effect = "Afecta el apoyo horizontal y las presiones."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.face_plate_thickness"
+label = "Espesor de placa de cara"
+group = "Base empotrada"
+what = "Espesor de las placas de apoyo frontal."
+how = "Escriba el espesor; debe ser positivo."
+effect = "Afecta el aplastamiento y la flexión de la placa de cara."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.beta1"
+label = "β1"
+group = "Base empotrada"
+what = "Factor de bloque rectangular del concreto."
+how = "Escriba β1; por defecto 0,85."
+effect = "Afecta la profundidad del bloque de compresión."
+default = "0.85"
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.base_plate_width"
+label = "Ancho de placa base"
+group = "Base empotrada"
+what = "Ancho de la placa base embebida."
+how = "Déjelo vacío para el valor por defecto."
+effect = "Afecta la geometría y el peso."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.base_plate_thickness"
+label = "Espesor de placa base"
+group = "Base empotrada"
+what = "Espesor de la placa base embebida."
+how = "Déjelo vacío para el valor por defecto."
+effect = "Afecta la geometría y el peso."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.damage_limit"
+label = "Límite de daño"
+group = "Base empotrada"
+what = "Activa el límite de daño de la base empotrada."
+how = "Marque la casilla si corresponde."
+effect = "Añade la comprobación de daño."
+default = "false"
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_top"
+label = "Refuerzo superior"
+group = "Base empotrada"
+what = "Capa de refuerzo superior del cimiento."
+how = "Defina área, fy y profundidad."
+effect = "Afecta la capacidad de la base empotrada."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_bottom"
+label = "Refuerzo inferior"
+group = "Base empotrada"
+what = "Capa de refuerzo inferior del cimiento."
+how = "Defina área, fy y profundidad."
+effect = "Afecta la capacidad de la base empotrada."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_top.area"
+label = "Área superior"
+group = "Base empotrada"
+what = "Área de acero de la capa superior."
+how = "Escriba el área; debe ser positiva."
+effect = "Afecta la flexión y el desarrollo."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_top.fy"
+label = "fy superior"
+group = "Base empotrada"
+what = "Fluencia del acero superior."
+how = "Escriba fy; debe ser positiva."
+effect = "Afecta la capacidad de la capa superior."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_top.depth"
+label = "Profundidad superior"
+group = "Base empotrada"
+what = "Profundidad de la capa superior."
+how = "Escriba la profundidad; debe ser positiva."
+effect = "Afecta el brazo útil."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_bottom.area"
+label = "Área inferior"
+group = "Base empotrada"
+what = "Área de acero de la capa inferior."
+how = "Escriba el área; debe ser positiva."
+effect = "Afecta la flexión y el desarrollo."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_bottom.fy"
+label = "fy inferior"
+group = "Base empotrada"
+what = "Fluencia del acero inferior."
+how = "Escriba fy; debe ser positiva."
+effect = "Afecta la capacidad de la capa inferior."
+types = "PB"
+
+[[base.fields]]
+key = "embedded_base.rebar_bottom.depth"
+label = "Profundidad inferior"
+group = "Base empotrada"
+what = "Profundidad de la capa inferior."
+how = "Escriba la profundidad; debe ser positiva."
+effect = "Afecta el brazo útil."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug"
+label = "Llave de corte"
+group = "Llave de corte"
+what = "Placa soldada bajo la placa base para transmitir corte."
+how = "Active el bloque y defina ancho, empotramiento, espesor, soldadura y bordes."
+effect = "Añade las comprobaciones de aplastamiento, flexión y soldadura."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.width"
+label = "Ancho de llave"
+group = "Llave de corte"
+what = "Ancho de la llave de corte."
+how = "Escriba el ancho; debe ser positivo."
+effect = "Afecta el aplastamiento y la flexión."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.embedment"
+label = "Empotramiento de llave"
+group = "Llave de corte"
+what = "Profundidad embebida de la llave."
+how = "Escriba la profundidad; debe ser positiva."
+effect = "Afecta el aplastamiento del concreto."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.thickness"
+label = "Espesor de llave"
+group = "Llave de corte"
+what = "Espesor de la placa de la llave."
+how = "Escriba el espesor; debe ser positivo."
+effect = "Afecta flexión y soldadura."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.weld"
+label = "Soldadura de llave"
+group = "Llave de corte"
+what = "Filete de soldadura de la llave a la placa base."
+how = "Escriba el tamaño; debe ser positivo."
+effect = "Afecta la capacidad de la soldadura."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.direction"
+label = "Dirección de llave"
+group = "Llave de corte"
+what = "Orientación de la llave respecto a los ejes."
+how = "Elija strong, weak o both."
+effect = "Cambia la geometría y las comprobaciones de flexión."
+default = "strong"
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.grade"
+label = "Acero de llave"
+group = "Llave de corte"
+what = "Acero de la llave de corte."
+how = "Elija un acero de la biblioteca."
+effect = "Define Fy y Fu de la llave."
+default = "ASTM A572 Gr. 50"
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.electrode"
+label = "Electrodo de llave"
+group = "Llave de corte"
+what = "Electrodo de la soldadura de la llave."
+how = "Elija un electrodo de la biblioteca."
+effect = "Define FEXX de la soldadura."
+default = "E70XX"
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.ca1"
+label = "ca1"
+group = "Llave de corte"
+what = "Distancia al borde en la dirección de la llave."
+how = "Escriba la distancia; debe ser positiva."
+effect = "Afecta el corte hacia el borde."
+types = "PB"
+
+[[base.fields]]
+key = "shear_lug.ca2"
+label = "ca2"
+group = "Llave de corte"
+what = "Distancias laterales al borde."
+how = "Escriba una o dos distancias; vacío = lejano."
+effect = "Afecta el desprendimiento lateral."
+types = "PB"
+
+# Placa base: menús, botones, controles y diálogos --------------------------
+
+[[base.ui]]
+key = "main.file.new"
+label = "Archivo → Nueva conexión"
+group = "Menú principal"
+what = "Abre la galería para crear una conexión."
+how = "Archivo → Nueva conexión (Ctrl+N)."
+effect = "Crea un proyecto de placa base o de corte con valores iniciales."
+
+[[base.ui]]
+key = "main.file.open"
+label = "Archivo → Abrir"
+group = "Menú principal"
+what = "Abre un proyecto .ocnx."
+how = "Archivo → Abrir (Ctrl+O)."
+effect = "Carga el proyecto y actualiza la ventana."
+
+[[base.ui]]
+key = "main.file.recent"
+label = "Archivo → Abrir reciente"
+group = "Menú principal"
+what = "Lista los últimos proyectos abiertos o guardados."
+how = "Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía."
+effect = "Abre el proyecto en la ventana que le corresponde."
+
+[[base.ui]]
+key = "main.file.save"
+label = "Archivo → Guardar"
+group = "Menú principal"
+what = "Guarda el proyecto actual."
+how = "Archivo → Guardar (Ctrl+S)."
+effect = "Escribe el archivo .ocnx."
+
+[[base.ui]]
+key = "main.file.save_as"
+label = "Archivo → Guardar como"
+group = "Menú principal"
+what = "Guarda con otro nombre."
+how = "Archivo → Guardar como."
+effect = "Crea un archivo nuevo."
+
+[[base.ui]]
+key = "main.file.shear"
+label = "Archivo → Nueva conexión de corte"
+group = "Menú principal"
+what = "Abre la ventana de conexiones de corte."
+how = "Archivo → Nueva conexión de corte."
+effect = "Abre una ventana independiente; no cambia el proyecto actual."
+
+[[base.ui]]
+key = "main.file.moment"
+label = "Archivo → Nueva conexión de momento"
+group = "Menú principal"
+what = "Abre la ventana de conexiones de momento viga–columna."
+how = "Archivo → Nueva conexión de momento."
+effect = "Abre una ventana independiente; no cambia el proyecto actual."
+
+[[base.ui]]
+key = "main.file.splice"
+label = "Archivo → Nuevo empalme"
+group = "Menú principal"
+what = "Abre la ventana de empalmes de viga y de columna."
+how = "Archivo → Nuevo empalme."
+effect = "Abre una ventana independiente; no cambia el proyecto actual."
+
+[[base.ui]]
+key = "main.file.import_csi"
+label = "Archivo → Importar SAP2000 / ETABS"
+group = "Menú principal"
+what = "Importa reacciones de un modelo CSI."
+how = "Archivo → Importar SAP2000 / ETABS."
+effect = "Crea proyectos por apoyo o por sección."
+
+[[base.ui]]
+key = "main.file.import_table"
+label = "Archivo → Importar Excel / CSV"
+group = "Menú principal"
+what = "Importa una tabla de reacciones."
+how = "Archivo → Importar Excel / CSV."
+effect = "Crea proyectos desde una tabla."
+
+[[base.ui]]
+key = "main.file.exit"
+label = "Archivo → Salir"
+group = "Menú principal"
+what = "Cierra la aplicación."
+how = "Archivo → Salir."
+effect = "No guarda automáticamente."
+
+[[base.ui]]
+key = "main.library.sections"
+label = "Bibliotecas → Secciones"
+group = "Menú principal"
+what = "Abre la biblioteca de secciones."
+how = "Bibliotecas → Secciones."
+effect = "Permite consultar y crear secciones propias."
+
+[[base.ui]]
+key = "main.library.materials"
+label = "Bibliotecas → Materiales"
+group = "Menú principal"
+what = "Abre la biblioteca de materiales."
+how = "Bibliotecas → Materiales."
+effect = "Permite consultar y crear aceros, pernos y electrodos."
+
+[[base.ui]]
+key = "main.units.presets"
+label = "Unidades → Preset"
+group = "Menú principal"
+what = "Cambia el sistema de unidades."
+how = "Unidades → SI, MKS o US."
+effect = "Convierte los valores guardados; no cambia el cálculo interno."
+
+[[base.ui]]
+key = "main.units.configure"
+label = "Unidades → Configurar"
+group = "Menú principal"
+what = "Configura la unidad de cada magnitud."
+how = "Unidades → Configurar por magnitud."
+effect = "Cambia la presentación y la conversión."
+
+[[base.ui]]
+key = "main.calc.run"
+label = "Cálculo → Calcular"
+group = "Menú principal"
+what = "Calcula el proyecto actual."
+how = "Cálculo → Calcular o F5."
+effect = "Actualiza el resumen y las figuras."
+
+[[base.ui]]
+key = "main.calc.optimize"
+label = "Cálculo → Optimizar"
+group = "Menú principal"
+what = "Optimiza N, B y tp."
+how = "Cálculo → Optimizar N, B y tp."
+effect = "Busca dimensiones menores con las mismas comprobaciones."
+types = "PB"
+
+[[base.ui]]
+key = "main.calc.optimize_global"
+label = "Cálculo → Optimización global"
+group = "Menú principal"
+what = "Busca la placa más liviana probando diámetros y número de anclajes."
+how = "Cálculo → Optimización global…; revise la traza y pulse Aplicar."
+effect = "Cambia N, B, tp, f, separación, diámetro y barras por lado."
+types = "PB"
+
+[[base.ui]]
+key = "main.calc.batch"
+label = "Cálculo → Calcular lote"
+group = "Menú principal"
+what = "Calcula una carpeta de proyectos."
+how = "Cálculo → Calcular lote."
+effect = "Genera reportes y un resumen Excel."
+
+[[base.ui]]
+key = "main.export.html"
+label = "Exportar → HTML"
+group = "Menú principal"
+what = "Memoria en HTML."
+how = "Exportar → Memoria HTML."
+effect = "Incluye datos, verificaciones y figuras."
+
+[[base.ui]]
+key = "main.export.docx"
+label = "Exportar → Word"
+group = "Menú principal"
+what = "Memoria en DOCX."
+how = "Exportar → Memoria Word."
+effect = "Incluye tablas y figuras."
+
+[[base.ui]]
+key = "main.export.pdf"
+label = "Exportar → PDF"
+group = "Menú principal"
+what = "Memoria en PDF."
+how = "Exportar → Memoria PDF."
+effect = "Requiere el extra de PDF."
+
+[[base.ui]]
+key = "main.export.dxf"
+label = "Exportar → DXF"
+group = "Menú principal"
+what = "Plano en DXF."
+how = "Exportar → Plano DXF."
+effect = "Genera la planta y elevación."
+
+[[base.ui]]
+key = "main.export.step"
+label = "Exportar → STEP"
+group = "Menú principal"
+what = "Modelo 3D en STEP."
+how = "Exportar → Modelo STEP."
+effect = "Requiere el extra 3D."
+
+[[base.ui]]
+key = "main.export.stl"
+label = "Exportar → STL"
+group = "Menú principal"
+what = "Modelo 3D en STL."
+how = "Exportar → Modelo STL."
+effect = "Requiere el extra 3D."
+
+[[base.ui]]
+key = "main.help.guide"
+label = "Ayuda → Guía rápida"
+group = "Menú principal"
+what = "Resumen del flujo de trabajo."
+how = "Ayuda → Guía rápida o F1."
+effect = "No calcula; explica el uso."
+
+[[base.ui]]
+key = "main.help.fields"
+label = "Ayuda → Referencia de campos"
+group = "Menú principal"
+what = "Lista buscable de campos de placa base."
+how = "Ayuda → Referencia de campos."
+effect = "Explica qué es, cómo se usa y cómo afecta cada campo."
+
+[[base.ui]]
+key = "main.help.menus"
+label = "Ayuda → Menús y acciones"
+group = "Menú principal"
+what = "Lista de menús y acciones."
+how = "Ayuda → Menús y acciones."
+effect = "Explica qué hace cada acción."
+
+[[base.ui]]
+key = "main.help.checks"
+label = "Ayuda → Verificaciones"
+group = "Menú principal"
+what = "Guía para leer las verificaciones."
+how = "Ayuda → Verificaciones."
+effect = "Explica demanda, capacidad, relación y estado."
+
+[[base.ui]]
+key = "main.help.about"
+label = "Ayuda → Acerca de"
+group = "Menú principal"
+what = "Versión y licencia."
+how = "Ayuda → Acerca de."
+effect = "No calcula."
+
+[[base.ui]]
+key = "base.ui.type"
+label = "Tipo de base"
+group = "Controles"
+what = "Selector de placa base expuesta o empotrada."
+how = "Seleccione el tipo."
+effect = "Muestra solo los bloques aplicables."
+default = "exposed"
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.column"
+label = "Selector de columna"
+group = "Controles"
+what = "Columna del proyecto."
+how = "Elija una sección del catálogo (W, M, S, HP, HSS o PIPE) o escriba una genérica."
+effect = "Aporta la geometría y el material."
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.methods"
+label = "Métodos"
+group = "Controles"
+what = "Métodos LRFD/ASD."
+how = "Marque uno o ambos."
+effect = "Genera las combinaciones y factores."
+default = "LRFD"
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.cases"
+label = "Casos de carga"
+group = "Controles"
+what = "Cargas del proyecto."
+how = "Agregue filas con nombre, tipo, P, V, M."
+effect = "Producen la demanda de cada verificación."
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.combinations"
+label = "Combinaciones"
+group = "Controles"
+what = "Combinaciones ASCE 7 o propias."
+how = "Active las de código o defina factores."
+effect = "Cada combinación se calcula por separado."
+types = "PB"
+
+[[base.ui]]
+key = "comb.live_factor"
+label = "Factor de carga viva"
+group = "Controles"
+what = "Factor que multiplica el caso L en las combinaciones generadas."
+how = "Escriba el factor; por defecto 1,0."
+effect = "Cambia la demanda de las combinaciones con L."
+default = "1.0"
+types = "PB"
+
+[[base.ui]]
+key = "comb.SDS"
+label = "SDS"
+group = "Controles"
+what = "Aceleración espectral de diseño para sismo."
+how = "Escriba SDS en g si hay casos sísmicos."
+effect = "Genera las combinaciones sísmicas y su demanda."
+types = "PB"
+
+[[base.ui]]
+key = "comb.rho"
+label = "ρ"
+group = "Controles"
+what = "Factor de redundancia sísmica."
+how = "Escriba ρ; por defecto 1,0."
+effect = "Multiplica la demanda sísmica."
+default = "1.0"
+types = "PB"
+
+[[base.ui]]
+key = "comb.omega0"
+label = "Ω0"
+group = "Controles"
+what = "Factor de sobrerresistencia sísmica."
+how = "Escriba Ω0 si aplica."
+effect = "Afecta las combinaciones sísmicas."
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.geometry"
+label = "Pestaña Geometría"
+group = "Controles"
+what = "Editor gráfico de planta y elevación."
+how = "Arrastre los bordes o edite los campos."
+effect = "Cambia N, B, tp y la posición de anclajes."
+types = "PB"
+
+[[base.ui]]
+key = "base.ui.viewer"
+label = "Pestaña 3D"
+group = "Controles"
+what = "Visor 3D del conjunto."
+how = "Gire, haga zoom o seleccione piezas."
+effect = "No cambia el cálculo."
+types = "PB"
+
+[[base.ui]]
+key = "geometry.undo"
+label = "Deshacer"
+group = "Controles"
+what = "Deshace el último cambio del editor gráfico."
+how = "Pulse Deshacer o Ctrl+Z."
+effect = "Restaura la geometría anterior; no cambia el cálculo hasta Calcular."
+types = "PB"
+
+[[base.ui]]
+key = "geometry.redo"
+label = "Rehacer"
+group = "Controles"
+what = "Rehace el cambio deshecho."
+how = "Pulse Rehacer o Ctrl+Y."
+effect = "Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular."
+types = "PB"
+
+[[base.ui]]
+key = "viewer.refresh"
+label = "Actualizar 3D"
+group = "Controles"
+what = "Regenera el modelo 3D con los datos del formulario, aunque no hayan cambiado."
+how = "Pulse Actualizar en la pestaña 3D."
+effect = "Regenera la malla; no cambia el cálculo."
+
+[[base.ui]]
+key = "viewer.auto"
+label = "Actualización automática del 3D"
+group = "Controles"
+what = "Regenera el modelo 3D poco después de cada cambio del formulario, sin pulsar Calcular ni Actualizar."
+how = "Marque o desmarque Automático en la barra del visor 3D."
+effect = "Solo cambia la vista; el cálculo sigue usando Calcular."
+
+[[base.ui]]
+key = "viewer.reset"
+label = "Ajustar vista"
+group = "Controles"
+what = "Restablece la cámara del visor 3D."
+how = "Pulse Ajustar vista."
+effect = "Solo cambia la vista; no modifica el modelo."
+types = "PB"
+
+[[base.ui]]
+key = "viewer.iso"
+label = "Vista isométrica"
+group = "Controles"
+what = "Vuelve a la vista isométrica de la conexión."
+how = "Pulse Iso en la barra del visor 3D."
+effect = "Solo cambia la cámara; no modifica el modelo."
+
+[[base.ui]]
+key = "viewer.front"
+label = "Vista frontal"
+group = "Controles"
+what = "Mira la conexión de frente."
+how = "Pulse Frente en la barra del visor 3D."
+effect = "Solo cambia la cámara; no modifica el modelo."
+
+[[base.ui]]
+key = "viewer.top"
+label = "Vista en planta"
+group = "Controles"
+what = "Mira la conexión desde arriba."
+how = "Pulse Planta en la barra del visor 3D."
+effect = "Solo cambia la cámara; no modifica el modelo."
+
+[[base.ui]]
+key = "viewer.side"
+label = "Vista lateral"
+group = "Controles"
+what = "Mira la conexión de lado."
+how = "Pulse Lado en la barra del visor 3D."
+effect = "Solo cambia la cámara; no modifica el modelo."
+
+[[base.ui]]
+key = "viewer.explode"
+label = "Separar conexión"
+group = "Controles"
+what = "Separa la viga del apoyo para ver placas, ángulos y asientos."
+how = "Marque Separar en la pestaña 3D."
+effect = "Solo cambia la vista; no modifica el proyecto ni la exportación."
+
+[[base.ui]]
+key = "dialog.import_csi.file"
+label = "Archivo CSI"
+group = "Diálogos"
+what = "Archivo Excel exportado de SAP2000 o ETABS."
+how = "Elija el archivo con Examinar."
+effect = "Es la fuente de apoyos, reacciones y casos."
+
+[[base.ui]]
+key = "dialog.import_csi.output"
+label = "Carpeta de salida"
+group = "Diálogos"
+what = "Carpeta donde se escribirán los proyectos."
+how = "Elija la carpeta con Carpeta."
+effect = "No cambia el cálculo; determina dónde se guardan los .ocnx."
+
+[[base.ui]]
+key = "dialog.import_csi.group"
+label = "Agrupación"
+group = "Diálogos"
+what = "Criterio para crear proyectos: por apoyo o por sección de columna."
+how = "Seleccione Joint o Column."
+effect = "Cambia el número de proyectos y su agrupación."
+default = "joint"
+
+[[base.ui]]
+key = "dialog.import_csi.loads"
+label = "Cargas"
+group = "Diálogos"
+what = "Usar casos de carga o combinaciones del programa."
+how = "Seleccione Casos o Combinaciones."
+effect = "Cambia qué reacciones se importan y si OpenConex vuelve a combinar."
+default = "cases"
+
+[[base.ui]]
+key = "dialog.import_csi.include"
+label = "Incluir"
+group = "Diálogos"
+what = "Expresión regular para filtrar casos o combinaciones."
+how = "Escriba un patrón, por ejemplo ^CU."
+effect = "Limita los casos importados."
+
+[[base.ui]]
+key = "dialog.import_csi.envelopes"
+label = "Envolventes"
+group = "Diálogos"
+what = "Incluir envolventes Max/Min al importar combinaciones."
+how = "Marque la casilla si existen envolventes."
+effect = "Añade casos de demanda extrema."
+default = "false"
+
+[[base.ui]]
+key = "dialog.import_csi.method"
+label = "Método"
+group = "Diálogos"
+what = "Método de las combinaciones importadas."
+how = "Elija LRFD, ASD o el del proyecto."
+effect = "Cambia los factores de las combinaciones importadas."
+
+[[base.ui]]
+key = "dialog.import_csi.accept"
+label = "Importar / Cancelar"
+group = "Diálogos"
+what = "Acciones del diálogo de importación CSI."
+how = "Pulse Importar para escribir los proyectos o Cancelar para salir."
+effect = "Importar crea los .ocnx; Cancelar no escribe nada."
+
+[[base.ui]]
+key = "dialog.import_table.file"
+label = "Archivo"
+group = "Diálogos"
+what = "Tabla Excel o CSV con reacciones."
+how = "Elija el archivo con Examinar."
+effect = "Es la fuente de los proyectos."
+
+[[base.ui]]
+key = "dialog.import_table.output"
+label = "Carpeta de salida"
+group = "Diálogos"
+what = "Carpeta donde se escribirán los proyectos."
+how = "Elija la carpeta con Carpeta."
+effect = "Determina dónde se guardan los .ocnx."
+
+[[base.ui]]
+key = "dialog.import_table.units"
+label = "Unidades de números"
+group = "Diálogos"
+what = "Unidades de los valores de la tabla."
+how = "Seleccione el sistema de la tabla."
+effect = "Convierte las reacciones importadas."
+
+[[base.ui]]
+key = "dialog.import_table.accept"
+label = "Importar / Cancelar"
+group = "Diálogos"
+what = "Acciones del diálogo de importación de tabla."
+how = "Pulse Importar para escribir los proyectos o Cancelar para salir."
+effect = "Importar crea los .ocnx; Cancelar no escribe nada."
+
+[[base.ui]]
+key = "dialog.units.kind"
+label = "Unidad por magnitud"
+group = "Diálogos"
+what = "Unidad de presentación de una magnitud."
+how = "Elija la unidad para longitud, fuerza, tensión, etc."
+effect = "Convierte el formulario y el proyecto; no cambia el cálculo interno."
+
+[[base.ui]]
+key = "dialog.units.apply"
+label = "Aplicar / Cancelar"
+group = "Diálogos"
+what = "Acciones del diálogo de unidades."
+how = "Pulse Aplicar para convertir o Cancelar para salir."
+effect = "Aplicar convierte los valores del formulario y del proyecto."
+
+[[base.ui]]
+key = "dialog.batch.folder"
+label = "Carpeta de proyectos"
+group = "Diálogos"
+what = "Carpeta con archivos .ocnx."
+how = "Elija la carpeta con Carpeta."
+effect = "Define los proyectos del lote."
+
+[[base.ui]]
+key = "dialog.batch.output"
+label = "Carpeta de salida"
+group = "Diálogos"
+what = "Carpeta de reportes del lote."
+how = "Elija la carpeta con Carpeta."
+effect = "Determina dónde se escriben los reportes."
+
+[[base.ui]]
+key = "dialog.batch.recursive"
+label = "Subcarpetas"
+group = "Diálogos"
+what = "Incluir proyectos en subcarpetas."
+how = "Marque la casilla si corresponde."
+effect = "Amplía el conjunto de proyectos del lote."
+default = "false"
+
+[[base.ui]]
+key = "dialog.batch.formats"
+label = "Salidas del lote"
+group = "Diálogos"
+what = "Formatos de reporte que se generan."
+how = "Marque HTML, DOCX, PDF, DXF, STEP o STL."
+effect = "Cada formato añade archivos al lote."
+
+[[base.ui]]
+key = "dialog.batch.accept"
+label = "Calcular / Cancelar"
+group = "Diálogos"
+what = "Acciones del diálogo de lote."
+how = "Pulse Calcular para procesar la carpeta o Cancelar para salir."
+effect = "Calcular escribe los reportes; Cancelar detiene el lote."
+
+[[base.ui]]
+key = "dialog.library.sections.type"
+label = "Tipo de sección"
+group = "Diálogos"
+what = "Filtro por familia de sección."
+how = "Elija Todas, Personalizadas o una familia AISC."
+effect = "Filtra la tabla de secciones."
+default = "Todas"
+
+[[base.ui]]
+key = "dialog.library.sections.search"
+label = "Buscar sección"
+group = "Diálogos"
+what = "Texto de búsqueda por etiqueta."
+how = "Escriba parte de la etiqueta, por ejemplo W12."
+effect = "Filtra la tabla de secciones."
+
+[[base.ui]]
+key = "dialog.library.sections.new"
+label = "Nueva sección"
+group = "Diálogos"
+what = "Crea una sección genérica para el proyecto."
+how = "Pulse Nueva sección y defina tipo, nombre y dimensiones."
+effect = "Añade la sección a la biblioteca del proyecto."
+
+[[base.ui]]
+key = "dialog.library.sections.use"
+label = "Usar sección"
+group = "Diálogos"
+what = "Selecciona la sección para el proyecto."
+how = "Elija una fila y pulse Usar sección."
+effect = "Cambia la columna y sus propiedades."
+
+[[base.ui]]
+key = "dialog.library.materials.tabs"
+label = "Pestañas de materiales"
+group = "Diálogos"
+what = "Aceros, pernos y electrodos."
+how = "Cambie de pestaña para consultar cada biblioteca."
+effect = "No cambia el cálculo; permite elegir materiales."
+
+[[base.ui]]
+key = "dialog.library.materials.new"
+label = "Nuevo material"
+group = "Diálogos"
+what = "Crea un acero, perno o electrodo propio."
+how = "Pulse Nuevo en la pestaña correspondiente."
+effect = "Añade el material a la biblioteca del proyecto."

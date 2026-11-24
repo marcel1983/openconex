@@ -80,6 +80,7 @@ jobs:
           /tmp/wheel-env/bin/pip install dist/*.whl
           cd /tmp
           /tmp/wheel-env/bin/openconex --version
+          /tmp/wheel-env/bin/python -c "from openconex.help import help_text; help_text('beam')"
           /tmp/wheel-env/bin/openconex baseplate "$GITHUB_WORKSPACE/examples/base_plate_dg1_4_7_11.ocnx" -o /tmp/wheel-out --html --docx --dxf
 
   outputs:
