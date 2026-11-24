@@ -480,11 +480,11 @@ def test_import_supports_dialog(qapp, tmp_path):
 def test_gui_import_from_csi(qapp, tmp_path, monkeypatch):
     window = MainWindow()
     window.open_project(EXAMPLE)
-    monkeypatch.setattr("openconex.gui.app.import_supports", lambda path: object())
+    monkeypatch.setattr("openconex.gui.base_plate.import_supports", lambda path: object())
     monkeypatch.setattr(
-        "openconex.gui.app.base_plate_projects",
+        "openconex.gui.base_plate.base_plate_projects",
         lambda data, template, *args, **kwargs: ({"J1": template}, []))
-    monkeypatch.setattr("openconex.gui.app.QMessageBox.information",
+    monkeypatch.setattr("openconex.gui.base_plate.QMessageBox.information",
                         lambda *args: None)
     paths = window.import_from_csi("model.xlsx", str(tmp_path / "out"),
                                    "joint", "cases")
@@ -549,7 +549,7 @@ def test_gui_pedestal_design_round_trip(qapp, tmp_path):
 
 def test_gui_global_optimization_uses_the_shared_engine(qapp, monkeypatch):
     from openconex.connections.base_plate.optimize import steel_weight
-    from openconex.gui import app as app_module
+    from openconex.gui import base_plate as base_plate_module
     from openconex.gui.optimization import OptimizationDialog, trace_rows
 
     window = MainWindow()
@@ -562,7 +562,7 @@ def test_gui_global_optimization_uses_the_shared_engine(qapp, monkeypatch):
         return QDialog.DialogCode.Accepted
 
     monkeypatch.setattr(OptimizationDialog, "exec", accept)
-    monkeypatch.setattr(app_module, "OptimizationDialog", OptimizationDialog)
+    monkeypatch.setattr(base_plate_module, "OptimizationDialog", OptimizationDialog)
     window.optimize_global()
     assert shown["rows"] > 5
     after = window.project.base_plate_model()
