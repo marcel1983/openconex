@@ -127,7 +127,7 @@ def _support_element(beam_dir: tuple[float, float], column: ImportedColumn) -> s
     return "flange" if along_2 >= along_3 else "web"
 
 
-def import_beam_ends(source: str | Path | dict[str, Table],
+def import_beam_ends(source: str | Path | dict[str, Table],  # noqa: C901
                      pinned_only: bool = True) -> CsiBeamImport:
     """Beam ends with a shear connection, their support and end forces.
 

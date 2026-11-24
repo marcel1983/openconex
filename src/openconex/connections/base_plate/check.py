@@ -854,7 +854,7 @@ def _concrete_shear(bp: BasePlate, components: tuple[float, float], V: float,
     return out
 
 
-def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
+def check_base_plate(bp: BasePlate, forces: Forces, method: Method,  # noqa: C901
                      combo: str = "") -> list[CheckResult]:
     """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
     col = bp.column

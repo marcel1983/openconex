@@ -489,7 +489,7 @@ class Project(_Input):
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
     @model_validator(mode="after")
-    def _consistent_loads(self) -> Project:
+    def _consistent_loads(self) -> Project:  # noqa: C901
         case_names = [case.name for case in self.cases]
         repeated = _repeated(case_names)
         if repeated:
@@ -680,7 +680,7 @@ class Project(_Input):
             if self.quantity(value, Kind.STRESS) <= 0:
                 raise ValueError("pedestal bar strengths must be positive")
 
-    def _validate_shear(self) -> Project:
+    def _validate_shear(self) -> Project:  # noqa: C901
         sc = self.shear_connection
         missing = sc.missing()
         if missing:

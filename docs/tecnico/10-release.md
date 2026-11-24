@@ -11,7 +11,7 @@ OpenConex se publica en GitHub Releases con tres paquetes portables, tres instal
 ```bash
 ruff check .
 python -m mypy
-python -m pytest --cov=openconex --cov-fail-under=55
+python -m pytest --cov=openconex --cov-fail-under=88   # con los extras dev,pdf,3d,gui-test
 python -m pytest tests/outputs -ra
 python tools/check_licenses.py
 python tools/check_release_version.py v0.5.21   # la etiqueta que se va a crear
@@ -42,6 +42,7 @@ El workflow tiene estos trabajos:
 
 ### Paquete portable
 
+- Instala las dependencias con las versiones exactas de `packaging/constraints-portable.txt` (`pip install -c …`), así dos construcciones de la misma etiqueta llevan las mismas bibliotecas. Para actualizarlas: instalar `.[gui,pdf,3d]` y `pyinstaller` en un entorno virtual limpio con Python 3.12, copiar `pip freeze --exclude-editable` (sin `setuptools`) al archivo, correr la suite completa y comprobar que existen wheels para Windows x64, macOS ARM64 y Linux x86_64.
 - Construye la GUI (`OpenConex`) y la CLI (`openconex-cli/openconex`) con PyInstaller `--onedir`.
 - Ejecuta la prueba de humo sobre las carpetas de `dist`: versión, assets, conversión de unidades, placa base, conexión de corte, conexión de momento, placa de extremo de momento y columna rigidizada.
 - Empaqueta el ZIP, extrae ese mismo ZIP y vuelve a probar la GUI, los assets, la CLI, la exportación PDF y el modelo STEP desde el paquete extraído. Así se detectan symlinks rotos o bibliotecas que falten.

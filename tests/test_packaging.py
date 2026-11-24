@@ -232,3 +232,25 @@ def test_pypi_readme_has_absolute_links():
     relative_attrs = re.findall(r'(?:src|href)="(?!https?://|#)[^"]+"', text)
     assert not relative_links
     assert not relative_attrs
+
+
+def test_portable_build_uses_exact_versions():
+    """release.yml installs the portable dependencies from the constraints file,
+    and every runtime dependency of the package is pinned there."""
+    import re
+    import tomllib
+
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    assert 'pip install -c packaging/constraints-portable.txt -e ".[gui,pdf,3d]"' in release
+    pins = {}
+    for line in (ROOT / "packaging" / "constraints-portable.txt").read_text(
+            encoding="utf-8").splitlines():
+        if line.strip() and not line.startswith("#"):
+            name, version = line.split("==")
+            pins[re.sub(r"[-_.]+", "-", name).lower()] = version
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    required = [*project["dependencies"], *project["optional-dependencies"]["gui"],
+                *project["optional-dependencies"]["3d"], "pyinstaller"]
+    names = {re.sub(r"[-_.]+", "-", re.split(r"[<>=!~\[ ;]", dep)[0]).lower()
+             for dep in required}
+    assert not names - pins.keys(), f"not pinned: {sorted(names - pins.keys())}"

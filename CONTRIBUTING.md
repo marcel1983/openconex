@@ -28,7 +28,8 @@ git commit -s -m "mensaje"
 - **Documentación:** se actualiza en el mismo pull request que el cambio (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`). La guía está en [docs/tecnico/08-mantener-documentacion.md](docs/tecnico/08-mantener-documentacion.md); `tests/test_docs.py` falla si algo queda sin documentar.
 - **Estilo:** `ruff check .`
 - **Tipos:** `python -m mypy` revisa de forma gradual `units.py`, `core/checks.py` y `core/loads.py`; al añadir módulos, amplíe `[tool.mypy]` en `pyproject.toml`.
-- **Cobertura:** `python -m pytest --cov=openconex --cov-fail-under=55`; el umbral está en la CI y debe subir cuando se añadan pruebas.
+- **Cobertura:** `python -m pytest --cov=openconex --cov-fail-under=88` con los extras `dev,pdf,3d,gui-test` (sin ellos se omiten las pruebas de la GUI y del 3D y la cobertura baja); el umbral está en la CI y debe subir cuando se añadan pruebas.
+- **Complejidad:** ruff rechaza funciones con complejidad ciclomática mayor que 25 (`C901`). Las pocas que la superan hoy llevan `# noqa: C901` hasta que se dividan; no agregue más.
 - **Dependencias:** Dependabot abre PR semanales para `pip` y GitHub Actions; revise y fusione solo con la CI en verde.
 
 ### Pull requests encadenados
@@ -67,4 +68,4 @@ Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
 - **Units:** the engine works in N, mm and MPa floats; convert only at the boundaries via `openconex.units`.
 - **Checks** return a `CheckResult` with a full trace and code clause.
 - **Documentation** is updated in the same pull request as the change (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`); `tests/test_docs.py` fails when something is left undocumented.
-- Run `python -m pytest`, `python -m mypy`, `ruff check .` and `python -m pytest --cov=openconex --cov-fail-under=55` before opening a pull request. Dependabot opens weekly PRs for `pip` and GitHub Actions.
+- Run `python -m pytest`, `python -m mypy`, `ruff check .` and `python -m pytest --cov=openconex --cov-fail-under=88` (with the `dev,pdf,3d,gui-test` extras) before opening a pull request. Functions above cyclomatic complexity 25 fail `ruff` (`C901`). Dependabot opens weekly PRs for `pip` and GitHub Actions.
