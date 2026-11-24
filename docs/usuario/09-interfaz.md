@@ -232,7 +232,7 @@ Los números sin unidad usan el sistema elegido en el diálogo; también se pued
 
 ## Ayuda y tooltips
 
-Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. El menú **Ayuda** incluye:
+Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. En las ventanas de momento y de empalme tienen tooltip los datos del proyecto, el idioma, las unidades, los métodos, los casos de carga y **Calcular**. El menú **Ayuda** de la ventana principal y de la de corte incluye:
 
 - **Guía rápida** (`F1`): flujo de trabajo.
 - **Referencia de campos**: lista buscable de todos los campos.
@@ -241,6 +241,17 @@ Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip
 - **Acerca de**: versión y licencia.
 
 La misma información está en [Referencia de la conexión de corte](10-referencia-conexion-corte.md) y [Referencia de la placa base](11-referencia-placa-base.md), generadas desde la fuente de ayuda del programa. La referencia de placa base incluye además los diálogos auxiliares (importación, unidades, bibliotecas y lote).
+
+## Ventanas de conexión
+
+Las conexiones de corte, de momento y los empalmes se editan en ventanas propias que funcionan igual:
+
+- Los menús **Archivo** (nuevo, abrir, abrir reciente, guardar, guardar como), **Cálculo** (`F5`) y **Exportar** (HTML, Word, PDF, DXF, STEP o STL; se activan después de calcular).
+- El grupo **Proyecto**: nombre, número, cliente, ingeniero, revisión, fecha, idioma, unidades y métodos LRFD/ASD.
+- Al cambiar **Unidades**, los valores del formulario y de los casos se convierten al sistema nuevo, así que un número escrito sin unidad conserva su magnitud.
+- Si el proyecto usa un sistema de unidades propio (no un preset), **Unidades** muestra `(del proyecto)` y al guardar se conserva ese sistema. Elegir un preset convierte los valores y reemplaza el sistema propio.
+- Si se abre un proyecto de otro tipo, la ventana avisa qué es (por ejemplo, «Ese proyecto es la placa base») y dónde abrirlo.
+- Las pestañas **Resumen**, **Verificaciones**, **Figuras** y **3D**. El 3D se actualiza poco después de cada cambio.
 
 ## Conexiones de corte
 
