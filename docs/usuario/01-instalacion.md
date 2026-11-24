@@ -4,7 +4,7 @@ Hay tres formas de instalar OpenConex: un **instalador** o un **ejecutable porta
 
 ## Instaladores
 
-Desde la versión 0.5.21, cada release publica también un instalador por plataforma:
+Desde la versión 0.5.22, cada release publica también un instalador por plataforma:
 
 | Plataforma | Archivo | Instalación |
 |---|---|---|

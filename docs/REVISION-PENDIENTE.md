@@ -1,6 +1,6 @@
 # Revisión pendiente
 
-Estado al 2026-11-23, sobre `main`, versión 0.5.21. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
+Estado al 2026-11-24, sobre `main`, versión 0.5.22. Cada tarea indica qué hay que hacer y los puntos a verificar antes de cerrarla. Prioridad: **A** (corregir pronto), **B** (siguiente iteración), **C** (cuando se pueda).
 
 ## 0 ter. Completado en 0.5.0
 
@@ -48,6 +48,7 @@ Estado al 2026-11-23, sobre `main`, versión 0.5.21. Cada tarea indica qué hay 
 - [x] Release 0.5.13.
 - [x] Release 0.5.14.
 - [x] Release 0.5.15.
+- [x] Release 0.5.22: validación de la opción sísmica AISC 358 contra el Seismic Design Manual y la DG39 (#196), migraciones explícitas del formato `.ocnx`, conversión de unidades en las ventanas de momento y empalme (#186), registro de familias y ventana común de conexiones, mypy en `core`, `kernel`, `connections` e `io`, y versiones fijas para los portables. Primera release publicada con instaladores (la 0.5.21 quedó como etiqueta sin release).
 - [x] Release 0.5.21: instaladores MSI, .dmg y AppImage, publicación en PyPI preparada y comprobación de la versión en el release; opción sísmica AISC 358-22 (experimental, pendiente de cotejo); empalmes apernados de viga y columna (F7); pedestal como columna, base empotrada Tipo II y optimización global de la placa base; visor 3D que sigue al formulario.
 - [x] Release 0.5.20: aviso de cambios sin guardar, proyectos recientes, preferencias entre sesiones y arrastrar y soltar archivos en la interfaz.
 - [x] Release 0.5.19: visor 3D OpenGL (fases 1–2), z-buffer y MSAA, respaldo a QPainter, vistas estándar y vista separada de la conexión.

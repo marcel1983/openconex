@@ -4,7 +4,7 @@
 
 ## 1. Alcance
 
-Se revisan las verificaciones implementadas en OpenConex 0.5.21:
+Se revisan las verificaciones implementadas en OpenConex 0.5.22:
 
 - placa base y anclajes (DG1 3.ª ed., ACI 318-19);
 - conexiones de corte de la F5 (Manual AISC Parte 10 y ejemplos II.A-1A a II.A-19B);
@@ -12,7 +12,7 @@ Se revisan las verificaciones implementadas en OpenConex 0.5.21:
 - comprobaciones de la biblioteca (pernos, soldaduras, elementos, fuerzas concentradas);
 - salidas HTML, DOCX, PDF, DXF, STEP, STL y GUI.
 
-No se revisan las funciones que aún no existen (compresión axial en el doble ángulo, la placa de extremo y los asientos, flexión de la viga) ni las añadidas en 0.5.21 que todavía no tienen su sección en este informe: la opción sísmica AISC 358 (experimental, pendiente de cotejo con el Seismic Design Manual), los empalmes de la F7 (validados contra un cálculo independiente, `docs/verificacion/calculos/empalmes.py`) y la ampliación de la placa base (pedestal como columna, base empotrada Tipo II y optimización global).
+No se revisan las funciones que aún no existen (compresión axial en el doble ángulo, la placa de extremo y los asientos, flexión de la viga) ni las añadidas en 0.5.21 que todavía no tienen su sección en este informe: la opción sísmica AISC 358 (validada contra los ejemplos 4.3.6 y 4.3.7 del Seismic Design Manual y 6.3-2 y 6.3-3 de la Design Guide 39; ver `docs/tecnico/07-validacion.md`), los empalmes de la F7 (validados contra un cálculo independiente, `docs/verificacion/calculos/empalmes.py`) y la ampliación de la placa base (pedestal como columna, base empotrada Tipo II y optimización global).
 
 ## 2. Método
 
