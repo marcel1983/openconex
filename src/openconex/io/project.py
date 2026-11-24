@@ -1162,7 +1162,8 @@ def load_project(path: str | Path) -> Project:
     if version > FORMAT_VERSION:
         raise ValueError(f"project format {version} is newer than this OpenConex "
                          f"({FORMAT_VERSION}); please update")
-    return Project.model_validate(data)
+    from openconex.io.migrations import migrate
+    return Project.model_validate(migrate(data, FORMAT_VERSION))
 
 
 def save_project(project: Project, path: str | Path) -> None:
