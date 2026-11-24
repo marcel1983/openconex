@@ -1,89 +1,35 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # Copyright (C) 2026 The OpenConex contributors
-"""Reusable DXF and 3D export helpers for GUI and batch runs."""
+"""Reusable DXF and 3D export helpers for GUI and batch runs.
+
+Each family writes its own outputs (:mod:`openconex.families`); these helpers
+only pick the family of the project.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
-from openconex.drawing.embedded_base import write_embedded_base_dxf
-from openconex.geometry3d.base_plate import (
-    Part,
-    base_plate_parts,
-    embedded_base_parts,
-    write_step,
-    write_stl,
-)
+from openconex.families import family_of
 from openconex.io.project import Project
-from openconex.units import Kind
+
+if TYPE_CHECKING:
+    from openconex.geometry3d.base_plate import Part
 
 __all__ = ["parts_3d", "write_3d", "write_dxf"]
 
 
 def write_dxf(project: Project, path: str | Path) -> None:
-    """Write the drawing of ``project`` (base plate, shear or moment connection, splice)."""
-    if project.splice is not None:
-        from openconex.drawing.splice import SpliceDrawing, write_splice_dxf
-        info = project.info
-        write_splice_dxf(project.splice_model(), path, info.unit_system(), info.language,
-                         SpliceDrawing(title=info.name, number=info.number,
-                                       revision=info.revision, date=info.date))
-        return
-    if project.moment_connection is not None:
-        from openconex.drawing.moment import MomentDrawing, write_moment_dxf
-        info = project.info
-        write_moment_dxf(project.moment_model(), path, info.unit_system(), info.language,
-                         MomentDrawing(title=info.name, number=info.number,
-                                       revision=info.revision, date=info.date))
-        return
-    if project.shear_connection is not None:
-        from openconex.drawing.shear import ShearDrawing, write_shear_dxf
-        info = project.info
-        write_shear_dxf(project.shear_model(), path, info.unit_system(), info.language,
-                        ShearDrawing(title=info.name, number=info.number,
-                                     revision=info.revision, date=info.date))
-        return
-    bp = project.base_plate_model()
-    info = project.info
-    data = project.base_plate
-    options = BasePlateDrawing(
-        pedestal_N=(None if data.pedestal_N is None else
-                    project.quantity(data.pedestal_N, Kind.LENGTH)),
-        pedestal_B=(None if data.pedestal_B is None else
-                    project.quantity(data.pedestal_B, Kind.LENGTH)),
-        grout=project.quantity(data.grout, Kind.LENGTH),
-        title=info.name, number=info.number, revision=info.revision, date=info.date)
-    if bp.embedded_base is not None:
-        write_embedded_base_dxf(bp, path, info.unit_system(), info.language, options)
-    else:
-        write_base_plate_dxf(bp, path, info.unit_system(), info.language, options)
+    """Write the drawing of ``project`` (any connection family)."""
+    family_of(project).write_dxf(project, path)
 
 
 def parts_3d(project: Project) -> list[Part]:
     """Solids of ``project`` for the viewer and the STEP/STL writers."""
-    if project.splice is not None:
-        from openconex.geometry3d.splice import splice_parts
-        return splice_parts(project.splice_model())
-    if project.moment_connection is not None:
-        from openconex.geometry3d.moment import moment_parts
-        return moment_parts(project.moment_model())
-    if project.shear_connection is not None:
-        from openconex.geometry3d.shear import shear_parts
-        return shear_parts(project.shear_model())
-    bp = project.base_plate_model()
-    if bp.embedded_base is not None:
-        return embedded_base_parts(bp)
-    data = project.base_plate
-    return base_plate_parts(
-        bp, project.quantity(data.grout, Kind.LENGTH),
-        None if data.pedestal_N is None else
-        project.quantity(data.pedestal_N, Kind.LENGTH),
-        None if data.pedestal_B is None else
-        project.quantity(data.pedestal_B, Kind.LENGTH))
+    return family_of(project).parts(project)
 
 
 def write_3d(project: Project, path: str | Path, kind: str) -> None:
     """Write a STEP or STL model of ``project``."""
-    parts = parts_3d(project)
-    (write_step if kind == "step" else write_stl)(parts, path)
+    family_of(project).write_3d(project, path, kind)

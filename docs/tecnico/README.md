@@ -14,3 +14,4 @@ Cómo está hecho OpenConex y cómo calcula. Está dirigida a quien revisa los r
 10. [Publicar una release](10-release.md): versión, etiqueta, workflow, checksums y paquetes portables.
 11. [Conexión sesgada de doble placa doblada (II.A-10)](11-ii-a-10.md): modelo, comprobaciones, validación y fase 2 pendiente.
 12. [Propuesta de visor 3D](12-propuesta-render-3d.md): z-buffer OpenGL, vista separada, aristas y criterios de aceptación.
+13. [Agregar una familia de conexiones](13-agregar-familia.md): el registro `FAMILIES` y los pasos para una familia nueva.

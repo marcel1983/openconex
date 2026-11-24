@@ -39,6 +39,7 @@ from openconex.connections.base_plate.optimize import optimize
 from openconex.core.loads import Method
 from openconex.core.materials import BOLTS, ELECTRODES, STEELS
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
+from openconex.families import ConnectionFamily, family, family_of
 from openconex.gui.advanced import BasePlateAdvancedForm
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
 from openconex.gui.branding import app_icon, show_splash, splash_pixmap
@@ -1211,17 +1212,9 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         except Exception as exc:
             QMessageBox.critical(self, "Error al abrir", str(exc))
             return
-        if project.shear_connection is not None:
+        if family_of(project).window is not None:
             add_recent_project(path)
-            self.open_shear_window(project, path)
-            return
-        if project.moment_connection is not None:
-            add_recent_project(path)
-            self.open_moment_window(project, path)
-            return
-        if project.splice is not None:
-            add_recent_project(path)
-            self.open_splice_window(project, path)
+            self.open_family_window(family_of(project), project, path)
             return
         if not self.maybe_save():
             return
@@ -1277,43 +1270,34 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
             if not self.maybe_save():
                 return
             self.open_project_model(selection.project)
-        elif selection.kind == "shear" and selection.project is not None:
-            self.open_shear_window(selection.project)
-        elif selection.kind == "splice" and selection.project is not None:
-            self.open_splice_window(selection.project)
+        elif selection.project is not None:
+            self.open_family_window(family_of(selection.project), selection.project)
+
+    def open_family_window(self, fam: ConnectionFamily, project: Project | None = None,
+                           path: str | Path | None = None):
+        """Open a project of a family with its own window (shear, moment, splice)."""
+        window = fam.window_class()(project, path, parent=self)
+        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        attr = f"_{fam.command}_windows"
+        setattr(self, attr, [*getattr(self, attr, []), window])
+        window.show()
+        self.statusBar().showMessage(f"Se abrió {fam.name_es} en otra ventana.")
+        return window
 
     def open_shear_window(self, project: Project | None = None,
                           path: str | Path | None = None):
         """Open a beam-end shear connection project in its own window."""
-        from openconex.gui.shear import ShearWindow
-        window = ShearWindow(project, path, parent=self)
-        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self._shear_windows = [*getattr(self, "_shear_windows", []), window]
-        window.show()
-        self.statusBar().showMessage("Conexión de corte abierta en otra ventana.")
-        return window
+        return self.open_family_window(family("shear_connection"), project, path)
 
     def open_moment_window(self, project: Project | None = None,
                            path: str | Path | None = None):
         """Open a beam-to-column moment connection project in its own window."""
-        from openconex.gui.moment import MomentWindow
-        window = MomentWindow(project, path, parent=self)
-        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self._moment_windows = [*getattr(self, "_moment_windows", []), window]
-        window.show()
-        self.statusBar().showMessage("Conexión de momento abierta en otra ventana.")
-        return window
+        return self.open_family_window(family("moment_connection"), project, path)
 
     def open_splice_window(self, project: Project | None = None,
                            path: str | Path | None = None):
         """Open a beam or column splice project in its own window."""
-        from openconex.gui.splice import SpliceWindow
-        window = SpliceWindow(project, path, parent=self)
-        window.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        self._splice_windows = [*getattr(self, "_splice_windows", []), window]
-        window.show()
-        self.statusBar().showMessage("Empalme abierto en otra ventana.")
-        return window
+        return self.open_family_window(family("splice"), project, path)
 
     def import_csi_dialog(self, file: str = "") -> None:
         if self.project is None:
@@ -1829,6 +1813,16 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         write_3d(self.project, path, kind)
 
 
+def _start_window(project: Project, path: Path | None = None):
+    """The window that opens ``project`` at start-up, according to its family."""
+    fam = family_of(project)
+    if fam.window is not None:
+        return fam.window_class()(project, path)
+    window = MainWindow()
+    window.open_project_model(project, path)
+    return window
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv if argv is None else argv
     no_splash = "--no-splash" in args[1:]
@@ -1881,32 +1875,9 @@ def main(argv: list[str] | None = None) -> int:
                 QMessageBox.critical(None, "Error al abrir", str(exc))
                 return 1
             add_recent_project(selection.path)
-            if project.shear_connection is not None:
-                from openconex.gui.shear import ShearWindow
-
-                window = ShearWindow(project, selection.path)
-            elif project.moment_connection is not None:
-                from openconex.gui.moment import MomentWindow
-
-                window = MomentWindow(project, selection.path)
-            elif project.splice is not None:
-                from openconex.gui.splice import SpliceWindow
-
-                window = SpliceWindow(project, selection.path)
-            else:
-                window = MainWindow()
-                window.open_project_model(project, selection.path)
-        elif selection.kind == "base_plate" and selection.project is not None:
-            window = MainWindow()
-            window.open_project_model(selection.project)
-        elif selection.kind == "shear" and selection.project is not None:
-            from openconex.gui.shear import ShearWindow
-
-            window = ShearWindow(selection.project)
-        elif selection.kind == "splice" and selection.project is not None:
-            from openconex.gui.splice import SpliceWindow
-
-            window = SpliceWindow(selection.project)
+            window = _start_window(project, selection.path)
+        elif selection.project is not None:
+            window = _start_window(selection.project)
         if window is None:
             return 0
         window.show()

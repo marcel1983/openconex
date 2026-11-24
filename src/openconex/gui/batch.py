@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.families import family_of
 from openconex.gui.exporting import write_3d, write_dxf
 from openconex.help import help_text
 from openconex.io.project import Project, load_project
@@ -137,19 +138,7 @@ def _calculate_one(path: Path, out: Path | None, formats: tuple[str, ...],
     except Exception as exc:
         return BatchResult(path=path, name=path.stem, status="ERROR", error=str(exc))
     check, combo, ratio = _summary(report)
-    if project.splice is not None:
-        sp = project.splice
-        members = [m for m in (sp.beam, sp.upper, sp.lower) if m is not None]
-        column_text = " / ".join(m if isinstance(m, str) else m.label() for m in members)
-    elif project.moment_connection is not None:
-        beam = project.moment_connection.beam
-        column_text = beam if isinstance(beam, str) else beam.label()
-    elif project.shear_connection is not None:
-        beam = project.shear_connection.beam
-        column_text = beam if isinstance(beam, str) else beam.label()
-    else:
-        column = project.base_plate.column
-        column_text = column if isinstance(column, str) else column.label()
+    column_text = family_of(project).members(project)
     result = BatchResult(path=path, name=project.info.name or path.stem,
                          status="OK" if report.ok else "NG", column=column_text,
                          ratio=ratio, check=check, combo=combo)

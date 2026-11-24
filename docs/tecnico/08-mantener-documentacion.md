@@ -7,6 +7,7 @@
 | Si el cambio… | Actualice |
 |---|---|
 | agrega o cambia un campo del `.ocnx` | `docs/usuario/03-proyecto.md` (y un ejemplo en `examples/` si es una función nueva) |
+| agrega una familia de conexiones | la entrada en `FAMILIES` (`families.py`) y los pasos de `docs/tecnico/13-agregar-familia.md`, incluida su fila en la tabla |
 | agrega o cambia un comando u opción | `docs/usuario/04-comandos.md` |
 | agrega o cambia una verificación | `docs/tecnico/04-verificaciones.md`, `docs/tecnico/03-placa-base.md` (si la usa la placa base) y los títulos en `i18n/es.toml` y `en.toml` |
 | agrega un tipo de conexión de corte | `ShearType` y el despachador en `connections/shear/check.py`, `REQUIRED` en `io/shear_project.py`, `TYPE_FIELDS` en `gui/shear.py`, `shear_layout` en `drawing/shear.py`, la tabla de campos de `docs/usuario/03-proyecto.md` y `shear.type` en `i18n` |

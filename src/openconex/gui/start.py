@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from openconex.families import family_of
 from openconex.gui.session import last_directory, recent_projects
 from openconex.gui.start_data import FAMILIES, Family, Subtype, build_project
 from openconex.io.project import Project
@@ -42,7 +43,8 @@ DATA_PACKAGE = "openconex.data"
 @dataclass
 class StartSelection:
     kind: str
-    """``base_plate``, ``shear``, ``splice`` or ``open``."""
+    """``base_plate``, ``open`` or the command of the family (``shear``, ``moment``,
+    ``splice``): see :mod:`openconex.families`."""
     project: Project | None = None
     path: Path | None = None
 
@@ -259,7 +261,8 @@ class ConnectionStartDialog(QDialog):
         except Exception as exc:
             QMessageBox.critical(self, "No se pudo crear el proyecto", str(exc))
             return
-        kind = {"base_plate": "base_plate", "splice": "splice"}.get(self._family.id, "shear")
+        fam = family_of(project)
+        kind = "base_plate" if fam.key == "base_plate" else fam.command
         self.selection = StartSelection(kind=kind, project=project)
         self.accept()
 
