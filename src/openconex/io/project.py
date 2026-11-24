@@ -509,11 +509,10 @@ class Project(_Input):
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
-        blocks = [b for b in (self.base_plate, self.shear_connection, self.moment_connection,
-                              self.splice) if b is not None]
+        from openconex.families import KEYS
+        blocks = [key for key in KEYS if getattr(self, key) is not None]
         if len(blocks) != 1:
-            raise ValueError("a project needs exactly one of base_plate, shear_connection, "
-                             "moment_connection or splice")
+            raise ValueError("a project needs exactly one of " + ", ".join(KEYS))
         if self.moment_connection is None and any(
                 self.quantity(c.column_V, Kind.FORCE) or self.quantity(c.column_P, Kind.FORCE)
                 for c in self.cases):

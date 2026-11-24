@@ -32,24 +32,69 @@ def _units(_: argparse.Namespace) -> int:
     return 0
 
 
+def _load(args: argparse.Namespace, key: str):
+    """The project of ``args.project`` if it holds the ``key`` family, else ``None``."""
+    from openconex.families import family, family_of
+    from openconex.io.project import load_project
+
+    project = load_project(args.project)
+    wanted, found = family(key), family_of(project)
+    if found is not wanted:
+        print(f"error: this project has no {wanted.label}; it holds a {found.label}, "
+              f"use 'openconex {found.command}'", file=sys.stderr)
+        return None
+    if args.lang:
+        project.info.language = args.lang
+    if args.units:
+        project.info.units = args.units
+    return project
+
+
+def _write_outputs(args: argparse.Namespace, project) -> int:
+    """Build the report, write the requested outputs and print the summary."""
+    from pathlib import Path
+
+    from openconex.families import family_of
+
+    fam = family_of(project)
+    report = fam.build_report(project)
+    out = Path(args.output or Path(args.project).with_suffix(""))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    written = []
+    if args.html:
+        from openconex.report.html import write_html
+        written.append(write_html(report, out.with_suffix(".html")))
+    if args.docx:
+        from openconex.report.docx import write_docx
+        written.append(write_docx(report, out.with_suffix(".docx")))
+    if args.pdf:
+        from openconex.report.pdf import write_pdf
+        written.append(write_pdf(report, out.with_suffix(".pdf")))
+    if args.dxf:
+        written.append(fam.write_dxf(project, out.with_suffix(".dxf")))
+    if args.step or args.stl:
+        from openconex.geometry3d.base_plate import write_step, write_stl
+        parts = fam.parts(project)
+        if args.step:
+            written.append(write_step(parts, out.with_suffix(".step")))
+        if args.stl:
+            written.append(write_stl(parts, out.with_suffix(".stl")))
+    for row in report.summary:
+        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
+    for path in written:
+        print(f"-> {path}")
+    return 0 if report.ok else 1
+
+
 def _baseplate(args: argparse.Namespace) -> int:
     """Check a base plate project and write the requested outputs."""
     from pathlib import Path
 
     from openconex.connections.base_plate.optimize import optimize
-    from openconex.drawing.base_plate import BasePlateDrawing, write_base_plate_dxf
-    from openconex.io.project import load_project
-    from openconex.report.builder import build_base_plate_report
 
-    project = load_project(args.project)
-    if project.base_plate is None:
-        print("error: this project has no base plate; use 'openconex shear', "
-              "'openconex moment' or 'openconex splice'", file=sys.stderr)
+    project = _load(args, "base_plate")
+    if project is None:
         return 2
-    if args.lang:
-        project.info.language = args.lang
-    if args.units:
-        project.info.units = args.units
     if args.optimize:
         if project.base_plate.embedded_base is not None:
             print("error: --optimize is only available for exposed base plates",
@@ -68,55 +113,7 @@ def _baseplate(args: argparse.Namespace) -> int:
             Path(args.save).parent.mkdir(parents=True, exist_ok=True)
             save_project(project, args.save)
             print(f"-> {args.save}")
-    report = build_base_plate_report(project)
-    out = Path(args.output or Path(args.project).with_suffix(""))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    written = []
-    if args.html:
-        from openconex.report.html import write_html
-        written.append(write_html(report, out.with_suffix(".html")))
-    if args.docx:
-        from openconex.report.docx import write_docx
-        written.append(write_docx(report, out.with_suffix(".docx")))
-    if args.pdf:
-        from openconex.report.pdf import write_pdf
-        written.append(write_pdf(report, out.with_suffix(".pdf")))
-    bp, data, info = project.base_plate_model(), project.base_plate, project.info
-
-    def q(value):
-        return None if value is None else project.quantity(value, Kind.LENGTH)
-
-    if args.dxf:
-        options = BasePlateDrawing(
-            pedestal_N=q(data.pedestal_N), pedestal_B=q(data.pedestal_B), grout=q(data.grout),
-            title=info.name, number=info.number, revision=info.revision, date=info.date)
-        if bp.embedded_base is not None:
-            from openconex.drawing.embedded_base import write_embedded_base_dxf
-            written.append(write_embedded_base_dxf(
-                bp, out.with_suffix(".dxf"), info.unit_system(), info.language, options))
-        else:
-            written.append(write_base_plate_dxf(bp, out.with_suffix(".dxf"),
-                                                info.unit_system(), info.language,
-                                                options))
-    if args.step or args.stl:
-        from openconex.geometry3d.base_plate import (
-            base_plate_parts,
-            embedded_base_parts,
-            write_step,
-            write_stl,
-        )
-        parts = (embedded_base_parts(bp, q(data.pedestal_B))
-                 if bp.embedded_base is not None else
-                 base_plate_parts(bp, q(data.grout), q(data.pedestal_N), q(data.pedestal_B)))
-        if args.step:
-            written.append(write_step(parts, out.with_suffix(".step")))
-        if args.stl:
-            written.append(write_stl(parts, out.with_suffix(".stl")))
-    for row in report.summary:
-        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
-    for path in written:
-        print(f"-> {path}")
-    return 0 if report.ok else 1
+    return _write_outputs(args, project)
 
 
 def _print_trace(result, units) -> None:
@@ -133,163 +130,27 @@ def _print_trace(result, units) -> None:
 
 def _shear(args: argparse.Namespace) -> int:
     """Check a beam-end shear connection project and write the requested outputs."""
-    from pathlib import Path
-
-    from openconex.drawing.shear import ShearDrawing, write_shear_dxf
-    from openconex.io.project import load_project
-    from openconex.report.shear import build_shear_report
-
-    project = load_project(args.project)
-    if project.shear_connection is None:
-        print("error: this project has no shear connection; use 'openconex baseplate', "
-              "'openconex moment' or 'openconex splice'", file=sys.stderr)
+    project = _load(args, "shear_connection")
+    if project is None:
         return 2
     if project.shear_connection.type.value == "skewed_bent_plate" and \
             (args.dxf or args.step or args.stl):
         print("error: the DXF and 3D outputs of the skewed bent-plate connection are phase 2",
               file=sys.stderr)
         return 2
-    if args.lang:
-        project.info.language = args.lang
-    if args.units:
-        project.info.units = args.units
-    report = build_shear_report(project)
-    out = Path(args.output or Path(args.project).with_suffix(""))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    written = []
-    if args.html:
-        from openconex.report.html import write_html
-        written.append(write_html(report, out.with_suffix(".html")))
-    if args.docx:
-        from openconex.report.docx import write_docx
-        written.append(write_docx(report, out.with_suffix(".docx")))
-    if args.pdf:
-        from openconex.report.pdf import write_pdf
-        written.append(write_pdf(report, out.with_suffix(".pdf")))
-    info = project.info
-    conn = project.shear_model()
-    if args.dxf:
-        options = ShearDrawing(title=info.name, number=info.number, revision=info.revision,
-                               date=info.date)
-        written.append(write_shear_dxf(conn, out.with_suffix(".dxf"), info.unit_system(),
-                                       info.language, options))
-    if args.step or args.stl:
-        from openconex.geometry3d.base_plate import write_step, write_stl
-        from openconex.geometry3d.shear import shear_parts
-        parts = shear_parts(conn)
-        if args.step:
-            written.append(write_step(parts, out.with_suffix(".step")))
-        if args.stl:
-            written.append(write_stl(parts, out.with_suffix(".stl")))
-    for row in report.summary:
-        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
-    for path in written:
-        print(f"-> {path}")
-    return 0 if report.ok else 1
+    return _write_outputs(args, project)
 
 
 def _moment(args: argparse.Namespace) -> int:
     """Check a beam-to-column moment connection project and write the requested outputs."""
-    from pathlib import Path
-
-    from openconex.drawing.moment import MomentDrawing, write_moment_dxf
-    from openconex.io.project import load_project
-    from openconex.report.moment import build_moment_report
-
-    project = load_project(args.project)
-    if project.moment_connection is None:
-        print("error: this project has no moment connection; use 'openconex baseplate', "
-              "'openconex shear' or 'openconex splice'", file=sys.stderr)
-        return 2
-    if args.lang:
-        project.info.language = args.lang
-    if args.units:
-        project.info.units = args.units
-    report = build_moment_report(project)
-    out = Path(args.output or Path(args.project).with_suffix(""))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    written = []
-    if args.html:
-        from openconex.report.html import write_html
-        written.append(write_html(report, out.with_suffix(".html")))
-    if args.docx:
-        from openconex.report.docx import write_docx
-        written.append(write_docx(report, out.with_suffix(".docx")))
-    if args.pdf:
-        from openconex.report.pdf import write_pdf
-        written.append(write_pdf(report, out.with_suffix(".pdf")))
-    info = project.info
-    conn = project.moment_model()
-    if args.dxf:
-        options = MomentDrawing(title=info.name, number=info.number, revision=info.revision,
-                               date=info.date)
-        written.append(write_moment_dxf(conn, out.with_suffix(".dxf"), info.unit_system(),
-                                       info.language, options))
-    if args.step or args.stl:
-        from openconex.geometry3d.base_plate import write_step, write_stl
-        from openconex.geometry3d.moment import moment_parts
-        parts = moment_parts(conn)
-        if args.step:
-            written.append(write_step(parts, out.with_suffix(".step")))
-        if args.stl:
-            written.append(write_stl(parts, out.with_suffix(".stl")))
-    for row in report.summary:
-        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
-    for path in written:
-        print(f"-> {path}")
-    return 0 if report.ok else 1
+    project = _load(args, "moment_connection")
+    return 2 if project is None else _write_outputs(args, project)
 
 
 def _splice(args: argparse.Namespace) -> int:
     """Check a beam or column splice project and write the requested outputs."""
-    from pathlib import Path
-
-    from openconex.drawing.splice import SpliceDrawing, write_splice_dxf
-    from openconex.io.project import load_project
-    from openconex.report.splice import build_splice_report
-
-    project = load_project(args.project)
-    if project.splice is None:
-        print("error: this project has no splice; use 'openconex baseplate', "
-              "'openconex shear' or 'openconex moment'", file=sys.stderr)
-        return 2
-    if args.lang:
-        project.info.language = args.lang
-    if args.units:
-        project.info.units = args.units
-    report = build_splice_report(project)
-    out = Path(args.output or Path(args.project).with_suffix(""))
-    out.parent.mkdir(parents=True, exist_ok=True)
-    written = []
-    if args.html:
-        from openconex.report.html import write_html
-        written.append(write_html(report, out.with_suffix(".html")))
-    if args.docx:
-        from openconex.report.docx import write_docx
-        written.append(write_docx(report, out.with_suffix(".docx")))
-    if args.pdf:
-        from openconex.report.pdf import write_pdf
-        written.append(write_pdf(report, out.with_suffix(".pdf")))
-    info = project.info
-    conn = project.splice_model()
-    if args.dxf:
-        options = SpliceDrawing(title=info.name, number=info.number, revision=info.revision,
-                                date=info.date)
-        written.append(write_splice_dxf(conn, out.with_suffix(".dxf"), info.unit_system(),
-                                        info.language, options))
-    if args.step or args.stl:
-        from openconex.geometry3d.base_plate import write_step, write_stl
-        from openconex.geometry3d.splice import splice_parts
-        parts = splice_parts(conn)
-        if args.step:
-            written.append(write_step(parts, out.with_suffix(".step")))
-        if args.stl:
-            written.append(write_stl(parts, out.with_suffix(".stl")))
-    for row in report.summary:
-        print(f"{row.status.upper():4} {row.cells[4]:>7}  {row.cells[0]} ({row.cells[1]})")
-    for path in written:
-        print(f"-> {path}")
-    return 0 if report.ok else 1
+    project = _load(args, "splice")
+    return 2 if project is None else _write_outputs(args, project)
 
 
 def _supports(args: argparse.Namespace) -> int:
