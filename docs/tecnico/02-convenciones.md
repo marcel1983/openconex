@@ -53,3 +53,12 @@ Los títulos y textos de la memoria y los planos están en `i18n/es.toml` y `i18
 - **Complejidad:** ruff rechaza funciones con complejidad ciclomática mayor que 25 (`C901`, `[tool.ruff.lint.mccabe]` en `pyproject.toml`). Las siete que la superaban en noviembre de 2026 (`check_base_plate`, `build_base_plate_report`, `Project._consistent_loads`, `Project._validate_shear`, `MainWindow._project_from_form`, `import_beam_ends` y `_draw` de `drawing/splice.py`) llevan `# noqa: C901` hasta que se dividan. No se agregan excepciones nuevas: una función nueva que pase el límite se divide en pasos con nombre.
 - **Cobertura:** la CI mide la cobertura con los extras `dev,pdf,3d,gui-test` y exige 88 %. Sin esos extras se omiten las pruebas de la GUI y del 3D y el número baja.
 - **Resultados de los ejemplos:** una refactorización no cambia ningún resultado de `examples/` (`tests/test_examples_snapshot.py`, ver [validación](07-validacion.md)).
+
+## Versiones del formato `.ocnx`
+
+`FORMAT_VERSION` (`io/project.py`) sube cada vez que cambia el esquema del proyecto, y cada versión se anota en `CHANGES` de `io/migrations.py` (lo exige `tests/outputs/test_project.py`). `load_project` llama a `migrate` antes de validar con pydantic:
+
+- **Cambio aditivo** (un campo nuevo con valor por defecto): basta con la entrada en `CHANGES`; los archivos viejos toman el valor por defecto.
+- **Cambio no aditivo** (renombrar o quitar un campo, cambiar su significado o su unidad por defecto): además se registra `STEPS[n]`, una función que reescribe el JSON de la versión `n − 1` como versión `n`, y se agrega a `examples/` o a las pruebas un archivo de la versión anterior que compruebe el resultado.
+- `examples/` conserva archivos de las versiones 9 a 14, así que la prueba de caracterización (`tests/test_examples_snapshot.py`) comprueba que los archivos viejos siguen dando los mismos resultados. No se actualiza el `format_version` de un ejemplo sin motivo.
+- Dos ramas que suben la versión en paralelo deben resolverlo al fusionar: la segunda toma el número siguiente y su propia entrada en `CHANGES` (pasó con la 13 y la 14).

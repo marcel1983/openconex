@@ -2,6 +2,8 @@
 
 Un proyecto es un archivo JSON con los bloques `info`, `materials` (opcional), `bolts` (opcional), `electrodes` (opcional), `sections` (opcional), `base_plate`, `shear_connection`, `moment_connection` o `splice` (uno de los cuatro), `cases` y `combinations`. Las cantidades se escriben como texto con su unidad (`"25 mm"`, `"3/4 in"`, `"1-1/2 in"`, `"120 kN*m"`). Un número sin unidad se interpreta en el sistema de `info.units`. Los campos opcionales pueden omitirse.
 
+`format_version` indica la versión del formato con que se guardó el archivo. OpenConex abre archivos de cualquier versión anterior (los actualiza al leerlos, sin cambiar sus resultados) y los guarda en la versión actual. Un archivo de una versión más nueva que el programa se rechaza con un mensaje que pide actualizar OpenConex.
+
 Ejemplos completos en `examples/`:
 
 | Archivo | Muestra |

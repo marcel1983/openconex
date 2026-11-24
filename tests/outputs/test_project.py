@@ -107,6 +107,41 @@ def test_older_format_still_loads(tmp_path):
     assert json.loads(path.read_text())["format_version"] == FORMAT_VERSION
 
 
+def test_every_format_version_is_recorded():
+    """Raising FORMAT_VERSION needs an entry in io/migrations.CHANGES (and a
+    step in STEPS when the change is not purely additive)."""
+    from openconex.io.migrations import CHANGES, FIRST_RECORDED, STEPS
+    assert sorted(CHANGES) == list(range(FIRST_RECORDED, FORMAT_VERSION + 1))
+    assert all(FIRST_RECORDED < version <= FORMAT_VERSION for version in STEPS)
+
+
+def test_migration_steps_run_in_order(monkeypatch):
+    from openconex.io import migrations
+    calls = []
+
+    def step(version):
+        def upgrade(data):
+            calls.append(version)
+            return {**data, "seen": [*data.get("seen", []), version]}
+        return upgrade
+
+    monkeypatch.setattr(migrations, "STEPS", {11: step(11), 13: step(13), 15: step(15)})
+    data = migrations.migrate({"format_version": 10}, 14)
+    assert calls == [11, 13]
+    assert data["seen"] == [11, 13]
+    assert data["format_version"] == 10
+    assert migrations.migrate({"format_version": 14}, 14) == {"format_version": 14}
+
+
+def test_examples_cover_old_formats():
+    """The examples keep files of every recorded version, so the snapshot test
+    (tests/test_examples_snapshot.py) checks that old files give the same results."""
+    from openconex.io.migrations import FIRST_RECORDED
+    versions = {json.loads(p.read_text(encoding="utf-8")).get("format_version")
+                for p in (EXAMPLE.parent).glob("*.ocnx")}
+    assert FIRST_RECORDED in versions
+
+
 def test_newer_format_is_rejected(tmp_path):
     data = json.loads(EXAMPLE.read_text())
     data["format_version"] = 99
