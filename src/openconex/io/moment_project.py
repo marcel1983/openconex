@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -24,7 +25,7 @@ from openconex.connections.moment.seismic import (
     nominal_depth,
     section_properties,
 )
-from openconex.core.model import BoltSpec, IShape
+from openconex.core.model import BoltSpec, IShape, required
 from openconex.core.shapes import aisc_shapes
 from openconex.io.shear_project import BoltInput
 from openconex.units import Kind, to_internal
@@ -280,12 +281,11 @@ def _section(project: Project, section: str | WSectionInput, grade: str) -> tupl
 def moment_model(project: Project) -> MomentConnection:
     """Engine model of the project's moment connection."""
     mc = project.require_moment_connection()
-    assert mc is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     library = project.material_library()
     bolts = project.bolt_library()
 
-    def q(value, kind=L, default=0.0):
+    def q(value: Quantity | None, kind: Kind = L, default: float = 0.0) -> float:
         return default if value is None else project.quantity(value, kind)
 
     def bolt(data: BoltInput) -> BoltSpec:
@@ -366,7 +366,7 @@ def _properties(section: str | WSectionInput, shape: IShape) -> tuple[float, flo
 def needs_plate_ratio(mc: MomentConnectionInput, continuity_plate: float) -> bool:
     """The seismic checks use R_y of the plates (flange plates, single plate of a
     welded web, continuity plates of thickness ``continuity_plate``)."""
-    s = mc.seismic
+    s = required(mc.seismic, "seismic")
     return (s.connection is Prequalified.BFP or continuity_plate > 0
             or (s.connection is Prequalified.WUF_W and mc.web is not None))
 
@@ -383,8 +383,8 @@ def expected(grade: str, value: float | None, plate: bool = False,
 
 
 def _seismic(project: Project, mc: MomentConnectionInput, beam: IShape, column: IShape,
-             q) -> Seismic:
-    s = mc.seismic
+             q: Callable[..., float]) -> Seismic:
+    s = required(mc.seismic, "seismic")
     library = project.material_library()
     beam_grade = mc.beam_grade if isinstance(mc.beam, str) else mc.beam.grade
     column_grade = mc.column_grade if isinstance(mc.column, str) else mc.column.grade

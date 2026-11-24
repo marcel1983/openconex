@@ -94,13 +94,14 @@ def _quantity(row: Mapping[str, Any], key: str, kind: Kind,
 
 
 def _column(value: str, template: Project) -> tuple[ColumnSectionInput | str, str]:
+    bp = template.require_base_plate()
     if not value:
-        return template.base_plate.column, template.base_plate.column_grade
+        return bp.column, bp.column_grade
     for section in template.sections:
         if section.label() == value:
             return section, section.grade
     try:
-        return aisc_shapes().get(value).label, template.base_plate.column_grade
+        return aisc_shapes().get(value).label, bp.column_grade
     except ShapeDatabaseError as exc:
         raise ValueError(f"unknown column {value!r}") from exc
 
@@ -174,8 +175,9 @@ def projects_from_table(rows: Iterable[Mapping[str, Any]], template: Project,
         project.info.name = (f"{template.info.name} - {support}"
                              if template.info.name else support)
         project.info.units = units.name if units.name in PRESETS else units
-        project.base_plate.column = column
-        project.base_plate.column_grade = grade
+        bp = project.require_base_plate()
+        bp.column = column
+        bp.column_grade = grade
         project.cases = cases
         project.combinations = template.combinations.model_copy(
             update={"include_code": True, "custom": []})

@@ -8,7 +8,7 @@ fields each type needs and the converter only reads those that apply.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,7 +23,7 @@ from openconex.connections.shear.extended_single_plate import ExtendedSinglePlat
 from openconex.connections.shear.seated import SeatedAngle
 from openconex.connections.shear.single_plate import SinglePlate
 from openconex.connections.shear.stiffened_seat import StiffenedSeat
-from openconex.core.model import BoltSpec, HoleType, IShape, Threads
+from openconex.core.model import BoltSpec, HoleType, IShape, Threads, required
 from openconex.core.shapes import aisc_shapes
 from openconex.units import Kind
 
@@ -242,11 +242,10 @@ def _section(project: Project, section: str | WSectionInput, grade: str) -> tupl
 def shear_model(project: Project) -> ShearConnection:
     """Engine model of the project's shear connection."""
     sc = project.require_shear_connection()
-    assert sc is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     library = project.material_library()
 
-    def q(value, kind=L, default=0.0):
+    def q(value: Quantity | None, kind: Kind = L, default: float = 0.0) -> float:
         return default if value is None else project.quantity(value, kind)
 
     beam, beam_area = _section(project, sc.beam, sc.beam_grade)
@@ -261,9 +260,12 @@ def shear_model(project: Project) -> ShearConnection:
     bm, sp = beam.material, support.material
     common = {"beam_tw": beam.tw, "beam_Fu": bm.Fu}
     kind = sc.type
+    el: (DoubleAngle | SinglePlate | ExtendedSinglePlate | EndPlate | SeatedAngle
+         | StiffenedSeat | SkewedBentPlate)
     if kind is ShearType.DOUBLE_ANGLE:
         el = DoubleAngle(
-            bolt=bolt, rows=sc.rows, spacing=q(sc.spacing), length=q(sc.length),
+            bolt=bolt, rows=required(sc.rows, "rows"), spacing=q(sc.spacing),
+            length=q(sc.length),
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh_beam=q(sc.leh),
             leh_support=q(sc.leh_support), angle_Fy=plate.Fy, angle_Fu=plate.Fu,
             support_t=support_t, support_Fu=sp.Fu,
@@ -272,14 +274,16 @@ def shear_model(project: Project) -> ShearConnection:
             beam_weld=q(sc.beam_weld, T), beam_leg=q(sc.beam_leg), **common)
     elif kind is ShearType.SINGLE_PLATE:
         el = SinglePlate(
-            bolt=bolt, rows=sc.rows, spacing=q(sc.spacing), length=q(sc.length),
+            bolt=bolt, rows=required(sc.rows, "rows"), spacing=q(sc.spacing),
+            length=q(sc.length),
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh=q(sc.leh), a=q(sc.a),
             plate_Fy=plate.Fy, plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t,
             support_Fu=sp.Fu, deformation_considered=sc.deformation_considered,
             beam_leh=None if sc.beam_leh is None else q(sc.beam_leh), **common)
     elif kind is ShearType.EXTENDED_SINGLE_PLATE:
         el = ExtendedSinglePlate(
-            bolt=bolt, rows=sc.rows, spacing=q(sc.spacing), length=q(sc.length),
+            bolt=bolt, rows=required(sc.rows, "rows"), spacing=q(sc.spacing),
+            length=q(sc.length),
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh=q(sc.leh), a=q(sc.a),
             plate_Fy=plate.Fy, plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t,
             support_Fu=sp.Fu, lines=sc.lines, gage=q(sc.gage),
@@ -287,7 +291,8 @@ def shear_model(project: Project) -> ShearConnection:
             beam_leh=None if sc.beam_leh is None else q(sc.beam_leh), **common)
     elif kind is ShearType.END_PLATE:
         el = EndPlate(
-            bolt=bolt, rows=sc.rows, spacing=q(sc.spacing), length=q(sc.length),
+            bolt=bolt, rows=required(sc.rows, "rows"), spacing=q(sc.spacing),
+            length=q(sc.length),
             thickness=q(sc.thickness, T), lev=q(sc.lev), leh=q(sc.leh), plate_Fy=plate.Fy,
             plate_Fu=plate.Fu, weld=q(sc.weld, T), support_t=support_t, support_Fu=sp.Fu,
             FEXX=FEXX, deformation_considered=sc.deformation_considered, **common)
@@ -306,8 +311,8 @@ def shear_model(project: Project) -> ShearConnection:
             share_a = q(sc.load_offset) / row_distance
         if not 0.0 < share_a < 1.0:
             raise ValueError("the load share of plate A must be between 0 and 1")
-        bent = {
-            "bolt": bolt, "rows": sc.rows, "spacing": q(sc.spacing),
+        bent: dict[str, Any] = {
+            "bolt": bolt, "rows": required(sc.rows, "rows"), "spacing": q(sc.spacing),
             "length": q(sc.length), "thickness": q(sc.thickness, T), "lev": q(sc.lev),
             "leh": q(sc.leh), "plate_Fy": plate.Fy, "plate_Fu": plate.Fu,
             "weld": q(sc.weld, T), "weld_return": q(sc.weld_return),
@@ -375,7 +380,7 @@ def shear_model(project: Project) -> ShearConnection:
             d=beam.d, tw=beam.tw, bf=beam.bf, tf=beam.tf, Fy=bm.Fy, Fu=bm.Fu,
             c=q(sc.cope.c), dc=q(sc.cope.dc), dc_bottom=q(sc.cope.dc_bottom),
             setback=q(sc.cope.setback),
-            rows=sc.rows if bolted else 0,
+            rows=required(sc.rows, "rows") if bolted else 0,
             lines=sc.lines if kind is ShearType.EXTENDED_SINGLE_PLATE else 1,
             spacing=q(sc.spacing), lev=q(sc.cope.lev) if block else 0.0,
             leh=q(sc.cope.leh) if block else 0.0,

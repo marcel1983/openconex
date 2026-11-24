@@ -22,13 +22,16 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Callable
 from enum import StrEnum
+from typing import Protocol
 
-from openconex.core.loads import LoadType, Method
+from openconex.core.loads import Forces, LoadType, Method
 from openconex.core.model import HSSKind
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
-from openconex.io.csi import CaseKind, CsiImport, ImportedColumn, Support
+from openconex.io.csi import CaseKind, CsiImport, ImportedCase, ImportedColumn
 from openconex.io.project import (
+    CombinationOptions,
     CustomCombinationInput,
     HSSSectionInput,
     LoadCaseInput,
@@ -43,6 +46,24 @@ class Grouping(StrEnum):
     """One project per support."""
     COLUMN = "column"
     """One project per column section with the loads of all its supports."""
+
+
+class _Loaded(Protocol):
+    """A support or a beam end: the forces of each imported case."""
+
+    @property
+    def forces(self) -> dict[str, Forces]: ...
+
+
+class _Imported(Protocol):
+    """An import of supports or beam ends: the imported cases."""
+
+    @property
+    def cases(self) -> dict[str, ImportedCase]: ...
+
+
+CaseMaker = Callable[[str, LoadType, Forces], LoadCaseInput]
+ColumnSection = str | WSectionInput | HSSSectionInput
 
 
 class LoadSource(StrEnum):
@@ -98,7 +119,8 @@ def _mm(value: float) -> str:
     return f"{value:.4g} mm"
 
 
-def column_input(column: ImportedColumn, fallback_grade: str | None = None):
+def column_input(column: ImportedColumn, fallback_grade: str | None = None,
+                 ) -> tuple[ColumnSection | None, str | None, str | None]:
     """Project column (AISC label or generic section) and steel grade for a CSI section.
 
     Returns (column, grade, warning). When the CSI material is not in the
@@ -118,9 +140,9 @@ def column_input(column: ImportedColumn, fallback_grade: str | None = None):
             return column.section, used, warning
         except ShapeDatabaseError:
             pass
-        section = WSectionInput(type="W", name=column.section, d=_mm(dims["t3"]),
-                                bf=_mm(dims["t2"]), tf=_mm(dims["tf"]), tw=_mm(dims["tw"]),
-                                grade=used)
+        section: ColumnSection = WSectionInput(
+            type="W", name=column.section, d=_mm(dims["t3"]), bf=_mm(dims["t2"]),
+            tf=_mm(dims["tf"]), tw=_mm(dims["tw"]), grade=used)
         return section, used, warning
     if shape in ("box/tube", "steel tube") or "tube" in shape:
         kind = HSSKind.SQUARE if math.isclose(dims["t3"], dims["t2"]) else HSSKind.RECTANGULAR
@@ -146,15 +168,16 @@ def column_input(column: ImportedColumn, fallback_grade: str | None = None):
     return None, None, f"section {column.section!r} ({column.shape}) is not supported"
 
 
-def _case(name: str, load_type: LoadType, forces) -> LoadCaseInput:
+def _case(name: str, load_type: LoadType, forces: Forces) -> LoadCaseInput:
     return LoadCaseInput(name=name, type=load_type, P=f"{forces.P:.10g} N",
                          V=f"{forces.V2:.10g} N", M=f"{forces.M3:.10g} N*mm",
                          V_weak=f"{forces.V3:.10g} N", M_weak=f"{forces.M2:.10g} N*mm")
 
 
-def _loads(support: Support, data: CsiImport, template: Project, source: LoadSource,
+def _loads(support: _Loaded, data: _Imported, template: Project, source: LoadSource,
            include: str | None, envelopes: bool, method: Method | None, warnings: list[str],
-           case=None):
+           case: CaseMaker | None = None,
+           ) -> tuple[list[LoadCaseInput], CombinationOptions, list[str]]:
     """Cases and combinations of one support (or beam end, via ``support.forces``)."""
     case = case or _case
     pattern = re.compile(include) if include else None
@@ -164,8 +187,8 @@ def _loads(support: Support, data: CsiImport, template: Project, source: LoadSou
         untyped = [n for n in names if data.cases[n].load_type is None]
         if untyped:
             warnings.append(f"load cases without a design type, not used: {', '.join(untyped)}")
-        cases = [case(n, data.cases[n].load_type, support.forces[n])
-                 for n in names if data.cases[n].load_type is not None and n in support.forces]
+        cases = [case(n, load_type, support.forces[n]) for n in names
+                 if (load_type := data.cases[n].load_type) is not None and n in support.forces]
         combinations = template.combinations.model_copy(update={"include_code": True,
                                                                 "custom": []})
         return cases, combinations, [n for n in names if n in support.forces]
@@ -205,7 +228,7 @@ def base_plate_projects(data: CsiImport, template: Project,
         return projects, warnings
     sections: dict[str, list[str]] = {}
     for support in data.supports:
-        if support.joint in projects:
+        if support.joint in projects and support.column is not None:
             sections.setdefault(support.column.section, []).append(support.joint)
     return {section: _merge(template, section, {j: projects[j] for j in joints})
             for section, joints in sections.items()}, warnings
@@ -246,7 +269,9 @@ def _merge(template: Project, section: str, projects: dict[str, Project]) -> Pro
     return Project.model_validate(merged.model_dump())
 
 
-def _joint_projects(data, template, source, include, envelopes, method):
+def _joint_projects(data: CsiImport, template: Project, source: LoadSource,
+                    include: str | None, envelopes: bool, method: Method | None,
+                    ) -> tuple[dict[str, Project], list[str]]:
     projects: dict[str, Project] = {}
     warnings: list[str] = []
     template_bp = template.require_base_plate()
