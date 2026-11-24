@@ -59,6 +59,7 @@ from typing import TYPE_CHECKING
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
 from openconex.core.materials import E_STEEL
+from openconex.core.model import required
 from openconex.kernel.bolts import clear_distance
 from openconex.kernel.design import Calc, Resistance
 from openconex.units import Kind, to_internal
@@ -214,7 +215,7 @@ def _range(c: Calc, check_id: str, clause: str, value: float, lo: float | None,
     high = value / hi if hi is not None and hi > 0 else 0.0
     if lo is not None and (hi is None or low > high):
         return c.result(check_id, clause, lo, value, kind)
-    return c.result(check_id, clause, value, hi, kind)
+    return c.result(check_id, clause, value, required(hi, "upper limit"), kind)
 
 
 # -- prequalification limits ---------------------------------------------------------
@@ -296,7 +297,7 @@ def _hinge(mc: MomentConnection, s: Seismic, c: Calc) -> Hinge:
             sh = c.step("S_h", r"\min(d/2,\ 3b_{bf})", min(beam.d / 2, 3 * beam.bf), L,
                         f"{A358} §6.7.1, Eq. 6.7-1")
         else:
-            ep = mc.end_plate
+            ep = required(mc.end_plate, "end_plate")
             lst = c.step("L_{st}", r"h_{st}/\tan 30°", ep.pext / math.tan(math.radians(30)),
                          L, f"{A358} §6.6.4", h_st=(ep.pext, L))
             sh = c.step("S_h", "L_{st} + t_p", lst + ep.thickness, L,
@@ -507,7 +508,7 @@ def _rbs(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
 
 def _wuf_w(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
     """Single plate of the WUF-W web connection (§8.5)."""
-    w = mc.web
+    w = required(mc.web, "web")
     if w is None:
         return []
     out = []
@@ -531,7 +532,7 @@ def _wuf_w(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
 
 
 def _bfp(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
-    beam, b, plate = mc.beam, mc.bolt, mc.top
+    beam, b, plate = mc.beam, required(mc.bolt, "bolt"), required(mc.top, "top")
     tp, bp = plate.thickness, plate.width
     Fy, Fu = beam.material.Fy, beam.material.Fu
     hole = b.hole_dimensions[0] + _in(1 / 16)
@@ -618,7 +619,8 @@ def _bfp(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
 
 def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[CheckResult]:
     from .end_plate import EndPlateLayout, _rows, _yield_parameter
-    ep, beam, b = mc.end_plate, mc.beam, mc.end_plate.bolt
+    ep = required(mc.end_plate, "end_plate")
+    beam, b = mc.beam, ep.bolt
     out = []
     limits = END_PLATE_LIMITS[ep.layout.value]
     values = {"tbf": [beam.tf], "bbf": [beam.bf], "d": [beam.d], "tp": [ep.thickness],
@@ -695,7 +697,8 @@ def _end_plate_bearing(mc: MomentConnection, vu: float, eight: bool) -> CheckRes
     distance to the adjacent hole on either side (the moment reverses) and, in the
     end plate, to the edge of the extension; the column flange has no edge there.
     """
-    ep, beam, col, b = mc.end_plate, mc.beam, mc.column, mc.end_plate.bolt
+    ep = required(mc.end_plate, "end_plate")
+    beam, col, b = mc.beam, mc.column, ep.bolt
     # bolt rows at one flange, measured outward from the outer face of the flange
     rows = [ep.pf_o, -(beam.tf + ep.pf)]
     if eight:
@@ -758,14 +761,15 @@ def seismic_checks(mc: MomentConnection) -> list[CheckResult]:
         out += _wuf_w(mc, s)
     if s.connection is Prequalified.BFP:
         out += _bfp(mc, s, mf)
-        out += _continuity(mc, s, mc.top.width, mc.top.thickness)
-        pf = mf / (mc.beam.d + mc.top.thickness)
-        column = _column_checks(mc, pf, mc.top.thickness, Method.LRFD, COMBO, pz_shear,
+        top = required(mc.top, "top")
+        out += _continuity(mc, s, top.width, top.thickness)
+        pf = mf / (mc.beam.d + top.thickness)
+        column = _column_checks(mc, pf, top.thickness, Method.LRFD, COMBO, pz_shear,
                                 s.column_axial, panel_resistance=pz_phi)
     elif s.connection in (Prequalified.BUEEP, Prequalified.BSEEP):
         out += _end_plate(mc, s, hinge.vu, mf) + _end_plate_column(mc, s, mf)
         ffu = mf / (mc.beam.d - mc.beam.tf)
-        N = mc.beam.tf + 2 * (mc.end_plate.weld_reinforcement or 0.0)
+        N = mc.beam.tf + 2 * (required(mc.end_plate, "end_plate").weld_reinforcement or 0.0)
         column = end_plate_column_checks(mc, ffu, N, Method.LRFD, COMBO, pz_shear,
                                          s.column_axial, pz_phi)
     else:

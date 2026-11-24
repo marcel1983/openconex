@@ -108,19 +108,21 @@ ignore-names = ["F*", "E", "E_*"]
 
 [tool.mypy]
 python_version = "3.12"
-# Typed in stages (docs/tecnico/02-convenciones.md): core and kernel first,
-# then connections/ and io/. The GUI stays out for now.
+# Typed in stages (docs/tecnico/02-convenciones.md): core, kernel and
+# connections, then io/. The GUI stays out for now.
 files = [
     "src/openconex/units.py",
     "src/openconex/core",
     "src/openconex/kernel",
+    "src/openconex/connections",
 ]
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
-module = ["openconex.units", "openconex.core.*", "openconex.kernel.*"]
+module = ["openconex.units", "openconex.core.*", "openconex.kernel.*",
+          "openconex.connections.*"]
 disallow_untyped_defs = true
 
 [tool.coverage.run]

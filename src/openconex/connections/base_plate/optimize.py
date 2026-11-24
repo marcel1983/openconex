@@ -20,12 +20,12 @@ local one. Both are run by the CLI and the GUI through :func:`optimize`.
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 
 from openconex.core.checks import Status
 from openconex.core.loads import Forces, LoadCombination
-from openconex.core.model import BoltSpec
+from openconex.core.model import BoltSpec, required
 from openconex.units import Kind, to_internal
 
 from .check import BasePlate, check_envelope, optimize_base_plate
@@ -104,7 +104,8 @@ class _Evaluator:
             value = (False, "error", math.inf)
         else:
             ok = not any(r.status is Status.NG for r in results)
-            value = (ok, governing.id, governing.ratio)
+            worst = required(governing, "governing check")
+            value = (ok, worst.id, worst.ratio)
         self._cache[key] = value
         return value
 
@@ -124,7 +125,8 @@ def _layout(bp: BasePlate, diameter: float, rods_per_side: int) -> BasePlate:
     return replace(bp, rod=rod, rods_per_side=rods_per_side)
 
 
-def _descend(bp: BasePlate, passes, edge_N: float, edge_B: float, step: float,
+def _descend(bp: BasePlate, passes: Callable[[BasePlate], bool], edge_N: float,
+             edge_B: float, step: float,
              tp_step: float, min_plan: float, min_tp: float) -> BasePlate:
     """Coordinate descent on N, B and tp for one layout, from a feasible plate."""
     current = bp

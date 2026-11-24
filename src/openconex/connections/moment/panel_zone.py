@@ -10,7 +10,7 @@ Guide 13).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
@@ -31,7 +31,8 @@ def panel_zone_check(mc: MomentConnection, flange_force: float, column_shear: fl
     weld of a fillet-welded doubler plate for the shear it carries."""
     from .column_stiffening import doubler_checks
     demand = abs((2 * flange_force if mc.two_sided else flange_force) - column_shear)
-    kw = {"beam_depth": mc.beam.d, "inelastic": mc.panel_zone_inelastic, "combo": combo}
+    kw: dict[str, Any] = {"beam_depth": mc.beam.d, "inelastic": mc.panel_zone_inelastic,
+                          "combo": combo}
     if resistance is not None:
         kw["resistance"] = resistance
     check = local.panel_zone_shear(mc.column, column_axial, demand, method,

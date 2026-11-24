@@ -39,7 +39,7 @@ from enum import StrEnum
 
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Forces, LoadCombination, Method, combine
-from openconex.core.model import BoltSpec, IShape
+from openconex.core.model import BoltSpec, IShape, required
 from openconex.kernel import bolts, elements, local
 from openconex.kernel.bolts import clear_distance
 from openconex.kernel.design import FLEXURE, Calc, Resistance
@@ -176,14 +176,14 @@ def _hole_net(bolt: BoltSpec) -> float:
 
 def _bearing_tearout(bolt: BoltSpec, t: float, Fu: float, lc: float, method: Method,
                      deformation: bool) -> float:
-    kw = {"deformation_considered": deformation}
-    return min(bolts.bolt_bearing(bolt, t, Fu, 0.0, method, **kw).capacity,
-               bolts.bolt_tearout(bolt, t, Fu, lc, 0.0, method, **kw).capacity)
+    deform = deformation
+    return min(bolts.bolt_bearing(bolt, t, Fu, 0.0, method, deform).capacity,
+               bolts.bolt_tearout(bolt, t, Fu, lc, 0.0, method, deform).capacity)
 
 
 # -- web connection --------------------------------------------------------------------
 def _web_checks(mc: MomentConnection, V: float, method: Method, combo: str) -> list[CheckResult]:
-    w, beam = mc.web, mc.beam
+    w, beam = required(mc.web, "web"), mc.beam
     deform = mc.deformation_considered
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11"
@@ -265,7 +265,8 @@ def _beam_flexural_rupture(mc: MomentConnection, M: float, method: Method,
     beam = mc.beam
     Fy, Fu = beam.material.Fy, beam.material.Fu
     afg = c.step("A_{fg}", "b_f t_f", beam.bf * beam.tf, Kind.AREA, clause)
-    afn = c.step("A_{fn}", "A_{fg} - 2 (d_h + 1/16) t_f", afg - 2 * _hole_net(mc.bolt) * beam.tf,
+    hole = _hole_net(required(mc.bolt, "bolt"))
+    afn = c.step("A_{fn}", "A_{fg} - 2 (d_h + 1/16) t_f", afg - 2 * hole * beam.tf,
                  Kind.AREA, clause)
     yt = c.step("Y_t", r"1.0\ (F_y/F_u \le 0.8),\ 1.1", 1.0 if Fy / Fu <= 0.8 else 1.1,
                 clause=clause)
@@ -277,9 +278,10 @@ def _beam_flexural_rupture(mc: MomentConnection, M: float, method: Method,
                     applicable=applies)
 
 
-def _bolted(mc: MomentConnection, M: float, method: Method, combo: str) -> list[CheckResult]:
-    beam, plate, b = mc.beam, mc.top, mc.bolt
-    t, n, hole = plate.thickness, mc.rows, _hole_net(mc.bolt)
+def _bolted(mc: MomentConnection, M: float, method: Method,
+            combo: str) -> tuple[list[CheckResult], float]:
+    beam, plate, b = mc.beam, required(mc.top, "top"), required(mc.bolt, "bolt")
+    t, n, hole = plate.thickness, mc.rows, _hole_net(required(mc.bolt, "bolt"))
     deform = mc.deformation_considered
     out = [_beam_flexural_rupture(mc, M, method, combo)]
 
@@ -337,8 +339,9 @@ def _bolted(mc: MomentConnection, M: float, method: Method, combo: str) -> list[
     return out, P
 
 
-def _welded(mc: MomentConnection, M: float, method: Method, combo: str) -> list[CheckResult]:
-    beam, top, bottom = mc.beam, mc.top, mc.bottom
+def _welded(mc: MomentConnection, M: float, method: Method,
+            combo: str) -> tuple[list[CheckResult], float]:
+    beam, top, bottom = mc.beam, required(mc.top, "top"), required(mc.bottom, "bottom")
     out = []
     c = Calc(method, combo)
     P = _flange_force(c, M, beam.d + (top.thickness + bottom.thickness) / 2,
@@ -402,7 +405,8 @@ def _column_checks(mc: MomentConnection, P: float, lb: float, method: Method, co
         if mc.detail is FlangeDetail.WELDED_FLANGE:
             b, t = mc.beam.bf, mc.beam.tf
         else:
-            b, t = mc.top.width, max(mc.top.thickness, (mc.bottom or mc.top).thickness)
+            top = required(mc.top, "top")
+            b, t = top.width, max(top.thickness, (mc.bottom or top).thickness)
         out += stiffener_checks(mc, P, [r.capacity for r in local_checks], b, t, method,
                                 combo)
     if mc.doubler_plate > 0:
@@ -433,7 +437,8 @@ def _column_web_connection(mc: MomentConnection, M: float, method: Method,
         P = _flange_force(c, M, beam.d - beam.tf, "d - t_f")
     clear = col.d - 2 * col.tf
     clause_d = "AISC Design Guide 13, Appendix D"
-    for key, plate in (("top", mc.top), ("bottom", mc.bottom or mc.top)):
+    top = required(mc.top, "top")
+    for key, plate in (("top", top), ("bottom", mc.bottom or top)):
         c = Calc(method, combo)
         clause = f"{SPEC} §J4.1(a); {clause_d}"
         b = c.step("b_p", "d_c - 2t_{fc}", clear, Kind.LENGTH, clause)
@@ -468,7 +473,7 @@ def _column_web_connection(mc: MomentConnection, M: float, method: Method,
                         mc.plate_extension, Kind.LENGTH))
     c = Calc(method, combo)
     clause = clause_d
-    width = mc.top.width if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE else beam.bf
+    width = top.width if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE else beam.bf
     c.step("d_c - 2t_{fc}", "", clear, Kind.LENGTH, clause)
     out.append(c.result("moment.web_connection_fit", clause, width, clear, Kind.LENGTH))
     return out
@@ -493,10 +498,10 @@ def check_moment_connection(mc: MomentConnection, V: float, M: float, method: Me
         return out + _column_web_connection(mc, M, method, combo)
     if mc.detail is FlangeDetail.BOLTED_FLANGE_PLATE:
         flange, P = _bolted(mc, M, method, combo)
-        lb = mc.top.thickness
+        lb = required(mc.top, "top").thickness
     elif mc.detail is FlangeDetail.WELDED_FLANGE_PLATE:
         flange, P = _welded(mc, M, method, combo)
-        lb = mc.top.thickness
+        lb = required(mc.top, "top").thickness
     else:
         c = Calc(method, combo)
         P = _flange_force(c, M, mc.beam.d - mc.beam.tf, "d - t_f")

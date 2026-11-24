@@ -36,7 +36,7 @@ from typing import TYPE_CHECKING
 from openconex.core.bolting import min_pretension
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
-from openconex.core.model import BoltSpec
+from openconex.core.model import BoltSpec, required
 from openconex.kernel import bolts, elements, local
 from openconex.kernel.design import BOLT, FLEXURE, TENSION_YIELD, Calc, Resistance, available
 from openconex.kernel.welds import fillet_weld_per_length
@@ -201,7 +201,7 @@ class _Rows:
 
 
 def _rows(mc: MomentConnection, c: Calc) -> _Rows:
-    ep, h, tf = mc.end_plate, mc.beam.d, mc.beam.tf
+    ep, h, tf = required(mc.end_plate, "end_plate"), mc.beam.d, mc.beam.tf
     clause = TABLE[ep.layout]
     L = Kind.LENGTH
     d0 = h0 = dx = 0.0
@@ -225,7 +225,7 @@ def _rows(mc: MomentConnection, c: Calc) -> _Rows:
 
 def _yield_parameter(mc: MomentConnection, r: _Rows, c: Calc) -> float:
     """Yield-line parameter Y of the end plate."""
-    ep = mc.end_plate
+    ep = required(mc.end_plate, "end_plate")
     layout = ep.layout
     clause = TABLE[layout]
     L = Kind.LENGTH
@@ -357,7 +357,7 @@ def _q_max(c: Calc, symbol: str, ep: EndPlate, wp: float, a: float, F: float) ->
 def end_plate_strength(mc: MomentConnection, method: Method, combo: str = "",
                        ) -> tuple[Calc, float, Calc, float]:
     """(trace, available end-plate yielding strength, trace, bolt rupture strength)."""
-    ep = mc.end_plate
+    ep = required(mc.end_plate, "end_plate")
     gamma = 1.25 if ep.flush else 1.0
     clause_t = TABLE[ep.layout]
     cy = Calc(method, combo)
@@ -442,7 +442,7 @@ def end_plate_checks(mc: MomentConnection, V: float, M: float, P: float, method:
 
     ``P`` is the beam axial force, positive in compression.
     """
-    ep, beam = mc.end_plate, mc.beam
+    ep, beam = required(mc.end_plate, "end_plate"), mc.beam
     out: list[CheckResult] = []
     M = abs(M)
     c = Calc(method, combo)
@@ -531,17 +531,17 @@ def _compression_bolts(mc: MomentConnection, V: float, method: Method,
     3.19): per bolt, the least of shear, bearing or tearout on the end plate (clear distance
     to the adjacent hole, or to the plate edge for the outermost row, so that the shear may
     act either way) and bearing on the column flange."""
-    ep, col = mc.end_plate, mc.column
+    ep, col = required(mc.end_plate, "end_plate"), mc.column
     b = ep.bolt
     t = ep.thickness
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11; {DG16}, §2.5.3 item 5; {DG4}, Eq. 3.17 to 3.19"
-    kw = {"deformation_considered": mc.deformation_considered}
+    deform = mc.deformation_considered
     dh = b.hole_dimensions[0]
     rv = c.step("r_{n,bolt}", "", bolts.bolt_shear(b, 0.0, method).capacity, Kind.FORCE, clause)
-    bearing = bolts.bolt_bearing(b, t, ep.Fu, 0.0, method, **kw).capacity
+    bearing = bolts.bolt_bearing(b, t, ep.Fu, 0.0, method, deform).capacity
     rc = c.step("r_{n,col}", "2.4 d t_{fc} F_{uc}",
-                bolts.bolt_bearing(b, col.tf, col.material.Fu, 0.0, method, **kw).capacity,
+                bolts.bolt_bearing(b, col.tf, col.material.Fu, 0.0, method, deform).capacity,
                 Kind.FORCE, clause)
     plate = total = 0.0
     for spacing, edge in _compression_rows(ep, mc.beam.tf):
@@ -551,7 +551,7 @@ def _compression_bolts(mc: MomentConnection, V: float, method: Method,
         rp = bearing
         if lcs:
             lc = min(lcs)
-            rp = min(bearing, bolts.bolt_tearout(b, t, ep.Fu, lc, 0.0, method, **kw).capacity)
+            rp = min(bearing, bolts.bolt_tearout(b, t, ep.Fu, lc, 0.0, method, deform).capacity)
         plate += 2 * rp
         total += 2 * min(rv, rp, rc)
     n = 2 * len(_compression_rows(ep, mc.beam.tf))
@@ -566,7 +566,7 @@ def _compression_bolts(mc: MomentConnection, V: float, method: Method,
 
 def _column_yield_parameter(mc: MomentConnection, c: Calc, stiffened: bool) -> float:
     """Column flange yield-line parameter Y_c (Design Guide 4, Tables 3.4 and 3.5)."""
-    ep, col, beam = mc.end_plate, mc.column, mc.beam
+    ep, col, beam = required(mc.end_plate, "end_plate"), mc.column, mc.beam
     clause = f"{DG4}, {COLUMN_TABLE[ep.layout]}"
     L = Kind.LENGTH
     r = _rows(mc, Calc(c.method))
@@ -624,7 +624,7 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
     crippling (Eq. 3.29 to 3.31, §J10.3 with l_b = N). With continuity plates the web
     checks and the unstiffened flange strength set the plate force (Eq. 3.32).
     """
-    ep, col, beam = mc.end_plate, mc.column, mc.beam
+    ep, col, beam = required(mc.end_plate, "end_plate"), mc.column, mc.beam
     near = mc.column_near_end
     plates = mc.continuity_plate > 0
     out: list[CheckResult] = []

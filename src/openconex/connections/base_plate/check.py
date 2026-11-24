@@ -35,7 +35,7 @@ from enum import StrEnum
 from openconex.core.checks import CheckResult, Status, governing
 from openconex.core.loads import Forces, LoadCombination, Method, combine
 from openconex.core.materials import STEELS, SteelGrade, WeldElectrode
-from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape
+from openconex.core.model import BoltSpec, FilletWeld, HSSKind, HSSShape, IShape, required
 from openconex.kernel import anchors, bolts
 from openconex.kernel.design import Calc
 from openconex.units import Kind, to_internal
@@ -361,7 +361,9 @@ def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: f
         if bend.bearing_stress is not None:
             c.step("f_{p,max}", "", bend.bearing_stress, Kind.STRESS, f"{DG1} App. B.2")
             results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} App. B.2",
-                                    bend.bearing_stress, bend.bearing_capacity, Kind.STRESS))
+                                    bend.bearing_stress,
+                                    required(bend.bearing_capacity, "bearing capacity"),
+                                    Kind.STRESS))
         else:
             c.step("e", "M/P", bend.e, Kind.LENGTH, f"{DG1} Eq. 4-39")
             c.step("e_{crit}", r"\frac{N}{2} - \frac{P}{2 q_{max}}", bend.e_crit,
@@ -393,7 +395,9 @@ def _bending_checks(bp: BasePlate, P_: float, M: float, N: float, B: float, f: f
         bearing_steps = list(c.steps)
         if bend.bearing_stress is not None:
             results.append(c.result(f"base_plate.bearing{suffix}", f"{DG1} App. B.2",
-                                    bend.bearing_stress, bend.bearing_capacity, Kind.STRESS))
+                                    bend.bearing_stress,
+                                    required(bend.bearing_capacity, "bearing capacity"),
+                                    Kind.STRESS))
         if bend.M_plate is not None:
             c.step("M_{pl}", "", bend.M_plate, Kind.MOMENT, f"{DG1} App. B.2")
             tp_req = bpl.plate_thickness_from_moment(bend.M_plate, bp.Fy, method)
@@ -520,7 +524,7 @@ def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], met
                       combo: str, bend: bpl.BendingResult | None = None, T: float = 0.0,
                       bend_weak: bpl.BendingResult | None = None,
                       T_weak: float = 0.0) -> list[CheckResult]:
-    lug = bp.shear_lug
+    lug = required(bp.shear_lug, "shear lug")
     steel = bp.materials[lug.grade]
     out: list[CheckResult] = []
     for V in (v for v in shears if v > 0):
@@ -560,7 +564,7 @@ def _shear_lug_checks(bp: BasePlate, P_: float, shears: tuple[float, float], met
 def _lug_bearing(bp: BasePlate, P_: float, V: float, method: Method,
                  combo: str) -> CheckResult:
     """Bearing of the lug with ψbrg,sl from the axial load (ACI 318-19 §17.11.2.2)."""
-    lug = bp.shear_lug
+    lug = required(bp.shear_lug, "shear lug")
     c = Calc(method, combo)
     if P_ < 0:
         Fu = bp.rod.material.Fu  # 1.9 Fy never governs for F1554 / F3125 rods
@@ -588,7 +592,7 @@ def _embedded_base_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M:
         raise ValueError("embedded base and weak base cannot be combined")
     if bp.shear_lug is not None:
         raise ValueError("embedded base does not support a shear lug yet")
-    embedded = bp.embedded_base
+    embedded = required(bp.embedded_base, "embedded base")
     if embedded.type == EmbeddedType.TYPE_II:
         return _type2_checks(bp, P_, V, M, method, combo)
     if P_ < 0 and embedded.base_plate_width is None:
@@ -628,7 +632,7 @@ def _embedded_base_checks(bp: BasePlate, forces: Forces, P_: float, V: float, M:
 def _horizontal_bearing(bp: BasePlate, V: float, M: float, combo: str,
                         bj: float | None) -> CheckResult:
     """φM_HB of the embedment (DG1 Eq. 5-6) with the optional horizontal reinforcement."""
-    embedded, col = bp.embedded_base, bp.column
+    embedded, col = required(bp.embedded_base, "embedded base"), bp.column
     fields = {}
     for name, layer in (("top", embedded.rebar_top), ("bottom", embedded.rebar_bottom)):
         fields[f"F_rebar_{name}"] = layer.area * layer.fy if layer else 0.0
@@ -651,7 +655,8 @@ def _face_plate_weld(bp: BasePlate, P_: float, method: Method, combo: str) -> Ch
     flanges, L = 2(d - 2t_f) + 2(b_f - t_w); the welds carry the bearing force P.
     The directional strength increase is not used (k_ds = 1.0).
     """
-    col, w = bp.column, bp.embedded_base.face_plate_weld
+    embedded = required(bp.embedded_base, "embedded base")
+    col, w = bp.column, required(embedded.face_plate_weld, "face_plate_weld")
     c = Calc(method, combo)
     length = c.step("L_w", r"2(d - 2t_f) + 2(b_f - t_w)",
                     2 * (col.d - 2 * col.tf) + 2 * (col.bf - col.tw), Kind.LENGTH,
@@ -666,8 +671,8 @@ def _face_plate_weld(bp: BasePlate, P_: float, method: Method, combo: str) -> Ch
 def _embedded_plate_checks(bp: BasePlate, P_: float, method: Method,
                            combo: str) -> list[CheckResult]:
     """Embedded base plate at the bottom of the column: bearing, bending and uplift."""
-    embedded, col = bp.embedded_base, bp.column
-    width = embedded.base_plate_width
+    embedded, col = required(bp.embedded_base, "embedded base"), bp.column
+    width = required(embedded.base_plate_width, "base_plate_width")
     tp = embedded.base_plate_thickness
     if tp is None:
         raise ValueError("embedded base plate needs base_plate_thickness")
@@ -726,7 +731,7 @@ def _type2_checks(bp: BasePlate, P_: float, V: float, M: float, method: Method,
     Without attached reinforcement, the breakout force F_t of Eq. 5-9 (Scenario
     1) is reported in the trace for information only.
     """
-    embedded, col = bp.embedded_base, bp.column
+    embedded, col = required(bp.embedded_base, "embedded base"), bp.column
     if embedded.base_plate_width is None or embedded.base_plate_thickness is None:
         raise ValueError("embedded base Type II needs the embedded base plate "
                          "(base_plate_width and base_plate_thickness)")
@@ -752,8 +757,9 @@ def type2_breakout_area(bp: BasePlate) -> float:
     plate edge and as wide as the plate; the cone rises d_embed at 35° from the
     horizontal on every side, limited by the foundation width in both directions.
     """
-    embedded = bp.embedded_base
-    width, depth = embedded.base_plate_width, embedded.embedment
+    embedded = required(bp.embedded_base, "embedded base")
+    width = required(embedded.base_plate_width, "base_plate_width")
+    depth = embedded.embedment
     spread = depth / math.tan(math.radians(35.0))
     side = max((embedded.foundation_width - width) / 2, 0.0)
     along = 0.3 * width + spread + min(spread, side)
@@ -766,7 +772,7 @@ def type2_breakout_force(bp: BasePlate) -> float:
     fc_psi = bp.fc / to_internal(1.0, "psi", Kind.STRESS)
     inch = to_internal(1.0, "in", Kind.LENGTH)
     area = type2_breakout_area(bp) / inch**2
-    depth = bp.embedded_base.embedment / inch
+    depth = required(bp.embedded_base, "embedded base").embedment / inch
     lb = 40 / 9 * area * math.sqrt(fc_psi / depth)
     return to_internal(lb, "lbf", Kind.FORCE)
 
@@ -792,12 +798,14 @@ def concrete_edges(bp: BasePlate, both_rows: bool = False) -> anchors.Edges:
 def _a2_over_a1(bp: BasePlate, method: Method, combo: str) -> CheckResult:
     """A2/A1 used ≤ the largest concentric, similar area inside the pedestal (§J8)."""
     c = Calc(method, combo)
+    ped_N = required(bp.pedestal_N, "pedestal_N")
     if bp.pedestal_shape == PedestalShape.ROUND:
         k = c.step("k", r"\frac{D_{ped}}{\sqrt{N^2 + B^2}}",
-                   bp.pedestal_N / math.hypot(bp.N, bp.B), clause="AISC 360-22 §J8")
+                   ped_N / math.hypot(bp.N, bp.B), clause="AISC 360-22 §J8")
     else:
+        ped_B = required(bp.pedestal_B, "pedestal_B")
         k = c.step("k", r"\min(N_{ped}/N,\ B_{ped}/B)",
-                   min(bp.pedestal_N / bp.N, bp.pedestal_B / bp.B), clause="AISC 360-22 §J8")
+                   min(ped_N / bp.N, ped_B / bp.B), clause="AISC 360-22 §J8")
     limit = c.step(r"(A_2/A_1)_{max}", r"\min(k^2,\ 4)", min(k * k, 4.0), clause="AISC 360-22 §J8")
     return c.result("base_plate.a2_over_a1", "AISC 360-22 §J8", bp.A2_over_A1, limit,
                     Kind.DIMENSIONLESS)
@@ -1031,8 +1039,9 @@ def check_base_plate(bp: BasePlate, forces: Forces, method: Method,  # noqa: C90
 
 
 def check_envelope(bp: BasePlate, combinations: Iterable[LoadCombination],
-                   case_forces: Mapping[str, Forces]) -> tuple[list[CheckResult], CheckResult]:
-    """Run every combination; return all results and the governing one."""
+                   case_forces: Mapping[str, Forces]
+                   ) -> tuple[list[CheckResult], CheckResult | None]:
+    """Run every combination; return all results and the governing one (None if none)."""
     results: list[CheckResult] = []
     for combo in combinations:
         results += check_base_plate(bp, combine(combo, case_forces), combo.method, combo.name)
