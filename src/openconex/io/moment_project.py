@@ -168,6 +168,15 @@ class SeismicInput(_Input):
     """bfp: column face to the nearest bolt row."""
     stiffener_thickness: Quantity | None = None
     """bseep: thickness of the end-plate stiffener (steel ``grade``)."""
+    column_shear: Quantity | None = None
+    """smf: story shear in the column outside the panel zone, subtracted from the
+    panel-zone shear."""
+    column_height_above: Quantity | None = None
+    """smf: beam centerline to the inflection point of the column above (usually half the
+    story height); with ``column_height_below``, the column moments of the column-beam
+    ratio are projected to the beam centerline."""
+    column_height_below: Quantity | None = None
+    """smf: beam centerline to the inflection point of the column below."""
 
     def missing(self) -> list[str]:
         need = []
@@ -404,4 +413,8 @@ def _seismic(project: Project, mc: MomentConnectionInput, beam: IShape, column: 
         beam_depth_label=bdepth, column_depth_label=cdepth, rbs_a=q(s.rbs_a),
         rbs_b=q(s.rbs_b), rbs_c=q(s.rbs_c), bfp_s1=q(s.bfp_s1),
         stiffener_thickness=q(s.stiffener_thickness, Kind.THICKNESS),
-        stiffener_Fy=library[mc.grade].Fy, slab=s.slab)
+        stiffener_Fy=library[mc.grade].Fy, slab=s.slab,
+        beam_rolled=isinstance(mc.beam, str),
+        column_shear=q(s.column_shear, Kind.FORCE),
+        column_height_above=q(s.column_height_above),
+        column_height_below=q(s.column_height_below))

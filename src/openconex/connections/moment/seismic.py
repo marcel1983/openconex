@@ -44,8 +44,9 @@ welded beam web, the limiting flange thickness b_bf/6, and the size of the
 plates).
 
 The limits and equations were checked against the text of AISC 358-22 and
-AISC 341-22; validation against a worked example of the AISC Seismic Design
-Manual is still pending (docs/tecnico/07-validacion.md).
+AISC 341-22, and the results against AISC Seismic Design Manual Examples 4.3.6
+(RBS) and 4.3.7 (BFP) and AISC Design Guide 39 Examples 6.3-2 (4ES) and 6.3-3
+(8ES) (tests/moment/test_seismic_manual.py, docs/tecnico/07-validacion.md).
 """
 
 from __future__ import annotations
@@ -196,6 +197,16 @@ class Seismic:
     stiffener_Fy: float = 0.0
     slab: bool = True
     """BFP: a concrete structural slab is provided (column depth limit, §7.3.2)."""
+    beam_rolled: bool = True
+    """The beam is a hot-rolled shape (φ_v = 1.00 of AISC 360 §G2.1(a) applies)."""
+    column_height_above: float = 0.0
+    """SMF: beam centerline to the inflection point of the column above (usually half the
+    story height); 0: the column moments are not projected to the beam centerline."""
+    column_height_below: float = 0.0
+    """SMF: beam centerline to the inflection point of the column below."""
+    column_shear: float = 0.0
+    """SMF: story shear in the column outside the panel zone, V_c, subtracted from the
+    panel-zone shear (AISC 341-22 §E3.6e.1)."""
 
 
 def nominal_depth(label: str) -> float | None:
@@ -266,6 +277,10 @@ class Hinge:
     """Probable maximum moment at the column face (Eq. 2.4-4)."""
     vu: float
     """Required shear of the beam and of the connection at the column face (§2.5)."""
+    vh_min: float = 0.0
+    """Shear at the hinge of the opposite beam end, 2M_pr/L_h − V_gravity."""
+    mf_min: float = 0.0
+    """Moment at the column face of that end, M_pr + V_h,min S_h."""
 
 
 def _hinge(mc: MomentConnection, s: Seismic, c: Calc) -> Hinge:
@@ -312,7 +327,15 @@ def _hinge(mc: MomentConnection, s: Seismic, c: Calc) -> Hinge:
     vh = c.step("V_h", "2M_{pr}/L_h + V_{gravity}", 2 * mpr / lh + vg, F, clause)
     mf = c.step("M_f", "M_{pr} + V_h S_h", mpr + vh * sh, M, f"{A358} §2.4.5, Eq. 2.4-4")
     vu = c.step("V_u", "V_h + w_u S_h", vh + s.gravity_load * sh, F, f"{A358} §2.5")
-    return Hinge(mpr, sh, vh, mf, vu)
+    # the other beam of a two-sided joint bends the other way: gravity reduces its shear
+    vh_min = 2 * mpr / lh - vg
+    mf_min = mpr + vh_min * sh
+    if mc.two_sided:
+        vh_min = c.step("V_{h,min}", "2M_{pr}/L_h - V_{gravity}", vh_min, F,
+                        f"{A358} §2.4.4, Eq. 2.4-3")
+        mf_min = c.step("M_{f,min}", "M_{pr} + V_{h,min} S_h", mf_min, M,
+                        f"{A358} §2.4.5, Eq. 2.4-4")
+    return Hinge(mpr, sh, vh, mf, vu, vh_min, mf_min)
 
 
 def _limits(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
@@ -387,13 +410,14 @@ def _slenderness(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
     return out
 
 
-def _beam_shear(mc: MomentConnection, vu: float, c: Calc) -> CheckResult:
+def _beam_shear(mc: MomentConnection, s: Seismic, vu: float, c: Calc) -> CheckResult:
     beam = mc.beam
     Fy = beam.material.Fy
     clause = f"{SPEC} §G2.1; {A358} §2.5"
     h = beam.d - 2 * beam.k_des if beam.k_des > 0 else beam.d - 2 * beam.tf
-    rolled = h / beam.tw <= 2.24 * math.sqrt(E_STEEL / Fy)
-    phi = c.step(r"\phi_v", r"1.00\ (h/t_w \le 2.24\sqrt{E/F_y}),\ 0.90",
+    # §G2.1(a): φ_v = 1.00 and C_v1 = 1.0 only for the webs of rolled I-shapes
+    rolled = s.beam_rolled and h / beam.tw <= 2.24 * math.sqrt(E_STEEL / Fy)
+    phi = c.step(r"\phi_v", r"1.00\ (rolled,\ h/t_w \le 2.24\sqrt{E/F_y}),\ 0.90",
                  1.0 if rolled else 0.9, D, clause)
     kv = 5.34
     lim = 1.10 * math.sqrt(kv * E_STEEL / Fy)
@@ -409,14 +433,28 @@ def _column_beam_ratio(mc: MomentConnection, s: Seismic, hinge: Hinge) -> CheckR
     c = Calc(Method.LRFD, COMBO)
     clause = f"{A341} §E3.4a, Eq. E3-1 to E3-3"
     n_col = 2 if s.column_above else 1
-    n_beam = 2 if mc.two_sided else 1
-    mpc = c.step(r"\sum M^*_{pc}", r"n_c Z_c (F_{yc} - P_r/A_g)",
-                 n_col * s.column_Zx * max(col.material.Fy - s.column_axial / s.column_A, 0.0),
-                 M, clause, n_c=(n_col, D), Z_c=(s.column_Zx, Kind.SECTION_MODULUS),
-                 P_r=(s.column_axial, F))
-    mbe = c.step(r"\sum M^*_{be}", r"n_b [M_{pr} + V_h (S_h + d_c/2)]",
-                 n_beam * (hinge.mpr + hinge.vh * (hinge.sh + col.d / 2)), M, clause,
-                 n_b=(n_beam, D))
+    mpc1 = c.step(r"M^*_{pc}", r"Z_c (F_{yc} - P_r/A_g)",
+                  s.column_Zx * max(col.material.Fy - s.column_axial / s.column_A, 0.0),
+                  M, clause, Z_c=(s.column_Zx, Kind.SECTION_MODULUS), P_r=(s.column_axial, F))
+    heights = [s.column_height_below] + ([s.column_height_above] if s.column_above else [])
+    half = mc.beam.d / 2
+    if all(h > half for h in heights):
+        # moments at the beam flanges projected to the beam centerline with the column
+        # shear in equilibrium with them (inflection points at h above and below)
+        mpc = c.step(r"\sum M^*_{pc}", r"\sum M^*_{pc}\,h/(h - d/2)",
+                     sum(mpc1 * h / (h - half) for h in heights), M, clause,
+                     h_a=(s.column_height_above if s.column_above else 0.0, L),
+                     h_b=(s.column_height_below, L), d=(mc.beam.d, L))
+    else:
+        mpc = c.step(r"\sum M^*_{pc}", r"n_c M^*_{pc}", n_col * mpc1, M, clause,
+                     n_c=(n_col, D))
+    arm = hinge.sh + col.d / 2
+    if mc.two_sided:
+        mbe = c.step(r"\sum M^*_{be}", r"2M_{pr} + (V_h + V_{h,min})(S_h + d_c/2)",
+                     2 * hinge.mpr + (hinge.vh + hinge.vh_min) * arm, M, clause)
+    else:
+        mbe = c.step(r"\sum M^*_{be}", r"M_{pr} + V_h (S_h + d_c/2)",
+                     hinge.mpr + hinge.vh * arm, M, clause)
     c.step(r"\sum M^*_{pc}/\sum M^*_{be}", r"> 1.0", mpc / mbe if mbe else math.inf, D,
            clause)
     return c.result("seismic.column_beam_ratio", clause, mbe, mpc, M)
@@ -618,7 +656,7 @@ def _bfp(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
 
 
 def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[CheckResult]:
-    from .end_plate import EndPlateLayout, _rows, _yield_parameter
+    from .end_plate import EndPlateLayout, _rows
     ep = required(mc.end_plate, "end_plate")
     beam, b = mc.beam, ep.bolt
     out = []
@@ -642,8 +680,7 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
 
     c = Calc(Method.LRFD, COMBO)
     clause = f"{A358} §6.7.1, Eq. 6.7-5"
-    rows = _rows(mc, c)
-    Y = _yield_parameter(mc, rows, c)
+    Y = _yield_parameter(mc, c)
     cap = c.step(r"\phi_d F_{yp} t_p^2 Y_p / 1.11", "",
                  PHI_D * ep.Fy * ep.thickness**2 * Y / 1.11, M, clause)
     out.append(c.result("seismic.end_plate_yielding", clause, mf, cap, M))
@@ -653,15 +690,14 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
                  f"{A358} §6.7.1, Eq. 6.7-6")
     if ep.layout is EndPlateLayout.EXTENDED_4:
         clause = f"{A358} §6.7.1, Eq. 6.7-7"
-        bp = c.step("b_p", r"\min(b_p,\ b_{bf} + 1\,in)", min(ep.width, beam.bf + _in(1.0)),
-                    L, clause)
+        bp = _effective_width(mc, c, clause)
         cap = c.step(r"\phi_d 0.6 F_{yp} b_p t_p", "",
                      PHI_D * 0.6 * ep.Fy * bp * ep.thickness, F, clause)
         out.append(c.result("seismic.end_plate_shear_yielding", clause, ffu / 2, cap, F))
         c = Calc(Method.LRFD, COMBO)
         clause = f"{A358} §6.7.1, Eq. 6.7-8"
-        an = c.step("A_n", r"[b_p - 2(d_b + 1/8\,in)]t_p",
-                    (ep.width - 2 * (b.diameter + _in(0.125))) * ep.thickness, Kind.AREA,
+        an = c.step("A_n", r"[b_{p,eff} - 2(d_b + 1/8\,in)]t_p",
+                    (bp - 2 * (b.diameter + _in(0.125))) * ep.thickness, Kind.AREA,
                     clause)
         cap = c.step(r"\phi_n 0.6 F_{up} A_n", "", PHI_N * 0.6 * ep.Fu * an, F, clause)
         out.append(c.result("seismic.end_plate_shear_rupture", clause, ffu / 2, cap, F))
@@ -688,6 +724,78 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
     out.append(c.result("seismic.end_plate_compression_bolts", clause, vu, cap, F))
     out.append(_end_plate_bearing(mc, vu, eight))
     return out
+
+
+def _effective_width(mc: MomentConnection, c: Calc, clause: str) -> float:
+    """b_p,eff = min(b_p, b_bf + 1 in.): the end plate wider than the beam flange plus
+    1 in. is not effective (AISC 358-22 §6.7.1, Step 3 and Eq. 6.7-7)."""
+    ep = required(mc.end_plate, "end_plate")
+    return c.step("b_{p,eff}", r"\min(b_p,\ b_{bf} + 1\,in)",
+                  min(ep.width, mc.beam.bf + _in(1.0)), L, clause, b_p=(ep.width, L),
+                  b_bf=(mc.beam.bf, L))
+
+
+def _yield_parameter(mc: MomentConnection, c: Calc) -> float:
+    """Y_p of the end plate, AISC 358-22 Tables 6.2 to 6.4, with h_i from the center of
+    the compression flange to each tension bolt row and b_p,eff."""
+    from .end_plate import EndPlateLayout
+    ep = required(mc.end_plate, "end_plate")
+    beam = mc.beam
+    clause = f"{A358} §6.7.1, Table 6.2" if ep.layout is EndPlateLayout.EXTENDED_4 else (
+        f"{A358} §6.7.1, Table 6.3" if ep.layout is EndPlateLayout.EXTENDED_4_STIFFENED
+        else f"{A358} §6.7.1, Table 6.4")
+    bp = _effective_width(mc, c, clause)
+    g, pfo, pb, tf = ep.gage, ep.pf_o, ep.pb, beam.tf
+    s = c.step("s", r"\frac{1}{2}\sqrt{b_p g}", 0.5 * math.sqrt(bp * g), L, clause,
+               g=(g, L))
+    pfi = ep.pf
+    if pfi > s:
+        pfi = c.step("p_{fi}", r"s\ (p_{fi} > s)", s, L, clause)
+    de = c.step("d_e", r"p_{ext} - p_{fo}" + (" - p_b" if ep.outside_rows == 2 else ""),
+                ep.pext - pfo - (pb if ep.outside_rows == 2 else 0.0), L, clause)
+    h_out = beam.d - tf / 2 + pfo
+    h_in = beam.d - 1.5 * tf - ep.pf
+    if ep.layout is EndPlateLayout.EXTENDED_8_STIFFENED:
+        h1 = c.step("h_1", r"d - t_{bf}/2 + p_{fo} + p_b", h_out + pb, L, clause)
+        h2 = c.step("h_2", r"d - t_{bf}/2 + p_{fo}", h_out, L, clause)
+        h3 = c.step("h_3", r"d - 3t_{bf}/2 - p_{fi}", h_in, L, clause)
+        h4 = c.step("h_4", r"d - 3t_{bf}/2 - p_{fi} - p_b", h_in - pb, L, clause)
+        if de <= s:
+            expr = (r"\frac{b_p}{2}\left[\frac{h_1}{2d_e}+\frac{h_2}{p_{fo}}+\frac{h_3}{p_{fi}}"
+                    r"+\frac{h_4}{s}\right]+\frac{2}{g}\left[h_1\left(d_e+\frac{3p_b}{4}\right)"
+                    r"+h_2\left(p_{fo}+\frac{p_b}{4}\right)+h_3\left(p_{fi}+\frac{3p_b}{4}\right)"
+                    r"+h_4\left(s+\frac{p_b}{4}\right)\right]+g")
+            Y = (bp / 2 * (h1 / (2 * de) + h2 / pfo + h3 / pfi + h4 / s)
+                 + 2 / g * (h1 * (de + 0.75 * pb) + h2 * (pfo + pb / 4)
+                            + h3 * (pfi + 0.75 * pb) + h4 * (s + pb / 4)) + g)
+        else:
+            expr = (r"\frac{b_p}{2}\left[\frac{h_1}{s}+\frac{h_2}{p_{fo}}+\frac{h_3}{p_{fi}}"
+                    r"+\frac{h_4}{s}\right]+\frac{2}{g}\left[h_1\left(s+\frac{p_b}{4}\right)"
+                    r"+h_2\left(p_{fo}+\frac{3p_b}{4}\right)+h_3\left(p_{fi}+\frac{p_b}{4}\right)"
+                    r"+h_4\left(s+\frac{3p_b}{4}\right)\right]+g")
+            Y = (bp / 2 * (h1 / s + h2 / pfo + h3 / pfi + h4 / s)
+                 + 2 / g * (h1 * (s + pb / 4) + h2 * (pfo + 0.75 * pb)
+                            + h3 * (pfi + pb / 4) + h4 * (s + 0.75 * pb)) + g)
+        return c.step("Y_p", expr, Y, L, clause)
+    h1 = c.step("h_1", r"d - t_{bf}/2 + p_{fo}", h_out, L, clause)
+    h2 = c.step("h_2", r"d - 3t_{bf}/2 - p_{fi}", h_in, L, clause)
+    if ep.layout is EndPlateLayout.EXTENDED_4:
+        expr = (r"\frac{b_p}{2}\left[h_2\left(\frac{1}{p_{fi}}+\frac{1}{s}\right)"
+                r"+h_1\frac{1}{p_{fo}}-\frac{1}{2}\right]+\frac{2}{g}\left[h_2(p_{fi}+s)\right]")
+        Y = bp / 2 * (h2 * (1 / pfi + 1 / s) + h1 / pfo - 0.5) + 2 / g * h2 * (pfi + s)
+    elif de <= s:
+        expr = (r"\frac{b_p}{2}\left[h_2\left(\frac{1}{p_{fi}}+\frac{1}{s}\right)"
+                r"+h_1\left(\frac{1}{p_{fo}}+\frac{1}{2d_e}\right)\right]"
+                r"+\frac{2}{g}\left[h_2(p_{fi}+s)+h_1(d_e+p_{fo})\right]")
+        Y = (bp / 2 * (h2 * (1 / pfi + 1 / s) + h1 * (1 / pfo + 1 / (2 * de)))
+             + 2 / g * (h2 * (pfi + s) + h1 * (de + pfo)))
+    else:
+        expr = (r"\frac{b_p}{2}\left[h_2\left(\frac{1}{p_{fi}}+\frac{1}{s}\right)"
+                r"+h_1\left(\frac{1}{s}+\frac{1}{p_{fo}}\right)\right]"
+                r"+\frac{2}{g}\left[h_2(p_{fi}+s)+h_1(s+p_{fo})\right]")
+        Y = (bp / 2 * (h2 * (1 / pfi + 1 / s) + h1 * (1 / s + 1 / pfo))
+             + 2 / g * (h2 * (pfi + s) + h1 * (s + pfo)))
+    return c.step("Y_p", expr, Y, L, clause)
 
 
 def _end_plate_bearing(mc: MomentConnection, vu: float, eight: bool) -> CheckResult:
@@ -735,6 +843,14 @@ def _end_plate_column(mc: MomentConnection, s: Seismic, mf: float) -> list[Check
     return [c.result("seismic.end_plate_column_flange", clause, need, col.tf, T)]
 
 
+def _panel(mc: MomentConnection, hinge: Hinge, force: float) -> float:
+    """Flange force for the panel zone: with two beams, the mean of the forces of M_f
+    and M_f,min, which the panel-zone check doubles (sum of the face moments)."""
+    if not mc.two_sided or hinge.mf <= 0:
+        return force
+    return force * (hinge.mf + hinge.mf_min) / (2 * hinge.mf)
+
+
 def seismic_checks(mc: MomentConnection) -> list[CheckResult]:
     """AISC 358 / AISC 341 checks of ``mc.seismic`` (capacity design, LRFD)."""
     from .end_plate import end_plate_column_checks
@@ -746,14 +862,14 @@ def seismic_checks(mc: MomentConnection) -> list[CheckResult]:
     hinge = _hinge(mc, s, c)
     mf = hinge.mf
     out = _limits(mc, s) + _slenderness(mc, s)
-    out.append(_beam_shear(mc, hinge.vu, c))
+    out.append(_beam_shear(mc, s, hinge.vu, c))
     smf = s.system is SeismicSystem.SMF
     if smf:
         out.append(_column_beam_ratio(mc, s, hinge))
         out += _panel_zone_thickness(mc)
     # SMF: panel zone for the moments at the column faces with φ_v = 1.00 (§E3.6e.1);
     # IMF: no additional panel-zone requirement (§E2.6e)
-    pz_shear = 0.0 if smf else None
+    pz_shear = s.column_shear if smf else None
     pz_phi = PANEL_ZONE if smf else None
     if s.connection is Prequalified.RBS:
         out += _rbs(mc, s, mf)
@@ -765,20 +881,23 @@ def seismic_checks(mc: MomentConnection) -> list[CheckResult]:
         out += _continuity(mc, s, top.width, top.thickness)
         pf = mf / (mc.beam.d + top.thickness)
         column = _column_checks(mc, pf, top.thickness, Method.LRFD, COMBO, pz_shear,
-                                s.column_axial, panel_resistance=pz_phi)
+                                s.column_axial, panel_force=_panel(mc, hinge, pf),
+                                panel_resistance=pz_phi)
     elif s.connection in (Prequalified.BUEEP, Prequalified.BSEEP):
         out += _end_plate(mc, s, hinge.vu, mf) + _end_plate_column(mc, s, mf)
         ffu = mf / (mc.beam.d - mc.beam.tf)
         N = mc.beam.tf + 2 * (required(mc.end_plate, "end_plate").weld_reinforcement or 0.0)
         column = end_plate_column_checks(mc, ffu, N, Method.LRFD, COMBO, pz_shear,
-                                         s.column_axial, pz_phi)
+                                         s.column_axial, pz_phi, _panel(mc, hinge, ffu),
+                                         seismic=True)
     else:
         # welded flanges and web (RBS, WUF-W): P_f = 0.85 M_f/d* for the local limit
         # states (AISC 341 §E3.6f.1(a), User Note), M_f/d* for the panel zone
         out += _continuity(mc, s, mc.beam.bf, mc.beam.tf)
         pf = mf / (mc.beam.d - mc.beam.tf)
         column = _column_checks(mc, 0.85 * pf, mc.beam.tf, Method.LRFD, COMBO, pz_shear,
-                                s.column_axial, panel_force=pf, panel_resistance=pz_phi)
+                                s.column_axial, panel_force=_panel(mc, hinge, pf),
+                                panel_resistance=pz_phi)
     return out + column
 
 

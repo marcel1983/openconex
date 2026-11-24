@@ -1,0 +1,59 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "AISC Design Guide 39, Ejemplo 6.3-3: 8ES, W36X150 en W18X258",
+    "number": "DG39-6.3-3",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-24",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": "W36X150",
+    "column": "W18X258",
+    "end_plate": {
+      "layout": "extended_8_stiffened",
+      "bolt": {
+        "diameter": "1.375 in",
+        "grade": "ASTM F3125 Gr. A490",
+        "threads": "N"
+      },
+      "width": "12 in",
+      "thickness": "1.375 in",
+      "gage": "6 in",
+      "pf": "2 in",
+      "pf_o": "2 in",
+      "pb": "3.75 in",
+      "pext": "7.5 in",
+      "weld_reinforcement": "5/16 in"
+    },
+    "two_sided": false,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "seismic": {
+      "connection": "bseep",
+      "system": "smf",
+      "span": "458.5 in",
+      "gravity_shear": "30 kip",
+      "column_axial": "251 kip",
+      "column_shear": "540 kip",
+      "stiffener_thickness": "5/8 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "10 kip",
+      "M": "50 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "include_code": true
+  }
+}

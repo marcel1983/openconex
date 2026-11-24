@@ -358,7 +358,7 @@ Opción `seismic` de una conexión de momento (AISC 358-22 con AISC 341-22, solo
 - φ_d = 1,00 (estados límite dúctiles) y φ_n = 0,90 (no dúctiles), §2.4.1.
 - R_y y R_t de la Tabla A3.2 de AISC 341-22, con filas separadas para perfiles laminados y para placas, o dados en el proyecto. Los aceros que la tabla no lista (por ejemplo A572 Gr. 42 en perfiles, A992 o A913 en placas) necesitan `Ry_*` en el proyecto.
 
-Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 341-22; falta validar contra un ejemplo del Seismic Design Manual (ver [validación](07-validacion.md#aisc-358-22-opción-sísmica)).
+Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 341-22 y se validaron contra los ejemplos 4.3.6 y 4.3.7 del Seismic Design Manual y 6.3-2 y 6.3-3 de la Design Guide 39 (ver [validación](07-validacion.md#aisc-358-22-opción-sísmica)).
 
 | `id` | Verificación | Norma |
 |---|---|---|
@@ -371,8 +371,8 @@ Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 34
 | `seismic.beam_web_slenderness` | h/t_w ≤ 2,5√(E/R_yF_y)(1 − C_a)^2,3 (SMF) o 5,4√(E/R_yF_y)(1 − C_a)^2,3 (IMF), C_a = 0 | AISC 341 Tabla D1.1b, caso 11 |
 | `seismic.column_flange_slenderness` | Como la viga, con R_y de la columna | AISC 341 Tabla D1.1b, caso 7 |
 | `seismic.column_web_slenderness` | Como la viga, con C_a = P_r/(R_y F_y A_g) y P_r = `column_axial` | AISC 341 Tabla D1.1b, caso 11 |
-| `seismic.beam_shear` | V_u ≤ φ_v 0,6 F_y d t_w C_v1 (φ_v = 1,0 y C_v1 = 1 si h/t_w ≤ 2,24√(E/F_y)), V_u = V_h + w_u S_h | AISC 360 §G2.1; AISC 358 §2.5 |
-| `seismic.column_beam_ratio` | SMF: ΣM*_pc = n_c Z_c (F_yc − P_r/A_g) > ΣM*_be = n_b [M_pr + V_h (S_h + d_c/2)], con n_c = 2 (1 sin columna superior) y n_b = 2 con `two_sided` | AISC 341 §E3.4a, Ec. E3-1 a E3-3 |
+| `seismic.beam_shear` | V_u ≤ φ_v 0,6 F_y d t_w C_v1 (φ_v = 1,0 y C_v1 = 1 en perfiles laminados del catálogo con h/t_w ≤ 2,24√(E/F_y); 0,90 en secciones armadas), V_u = V_h + w_u S_h | AISC 360 §G2.1; AISC 358 §2.5 |
+| `seismic.column_beam_ratio` | SMF: ΣM*_pc > ΣM*_be. M*_pc = Z_c (F_yc − P_r/A_g) en cada columna (2, o 1 sin columna superior), proyectado al eje de la viga con h/(h − d/2) si se dan `column_height_above` y `column_height_below`. ΣM*_be = M_pr + V_h (S_h + d_c/2), y con `two_sided` 2M_pr + (V_h + V_h,mín)(S_h + d_c/2), V_h,mín = 2M_pr/L_h − V_gravedad | AISC 341 §E3.4a, Ec. E3-1 a E3-3 |
 | `seismic.panel_zone_thickness` | SMF: t_w ≥ (d_z + w_z)/90, d_z = d − 2t_f, w_z = d_c − 2t_fc | AISC 341 §E3.6e.2, Ec. E3-6 |
 | `seismic.doubler_thickness` | SMF con `doubler_plate`: la doble placa con el mismo límite y al menos 1/4 in | AISC 341 §E3.6e.2, §E3.6e.3 |
 | `seismic.continuity_plates` | Sin placas de continuidad (RBS, WUF-W, BFP): t_fc ≥ t_lim = b_bf/6; en BFP, ancho de la placa de ala | AISC 341 §E3.6f.1(b), Ec. E3-7 |
@@ -394,9 +394,9 @@ Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 34
 | `seismic.bfp_plate_compression` | F_pr ≤ φ_n P_n de la placa con KL = 0,65 S₁ (§J4.4) | Ec. 7.5-11 |
 | `seismic.end_plate_tbf`, `seismic.end_plate_bbf`, `seismic.end_plate_d`, `seismic.end_plate_tp`, `seismic.end_plate_bp`, `seismic.end_plate_g`, `seismic.end_plate_pf`, `seismic.end_plate_pb` | Límites paramétricos de 4E, 4ES y 8ES (t_bf, b_bf, d, t_p, b_p, g, p_f,i y p_f,o, p_b) | §6.3, Tabla 6.1 |
 | `seismic.end_plate_bolt_rupture` | M_f ≤ φ_n M_np = φ_n 2P_t Σh_i (sin efecto palanca), P_t = F_nt A_b | §6.7.1, Ec. 6.7-3, 6.7-4 |
-| `seismic.end_plate_yielding` | M_f ≤ φ_d F_yp t_p² Y_p / 1,11, con Y_p de las líneas de fluencia de la configuración (Tablas 6.2 a 6.4, iguales a DG16 Tablas 4-2 y 4-3 y DG4 Tabla 3.3) | Ec. 6.7-5 |
-| `seismic.end_plate_shear_yielding` | 4E: F_fu/2 ≤ φ_d 0,6 F_yp b_p t_p, F_fu = M_f/(d − t_bf), b_p ≤ b_bf + 1 in | Ec. 6.7-6, 6.7-7 |
-| `seismic.end_plate_shear_rupture` | 4E: F_fu/2 ≤ φ_n 0,6 F_up A_n, A_n = [b_p − 2(d_b + 1/8 in)] t_p | Ec. 6.7-8 |
+| `seismic.end_plate_yielding` | M_f ≤ φ_d F_yp t_p² Y_p / 1,11, con Y_p de las Tablas 6.2 (4E), 6.3 (4ES) y 6.4 (8ES) de AISC 358-22, casos d_e ≤ s y d_e > s, h_i medidas al centro del ala en compresión y b_p,ef = mín(b_p, b_bf + 1 in) | §6.7.1, Ec. 6.7-5 |
+| `seismic.end_plate_shear_yielding` | 4E: F_fu/2 ≤ φ_d 0,6 F_yp b_p,ef t_p, F_fu = M_f/(d − t_bf) | Ec. 6.7-6, 6.7-7 |
+| `seismic.end_plate_shear_rupture` | 4E: F_fu/2 ≤ φ_n 0,6 F_up A_n, A_n = [b_p,ef − 2(d_b + 1/8 in)] t_p | Ec. 6.7-8 |
 | `seismic.end_plate_stiffener_thickness` | 4ES, 8ES: t_s ≥ t_bw F_yb/F_ys | Ec. 6.7-9 |
 | `seismic.end_plate_stiffener_slenderness` | 4ES, 8ES: h_st/t_s ≤ 0,56√(E/F_ys), h_st = `pext` | Ec. 6.7-10 |
 | `seismic.end_plate_compression_bolts` | V_u ≤ φ_n n_b F_nv A_b, n_b = 4 (4E, 4ES) u 8 (8ES) | Ec. 6.7-11 |
@@ -406,8 +406,8 @@ Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 34
 En la misma combinación `AISC 358` se repiten las verificaciones de la columna de las conexiones de momento (§J10, rigidizadores, doble placa y `moment.column_panel_zone`), como pide AISC 341 §E3.6f.1(a):
 
 - Fuerza de ala para los estados límite locales: P_f = 0,85 M_f/d* en RBS y WUF-W (alma soldada a la columna), M_f/(d + t_p) en BFP y M_f/(d − t_bf) en placas de extremo; d* = d − t_bf.
-- Zona de panel, solo en SMF (§E3.6e.1): ΣM_f/d* sin el factor 0,85, V_c = 0 y φ_v = 1,00 sobre R_n de AISC 360 §J10.6; con `two_sided`, las dos vigas. En IMF, AISC 341 §E2.6e no agrega requisitos y la zona de panel se verifica solo con las combinaciones del proyecto.
-- En placas de extremo, la fluencia local del alma sigue la DG4, con l_b = t_bf + 2w; la Ec. 6.7-17 agrega 2t_p a l_b, así que el programa queda del lado seguro.
+- Zona de panel, solo en SMF (§E3.6e.1 y Comentario, Ec. C-E3-11): ΣM_f/d* sin el factor 0,85, menos V_c = `column_shear`, y φ_v = 1,00 sobre R_n de AISC 360 §J10.6. Con `two_sided`, ΣM_f = M_f + M_f,mín, con M_f,mín = M_pr + V_h,mín S_h de la viga que flecta en sentido contrario. En BFP, d* = d + t_p (AISC 358 §7.5, paso 17). En IMF, AISC 341 §E2.6e no agrega requisitos y la zona de panel se verifica solo con las combinaciones del proyecto.
+- En placas de extremo, la fluencia local del alma usa R_n = [C_t(6k_c + 2t_p) + t_bf + 2w] F_yc t_cw, que es la Ec. 6.7-17 con l_b = t_bf + 2w + 2t_p (igual que la Ec. 3.24 de la DG4). El aplastamiento del alma (Ec. 6.7-18) usa el mismo l_b, y la resistencia del ala sin rigidizar (Ec. 6.7-15), φ_d = 1,00.
 
 No se verifican: el arriostramiento lateral de la viga, la zona protegida, los agujeros de acceso de la soldadura, las soldaduras de demanda crítica ni el resto de los detalles de la placa simple de WUF-W (Fig. 8.3) y de RBS (§5.5), que son requisitos de detalle de AISC 358 y AISC 341. En BFP la validación del proyecto exige placas A36 o A572 Gr. 50 (§7.4.1) y pernos A490 o F2280 con la rosca excluida (§7.4.4).
 

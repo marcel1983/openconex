@@ -1,0 +1,61 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "AISC Seismic Design Manual, 3.ª ed., Ejemplo 4.3.6: RBS, W24X76 en W14X176",
+    "number": "SDM-4.3.6",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-24",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "welded_flange",
+    "beam": "W24X76",
+    "column": "W14X176",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 6,
+      "spacing": "3 in",
+      "length": "18 in",
+      "thickness": "1/2 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "5/16 in"
+    },
+    "two_sided": true,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "continuity_plate": "5/8 in",
+    "doubler_plate": "1/2 in",
+    "seismic": {
+      "connection": "rbs",
+      "system": "smf",
+      "span": "344.8 in",
+      "gravity_load": "1.31 kip/ft",
+      "column_axial": "249 kip",
+      "column_shear": "125 kip",
+      "rbs_a": "5.5 in",
+      "rbs_b": "18 in",
+      "rbs_c": "2 in",
+      "column_height_above": "75 in",
+      "column_height_below": "84 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "10 kip",
+      "M": "50 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "include_code": true
+  }
+}
