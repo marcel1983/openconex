@@ -186,6 +186,7 @@ No hay todavía un ejemplo publicado de empalme apernado de viga o de columna en
 
 ## Otras pruebas
 
+- **Resultados de los ejemplos (caracterización):** `tests/test_examples_snapshot.py` calcula los 37 proyectos de `examples/` y compara cada verificación (identificador, combinación, cláusula, demanda, capacidad, límite y estado) con `tests/reference/examples_snapshot.json`, con tolerancia relativa de 1e-9. No valida contra una fuente publicada: detecta cualquier cambio de resultados en una refactorización. Si el cambio es intencional (una fórmula corregida, un ejemplo nuevo), se regenera con `python tools/snapshot_examples.py` y el diff del archivo muestra qué se movió; ese diff se revisa en el pull request.
 - **Conexiones de corte en proyecto:** los ejemplos `shear_single_plate.ocnx` y `shear_double_angle_coped.ocnx` reproducen II.A-17A y II.A-4 a través del archivo, las combinaciones y el despachador (`tests/connections/test_shear_project.py`), con memoria, comando, plano y 3D; la ventana de la interfaz se prueba en `tests/outputs/test_gui_shear.py`.
 
 - **Unidades:** pruebas de propiedades (hypothesis) de ida y vuelta entre unidades.
