@@ -4,6 +4,19 @@ Código: `connections/base_plate/check.py` (`check_base_plate`) con los modelos 
 
 Para cada combinación se calculan las fuerzas P, V = √(V2² + V3²), M = |M3| y M2 = |M2|, y se siguen estos pasos.
 
+`check_base_plate` solo encadena los pasos; cada uno es una función de `check.py`:
+
+| Paso | Función |
+|---|---|
+| Fuerzas válidas para el modelo | `_validate_forces` |
+| 0. Parte de la llave de corte | `_demand` (devuelve `_Demand`: P, V, M, M2 y el corte de la llave y de las barras) |
+| 1. Eje fuerte | `_bending_checks`; con base débil, antes `_ductile_anchors` y después `_weak_base_checks` |
+| 2. Eje débil | `_weak_axis`, y al final `_biaxial_interaction` |
+| 3 y 4. Anclajes en tracción y corte | `_rod_tension` (devuelve `_RodTension`), `_anchor_checks` y, en LRFD, `_anchor_tension_aci` |
+| 5. Llave de corte | `_shear_lug_checks` |
+| 6 y 8. Soldadura de las alas y pedestal | `_weld_and_pedestal` |
+| 7. Base empotrada | `_embedded_base_checks` |
+
 Si el proyecto define `connection_type = "embedded"` con `embedded_base.type = "I"`, la verificación es la de una base empotrada tipo I (DG1 Capítulo 5) y no se ejecutan los pasos 0 a 6 de la placa base expuesta. Con `type = "II"` se ejecutan los pasos de la sección 7 y, además, los pasos 0 a 8 de la placa expuesta con su parte del momento.
 
 ## 0. Llave de corte (si la hay)
