@@ -141,7 +141,7 @@ class SeismicInput(_Input):
     span: Quantity
     """Clear span of the beam between column faces, L_cf."""
     gravity_load: Quantity | None = None
-    """Uniform factored gravity load on the beam (1.2D + f1 L + 0.2S), force per length."""
+    """Uniform factored gravity load on the beam (1.2D + f1 L + 0.15S), force per length."""
     gravity_shear: Quantity | None = None
     """Factored gravity shear at the plastic hinge, added to that of ``gravity_load``."""
     column_axial: Quantity | None = None
@@ -153,7 +153,10 @@ class SeismicInput(_Input):
     Rt_beam: float | None = Field(default=None, gt=0)
     Ry_column: float | None = Field(default=None, gt=0)
     Ry_plate: float | None = Field(default=None, gt=0)
-    """R_y of the flange plates (bfp)."""
+    """R_y of the plates of steel ``grade`` (bfp flange plates, wuf_w single plate,
+    continuity plates); omitted: AISC 341-22 Table A3.2 for plates."""
+    slab: bool = True
+    """bfp: a concrete structural slab is provided (column up to W36; false: W14)."""
     rbs_a: Quantity | None = None
     """rbs: column face to the start of the cut."""
     rbs_b: Quantity | None = None
@@ -360,6 +363,14 @@ def _properties(section: str | WSectionInput, shape: IShape) -> tuple[float, flo
     return zx, area, weight, None
 
 
+def needs_plate_ratio(mc: MomentConnectionInput, continuity_plate: float) -> bool:
+    """The seismic checks use R_y of the plates (flange plates, single plate of a
+    welded web, continuity plates of thickness ``continuity_plate``)."""
+    s = mc.seismic
+    return (s.connection is Prequalified.BFP or continuity_plate > 0
+            or (s.connection is Prequalified.WUF_W and mc.web is not None))
+
+
 def expected(grade: str, value: float | None, plate: bool = False,
              tensile: bool = False) -> float:
     """R_y (or R_t) given by the user or from AISC 341-22 Table A3.2."""
@@ -379,7 +390,7 @@ def _seismic(project: Project, mc: MomentConnectionInput, beam: IShape, column: 
     column_grade = mc.column_grade if isinstance(mc.column, str) else mc.column.grade
     bzx, ba, bw, bdepth = _properties(mc.beam, beam)
     czx, ca, _, cdepth = _properties(mc.column, column)
-    plate = s.connection is Prequalified.BFP
+    plate = needs_plate_ratio(mc, q(mc.continuity_plate, Kind.THICKNESS))
     return Seismic(
         connection=s.connection, system=s.system, span=q(s.span), beam_Zx=bzx, beam_A=ba,
         beam_weight=bw, column_Zx=czx, column_A=ca,
@@ -393,4 +404,4 @@ def _seismic(project: Project, mc: MomentConnectionInput, beam: IShape, column: 
         beam_depth_label=bdepth, column_depth_label=cdepth, rbs_a=q(s.rbs_a),
         rbs_b=q(s.rbs_b), rbs_c=q(s.rbs_c), bfp_s1=q(s.bfp_s1),
         stiffener_thickness=q(s.stiffener_thickness, Kind.THICKNESS),
-        stiffener_Fy=library[mc.grade].Fy)
+        stiffener_Fy=library[mc.grade].Fy, slab=s.slab)

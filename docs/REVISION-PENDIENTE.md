@@ -176,7 +176,7 @@ Diferencias aceptadas en la validación que conviene revisar con criterio propio
 
 - [x] **F6, fase 1:** conexiones de momento con placas de ala apernadas o soldadas y alas soldadas (II.B-1 a II.B-3), en proyecto, comando, memoria, plano, 3D e interfaz.
 - [x] **F6, fase 2:** placas de extremo de momento (DG16 y DG4), rigidizadores y dobles placas (DG13) con zona de panel en el proyecto, y conexiones al alma de la columna (DG13, Apéndice D).
-- [ ] **F6, opción sísmica:** AISC 358 (hacen falta la norma y el Seismic Design Manual para validarla).
+- [ ] **F6, opción sísmica:** AISC 358 implementada y cotejada con AISC 358-22 y AISC 341-22; falta validarla contra un ejemplo del Seismic Design Manual.
 - [ ] **F7, empalmes** de viga y columna.
 - [ ] **F8, validación cruzada:** manual de verificación y comparación con otro programa en un conjunto de casos.
 

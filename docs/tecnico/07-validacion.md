@@ -147,7 +147,24 @@ Diferencias documentadas: la base de perfiles de la 16ª ed. da d = 13,9 in para
 
 ## AISC 358-22 (opción sísmica)
 
-No hay todavía un ejemplo publicado transcrito: los ejemplos de conexiones precalificadas están en el AISC Seismic Design Manual, que no se pudo consultar. `tests/moment/test_seismic_aisc358.py` compara las cinco conexiones (`examples/moment_seismic_*.ocnx`) con cálculos a mano independientes en kip e in a partir de las dimensiones de la base de perfiles: M_pr, V_u, M_f, Z_RBS, M_pe, φ_vV_n, la relación columna-viga, el espesor de la zona de panel y de las placas de continuidad (RBS), S_h = 0 (WUF-W), el diámetro máximo, los pernos, la fluencia y la rotura de las placas (BFP), M_np, Y_p de la 4E con la DG16 Tabla 4-2, la extensión y los pernos de compresión (4E), y el rigidizador de la 8ES. Estas pruebas comprueban la programación de las ecuaciones, no las ecuaciones ni los límites de precalificación, que siguen pendientes de cotejo con AISC 358-22, AISC 341-22 (Tablas A3.2 y D1.1) y los ejemplos del Seismic Design Manual. En la matriz figuran como parciales.
+**Cotejo con la norma (noviembre de 2026).** Los límites de precalificación, los factores y las ecuaciones se compararon con el texto de AISC 358-22 (Caps. 2, 5, 6, 7 y 8) y de AISC 341-22 (Tablas A3.2 y D1.1b, §E2 y §E3). El cotejo corrigió:
+
+- WUF-W: C_pr = 1,4 (§8.6), que el programa tomaba de la Ec. 2.4-2.
+- RBS: viga hasta W44, 408 lb/ft y t_bf de 2-1/8 in; columna hasta W40 (§5.3).
+- BFP: la verificación del diámetro máximo era una fórmula sin respaldo en la norma. La reemplazan la rotura de la sección neta del ala, R_t F_u Z_b,net ≥ R_y F_y Z_b (Ec. 7.5-1), y el límite de 1-1/8 in (§7.4.4). Se agregaron la columna W14 sin losa estructural (§7.3.2) y las reglas de material de placas y pernos (§7.4).
+- Placas de extremo (Tabla 6.1): d máximo de la 4E de 24 in (no 55) y d mínimo de la 8ES de 18 in (no 18,5). b_p ≤ b_bf + 1 in en la fluencia por corte de la extensión (Ec. 6.7-7). Aplastamiento y desgarro en todos los pernos de compresión (Ec. 6.7-12).
+- V_gravedad con 0,15S, y V_u = V_h + w_u S_h para el corte de la viga (§2.4.4, §2.5).
+- Tabla A3.2: valores separados para perfiles y para placas. Se quitaron los aceros que la tabla no lista (A572 Gr. 42 en perfiles; A529, A913 y A992 en placas) y se agregó A709 Gr. 50W.
+- Tabla D1.1b: alas 0,30 y 0,38 √(E/R_yF_y); almas de pórticos de momento 2,5 y 5,4 √(E/R_yF_y)(1 − C_a)^2,3, con C_a = P_r/(R_yF_yA_g).
+- Zona de panel solo en SMF, con φ_v = 1,00 (§E3.6e.1); espesor por la Ec. E3-6 y doble placa de al menos 1/4 in.
+- Placas de continuidad (§E3.6f): t_lim = b_bf/6 (la expresión 0,4√(1,8…) no está en AISC 341-22), P_f = 0,85M_f/d* con alma soldada, espesor 0,50/0,75 t_bf, ancho hasta los bordes del ala y b/t ≤ 0,56√(E/R_yF_y).
+- Números de ecuación y de paso según la edición 2022 (§5.7, §6.7, §7.5, §8.6).
+
+Coinciden con la norma: la fórmula de C_pr, φ_d y φ_n, los rangos de a, b y c, Z_RBS, S_h, M_pe, la rotura de pernos y la fluencia de la placa de extremo, los Y_p de las Tablas 6.2 a 6.4 (iguales a la DG16 y la DG4), las verificaciones de la extensión 4E, del rigidizador y de los pernos de compresión, el ala de la columna (Ec. 6.7-13), r_n, n, F_pr, la fluencia, la rotura, el bloque de corte y el pandeo de las placas de BFP, y los límites de viga de BFP y WUF-W.
+
+**Pruebas.** `tests/moment/test_seismic_aisc358.py` compara las cinco conexiones (`examples/moment_seismic_*.ocnx`) con cálculos a mano independientes en kip e in, a partir de las dimensiones de la base de perfiles. Compara M_pr, V_h, V_u, M_f, Z_RBS, M_pe, φ_vV_n, la relación columna-viga, el espesor de la zona de panel, t_lim y el tamaño de las placas de continuidad. En WUF-W compara C_pr = 1,4, la placa simple, P_f = 0,85M_f/d* y φ_v = 1,00; en BFP, Z_b,net, el diámetro máximo, los pernos y la fluencia y rotura de las placas. En la 4E compara M_np, el Y_p de la DG16 Tabla 4-2, la extensión con b_p ≤ b_bf + 1 in y los pernos de compresión. También compara el rigidizador de la 8ES, los límites de esbeltez de la Tabla D1.1b y la Tabla A3.2.
+
+**Pendiente.** No hay todavía un ejemplo resuelto del AISC Seismic Design Manual transcrito: el archivo del manual (452 MB) no se pudo leer. Por eso las verificaciones figuran como parciales (riesgo medio) en la matriz.
 
 ## Conexiones al alma de la columna
 
