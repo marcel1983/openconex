@@ -1507,7 +1507,7 @@ class MainWindow(ProjectSessionMixin, QMainWindow):
         (QMessageBox.critical if level == "critical" else QMessageBox.warning)(
             self, title, text)
 
-    def _project_from_form(self, quiet: bool = False) -> Project | None:
+    def _project_from_form(self, quiet: bool = False) -> Project | None:  # noqa: C901
         """Project read from the form, or ``None`` after showing the problem.
 
         With ``quiet`` no dialog is shown: the problem is raised as

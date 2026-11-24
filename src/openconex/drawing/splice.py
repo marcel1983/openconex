@@ -144,7 +144,7 @@ def splice_layout(sp: BeamSplice | ColumnSplice) -> SpliceLayout:
     return lay
 
 
-def _draw(s: _Sheet, sp: BeamSplice | ColumnSplice, lay: SpliceLayout, opt: SpliceDrawing,
+def _draw(s: _Sheet, sp: BeamSplice | ColumnSplice, lay: SpliceLayout, opt: SpliceDrawing,  # noqa: C901
           lang: str) -> None:
     u = s.u
     # elevation: (x, y) -> drawing; the column is drawn vertical (x up)

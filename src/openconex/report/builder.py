@@ -121,7 +121,7 @@ def _block(result: CheckResult, lang: str, units: UnitSystem) -> CheckBlock:
         status=result.status.value)
 
 
-def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:
+def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:  # noqa: C901
     info = project.info
     lang, units = info.language, info.unit_system()
     bp = project.base_plate_model()

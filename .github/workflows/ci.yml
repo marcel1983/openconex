@@ -36,8 +36,14 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.13"
-      - run: python -m pip install -e ".[dev]"
-      - run: python -m pytest --cov=openconex --cov-report=term-missing --cov-fail-under=55
+      # With the GUI, PDF and 3D extras: the whole suite runs and the measure
+      # covers gui/ and geometry3d/ too (about 90 % in November 2026).
+      - name: System libraries for Qt WebEngine (headless)
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libnss3 libxkbcommon0 libgbm1 libasound2t64 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1
+      - run: python -m pip install -e ".[dev,pdf,3d,gui-test]"
+      - run: python -m pytest --cov=openconex --cov-report=term-missing --cov-fail-under=88
+        env:
+          QT_QPA_PLATFORM: offscreen
 
   test:
     name: test (${{ matrix.os }}, py${{ matrix.python }})
