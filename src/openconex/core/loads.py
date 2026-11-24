@@ -178,16 +178,19 @@ def asce7_combinations(
     combos: list[LoadCombination] = []
     seen: set[tuple] = set()
 
-    def add(clause: str, factors: dict[str, float], tags: list[str], **kw) -> None:
+    def add(clause: str, factors: dict[str, float], tags: list[str], seismic: bool = False,
+            overstrength: bool = False, allowable_increase: float = 1.0) -> None:
         factors = {k: round(v, 10) for k, v in factors.items() if v != 0.0}
-        key = (*sorted(factors.items()), kw.get("overstrength", False))
+        key = (*sorted(factors.items()), overstrength)
         if not factors or key in seen:
             return
         seen.add(key)
         label = f"{method.value}-{len(combos) + 1}"
         name = f"{label} {' '.join(tags)}".strip()
         combos.append(LoadCombination(name=name, method=method, factors=factors,
-                                      source=f"ASCE 7-22 §{clause}", **kw))
+                                      source=f"ASCE 7-22 §{clause}", seismic=seismic,
+                                      overstrength=overstrength,
+                                      allowable_increase=allowable_increase))
 
     def put(factors: dict[str, float], names: list[str], value: float) -> None:
         for n in names:

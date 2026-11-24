@@ -16,6 +16,7 @@ to any origin; the group centroid is computed.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 from openconex.core.checks import CheckResult
@@ -26,6 +27,10 @@ __all__ = ["IcrResult", "bolt_group_eccentric", "elastic_coefficient", "icr_coef
 
 MANUAL = "AISC Manual 16th ed., Part 7"
 DELTA_MAX = 0.34  # in.
+
+Point = tuple[float, float]
+Residual = Callable[[list[float]], tuple[float, float, float]]
+"""Force residuals and load ``(Fx, Fy, P)`` for a trial ICR ``[x, y]``."""
 
 
 @dataclass(frozen=True)
@@ -52,7 +57,7 @@ def _cross(ax: float, ay: float, bx: float, by: float) -> float:
     return ax * by - ay * bx
 
 
-def _lever(bolts, load_point, angle) -> float:
+def _lever(bolts: list[Point], load_point: Point, angle: float) -> float:
     """Signed perpendicular distance from the centroid to the load line."""
     cx, cy = _centroid(bolts)
     ux, uy = _direction(angle)
@@ -81,7 +86,8 @@ def _bolt_response(d: float, dmax: float) -> float:
     return (1 - math.exp(-10 * delta)) ** 0.55
 
 
-def _residual(icr, bolts, load_point, u) -> tuple[float, float, float]:
+def _residual(icr: Sequence[float], bolts: list[Point], load_point: Point,
+              u: Point) -> tuple[float, float, float]:
     """Force residuals for a trial ICR and the corresponding load P (Rult = 1)."""
     x0, y0 = icr
     radii = [(x - x0, y - y0) for x, y in bolts]
@@ -122,8 +128,9 @@ def icr_coefficient(bolts: list[tuple[float, float]], load_point: tuple[float, f
     return IcrResult(res[2], res[0], res[1])
 
 
-def solve_icr(residual, guess: list[float], span: float, tol: float, max_iter: int = 200,
-              direction: tuple[float, float] | None = None):
+def solve_icr(residual: Residual, guess: list[float], span: float, tol: float,
+              max_iter: int = 200,
+              direction: Point | None = None) -> tuple[Point, int, float]:
     """Damped Newton iteration on the ICR position with backtracking line search.
 
     ``residual(icr)`` returns (Fx, Fy, P): force residuals and the load that
@@ -149,7 +156,8 @@ def solve_icr(residual, guess: list[float], span: float, tol: float, max_iter: i
     raise ArithmeticError("ICR iteration did not converge")
 
 
-def _newton(residual, guess, span, tol, max_iter):
+def _newton(residual: Residual, guess: list[float], span: float, tol: float,
+            max_iter: int) -> tuple[Point | None, int, float]:
     h = 1e-7 * span
     origin = guess
     f1, f2, p = residual(guess)

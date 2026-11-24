@@ -25,10 +25,11 @@ from __future__ import annotations
 
 import itertools
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from openconex.core.checks import CheckResult
-from openconex.kernel.bolt_group import _cross, _direction, solve_icr
+from openconex.kernel.bolt_group import Point, _cross, _direction, solve_icr
 from openconex.kernel.design import SPEC, WELD, Calc, Method
 from openconex.units import Kind, from_internal, to_internal
 
@@ -71,9 +72,13 @@ class WeldGroupResult:
     iterations: int
 
 
-def _elements(lines: list[WeldLine], per_line: int):
+Element = tuple[float, float, float, float, float]
+"""Weld element: centre ``x, y``, length and unit axis ``tx, ty``."""
+
+
+def _elements(lines: list[WeldLine], per_line: int) -> list[Element]:
     """(x, y, length, unit axis) of each element."""
-    out = []
+    out: list[Element] = []
     for ln in lines:
         L = ln.length
         tx, ty = (ln.x2 - ln.x1) / L, (ln.y2 - ln.y1) / L
@@ -102,7 +107,7 @@ def _stress(FEXX: float, theta: float, p: float) -> float:
     return 0.60 * FEXX * (1 + 0.5 * math.sin(math.radians(theta)) ** 1.5) * f
 
 
-def _translation(elems, w, FEXX, u) -> float:
+def _translation(elems: list[Element], w: float, FEXX: float, u: Point) -> float:
     """All elements share the deformation of the most critical one (ICR at infinity)."""
     thetas = [_theta(tx, ty, *u) for *_, tx, ty in elems]
     delta = min(_du(w, th) for th in thetas)
@@ -111,7 +116,7 @@ def _translation(elems, w, FEXX, u) -> float:
                for (_, _, L, _, _), th in zip(elems, thetas, strict=True))
 
 
-def _concentric(elems, w, FEXX, u) -> float:
+def _concentric(elems: list[Element], w: float, FEXX: float, u: Point) -> float:
     thetas = [_theta(tx, ty, *u) for *_, tx, ty in elems]
     throat = w / math.sqrt(2)
     if max(thetas) - min(thetas) < 1e-6:  # elements in line or parallel, §J2.4(b)
@@ -128,7 +133,8 @@ def _concentric(elems, w, FEXX, u) -> float:
     return rn
 
 
-def _residual(icr, elems, w, FEXX, load_point, u):
+def _residual(icr: Sequence[float], elems: list[Element], w: float, FEXX: float,
+              load_point: Point, u: Point) -> tuple[float, float, float]:
     x0, y0 = icr
     throat = w / math.sqrt(2)
     data = []

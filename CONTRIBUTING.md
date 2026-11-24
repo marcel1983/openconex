@@ -27,7 +27,7 @@ git commit -s -m "mensaje"
 - **Pruebas:** `python -m pytest`. Toda verificación nueva necesita al menos un ejemplo de referencia.
 - **Documentación:** se actualiza en el mismo pull request que el cambio (`docs/usuario`, `docs/tecnico`, `docs/PLAN.md`). La guía está en [docs/tecnico/08-mantener-documentacion.md](docs/tecnico/08-mantener-documentacion.md); `tests/test_docs.py` falla si algo queda sin documentar.
 - **Estilo:** `ruff check .`
-- **Tipos:** `python -m mypy` revisa de forma gradual `units.py`, `core/checks.py` y `core/loads.py`; al añadir módulos, amplíe `[tool.mypy]` en `pyproject.toml`.
+- **Tipos:** `python -m mypy` revisa `units.py`, `core/` y `kernel/`, donde toda función lleva anotaciones. Se amplía por etapas (`connections/` e `io/` después; la GUI queda fuera): al añadir una carpeta, amplíe `[tool.mypy]` en `pyproject.toml`.
 - **Cobertura:** `python -m pytest --cov=openconex --cov-fail-under=88` con los extras `dev,pdf,3d,gui-test` (sin ellos se omiten las pruebas de la GUI y del 3D y la cobertura baja); el umbral está en la CI y debe subir cuando se añadan pruebas.
 - **Complejidad:** ruff rechaza funciones con complejidad ciclomática mayor que 25 (`C901`). Las pocas que la superan hoy llevan `# noqa: C901` hasta que se dividan; no agregue más.
 - **Dependencias:** Dependabot abre PR semanales para `pip` y GitHub Actions; revise y fusione solo con la CI en verde.

@@ -220,7 +220,7 @@ class HSSShape(_Part):
 
     @model_validator(mode="before")
     @classmethod
-    def _default_grade(cls, data):
+    def _default_grade(cls, data: object) -> object:
         """Use the A500 Gr. C grade that matches the section shape."""
         if isinstance(data, dict) and not data.get("grade"):
             kind = data.get("kind", HSSKind.RECTANGULAR)

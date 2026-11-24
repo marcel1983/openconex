@@ -149,4 +149,5 @@ def base_plate_hole(d_in: float | Fr) -> tuple[float, float, float]:
     d = _as_fraction(d_in)
     if d not in _BASE_PLATE_HOLES:
         raise ValueError(f"no AISC Manual Table 14-2 entry for a {d} in. anchor rod")
-    return tuple(_inch(v) for v in _BASE_PLATE_HOLES[d])
+    hole, washer, washer_t = _BASE_PLATE_HOLES[d]
+    return _inch(hole), _inch(washer), _inch(washer_t)
