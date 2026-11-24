@@ -54,7 +54,7 @@ def _section(frame, fallback: str):
 def _end_project(end: BeamEnd, data: CsiBeamImport, template: Project, source, include,
                  envelopes, method, warnings: list[str]) -> Project | None:
     tag = f"beam {end.label}"
-    sc = template.shear_connection
+    sc = template.require_shear_connection()
     beam, beam_grade, problem = _section(end.beam, sc.beam_grade)
     if beam is None:
         warnings.append(f"{tag}: beam {problem}, skipped")

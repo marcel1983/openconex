@@ -96,7 +96,7 @@ def _baseplate(args: argparse.Namespace) -> int:
     if project is None:
         return 2
     if args.optimize:
-        if project.base_plate.embedded_base is not None:
+        if project.require_base_plate().embedded_base is not None:
             print("error: --optimize is only available for exposed base plates",
                   file=sys.stderr)
             return 2
@@ -104,7 +104,7 @@ def _baseplate(args: argparse.Namespace) -> int:
                           project.case_forces(), args.optimize)
         project.apply_base_plate_geometry(result.best)
         _print_trace(result, project.info.unit_system())
-        data = project.base_plate
+        data = project.require_base_plate()
         print(f"Optimized: N={data.N}, B={data.B}, tp={data.tp}, "
               f"rods={2 * data.rods_per_side} × {data.rod_diameter}, f={data.f}, "
               f"rod_spacing={data.rod_spacing} ({args.optimize})")
@@ -133,7 +133,7 @@ def _shear(args: argparse.Namespace) -> int:
     project = _load(args, "shear_connection")
     if project is None:
         return 2
-    if project.shear_connection.type.value == "skewed_bent_plate" and \
+    if project.require_shear_connection().type.value == "skewed_bent_plate" and \
             (args.dxf or args.step or args.stl):
         print("error: the DXF and 3D outputs of the skewed bent-plate connection are phase 2",
               file=sys.stderr)

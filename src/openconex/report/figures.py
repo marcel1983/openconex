@@ -77,7 +77,7 @@ def svg_to_png(svg: str, width: int = 1600) -> bytes | None:
 
 
 def _options(project: Project) -> BasePlateDrawing:
-    bp = project.base_plate
+    bp = project.require_base_plate()
     L = Kind.LENGTH
 
     def q(value):

@@ -249,13 +249,13 @@ def _merge(template: Project, section: str, projects: dict[str, Project]) -> Pro
 def _joint_projects(data, template, source, include, envelopes, method):
     projects: dict[str, Project] = {}
     warnings: list[str] = []
+    template_bp = template.require_base_plate()
     for support in data.supports:
         tag = f"joint {support.joint}"
         if support.column is None:
             warnings.append(f"{tag}: no column, skipped")
             continue
-        column, grade, problem = column_input(support.column,
-                                              template.base_plate.column_grade)
+        column, grade, problem = column_input(support.column, template_bp.column_grade)
         if column is None:
             warnings.append(f"{tag}: {problem}, skipped")
             continue
@@ -268,8 +268,8 @@ def _joint_projects(data, template, source, include, envelopes, method):
             warnings.append(f"{tag}: no load cases selected, skipped")
             continue
         warnings += [f"{tag}: {n}" for n in notes]
-        base_plate = template.base_plate.model_copy(update={
-            "column": column, "column_grade": grade or template.base_plate.column_grade})
+        base_plate = template_bp.model_copy(update={
+            "column": column, "column_grade": grade or template_bp.column_grade})
         info = template.info.model_copy(update={
             "name": f"{template.info.name} - {tag} ({support.column.section})".strip(" -")})
         project = template.model_copy(update={"info": info, "base_plate": base_plate,

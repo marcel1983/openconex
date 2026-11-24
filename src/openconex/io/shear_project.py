@@ -241,7 +241,7 @@ def _section(project: Project, section: str | WSectionInput, grade: str) -> tupl
 
 def shear_model(project: Project) -> ShearConnection:
     """Engine model of the project's shear connection."""
-    sc = project.shear_connection
+    sc = project.require_shear_connection()
     assert sc is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     library = project.material_library()

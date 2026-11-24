@@ -49,7 +49,7 @@ FIELDS: list[tuple[str, str, Kind | None]] = [
 
 
 def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
-    sc = project.shear_connection
+    sc = project.require_shear_connection()
     conn = project.shear_model()
 
     def q(value, kind):
@@ -99,7 +99,7 @@ def shear_figures(project: Project, lang: str, units: UnitSystem) -> list:
                            date=info.date, bom=False)
     svg = dxf_to_svg(shear_dxf(project.shear_model(), units, lang, options))
     plan = project.shear_connection is not None and \
-        project.shear_connection.type is ShearType.SKEWED_BENT_PLATE
+        project.require_shear_connection().type is ShearType.SKEWED_BENT_PLATE
     key = "plan" if plan else "elevation"
     figures = [Figure(key, tr(f"report.figure_{key}", lang), svg, png=svg_to_png(svg))]
     from openconex.geometry3d.base_plate import isometric_svg, occ_available
@@ -137,7 +137,7 @@ def build_shear_report(project: Project, today: dt.date | None = None) -> Report
                     for c in combos]
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
-    sc = project.shear_connection
+    sc = project.require_shear_connection()
     assumptions = [tr("report.assumption_shear_reaction", lang),
                    tr("report.assumption_shear_beam", lang)]
     if sc.cope is not None:
