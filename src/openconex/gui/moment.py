@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtGui import QAction, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -41,6 +41,7 @@ from openconex.connections.moment.seismic import Prequalified, SeismicSystem
 from openconex.core.loads import LoadType, Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.quantity import convert_fields
 from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
@@ -57,7 +58,7 @@ from openconex.report.docx import write_docx
 from openconex.report.html import write_html
 from openconex.report.moment import build_moment_report
 from openconex.report.pdf import write_pdf
-from openconex.units import PRESETS
+from openconex.units import PRESETS, Kind
 
 __all__ = ["MomentWindow"]
 
@@ -218,6 +219,8 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         self.units = QComboBox()
         self.units.addItems(sorted(PRESETS))
         form.addRow("Unidades", self.units)
+        self._units = PRESETS[self.units.currentText()]
+        self.units.currentTextChanged.connect(self._change_units)
         row = QWidget()
         box = QHBoxLayout(row)
         box.setContentsMargins(0, 0, 0, 0)
@@ -395,6 +398,48 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         self.cases.setItem(row, 6, QTableWidgetItem(Pc))
 
     # -- form <-> project ----------------------------------------------------------------
+    def _unit_fields(self):
+        """Every quantity field of the form with its magnitude."""
+        L, T, F = Kind.LENGTH, Kind.THICKNESS, Kind.FORCE
+        thick = {"thickness", "weld", "weld_to_column", "weld_to_beam", "stiffener_thickness",
+                 "web_weld", "flange_weld", "weld_reinforcement", "continuity_plate",
+                 "continuity_plate_weld", "continuity_plate_web_weld", "doubler_plate",
+                 "doubler_weld"}
+        force = {"pretension", "gravity_shear", "column_axial"}
+        groups = [self._flange, self._web, self._ep, self._stiff,
+                  *self._plates.values()]
+        for group in groups:
+            for name, edit in group.items():
+                if isinstance(edit, QLineEdit):
+                    yield edit, T if name in thick else F if name in force else L
+        for name, edit in self._seismic.items():
+            if name.startswith("R"):
+                continue  # Ry, Rt: dimensionless
+            kind = (Kind.FORCE_PER_LENGTH if name == "gravity_load" else
+                    T if name in thick else F if name in force else L)
+            yield edit, kind
+        for edit in (self.plate_extension, self.web_bolt, self.ep_bolt, self.flange_bolt):
+            yield edit, L
+        for row in range(self.cases.rowCount()):
+            for col, kind in ((2, F), (3, Kind.MOMENT), (4, F), (5, F), (6, F)):
+                yield self.cases.item(row, col), kind
+
+    def _change_units(self, name: str) -> None:
+        """Convert every value of the form, so a bare number keeps its magnitude."""
+        new = PRESETS.get(name)
+        if new is None or new.name == self._units.name:
+            return
+        try:
+            convert_fields(self._unit_fields(), self._units, new)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Unidades", str(exc))
+            with QSignalBlocker(self.units):
+                self.units.setCurrentText(
+                    self._units.name if self._units.name in PRESETS else name)
+            return
+        self._units = new
+        self.statusBar().showMessage(f"Unidades convertidas a {name}.")
+
     def _uses_plates(self, detail: FlangeDetail) -> bool:
         """Flange plates, or the connection plates of a flange welded to the column web."""
         if detail is FlangeDetail.WELDED_FLANGE:
@@ -420,6 +465,7 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         for key, edit in self._info.items():
             edit.setText(_text(getattr(info, key)))
         self.language.setCurrentText(info.language)
+        self._units = info.unit_system()
         if isinstance(info.units, str):
             self.units.setCurrentText(info.units)
         for method, check in self._methods.items():

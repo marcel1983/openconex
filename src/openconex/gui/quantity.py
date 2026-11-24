@@ -4,10 +4,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from typing import Protocol
+
 from openconex.io.project import HSSSectionInput, Project, WSectionInput
 from openconex.units import PRESETS, Kind, UnitSystem, from_internal, parse
 
 __all__ = [
+    "convert_fields",
     "convert_project",
     "convert_section",
     "convert_text",
@@ -36,6 +40,33 @@ def convert_text(text: str, kind: Kind, old: UnitSystem, new: UnitSystem,
                  precision: int = PRECISION) -> str:
     """Convert a form value from one unit system to another."""
     return format_quantity(parse(text, kind, old), kind, new, precision)
+
+
+class TextField(Protocol):
+    """A ``QLineEdit`` or ``QTableWidgetItem``: anything with ``text``/``setText``."""
+
+    def text(self) -> str: ...
+
+    def setText(self, text: str) -> None: ...  # noqa: N802 (Qt API)
+
+
+def convert_fields(fields: Iterable[tuple[TextField | None, Kind]], old: UnitSystem,
+                   new: UnitSystem) -> None:
+    """Rewrite the quantity of each form field from ``old`` to ``new`` units.
+
+    Every text is converted first and written only if all of them parse, so a
+    bad value raises ``ValueError`` and leaves the form unchanged. Empty
+    fields and repeated widgets are skipped.
+    """
+    converted: dict[int, tuple[TextField, str]] = {}
+    for field, kind in fields:
+        if field is None or id(field) in converted:
+            continue
+        text = field.text().strip()
+        if text:
+            converted[id(field)] = (field, convert_text(text, kind, old, new))
+    for field, text in converted.values():
+        field.setText(text)
 
 
 def stored_quantity(text: str, kind: Kind, system: UnitSystem) -> str:

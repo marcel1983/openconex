@@ -11,7 +11,7 @@ from __future__ import annotations
 import copy
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtGui import QAction, QPixmap
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -39,6 +39,7 @@ from PySide6.QtWidgets import (
 from openconex.core.loads import LoadType, Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.quantity import convert_fields
 from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
@@ -57,7 +58,7 @@ from openconex.report.docx import write_docx
 from openconex.report.html import write_html
 from openconex.report.pdf import write_pdf
 from openconex.report.splice import build_splice_report
-from openconex.units import PRESETS
+from openconex.units import PRESETS, Kind
 
 __all__ = ["BEAM_TEMPLATE", "COLUMN_TEMPLATE", "SpliceWindow"]
 
@@ -176,6 +177,8 @@ class SpliceWindow(ProjectSessionMixin, QMainWindow):
         self.units = QComboBox()
         self.units.addItems(sorted(PRESETS))
         form.addRow("Unidades", self.units)
+        self._units = PRESETS[self.units.currentText()]
+        self.units.currentTextChanged.connect(self._change_units)
         row = QWidget()
         box = QHBoxLayout(row)
         box.setContentsMargins(0, 0, 0, 0)
@@ -274,6 +277,35 @@ class SpliceWindow(ProjectSessionMixin, QMainWindow):
         splitter.setSizes([480, 800])
         self.setCentralWidget(splitter)
 
+    def _unit_fields(self):
+        """Every quantity field of the form with its magnitude."""
+        for group in (self._flange, self._web):
+            for name, edit in group.items():
+                if isinstance(edit, QLineEdit):
+                    yield edit, Kind.THICKNESS if "thickness" in name else Kind.LENGTH
+        for edit in (self.gap, self.flange_bolt, self.web_bolt):
+            yield edit, Kind.LENGTH
+        kinds = {"V": Kind.FORCE, "M": Kind.MOMENT, "P": Kind.FORCE, "V_weak": Kind.FORCE}
+        for row in range(self.cases.rowCount()):
+            for col, (key, _) in enumerate(CASE_COLUMNS, start=2):
+                yield self.cases.item(row, col), kinds[key]
+
+    def _change_units(self, name: str) -> None:
+        """Convert every value of the form, so a bare number keeps its magnitude."""
+        new = PRESETS.get(name)
+        if new is None or new.name == self._units.name:
+            return
+        try:
+            convert_fields(self._unit_fields(), self._units, new)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Unidades", str(exc))
+            with QSignalBlocker(self.units):
+                self.units.setCurrentText(
+                    self._units.name if self._units.name in PRESETS else name)
+            return
+        self._units = new
+        self.statusBar().showMessage(f"Unidades convertidas a {name}.")
+
     def _add_case(self, name: str, kind: str, values: dict[str, str]) -> None:
         row = self.cases.rowCount()
         self.cases.insertRow(row)
@@ -305,6 +337,7 @@ class SpliceWindow(ProjectSessionMixin, QMainWindow):
         for key, edit in self._info.items():
             edit.setText(_text(getattr(info, key)))
         self.language.setCurrentText(info.language)
+        self._units = info.unit_system()
         if isinstance(info.units, str):
             self.units.setCurrentText(info.units)
         for method, check in self._methods.items():
