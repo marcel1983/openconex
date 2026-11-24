@@ -6,7 +6,7 @@ Una **familia** es un tipo de bloque del proyecto `.ocnx` con todo lo que el pro
 
 | Bloque (`key`) | Comando | Memoria | Ventana |
 |---|---|---|---|
-| `base_plate` | `openconex baseplate` | `report.builder.build_base_plate_report` | ventana principal (`gui/app.py`) |
+| `base_plate` | `openconex baseplate` | `report.builder.build_base_plate_report` | ventana principal (`gui/app.py`, formulario en `gui/base_plate.py`) |
 | `shear_connection` | `openconex shear` | `report.shear.build_shear_report` | `gui/shear.py` |
 | `moment_connection` | `openconex moment` | `report.moment.build_moment_report` | `gui/moment.py` |
 | `splice` | `openconex splice` | `report.splice.build_splice_report` | `gui/splice.py` |
