@@ -862,180 +862,257 @@ def _concrete_shear(bp: BasePlate, components: tuple[float, float], V: float,
     return out
 
 
-def check_base_plate(bp: BasePlate, forces: Forces, method: Method,  # noqa: C901
-                     combo: str = "") -> list[CheckResult]:
-    """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
-    col = bp.column
-    P_, V = forces.P, math.hypot(forces.V2, forces.V3)
-    M, M2 = abs(forces.M3), abs(forces.M2)
+@dataclass(frozen=True)
+class _Demand:
+    """Forces of one combination on the plate, after the shear lug takes its share."""
+
+    P: float
+    V: float
+    """Shear on the rods, √(V2² + V3²) less the lug's share."""
+    M: float
+    M2: float
+    lug_shear: tuple[float, float] = (0.0, 0.0)
+    rod_shear: tuple[float, float] = (0.0, 0.0)
+
+
+@dataclass(frozen=True)
+class _RodTension:
+    rod: float
+    """Tension of the most loaded rod."""
+    rod_nd: float
+    """Rod tension for the non-ductile concrete modes (pullout, side-face blowout)."""
+    group: float
+    """Tension of the rod group (concrete breakout)."""
+
+
+def _validate_forces(bp: BasePlate, P_: float, M: float, M2: float) -> None:
     if bp.bearing_area_model is BearingAreaModel.EFFECTIVE and (M or M2 or P_ < 0):
         raise ValueError("effective bearing area is only defined for concentric compression")
+    col = bp.column
     if isinstance(col, HSSShape) and col.kind is HSSKind.ROUND and (M or M2):
         raise ValueError(
             "round HSS with moment is not supported; only axial compression is validated")
-    if bp.embedded_base is not None:
-        return _embedded_base_checks(bp, forces, P_, V, M, M2, method, combo)
-    lug_shear = (0.0, 0.0)
+
+
+def _demand(bp: BasePlate, forces: Forces, P_: float, V: float, M: float,
+            M2: float) -> _Demand:
+    """Shear and moments left to the plate and rods after the shear lug takes its share."""
     rod_shear = (abs(forces.V2), abs(forces.V3))
-    if bp.shear_lug:
-        lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)
-        e = bp.shear_lug.grout + bp.shear_lug.embedment / 2
-        M, M2 = M + lug_shear[0] * e, M2 + lug_shear[1] * e
-        V = math.hypot(abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
-        rod_shear = (abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
-    results: list[CheckResult] = []
-    if bp.pedestal_N and bp.pedestal_B:
-        results.append(_a2_over_a1(bp, method, combo))
-    m, n = _cantilevers(col, bp.N, bp.B)
+    if not bp.shear_lug:
+        return _Demand(P_, V, M, M2, rod_shear=rod_shear)
+    lug_shear = bp.shear_lug.resisted(forces.V2, forces.V3)
+    e = bp.shear_lug.grout + bp.shear_lug.embedment / 2
+    rod_shear = (abs(forces.V2) - lug_shear[0], abs(forces.V3) - lug_shear[1])
+    return _Demand(P_, math.hypot(*rod_shear), M + lug_shear[0] * e, M2 + lug_shear[1] * e,
+                   lug_shear, rod_shear)
+
+
+def _ductile_anchors(bp: BasePlate, d: _Demand,
+                     method: Method) -> seismic.DuctileAnchors | None:
+    """Ductile anchors of a weak base (DG1 §6.4.2), sized for the preliminary rod tension."""
     weak = bp.weak_base if method is Method.LRFD else None
-    ductile = None
-    tension_demand = None
-    if weak is not None:
-        if bp.pressure_model is not PressureModel.RECTANGULAR:
-            raise ValueError("weak base requires the rectangular pressure model")
-        if M2:
-            raise ValueError("weak base does not support weak-axis moment yet")
-        if bp.rod.material.Fy is None:
-            raise ValueError("weak base requires an anchor grade with a defined yield stress")
-        preliminary = bpl.rectangular_bending(P_, M, bp.N, bp.B, bp.f, bp.fc,
-                                              bp.A2_over_A1, method)
-        if preliminary.T > 0:
-            ductile = seismic.ductile_anchors(
-                preliminary.T, bp.rods_per_side, bp.rod.material.Fy, bp.rod.material.Fu,
-                weak.reduced_diameter, bp.f, bp.rod.diameter, weak.Rt)
-            tension_demand = ductile.N_required
-    triangular = bp.pressure_model is PressureModel.TRIANGULAR and P_ > 0
+    if weak is None:
+        return None
+    if bp.pressure_model is not PressureModel.RECTANGULAR:
+        raise ValueError("weak base requires the rectangular pressure model")
+    if d.M2:
+        raise ValueError("weak base does not support weak-axis moment yet")
+    if bp.rod.material.Fy is None:
+        raise ValueError("weak base requires an anchor grade with a defined yield stress")
+    preliminary = bpl.rectangular_bending(d.P, d.M, bp.N, bp.B, bp.f, bp.fc,
+                                          bp.A2_over_A1, method)
+    if preliminary.T <= 0:
+        return None
+    return seismic.ductile_anchors(
+        preliminary.T, bp.rods_per_side, bp.rod.material.Fy, bp.rod.material.Fu,
+        weak.reduced_diameter, bp.f, bp.rod.diameter, weak.Rt)
 
-    bend, T, axis = _bending_checks(
-        bp, P_, M, bp.N, bp.B, bp.f, _tension_lever(bp, False), m, n, method, combo, "",
-        PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR,
-        rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side,
-        tension_demand=tension_demand)
-    results += axis
-    from . import interference
-    results += interference.anchor_interference(bp, method, combo)
-    if ductile is not None and weak is not None:
-        c = Calc(method, combo)
-        c.step(r"T_{red}", r"\frac{\pi d_r^2}{4}F_u", ductile.T_reduced, Kind.FORCE,
-               f"{DG1} §6.4.2")
-        c.step(r"R_t T_{red}", "", ductile.RtT_reduced, Kind.FORCE, f"{DG1} §6.4.2")
-        c.step("N_{req}", r"n R_t T_{red}", ductile.N_required, Kind.FORCE,
-               f"{DG1} §6.4.2")
-        c.step("A_{s,red,req}", r"\frac{T}{n\phi F_y}", ductile.A_reduced_min,
-               Kind.AREA, f"{DG1} §6.4.2")
-        provided = math.pi * weak.reduced_diameter**2 / 4
-        results.append(c.result("base_plate.weak_base_area", f"{DG1} §6.4.2",
-                                ductile.A_reduced_min, provided, Kind.AREA))
-        c = Calc(method, combo)
-        c.step("L_{stretch,min}", r"\max(8d_a,\ f)", ductile.L_stretch_min, Kind.LENGTH,
-               f"{DG1} §6.4.2")
-        results.append(c.result("base_plate.weak_base_stretch", f"{DG1} §6.4.2",
-                                ductile.L_stretch_min, weak.stretch_length, Kind.LENGTH))
-    if bend.case == "not_possible":
-        return results
-    T_weak, bend_weak = 0.0, None
-    if M2:
-        if _weak_anchors(bp):
-            m_weak, n_weak = _cantilevers_weak(col, bp.N, bp.B)
-            bend_weak, T_weak, axis = _bending_checks(
-                bp, P_, M2, bp.B, bp.N, bp.rod_spacing / 2,
-                _tension_lever(bp, True), m_weak, n_weak, method, combo, "_weak",
-                PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR,
-                rod_edge=bp.B / 2 - bp.rod_spacing / 2, rods_in_tension=2)
-            results += axis
-        else:
-            results.append(_weak_axis_without_anchors(bp, P_, M2, method, combo))
 
-    # --- anchors -------------------------------------------------------------
+def _weak_base_checks(weak: WeakBase, ductile: seismic.DuctileAnchors, method: Method,
+                      combo: str) -> list[CheckResult]:
+    """Reduced area and stretch length of the ductile anchors (DG1 §6.4.2)."""
+    c = Calc(method, combo)
+    c.step(r"T_{red}", r"\frac{\pi d_r^2}{4}F_u", ductile.T_reduced, Kind.FORCE,
+           f"{DG1} §6.4.2")
+    c.step(r"R_t T_{red}", "", ductile.RtT_reduced, Kind.FORCE, f"{DG1} §6.4.2")
+    c.step("N_{req}", r"n R_t T_{red}", ductile.N_required, Kind.FORCE,
+           f"{DG1} §6.4.2")
+    c.step("A_{s,red,req}", r"\frac{T}{n\phi F_y}", ductile.A_reduced_min,
+           Kind.AREA, f"{DG1} §6.4.2")
+    provided = math.pi * weak.reduced_diameter**2 / 4
+    out = [c.result("base_plate.weak_base_area", f"{DG1} §6.4.2",
+                    ductile.A_reduced_min, provided, Kind.AREA)]
+    c = Calc(method, combo)
+    c.step("L_{stretch,min}", r"\max(8d_a,\ f)", ductile.L_stretch_min, Kind.LENGTH,
+           f"{DG1} §6.4.2")
+    out.append(c.result("base_plate.weak_base_stretch", f"{DG1} §6.4.2",
+                        ductile.L_stretch_min, weak.stretch_length, Kind.LENGTH))
+    return out
+
+
+def _weak_axis(bp: BasePlate, d: _Demand, model: PressureModel, method: Method,
+               combo: str) -> tuple[bpl.BendingResult | None, float, list[CheckResult]]:
+    """Bending about the weak axis (M2): with anchors across B, or bearing only."""
+    if not d.M2:
+        return None, 0.0, []
+    if not _weak_anchors(bp):
+        return None, 0.0, [_weak_axis_without_anchors(bp, d.P, d.M2, method, combo)]
+    m_weak, n_weak = _cantilevers_weak(bp.column, bp.N, bp.B)
+    return _bending_checks(
+        bp, d.P, d.M2, bp.B, bp.N, bp.rod_spacing / 2,
+        _tension_lever(bp, True), m_weak, n_weak, method, combo, "_weak", model,
+        rod_edge=bp.B / 2 - bp.rod_spacing / 2, rods_in_tension=2)
+
+
+def _rod_tension(bp: BasePlate, d: _Demand, bend: bpl.BendingResult, T: float,
+                 bend_weak: bpl.BendingResult | None, T_weak: float,
+                 ductile: seismic.DuctileAnchors | None) -> _RodTension:
+    """Tension of one rod and of the group, each axis separately (DG1 §4.3.7)."""
     if bend.case == "uplift" and bend.Y == 0:
-        positions = [bp.f, -bp.f]
-        forces_row = bpl.uplift_low_moment(P_, M, positions)
+        forces_row = bpl.uplift_low_moment(d.P, d.M, [bp.f, -bp.f])
         rod_t = max(forces_row) / bp.rods_per_side
-        group_t = -P_
+        group_t = -d.P
     else:
         rod_t = T / bp.rods_per_side
         group_t = T
-    if M2 and bend_weak is not None:
+    if d.M2 and bend_weak is not None:
         # each axis separately (DG1 §4.3.7); with uplift, elastic biaxial rod forces
         if not (bend_weak.case == "uplift" and bend_weak.Y == 0):  # all rods in tension
             rod_t = max(rod_t, T_weak / 2)
         group_t = max(group_t, T_weak)
-        if P_ < 0:
-            elastic = _elastic_rod_forces(bp, P_, M, M2)
+        if d.P < 0:
+            elastic = _elastic_rod_forces(bp, d.P, d.M, d.M2)
             rod_t = max(rod_t, max(elastic))
             group_t = max(group_t, sum(r for r in elastic if r > 0))
     rod_t_nd = rod_t
     if ductile is not None:
         rod_t_nd = max(rod_t, ductile.RtT_reduced)
         group_t = max(group_t, ductile.N_required)
-    if bp.rod_bending_lever is not None and rod_t > 0:
-        results.append(transfer.plate_bending_at_rods(
-            rod_t, bp.rod_bending_lever, bp.tp, bp.Fy, method, combo))
+    return _RodTension(rod_t, rod_t_nd, group_t)
+
+
+def _anchor_tension_aci(bp: BasePlate, t: _RodTension, both_rows: bool, method: Method,
+                        combo: str) -> list[CheckResult]:
+    """Rod steel, concrete breakout or anchor reinforcement, pullout and side-face
+    blowout in tension (ACI 318-19 §17.6)."""
+    Fu = Fy = bp.rod.material.Fu
+    out = [anchors.steel_tension(bp.rod.diameter, Fu, Fy, t.rod, method, combo)]
+    if bp.reinforcement is not None:
+        reinforcement = bp.reinforcement
+        out += anchors.anchor_reinforcement_design(
+            t.group, reinforcement.fy, reinforcement.area, reinforcement.db,
+            reinforcement.clear_cover, reinforcement.anchor_to_bar, bp.fc,
+            bp.hef, reinforcement.le, method, combo)
+    elif bp.hef:
+        out.append(anchors.breakout_tension(bp.hef, bp.fc, t.group, method,
+                                            span_x=bp.rod_spacing,
+                                            span_y=2 * bp.f if both_rows else 0.0,
+                                            edges=concrete_edges(bp, both_rows),
+                                            cracked=bp.cracked, seismic=bp.seismic,
+                                            combo=combo))
+    area = bp.bearing_area or anchors.heavy_hex_bearing_area(bp.rod.diameter)
+    out.append(anchors.pullout(area, bp.fc, t.rod_nd, method, bp.cracked,
+                               bp.seismic, combo))
+    blowout = _side_face_blowout(bp, area, t.rod_nd, method, combo)
+    if blowout is not None:
+        out.append(blowout)
+    return out
+
+
+def _anchor_checks(bp: BasePlate, d: _Demand, t: _RodTension, both_rows: bool,
+                   previous: list[CheckResult], method: Method,
+                   combo: str) -> list[CheckResult]:
+    """Anchor rods in tension and shear: ACI 318 in LRFD, AISC §J3 bolts in ASD."""
+    out: list[CheckResult] = []
+    if bp.rod_bending_lever is not None and t.rod > 0:
+        out.append(transfer.plate_bending_at_rods(
+            t.rod, bp.rod_bending_lever, bp.tp, bp.Fy, method, combo))
     shear_rods = bp.rods if bp.washer_thickness else max(bp.rods_per_side, 1)
-    rod_v = V / shear_rods
-    use_friction = P_ > 0 and method is Method.LRFD and not bp.washer_thickness
+    rod_v = d.V / shear_rods
+    use_friction = d.P > 0 and method is Method.LRFD and not bp.washer_thickness
     # futa = min(Fu, 1.9 Fy, 125 ksi): 1.9 Fy never governs for ASTM F1554 / F3125 rods.
     Fu = Fy = bp.rod.material.Fu
     if method is Method.LRFD:
-        if rod_t > 0:
-            results.append(anchors.steel_tension(bp.rod.diameter, Fu, Fy, rod_t, method, combo))
-            if bp.reinforcement is not None:
-                reinforcement = bp.reinforcement
-                results += anchors.anchor_reinforcement_design(
-                    group_t, reinforcement.fy, reinforcement.area, reinforcement.db,
-                    reinforcement.clear_cover, reinforcement.anchor_to_bar, bp.fc,
-                    bp.hef, reinforcement.le, method, combo)
-            elif bp.hef:
-                both_rows = bend.case == "uplift" and bend.Y == 0
-                bo = anchors.breakout_tension(bp.hef, bp.fc, group_t, method,
-                                              span_x=bp.rod_spacing,
-                                              span_y=2 * bp.f if both_rows else 0.0,
-                                              edges=concrete_edges(bp, both_rows),
-                                              cracked=bp.cracked, seismic=bp.seismic,
-                                              combo=combo)
-                results.append(bo)
-            area = bp.bearing_area or anchors.heavy_hex_bearing_area(bp.rod.diameter)
-            results.append(anchors.pullout(area, bp.fc, rod_t_nd, method, bp.cracked,
-                                           bp.seismic, combo))
-            blowout = _side_face_blowout(bp, area, rod_t_nd, method, combo)
-            if blowout is not None:
-                results.append(blowout)
-        if V > 0 and use_friction:
-            results.append(transfer.friction(P_, bp.N * bp.B, bp.fc, V, bp.friction_mu, combo))
-        elif V > 0:
-            results.append(anchors.steel_shear(bp.rod.diameter, Fu, Fy, rod_v, method,
-                                               bp.grout_pad, combo))
-            results += _concrete_shear(bp, rod_shear, V, results, method, combo)
+        if t.rod > 0:
+            out += _anchor_tension_aci(bp, t, both_rows, method, combo)
+        if d.V > 0 and use_friction:
+            out.append(transfer.friction(d.P, bp.N * bp.B, bp.fc, d.V, bp.friction_mu, combo))
+        elif d.V > 0:
+            out.append(anchors.steel_shear(bp.rod.diameter, Fu, Fy, rod_v, method,
+                                           bp.grout_pad, combo))
+            out += _concrete_shear(bp, d.rod_shear, d.V, [*previous, *out], method, combo)
     else:
-        if rod_t > 0:
-            results.append(bolts.bolt_tension(bp.rod, rod_t, method, combo))
-        if V > 0:
-            results.append(bolts.bolt_shear(bp.rod, rod_v, method, combo=combo))
-    if V > 0 and bp.washer_thickness:
-        results.append(transfer.rod_tension_shear_bending(
-            bp.rod, bp.rods, max(group_t, rod_t_nd * bp.rods_per_side), V, bp.tp,
+        if t.rod > 0:
+            out.append(bolts.bolt_tension(bp.rod, t.rod, method, combo))
+        if d.V > 0:
+            out.append(bolts.bolt_shear(bp.rod, rod_v, method, combo=combo))
+    if d.V > 0 and bp.washer_thickness:
+        out.append(transfer.rod_tension_shear_bending(
+            bp.rod, bp.rods, max(t.group, t.rod_nd * bp.rods_per_side), d.V, bp.tp,
             bp.washer_thickness, method, combo))
+    return out
 
-    if M2 and bend_weak is not None:
-        results.append(_biaxial_interaction(bp, P_, M, M2, method, combo))
-    if bp.shear_lug and any(lug_shear):
-        results += _shear_lug_checks(
-            bp, P_, lug_shear, method, combo, bend=bend, T=T,
-            bend_weak=bend_weak, T_weak=T_weak)
 
-    # --- welds ---------------------------------------------------------------
-    if M > 0 and bp.flange_weld:
+def _weld_and_pedestal(bp: BasePlate, forces: Forces, d: _Demand, method: Method,
+                       combo: str) -> list[CheckResult]:
+    """Flange welds for the moment and the concrete pedestal."""
+    out: list[CheckResult] = []
+    col = bp.column
+    if d.M > 0 and bp.flange_weld:
         weld = FilletWeld(size=bp.flange_weld, length=col.bf, electrode=bp.electrode,
                           electrodes=bp.electrodes)
-        results.append(transfer.flange_weld_for_moment(M, col.d, weld, method, combo))
+        out.append(transfer.flange_weld_for_moment(d.M, col.d, weld, method, combo))
     if bp.pedestal is not None:
         if not (bp.pedestal_N and bp.pedestal_B):
             raise ValueError("pedestal design needs pedestal_N and pedestal_B")
-        results += ped_mod.pedestal_checks(
+        out += ped_mod.pedestal_checks(
             bp.pedestal, bp.pedestal_N, bp.pedestal_B,
-            [(bar.x, bar.y, bar.diameter) for bar in bp.pedestal_rebars], bp.fc, P_,
+            [(bar.x, bar.y, bar.diameter) for bar in bp.pedestal_rebars], bp.fc, d.P,
             forces.V2, forces.V3, forces.M3, forces.M2, method, combo)
-    return results
+    return out
+
+
+def check_base_plate(bp: BasePlate, forces: Forces, method: Method,
+                     combo: str = "") -> list[CheckResult]:
+    """All base plate checks for one set of forces (P, V = √(V2² + V3²), M = M3, M2)."""
+    P_, V = forces.P, math.hypot(forces.V2, forces.V3)
+    M, M2 = abs(forces.M3), abs(forces.M2)
+    _validate_forces(bp, P_, M, M2)
+    if bp.embedded_base is not None:
+        return _embedded_base_checks(bp, forces, P_, V, M, M2, method, combo)
+    d = _demand(bp, forces, P_, V, M, M2)
+    results: list[CheckResult] = []
+    if bp.pedestal_N and bp.pedestal_B:
+        results.append(_a2_over_a1(bp, method, combo))
+    m, n = _cantilevers(bp.column, bp.N, bp.B)
+    ductile = _ductile_anchors(bp, d, method)
+    triangular = bp.pressure_model is PressureModel.TRIANGULAR and d.P > 0
+    model = PressureModel.TRIANGULAR if triangular else PressureModel.RECTANGULAR
+
+    bend, T, axis = _bending_checks(
+        bp, d.P, d.M, bp.N, bp.B, bp.f, _tension_lever(bp, False), m, n, method, combo, "",
+        model, rod_edge=bp.N / 2 - bp.f, rods_in_tension=bp.rods_per_side,
+        tension_demand=None if ductile is None else ductile.N_required)
+    results += axis
+    from . import interference
+    results += interference.anchor_interference(bp, method, combo)
+    if ductile is not None and bp.weak_base is not None:
+        results += _weak_base_checks(bp.weak_base, ductile, method, combo)
+    if bend.case == "not_possible":
+        return results
+    bend_weak, T_weak, axis = _weak_axis(bp, d, model, method, combo)
+    results += axis
+
+    tension = _rod_tension(bp, d, bend, T, bend_weak, T_weak, ductile)
+    both_rows = bend.case == "uplift" and bend.Y == 0
+    results += _anchor_checks(bp, d, tension, both_rows, results, method, combo)
+    if d.M2 and bend_weak is not None:
+        results.append(_biaxial_interaction(bp, d.P, d.M, d.M2, method, combo))
+    if bp.shear_lug and any(d.lug_shear):
+        results += _shear_lug_checks(
+            bp, d.P, d.lug_shear, method, combo, bend=bend, T=T,
+            bend_weak=bend_weak, T_weak=T_weak)
+    return results + _weld_and_pedestal(bp, forces, d, method, combo)
 
 
 def check_envelope(bp: BasePlate, combinations: Iterable[LoadCombination],

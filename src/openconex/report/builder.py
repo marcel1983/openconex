@@ -9,16 +9,20 @@ recalculates anything.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from openconex import __version__
 from openconex.connections.base_plate.check import (
+    BasePlate,
     BearingAreaModel,
+    EmbeddedBase,
     EmbeddedType,
     PressureModel,
     check_envelope,
 )
 from openconex.core.checks import CheckResult, Status
+from openconex.core.loads import Forces, LoadCombination
 from openconex.core.model import HSSKind, HSSShape
 from openconex.i18n import tr
 from openconex.io.project import Project
@@ -121,7 +125,175 @@ def _block(result: CheckResult, lang: str, units: UnitSystem) -> CheckBlock:
         status=result.status.value)
 
 
-def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:  # noqa: C901
+Formatter = Callable[[float, Kind], str]
+"""Formats a value of a magnitude in the report unit system."""
+
+
+def _embedded_inputs(bp: BasePlate, embedded: EmbeddedBase, lang: str,
+                     q: Formatter) -> list[Row]:
+    """Input rows of an embedded column base."""
+    L, T = Kind.LENGTH, Kind.THICKNESS
+    type2 = embedded.type == EmbeddedType.TYPE_II
+    inputs = [
+        Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
+        Row([tr("input.grade", lang), bp.plate_grade]),
+        Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+        Row([tr("input.embedded_type", lang), embedded.type.value]),
+        Row([tr("input.embedment", lang), q(embedded.embedment, L)]),
+        Row([tr("input.foundation_width", lang), q(embedded.foundation_width, L)]),
+    ]
+    if not type2:
+        inputs.append(Row([tr("input.face_plate_thickness", lang),
+                           q(embedded.face_plate_thickness, T)]))
+    inputs.append(Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]))
+    if embedded.base_plate_width is not None:
+        inputs += [
+            Row([tr("input.base_plate_width", lang),
+                 q(embedded.base_plate_width, L)]),
+            Row([tr("input.base_plate_thickness", lang),
+                 q(embedded.base_plate_thickness, T)]),
+        ]
+    for key, layer in (("rebar_top", embedded.rebar_top),
+                       ("rebar_bottom", embedded.rebar_bottom)):
+        if layer is not None:
+            inputs.append(Row([tr(f"input.{key}", lang),
+                               f"{q(layer.area, Kind.AREA)} · "
+                               f"{q(layer.fy, Kind.STRESS)} · "
+                               f"d {q(layer.depth, L)}"]))
+    if embedded.face_plate_weld:
+        inputs.append(Row([tr("input.face_plate_weld", lang),
+                           q(embedded.face_plate_weld, T)]))
+    if embedded.damage_limit:
+        inputs.append(Row([tr("input.damage_limit", lang), "0.8 M_HB"]))
+    return inputs
+
+
+def _plate_inputs(bp: BasePlate, lang: str, q: Formatter) -> list[Row]:
+    """Input rows of an exposed base plate."""
+    L, T = Kind.LENGTH, Kind.THICKNESS
+    inputs = [
+        Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
+        Row([tr("input.N", lang), q(bp.N, L)]),
+        Row([tr("input.B", lang), q(bp.B, L)]),
+        Row([tr("input.tp", lang), q(bp.tp, T)]),
+        Row([tr("input.grade", lang), bp.plate_grade]),
+        Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
+        Row([tr("input.A2_over_A1", lang), f"{bp.A2_over_A1:g}"]),
+        Row([tr("input.rods", lang), f"{2 * bp.rods_per_side} × "
+             f"{q(bp.rod.diameter, L)} {bp.rod.grade}"]),
+        Row([tr("input.f", lang), q(bp.f, L)]),
+        Row([tr("input.rod_spacing", lang), q(bp.rod_spacing, L)]),
+        Row([tr("input.hef", lang), q(bp.hef, L)]),
+    ]
+    if bp.flange_weld:
+        inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
+    if bp.rod_bending_lever is not None:
+        inputs.append(Row([tr("input.rod_bending_lever", lang),
+                           q(bp.rod_bending_lever, L)]))
+    if bp.reinforcement is not None:
+        reinforcement = bp.reinforcement
+        inputs.append(Row([tr("input.reinforcement", lang),
+                           f"{reinforcement.bars or '—'} · "
+                           f"{q(reinforcement.area, Kind.AREA)} · "
+                           f"{q(reinforcement.fy, Kind.STRESS)}"]))
+    if bp.pedestal_rebars:
+        inputs.append(Row([tr("input.pedestal_rebars", lang),
+                           f"{len(bp.pedestal_rebars)} × Ø "
+                           f"{q(bp.pedestal_rebars[0].diameter, L)}"]))
+    if bp.bearing_area is not None:
+        inputs.append(Row([tr("input.bearing_area", lang),
+                           q(bp.bearing_area, Kind.AREA)]))
+    if bp.weak_base is not None:
+        weak = bp.weak_base
+        inputs.append(Row([tr("input.weak_base", lang),
+                           f"Ø {q(weak.reduced_diameter, L)} · "
+                           f"L_str {q(weak.stretch_length, L)} · Rt {weak.Rt:g}"]))
+    if bp.shear_lug:
+        lug = bp.shear_lug
+        inputs.append(Row([tr("input.shear_lug", lang),
+                           f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
+                           f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
+                           + tr(f"input.lug_direction_{lug.direction}", lang)]))
+    if bp.pedestal is not None:
+        ped = bp.pedestal
+        size = (f"Ø {q(bp.pedestal_N, L)}" if ped.shape == "round"
+                else f"{q(bp.pedestal_N, L)} × {q(bp.pedestal_B, L)}")
+        ties = (f"; Ø {q(ped.tie_diameter, L)} @ {q(ped.tie_spacing, L)}"
+                if ped.tie_diameter else "")
+        inputs.append(Row([tr("input.pedestal_design", lang),
+                           f"{size}, h = {q(ped.height, L)}, "
+                           f"fy = {q(ped.fy, Kind.STRESS)}{ties}"]))
+    return inputs
+
+
+def _load_rows(project: Project, combos: list[LoadCombination], lang: str,
+               q: Formatter) -> tuple[list[str], list[Row], list[Row]]:
+    """Headers and rows of the load cases (with V3 and M2 when any case has them),
+    and rows of the combinations."""
+    forces = project.case_forces()
+    biaxial = any(f.V3 or f.M2 for f in forces.values())
+    case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]
+    if biaxial:
+        case_headers += [tr("report.v_weak", lang), tr("report.m_weak", lang)]
+    cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),
+                  q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)]
+                 + ([q(f.V3, Kind.FORCE), q(f.M2, Kind.MOMENT)] if biaxial else []))
+             for c, f in zip(project.cases, forces.values(), strict=True)]
+    combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
+                         tr("report.custom_source", lang) if c.source == "custom" else c.source])
+                    for c in combos]
+    return case_headers, cases, combinations
+
+
+def _embedded_assumptions(embedded: EmbeddedBase, lang: str) -> list[str]:
+    type2 = embedded.type == EmbeddedType.TYPE_II
+    assumptions = [tr("report.assumption_embedded_lrfd", lang)]
+    if type2:
+        assumptions.append(tr("report.assumption_type2", lang))
+    else:
+        assumptions += [tr("report.assumption_embedded_base", lang),
+                        tr("report.assumption_embedded_weld" if embedded.face_plate_weld
+                           else "report.assumption_embedded_scope", lang)]
+    assumptions.append(tr("report.assumption_embedded_limits", lang))
+    if embedded.base_plate_width is None:
+        assumptions.append(tr("report.assumption_embedded_no_plate", lang))
+    else:
+        assumptions.append(tr("report.assumption_embedded_plate", lang))
+    if embedded.rebar_top is None and embedded.rebar_bottom is None:
+        assumptions.append(tr("report.assumption_embedded_no_rebar", lang))
+    assumptions.append(tr(
+        "report.assumption_embedded_damage_applied" if embedded.damage_limit
+        else "report.assumption_embedded_damage", lang))
+    return assumptions
+
+
+def _plate_assumptions(bp: BasePlate, forces: dict[str, Forces], lang: str) -> list[str]:
+    assumptions = [tr("report.assumption_rigid", lang),
+                   tr("report.assumption_aci_lrfd", lang)]
+    if bp.cracked:
+        assumptions.append(tr("report.assumption_cracked", lang))
+    if bp.seismic:
+        assumptions.append(tr("report.assumption_seismic", lang))
+    if isinstance(bp.column, HSSShape):
+        key = ("report.assumption_hss_round"
+               if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
+        assumptions.append(tr(key, lang))
+        if any(force.M3 or force.M2 for force in forces.values()):
+            assumptions.append(tr("report.assumption_hss_moment", lang))
+    if bp.pressure_model is PressureModel.TRIANGULAR:
+        assumptions.append(tr("report.assumption_triangular", lang))
+    if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
+        assumptions.append(tr("report.assumption_effective_area", lang))
+    if bp.weak_base is not None:
+        assumptions.append(tr("report.assumption_weak_base", lang))
+    if bp.pedestal is not None:
+        assumptions.append(tr("report.assumption_pedestal", lang))
+        if bp.pedestal.shape == "round":
+            assumptions.append(tr("report.assumption_pedestal_round", lang))
+    return assumptions
+
+
+def build_base_plate_report(project: Project, today: dt.date | None = None) -> Report:
     info = project.info
     lang, units = info.language, info.unit_system()
     bp = project.base_plate_model()
@@ -135,152 +307,17 @@ def build_base_plate_report(project: Project, today: dt.date | None = None) -> R
             governing[r.id] = r
     ok = all(r.status is not Status.NG for r in results)
 
-    def q(value, kind):
+    def q(value: float, kind: Kind) -> str:
         return fmt(value, kind, units)
 
-    L, T = Kind.LENGTH, Kind.THICKNESS
     embedded = bp.embedded_base
-    type2 = embedded is not None and embedded.type == EmbeddedType.TYPE_II
-    if embedded is not None:
-        inputs = [
-            Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
-            Row([tr("input.grade", lang), bp.plate_grade]),
-            Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
-            Row([tr("input.embedded_type", lang), embedded.type.value]),
-            Row([tr("input.embedment", lang), q(embedded.embedment, L)]),
-            Row([tr("input.foundation_width", lang), q(embedded.foundation_width, L)]),
-        ]
-        if not type2:
-            inputs.append(Row([tr("input.face_plate_thickness", lang),
-                               q(embedded.face_plate_thickness, T)]))
-        inputs.append(Row([tr("input.beta1", lang), f"{embedded.beta1:g}"]))
-        if embedded.base_plate_width is not None:
-            inputs += [
-                Row([tr("input.base_plate_width", lang),
-                     q(embedded.base_plate_width, L)]),
-                Row([tr("input.base_plate_thickness", lang),
-                     q(embedded.base_plate_thickness, T)]),
-            ]
-        for key, layer in (("rebar_top", embedded.rebar_top),
-                           ("rebar_bottom", embedded.rebar_bottom)):
-            if layer is not None:
-                inputs.append(Row([tr(f"input.{key}", lang),
-                                   f"{q(layer.area, Kind.AREA)} · "
-                                   f"{q(layer.fy, Kind.STRESS)} · "
-                                   f"d {q(layer.depth, L)}"]))
-        if embedded.face_plate_weld:
-            inputs.append(Row([tr("input.face_plate_weld", lang),
-                               q(embedded.face_plate_weld, T)]))
-        if embedded.damage_limit:
-            inputs.append(Row([tr("input.damage_limit", lang), "0.8 M_HB"]))
-    else:
-        inputs = [
-            Row([tr("input.column", lang), f"{bp.column.name} ({bp.column.grade})"]),
-            Row([tr("input.N", lang), q(bp.N, L)]),
-            Row([tr("input.B", lang), q(bp.B, L)]),
-            Row([tr("input.tp", lang), q(bp.tp, T)]),
-            Row([tr("input.grade", lang), bp.plate_grade]),
-            Row([tr("input.fc", lang), q(bp.fc, Kind.STRESS)]),
-            Row([tr("input.A2_over_A1", lang), f"{bp.A2_over_A1:g}"]),
-            Row([tr("input.rods", lang), f"{2 * bp.rods_per_side} × "
-                 f"{q(bp.rod.diameter, L)} {bp.rod.grade}"]),
-            Row([tr("input.f", lang), q(bp.f, L)]),
-            Row([tr("input.rod_spacing", lang), q(bp.rod_spacing, L)]),
-            Row([tr("input.hef", lang), q(bp.hef, L)]),
-        ]
-        if bp.flange_weld:
-            inputs.append(Row([tr("input.flange_weld", lang), q(bp.flange_weld, T)]))
-        if bp.rod_bending_lever is not None:
-            inputs.append(Row([tr("input.rod_bending_lever", lang),
-                               q(bp.rod_bending_lever, L)]))
-        if bp.reinforcement is not None:
-            reinforcement = bp.reinforcement
-            inputs.append(Row([tr("input.reinforcement", lang),
-                               f"{reinforcement.bars or '—'} · "
-                               f"{q(reinforcement.area, Kind.AREA)} · "
-                               f"{q(reinforcement.fy, Kind.STRESS)}"]))
-        if bp.pedestal_rebars:
-            inputs.append(Row([tr("input.pedestal_rebars", lang),
-                               f"{len(bp.pedestal_rebars)} × Ø "
-                               f"{q(bp.pedestal_rebars[0].diameter, L)}"]))
-        if bp.bearing_area is not None:
-            inputs.append(Row([tr("input.bearing_area", lang),
-                               q(bp.bearing_area, Kind.AREA)]))
-        if bp.weak_base is not None:
-            weak = bp.weak_base
-            inputs.append(Row([tr("input.weak_base", lang),
-                               f"Ø {q(weak.reduced_diameter, L)} · "
-                               f"L_str {q(weak.stretch_length, L)} · Rt {weak.Rt:g}"]))
-        if bp.shear_lug:
-            lug = bp.shear_lug
-            inputs.append(Row([tr("input.shear_lug", lang),
-                               f"{q(lug.width, L)} × {q(lug.thickness, T)}, h_sl = "
-                               f"{q(lug.embedment, L)}, {q(lug.weld, T)} {lug.grade}; "
-                               + tr(f"input.lug_direction_{lug.direction}", lang)]))
-        if bp.pedestal is not None:
-            ped = bp.pedestal
-            size = (f"Ø {q(bp.pedestal_N, L)}" if ped.shape == "round"
-                    else f"{q(bp.pedestal_N, L)} × {q(bp.pedestal_B, L)}")
-            ties = (f"; Ø {q(ped.tie_diameter, L)} @ {q(ped.tie_spacing, L)}"
-                    if ped.tie_diameter else "")
-            inputs.append(Row([tr("input.pedestal_design", lang),
-                               f"{size}, h = {q(ped.height, L)}, "
-                               f"fy = {q(ped.fy, Kind.STRESS)}{ties}"]))
-    forces = project.case_forces()
-    biaxial = any(f.V3 or f.M2 for f in forces.values())
-    case_headers = ["ID", tr("report.item", lang), "P", "V", "M"]
-    if biaxial:
-        case_headers += [tr("report.v_weak", lang), tr("report.m_weak", lang)]
-    cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),
-                  q(f.V2, Kind.FORCE), q(f.M3, Kind.MOMENT)]
-                 + ([q(f.V3, Kind.FORCE), q(f.M2, Kind.MOMENT)] if biaxial else []))
-             for c, f in zip(project.cases, forces.values(), strict=True)]
-    combinations = [Row([c.name, c.method.value, factor_expression(c.factors),
-                         tr("report.custom_source", lang) if c.source == "custom" else c.source])
-                    for c in combos]
+    inputs = (_plate_inputs(bp, lang, q) if embedded is None
+              else _embedded_inputs(bp, embedded, lang, q))
+    case_headers, cases, combinations = _load_rows(project, combos, lang, q)
     summary = [Row([tr(r.text_id, lang), r.combo, q(r.demand, r.kind), q(r.capacity, r.kind),
                     f"{r.ratio:.3f}"], r.status.value) for r in governing.values()]
-    if embedded is not None:
-        assumptions = [tr("report.assumption_embedded_lrfd", lang)]
-        if type2:
-            assumptions.append(tr("report.assumption_type2", lang))
-        else:
-            assumptions += [tr("report.assumption_embedded_base", lang),
-                            tr("report.assumption_embedded_weld" if embedded.face_plate_weld
-                               else "report.assumption_embedded_scope", lang)]
-        assumptions.append(tr("report.assumption_embedded_limits", lang))
-        if embedded.base_plate_width is None:
-            assumptions.append(tr("report.assumption_embedded_no_plate", lang))
-        else:
-            assumptions.append(tr("report.assumption_embedded_plate", lang))
-        if embedded.rebar_top is None and embedded.rebar_bottom is None:
-            assumptions.append(tr("report.assumption_embedded_no_rebar", lang))
-        assumptions.append(tr(
-            "report.assumption_embedded_damage_applied" if embedded.damage_limit
-            else "report.assumption_embedded_damage", lang))
-    else:
-        assumptions = [tr("report.assumption_rigid", lang),
-                       tr("report.assumption_aci_lrfd", lang)]
-        if bp.cracked:
-            assumptions.append(tr("report.assumption_cracked", lang))
-        if bp.seismic:
-            assumptions.append(tr("report.assumption_seismic", lang))
-        if isinstance(bp.column, HSSShape):
-            key = ("report.assumption_hss_round"
-                   if bp.column.kind is HSSKind.ROUND else "report.assumption_hss_rect")
-            assumptions.append(tr(key, lang))
-            if any(force.M3 or force.M2 for force in forces.values()):
-                assumptions.append(tr("report.assumption_hss_moment", lang))
-        if bp.pressure_model is PressureModel.TRIANGULAR:
-            assumptions.append(tr("report.assumption_triangular", lang))
-        if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
-            assumptions.append(tr("report.assumption_effective_area", lang))
-        if bp.weak_base is not None:
-            assumptions.append(tr("report.assumption_weak_base", lang))
-        if bp.pedestal is not None:
-            assumptions.append(tr("report.assumption_pedestal", lang))
-            if bp.pedestal.shape == "round":
-                assumptions.append(tr("report.assumption_pedestal_round", lang))
+    assumptions = (_plate_assumptions(bp, project.case_forces(), lang) if embedded is None
+                   else _embedded_assumptions(embedded, lang))
     figures = base_plate_figures(project, bp, lang, units)
     today = today or dt.date.today()
     return Report(
