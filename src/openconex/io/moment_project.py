@@ -279,7 +279,7 @@ def _section(project: Project, section: str | WSectionInput, grade: str) -> tupl
 
 def moment_model(project: Project) -> MomentConnection:
     """Engine model of the project's moment connection."""
-    mc = project.moment_connection
+    mc = project.require_moment_connection()
     assert mc is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     library = project.material_library()

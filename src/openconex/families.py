@@ -101,7 +101,7 @@ class ConnectionFamily:
 def _base_plate_options(project: Project) -> dict[str, float | None]:
     from openconex.units import Kind
 
-    data = project.base_plate
+    data = project.require_base_plate()
 
     def q(value):
         return None if value is None else project.quantity(value, Kind.LENGTH)
@@ -147,7 +147,7 @@ def _parts(model: str, builder: str) -> Callable[[Project], list[Part]]:
 
 
 def _splice_members(project: Project) -> str:
-    sp = project.splice
+    sp = project.require_splice()
     return " / ".join(_label(m) for m in (sp.beam, sp.upper, sp.lower) if m is not None)
 
 
@@ -157,7 +157,7 @@ FAMILIES: tuple[ConnectionFamily, ...] = (
         name_es="la placa base",
         report="openconex.report.builder:build_base_plate_report",
         dxf=_base_plate_dxf, parts=_base_plate_parts,
-        members=lambda project: _label(project.base_plate.column)),
+        members=lambda project: _label(project.require_base_plate().column)),
     ConnectionFamily(
         key="shear_connection", command="shear", label="shear connection",
         name_es="la conexión de corte",
@@ -165,7 +165,7 @@ FAMILIES: tuple[ConnectionFamily, ...] = (
         dxf=_dxf("shear_model", "openconex.drawing.shear:write_shear_dxf",
                  "openconex.drawing.shear:ShearDrawing"),
         parts=_parts("shear_model", "openconex.geometry3d.shear:shear_parts"),
-        members=lambda project: _label(project.shear_connection.beam),
+        members=lambda project: _label(project.require_shear_connection().beam),
         window="openconex.gui.shear:ShearWindow"),
     ConnectionFamily(
         key="moment_connection", command="moment", label="moment connection",
@@ -174,7 +174,7 @@ FAMILIES: tuple[ConnectionFamily, ...] = (
         dxf=_dxf("moment_model", "openconex.drawing.moment:write_moment_dxf",
                  "openconex.drawing.moment:MomentDrawing"),
         parts=_parts("moment_model", "openconex.geometry3d.moment:moment_parts"),
-        members=lambda project: _label(project.moment_connection.beam),
+        members=lambda project: _label(project.require_moment_connection().beam),
         window="openconex.gui.moment:MomentWindow"),
     ConnectionFamily(
         key="splice", command="splice", label="splice",

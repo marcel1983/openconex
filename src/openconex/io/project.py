@@ -110,6 +110,24 @@ FORMAT_VERSION = 14
 Quantity = str | float
 
 
+def _required[B](block: B | None, key: str) -> B:
+    if block is None:
+        raise ValueError(f"the project has no {key} block")
+    return block
+
+
+def _validate_bfp(mc: MomentConnectionInput) -> None:
+    """Flange plates and bolts of an AISC 358 BFP connection (AISC 358-22 §7.4.1, §7.4.4)."""
+    if mc.grade not in ("ASTM A36", "ASTM A572 Gr. 50"):
+        raise ValueError("AISC 358 bfp flange plates must be ASTM A36 or A572 Gr. 50")
+    bolt = mc.bolt
+    if bolt is not None and ("A490" not in bolt.grade and "F2280" not in bolt.grade):
+        raise ValueError("AISC 358 bfp flange bolts must be ASTM F3125 A490 or F2280")
+    if bolt is not None and bolt.threads.value != "X":
+        raise ValueError("AISC 358 bfp flange bolts must have the threads excluded "
+                         "from the shear plane (threads X)")
+
+
 def _repeated(names: list[str]) -> list[str]:
     """Names that appear more than once, sorted."""
     return sorted({name for name in names if names.count(name) > 1})
@@ -489,9 +507,37 @@ class Project(_Input):
     combinations: CombinationOptions = Field(default_factory=CombinationOptions)
 
     @model_validator(mode="after")
-    def _consistent_loads(self) -> Project:  # noqa: C901
-        case_names = [case.name for case in self.cases]
-        repeated = _repeated(case_names)
+    def _consistent_loads(self) -> Project:
+        """Cases, combinations and the one connection block, in that order."""
+        self._validate_cases()
+        self._validate_combinations()
+        key = self._validate_family()
+        {"base_plate": self._validate_base_plate,
+         "shear_connection": self._validate_shear,
+         "moment_connection": self._validate_moment,
+         "splice": self._validate_splice}[key]()
+        return self
+
+    # -- connection blocks ---------------------------------------------------------------
+    def require_base_plate(self) -> BasePlateInput:
+        """The ``base_plate`` block; ``ValueError`` if the project holds another one."""
+        return _required(self.base_plate, "base_plate")
+
+    def require_shear_connection(self) -> ShearConnectionInput:
+        """The ``shear_connection`` block; ``ValueError`` if the project holds another one."""
+        return _required(self.shear_connection, "shear_connection")
+
+    def require_moment_connection(self) -> MomentConnectionInput:
+        """The ``moment_connection`` block; ``ValueError`` if the project holds another one."""
+        return _required(self.moment_connection, "moment_connection")
+
+    def require_splice(self) -> SpliceInput:
+        """The ``splice`` block; ``ValueError`` if the project holds another one."""
+        return _required(self.splice, "splice")
+
+    # -- validation ----------------------------------------------------------------------
+    def _validate_cases(self) -> None:
+        repeated = _repeated([case.name for case in self.cases])
         if repeated:
             raise ValueError(f"duplicate load case names: {repeated}")
         opts = self.combinations
@@ -500,15 +546,21 @@ class Project(_Input):
             raise ValueError(
                 f"seismic load cases {quakes} need combinations.SDS to generate the ASCE 7-22 "
                 "seismic combinations (use SDS = 0 to omit the vertical effect Ev)")
+
+    def _validate_combinations(self) -> None:
         custom = self.combinations.custom
         repeated = _repeated([combination.name for combination in custom])
         if repeated:
             raise ValueError(f"duplicate custom combination names: {repeated}")
-        unknown = {name for combination in custom for name in combination.factors} - set(case_names)
+        case_names = {case.name for case in self.cases}
+        unknown = {name for combination in custom for name in combination.factors} - case_names
         if unknown:
             raise ValueError(f"custom combinations use undefined load cases: {sorted(unknown)}")
         if not custom and not (self.combinations.include_code and self.combinations.methods):
             raise ValueError("no load combinations: enable include_code or define custom ones")
+
+    def _validate_family(self) -> str:
+        """Key of the one connection block; cases that only one family takes."""
         from openconex.families import KEYS
         blocks = [key for key in KEYS if getattr(self, key) is not None]
         if len(blocks) != 1:
@@ -517,22 +569,59 @@ class Project(_Input):
                 self.quantity(c.column_V, Kind.FORCE) or self.quantity(c.column_P, Kind.FORCE)
                 for c in self.cases):
             raise ValueError("column_V and column_P are only used by moment connections")
-        if self.shear_connection is not None:
-            return self._validate_shear()
-        if self.moment_connection is not None:
-            return self._validate_moment()
-        if self.splice is not None:
-            return self._validate_splice()
+        return blocks[0]
+
+    def _any_case(self, field: str, kind: Kind) -> bool:
+        """Whether some load case has a non-zero ``field``."""
+        return any(self.quantity(getattr(case, field), kind) != 0 for case in self.cases)
+
+    def _validate_base_plate(self) -> None:
+        bp = self.require_base_plate()
+        self._validate_base_plate_grades(bp)
+        embedded = bp.embedded_base
+        connection = bp.connection_type or ("embedded" if embedded is not None else "exposed")
+        if connection == "embedded" and embedded is None:
+            raise ValueError("connection_type 'embedded' requires embedded_base")
+        if connection == "exposed" and embedded is not None:
+            raise ValueError("embedded_base requires connection_type 'embedded'")
+        if connection == "exposed":
+            missing = [name for name, value in (
+                ("N", bp.N), ("B", bp.B), ("tp", bp.tp), ("rod_diameter", bp.rod_diameter),
+                ("f", bp.f)) if value is None]
+            if missing:
+                raise ValueError(f"exposed base plate needs {', '.join(missing)}")
+        self._validate_bearing(bp)
+        self._validate_weak_base(bp.weak_base)
+        if bp.bearing_area is not None and self.quantity(bp.bearing_area, Kind.AREA) <= 0:
+            raise ValueError("bearing_area must be positive")
+        if embedded is not None:
+            self._validate_embedded(bp, embedded)
+        for bar in bp.pedestal_rebars:
+            if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
+                raise ValueError("pedestal rebar diameter must be positive")
+        self._validate_pedestal(embedded)
+        reinforcement = bp.reinforcement
+        if reinforcement is not None:
+            for value, kind in ((reinforcement.area, Kind.AREA),
+                                (reinforcement.fy, Kind.STRESS),
+                                (reinforcement.db, Kind.LENGTH),
+                                (reinforcement.clear_cover, Kind.LENGTH),
+                                (reinforcement.anchor_to_bar, Kind.LENGTH),
+                                (reinforcement.le, Kind.LENGTH)):
+                if self.quantity(value, kind) <= 0:
+                    raise ValueError("reinforcement dimensions and strengths must be positive")
+
+    def _validate_base_plate_grades(self, bp: BasePlateInput) -> None:
+        """Plate, rods, electrode, lug, custom sections and column: known materials."""
         library = self.material_library()
-        if self.base_plate.plate_grade not in library:
-            raise ValueError(f"unknown plate material: {self.base_plate.plate_grade!r}")
-        bolts = self.bolt_library()
-        if self.base_plate.rod_grade not in bolts:
-            raise ValueError(f"unknown bolt grade: {self.base_plate.rod_grade!r}")
+        if bp.plate_grade not in library:
+            raise ValueError(f"unknown plate material: {bp.plate_grade!r}")
+        if bp.rod_grade not in self.bolt_library():
+            raise ValueError(f"unknown bolt grade: {bp.rod_grade!r}")
         electrodes = self.electrode_library()
-        if self.base_plate.electrode not in electrodes:
-            raise ValueError(f"unknown electrode: {self.base_plate.electrode!r}")
-        lug = self.base_plate.shear_lug
+        if bp.electrode not in electrodes:
+            raise ValueError(f"unknown electrode: {bp.electrode!r}")
+        lug = bp.shear_lug
         if lug is not None and lug.grade not in library:
             raise ValueError(f"unknown shear lug material: {lug.grade!r}")
         if lug is not None and lug.electrode not in electrodes:
@@ -543,34 +632,18 @@ class Project(_Input):
         for section in self.sections:
             if section.grade not in library:
                 raise ValueError(f"unknown section material: {section.grade!r}")
-        column = self.base_plate.column
-        if isinstance(column, str):
-            if self.base_plate.column_grade not in library:
-                raise ValueError(f"unknown column material: {self.base_plate.column_grade!r}")
-        elif column.grade not in library:
-            raise ValueError(f"unknown column material: {column.grade!r}")
-        embedded = self.base_plate.embedded_base
-        connection = self.base_plate.connection_type or (
-            "embedded" if embedded is not None else "exposed")
-        if connection == "embedded" and embedded is None:
-            raise ValueError("connection_type 'embedded' requires embedded_base")
-        if connection == "exposed" and embedded is not None:
-            raise ValueError("embedded_base requires connection_type 'embedded'")
-        if connection == "exposed":
-            missing = [name for name, value in (
-                ("N", self.base_plate.N), ("B", self.base_plate.B),
-                ("tp", self.base_plate.tp), ("rod_diameter", self.base_plate.rod_diameter),
-                ("f", self.base_plate.f)) if value is None]
-            if missing:
-                raise ValueError(f"exposed base plate needs {', '.join(missing)}")
-        has_moment = any(
-            self.quantity(case.M, Kind.MOMENT) != 0
-            or self.quantity(case.M_weak, Kind.MOMENT) != 0
-            for case in self.cases)
-        if self.base_plate.bearing_area_model is BearingAreaModel.EFFECTIVE:
+        grade = bp.column_grade if isinstance(bp.column, str) else bp.column.grade
+        if grade not in library:
+            raise ValueError(f"unknown column material: {grade!r}")
+
+    def _validate_bearing(self, bp: BasePlateInput) -> None:
+        """Bearing area model and round HSS: only where the method is defined."""
+        column = bp.column
+        has_moment = self._any_case("M", Kind.MOMENT) or self._any_case("M_weak", Kind.MOMENT)
+        if bp.bearing_area_model is BearingAreaModel.EFFECTIVE:
             if isinstance(column, HSSSectionInput):
                 raise ValueError("effective bearing area is only defined for I-shapes")
-            if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
+            if bp.pressure_model is PressureModel.TRIANGULAR:
                 raise ValueError("effective bearing area needs the rectangular pressure model")
             if has_moment:
                 raise ValueError(
@@ -579,78 +652,68 @@ class Project(_Input):
                 and has_moment):
             raise ValueError(
                 "round HSS with moment is not supported; only axial compression is validated")
-        weak = self.base_plate.weak_base
-        if weak is not None:
-            if self.base_plate.pressure_model is PressureModel.TRIANGULAR:
-                raise ValueError("weak base requires the rectangular pressure model")
-            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
-                raise ValueError("weak base does not support weak-axis moment yet")
-            if self.quantity(weak.reduced_diameter, Kind.LENGTH) <= 0:
-                raise ValueError("weak base reduced diameter must be positive")
-            if self.quantity(weak.stretch_length, Kind.LENGTH) <= 0:
-                raise ValueError("weak base stretch length must be positive")
-        if (self.base_plate.bearing_area is not None
-                and self.quantity(self.base_plate.bearing_area, Kind.AREA) <= 0):
-            raise ValueError("bearing_area must be positive")
-        if embedded is not None:
-            if weak is not None:
-                raise ValueError("embedded base and weak base cannot be combined")
-            if self.base_plate.shear_lug is not None:
-                raise ValueError("embedded base does not support a shear lug yet")
-            if isinstance(column, HSSSectionInput):
-                raise ValueError("embedded base is only defined for I-shapes")
-            if any(self.quantity(case.M_weak, Kind.MOMENT) != 0 for case in self.cases):
-                raise ValueError("embedded base does not support weak-axis moment yet")
-            if ((self.combinations.include_code
-                 and Method.ASD in self.combinations.methods)
-                    or any(c.method is Method.ASD for c in self.combinations.custom)):
-                raise ValueError("embedded base requires LRFD combinations")
-            if embedded.type == "I" and embedded.face_plate_thickness is None:
-                raise ValueError("embedded base Type I needs face_plate_thickness")
-            if embedded.type == "II" and embedded.base_plate_width is None:
-                raise ValueError("embedded base Type II needs the embedded base plate "
-                                 "(base_plate_width and base_plate_thickness)")
-            for value, kind in ((embedded.embedment, Kind.LENGTH),
-                                (embedded.foundation_width, Kind.LENGTH),
-                                (embedded.face_plate_thickness, Kind.THICKNESS),
-                                (embedded.face_plate_weld, Kind.THICKNESS)):
-                if value is not None and self.quantity(value, kind) <= 0:
-                    raise ValueError("embedded base dimensions must be positive")
-            if embedded.beta1 <= 0:
-                raise ValueError("embedded base beta1 must be positive")
-            plate = (embedded.base_plate_width, embedded.base_plate_thickness)
-            if (plate[0] is None) != (plate[1] is None):
-                raise ValueError("embedded base plate needs both width and thickness")
-            if plate[0] is not None:
-                if self.quantity(plate[0], Kind.LENGTH) <= 0:
-                    raise ValueError("embedded base plate width must be positive")
-                if self.quantity(plate[1], Kind.THICKNESS) <= 0:
-                    raise ValueError("embedded base plate thickness must be positive")
-            for layer in (embedded.rebar_top, embedded.rebar_bottom):
-                if layer is None:
-                    continue
-                for value, kind in ((layer.area, Kind.AREA), (layer.fy, Kind.STRESS),
-                                    (layer.depth, Kind.LENGTH)):
-                    if self.quantity(value, kind) <= 0:
-                        raise ValueError("embedded rebar area, fy and depth must be positive")
-        for bar in self.base_plate.pedestal_rebars:
-            if self.quantity(bar.diameter, Kind.LENGTH) <= 0:
-                raise ValueError("pedestal rebar diameter must be positive")
-        self._validate_pedestal(embedded)
-        reinforcement = self.base_plate.reinforcement
-        if reinforcement is not None:
-            for value, kind in ((reinforcement.area, Kind.AREA),
-                                (reinforcement.fy, Kind.STRESS),
-                                (reinforcement.db, Kind.LENGTH),
-                                (reinforcement.clear_cover, Kind.LENGTH),
-                                (reinforcement.anchor_to_bar, Kind.LENGTH),
-                                (reinforcement.le, Kind.LENGTH)):
+
+    def _validate_weak_base(self, weak: WeakBaseInput | None) -> None:
+        if weak is None:
+            return
+        if self.require_base_plate().pressure_model is PressureModel.TRIANGULAR:
+            raise ValueError("weak base requires the rectangular pressure model")
+        if self._any_case("M_weak", Kind.MOMENT):
+            raise ValueError("weak base does not support weak-axis moment yet")
+        if self.quantity(weak.reduced_diameter, Kind.LENGTH) <= 0:
+            raise ValueError("weak base reduced diameter must be positive")
+        if self.quantity(weak.stretch_length, Kind.LENGTH) <= 0:
+            raise ValueError("weak base stretch length must be positive")
+
+    def _validate_embedded_scope(self, bp: BasePlateInput) -> None:
+        """What the embedded base method does not cover yet."""
+        if bp.weak_base is not None:
+            raise ValueError("embedded base and weak base cannot be combined")
+        if bp.shear_lug is not None:
+            raise ValueError("embedded base does not support a shear lug yet")
+        if isinstance(bp.column, HSSSectionInput):
+            raise ValueError("embedded base is only defined for I-shapes")
+        if self._any_case("M_weak", Kind.MOMENT):
+            raise ValueError("embedded base does not support weak-axis moment yet")
+        if ((self.combinations.include_code and Method.ASD in self.combinations.methods)
+                or any(c.method is Method.ASD for c in self.combinations.custom)):
+            raise ValueError("embedded base requires LRFD combinations")
+
+    def _validate_embedded(self, bp: BasePlateInput, embedded: EmbeddedBaseInput) -> None:
+        """Embedded base: scope, then positive dimensions."""
+        self._validate_embedded_scope(bp)
+        if embedded.type == "I" and embedded.face_plate_thickness is None:
+            raise ValueError("embedded base Type I needs face_plate_thickness")
+        if embedded.type == "II" and embedded.base_plate_width is None:
+            raise ValueError("embedded base Type II needs the embedded base plate "
+                             "(base_plate_width and base_plate_thickness)")
+        for value, kind in ((embedded.embedment, Kind.LENGTH),
+                            (embedded.foundation_width, Kind.LENGTH),
+                            (embedded.face_plate_thickness, Kind.THICKNESS),
+                            (embedded.face_plate_weld, Kind.THICKNESS)):
+            if value is not None and self.quantity(value, kind) <= 0:
+                raise ValueError("embedded base dimensions must be positive")
+        if embedded.beta1 <= 0:
+            raise ValueError("embedded base beta1 must be positive")
+        width, thickness = embedded.base_plate_width, embedded.base_plate_thickness
+        if (width is None) != (thickness is None):
+            raise ValueError("embedded base plate needs both width and thickness")
+        if width is not None and thickness is not None:
+            if self.quantity(width, Kind.LENGTH) <= 0:
+                raise ValueError("embedded base plate width must be positive")
+            if self.quantity(thickness, Kind.THICKNESS) <= 0:
+                raise ValueError("embedded base plate thickness must be positive")
+        for layer in (embedded.rebar_top, embedded.rebar_bottom):
+            if layer is None:
+                continue
+            for value, kind in ((layer.area, Kind.AREA), (layer.fy, Kind.STRESS),
+                                (layer.depth, Kind.LENGTH)):
                 if self.quantity(value, kind) <= 0:
-                    raise ValueError("reinforcement dimensions and strengths must be positive")
-        return self
+                    raise ValueError("embedded rebar area, fy and depth must be positive")
 
     def _validate_pedestal(self, embedded: EmbeddedBaseInput | None) -> None:
-        bp, pedestal = self.base_plate, self.base_plate.pedestal
+        bp = self.require_base_plate()
+        pedestal = bp.pedestal
         if pedestal is None:
             return
         if embedded is not None and embedded.type == "I":
@@ -679,8 +742,8 @@ class Project(_Input):
             if self.quantity(value, Kind.STRESS) <= 0:
                 raise ValueError("pedestal bar strengths must be positive")
 
-    def _validate_shear(self) -> Project:  # noqa: C901
-        sc = self.shear_connection
+    def _validate_shear(self) -> None:
+        sc = self.require_shear_connection()
         missing = sc.missing()
         if missing:
             raise ValueError(f"{sc.type.value} connection needs {', '.join(missing)}")
@@ -699,78 +762,72 @@ class Project(_Input):
                or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
             raise ValueError("shear connections take only V and P load cases")
         if sc.type is ShearType.SKEWED_BENT_PLATE:
-            for name, kind in (("length", Kind.LENGTH), ("thickness", Kind.THICKNESS),
-                               ("spacing", Kind.LENGTH), ("lev", Kind.LENGTH),
-                               ("leh", Kind.LENGTH), ("weld", Kind.THICKNESS),
-                               ("weld_return", Kind.LENGTH), ("weld_offset", Kind.LENGTH)):
-                if self.quantity(getattr(sc, name), kind) <= 0:
-                    raise ValueError(f"skewed bent plate {name} must be positive")
-            if sc.share_a is not None and sc.share_b is not None:
-                raise ValueError("use share_a or share_b, not both")
-            if sc.share_b is not None:
-                share = self.quantity(sc.share_b, Kind.DIMENSIONLESS)
-                if not 0.0 < share < 1.0:
-                    raise ValueError("share_b must be between 0 and 1")
-            elif sc.share_a is not None:
-                share = self.quantity(sc.share_a, Kind.DIMENSIONLESS)
-                if not 0.0 < share < 1.0:
-                    raise ValueError("share_a must be between 0 and 1")
-            else:
-                row = self.quantity(sc.row_distance, Kind.LENGTH)
-                offset = self.quantity(sc.load_offset, Kind.LENGTH)
-                if not 0.0 < offset < row:
-                    raise ValueError("load_offset must be between 0 and row_distance")
-            for name in ("plate_a_width", "plate_b_width"):
-                value = getattr(sc, name)
-                if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
-                    raise ValueError(f"skewed bent plate {name} must be positive")
-            for name in ("plate_a_leg", "plate_b_leg", "bend_radius"):
-                value = getattr(sc, name)
-                if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
-                    raise ValueError(f"skewed bent plate {name} must be positive")
-        cope = sc.cope
-        if cope is not None:
-            if (cope.doubler is not None or cope.stiffener is not None) and \
-                    self.quantity(cope.dc_bottom, Kind.LENGTH) != 0:
-                raise ValueError("cope reinforcement is only defined for a top cope")
-            blocks = (
-                (cope.doubler, (("thickness", Kind.THICKNESS), ("depth", Kind.LENGTH),
-                                ("gap", Kind.LENGTH), ("weld", Kind.THICKNESS))),
-                (cope.stiffener, (("width", Kind.LENGTH), ("thickness", Kind.THICKNESS),
-                                  ("weld", Kind.THICKNESS))),
-            )
-            for block, fields in blocks:
-                if block is None:
-                    continue
-                for name, kind in fields:
-                    if self.quantity(getattr(block, name), kind) <= 0:
-                        raise ValueError(f"cope reinforcement {name} must be positive")
-                length = getattr(block, "length", None)
-                if length is not None and self.quantity(length, Kind.LENGTH) <= 0:
-                    raise ValueError("cope reinforcement length must be positive")
-        return self
+            self._validate_skewed_plate(sc)
+        if sc.cope is not None:
+            self._validate_cope(sc.cope)
 
-    def _validate_moment(self) -> Project:
-        mc = self.moment_connection
+    def _validate_skewed_plate(self, sc: ShearConnectionInput) -> None:
+        """Skewed bent plate: positive dimensions and a load share inside the plate."""
+        for name, kind in (("length", Kind.LENGTH), ("thickness", Kind.THICKNESS),
+                           ("spacing", Kind.LENGTH), ("lev", Kind.LENGTH),
+                           ("leh", Kind.LENGTH), ("weld", Kind.THICKNESS),
+                           ("weld_return", Kind.LENGTH), ("weld_offset", Kind.LENGTH)):
+            if self.quantity(getattr(sc, name), kind) <= 0:
+                raise ValueError(f"skewed bent plate {name} must be positive")
+        if sc.share_a is not None and sc.share_b is not None:
+            raise ValueError("use share_a or share_b, not both")
+        if sc.share_b is not None:
+            share = self.quantity(sc.share_b, Kind.DIMENSIONLESS)
+            if not 0.0 < share < 1.0:
+                raise ValueError("share_b must be between 0 and 1")
+        elif sc.share_a is not None:
+            share = self.quantity(sc.share_a, Kind.DIMENSIONLESS)
+            if not 0.0 < share < 1.0:
+                raise ValueError("share_a must be between 0 and 1")
+        else:
+            row = self.quantity(sc.row_distance, Kind.LENGTH)
+            offset = self.quantity(sc.load_offset, Kind.LENGTH)
+            if not 0.0 < offset < row:
+                raise ValueError("load_offset must be between 0 and row_distance")
+        for name in ("plate_a_width", "plate_b_width"):
+            value = getattr(sc, name)
+            if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
+                raise ValueError(f"skewed bent plate {name} must be positive")
+        for name in ("plate_a_leg", "plate_b_leg", "bend_radius"):
+            value = getattr(sc, name)
+            if value is not None and self.quantity(value, Kind.LENGTH) <= 0:
+                raise ValueError(f"skewed bent plate {name} must be positive")
+
+    def _validate_cope(self, cope: CopeInput) -> None:
+        """Cope reinforcement: top cope only, positive dimensions."""
+        if (cope.doubler is not None or cope.stiffener is not None) and \
+                self.quantity(cope.dc_bottom, Kind.LENGTH) != 0:
+            raise ValueError("cope reinforcement is only defined for a top cope")
+        blocks = (
+            (cope.doubler, (("thickness", Kind.THICKNESS), ("depth", Kind.LENGTH),
+                            ("gap", Kind.LENGTH), ("weld", Kind.THICKNESS))),
+            (cope.stiffener, (("width", Kind.LENGTH), ("thickness", Kind.THICKNESS),
+                              ("weld", Kind.THICKNESS))),
+        )
+        for block, fields in blocks:
+            if block is None:
+                continue
+            for name, kind in fields:
+                if self.quantity(getattr(block, name), kind) <= 0:
+                    raise ValueError(f"cope reinforcement {name} must be positive")
+            length = getattr(block, "length", None)
+            if length is not None and self.quantity(length, Kind.LENGTH) <= 0:
+                raise ValueError("cope reinforcement length must be positive")
+
+    def _validate_moment(self) -> None:
+        mc = self.require_moment_connection()
         if mc.seismic is not None:
             self._validate_seismic()
         missing = mc.missing()
         if missing:
             raise ValueError(f"{mc.type.value} moment connection needs {', '.join(missing)}")
-        library = self.material_library()
-        for grade in (mc.grade, mc.beam_grade, mc.column_grade):
-            if grade not in library:
-                raise ValueError(f"unknown material: {grade!r}")
-        for section in (mc.beam, mc.column):
-            if not isinstance(section, str) and section.grade not in library:
-                raise ValueError(f"unknown section material: {section.grade!r}")
+        self._validate_moment_grades(mc)
         bolts = self.bolt_library()
-        for bolt in (mc.web.bolt if mc.web else None, mc.bolt,
-                     mc.end_plate.bolt if mc.end_plate else None):
-            if bolt is not None and bolt.grade not in bolts:
-                raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
-        if mc.electrode not in self.electrode_library():
-            raise ValueError(f"unknown electrode: {mc.electrode!r}")
         end_plate = mc.type is FlangeDetail.END_PLATE
         if mc.support.value == "web":
             if mc.type not in (FlangeDetail.WELDED_FLANGE, FlangeDetail.BOLTED_FLANGE_PLATE):
@@ -787,10 +844,26 @@ class Project(_Input):
                or self.quantity(c.M_weak, Kind.MOMENT) for c in self.cases):
             raise ValueError("moment connections take only V and M load cases "
                              "(and P for end plates)")
-        return self
 
-    def _validate_splice(self) -> Project:
-        sp = self.splice
+    def _validate_moment_grades(self, mc: MomentConnectionInput) -> None:
+        """Plates, members, bolts and electrode of a moment connection: known materials."""
+        library = self.material_library()
+        for grade in (mc.grade, mc.beam_grade, mc.column_grade):
+            if grade not in library:
+                raise ValueError(f"unknown material: {grade!r}")
+        for section in (mc.beam, mc.column):
+            if not isinstance(section, str) and section.grade not in library:
+                raise ValueError(f"unknown section material: {section.grade!r}")
+        bolts = self.bolt_library()
+        for bolt in (mc.web.bolt if mc.web else None, mc.bolt,
+                     mc.end_plate.bolt if mc.end_plate else None):
+            if bolt is not None and bolt.grade not in bolts:
+                raise ValueError(f"unknown bolt grade: {bolt.grade!r}")
+        if mc.electrode not in self.electrode_library():
+            raise ValueError(f"unknown electrode: {mc.electrode!r}")
+
+    def _validate_splice(self) -> None:
+        sp = self.require_splice()
         missing = sp.missing()
         if missing:
             raise ValueError(f"{sp.type.value} splice needs {', '.join(missing)}")
@@ -822,7 +895,6 @@ class Project(_Input):
             if sp.web is None and any(self.quantity(c.V, F) for c in self.cases):
                 raise ValueError("column splice with strong-axis shear V needs web plates "
                                  "(web)")
-        return self
 
     def splice_model(self):
         """Engine model of the splice (:class:`BeamSplice` or :class:`ColumnSplice`)."""
@@ -831,8 +903,9 @@ class Project(_Input):
 
     def _validate_seismic(self) -> None:
         from openconex.io.moment_project import PREQUALIFIED_DETAIL, PREQUALIFIED_LAYOUTS
-        mc = self.moment_connection
+        mc = self.require_moment_connection()
         s = mc.seismic
+        assert s is not None
         need = PREQUALIFIED_DETAIL[s.connection]
         if mc.type is not need:
             raise ValueError(f"AISC 358 {s.connection.value} needs a {need.value} moment "
@@ -858,17 +931,7 @@ class Project(_Input):
         if self.quantity(s.span, Kind.LENGTH) <= 0:
             raise ValueError("seismic span must be positive")
         if s.connection.value == "bfp":
-            # AISC 358-22 §7.4.1 and §7.4.4
-            if mc.grade not in ("ASTM A36", "ASTM A572 Gr. 50"):
-                raise ValueError("AISC 358 bfp flange plates must be ASTM A36 or "
-                                 "A572 Gr. 50")
-            bolt = mc.bolt
-            if bolt is not None and ("A490" not in bolt.grade and "F2280" not in bolt.grade):
-                raise ValueError("AISC 358 bfp flange bolts must be ASTM F3125 A490 or "
-                                 "F2280")
-            if bolt is not None and bolt.threads.value != "X":
-                raise ValueError("AISC 358 bfp flange bolts must have the threads excluded "
-                                 "from the shear plane (threads X)")
+            _validate_bfp(mc)
         if s.connection.value == "rbs" and s.rbs_c is not None and \
                 self.quantity(s.rbs_c, Kind.LENGTH) <= 0:
             raise ValueError("seismic rbs_c must be positive")
@@ -947,7 +1010,7 @@ class Project(_Input):
         Used after an optimization by the CLI and the GUI; values are written as
         text in the project unit system.
         """
-        data, units = self.base_plate, self.info.unit_system()
+        data, units = self.require_base_plate(), self.info.unit_system()
         L, T = Kind.LENGTH, Kind.THICKNESS
 
         def text(value: float, kind: Kind) -> str:
@@ -962,11 +1025,11 @@ class Project(_Input):
                      library: dict[str, SteelGrade] | None = None) -> IShape | HSSShape:
         """Column section of the project: catalog label or generic dimensions."""
         library = library or self.material_library()
-        section = self.base_plate.column
+        bp = self.require_base_plate()
+        section = bp.column
         L = Kind.LENGTH
         if isinstance(section, str):
-            return aisc_shapes().get(section).to_column(self.base_plate.column_grade,
-                                                        materials=library)
+            return aisc_shapes().get(section).to_column(bp.column_grade, materials=library)
         if isinstance(section, WSectionInput):
             return IShape(
                 name=section.label(), d=self.quantity(section.d, L),
@@ -981,7 +1044,7 @@ class Project(_Input):
                         materials=library)
 
     def base_plate_model(self) -> BasePlate:
-        bp = self.base_plate
+        bp = self.require_base_plate()
         L, T = Kind.LENGTH, Kind.THICKNESS
         library = self.material_library()
         bolts = self.bolt_library()

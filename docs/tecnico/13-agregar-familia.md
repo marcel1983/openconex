@@ -14,7 +14,7 @@ Una **familia** es un tipo de bloque del proyecto `.ocnx` con todo lo que el pro
 ## Pasos
 
 1. **Motor:** `connections/<familia>/` con el modelo, las verificaciones (cada una devuelve un `CheckResult`, con título en `i18n/es.toml` y `en.toml`) y la envolvente por combinación. Reutilice `kernel/` para pernos, soldaduras y elementos.
-2. **Proyecto:** `io/<familia>_project.py` con el bloque de entrada (pydantic) y su conversión al modelo del motor; el campo en `Project` (`io/project.py`), su validación y el método `<familia>_model()`. Suba `FORMAT_VERSION` y anote la versión en `CHANGES` de `io/migrations.py` ([convenciones](02-convenciones.md#versiones-del-formato-ocnx)).
+2. **Proyecto:** `io/<familia>_project.py` con el bloque de entrada (pydantic) y su conversión al modelo del motor; el campo en `Project` (`io/project.py`), el accesor `require_<familia>()`, la validación `_validate_<familia>()` (en el despacho de `_consistent_loads`) y el método `<familia>_model()`. Suba `FORMAT_VERSION` y anote la versión en `CHANGES` de `io/migrations.py` ([convenciones](02-convenciones.md#versiones-del-formato-ocnx)).
 3. **Salidas:** `report/<familia>.py` (memoria), `drawing/<familia>.py` (plano DXF y figuras) y `geometry3d/<familia>.py` (piezas 3D).
 4. **Registro:** una entrada `ConnectionFamily` en `FAMILIES` con el bloque, el comando, los nombres, la memoria, el plano, las piezas 3D, los miembros que muestra el lote y la ventana. Las fábricas `_dxf` y `_parts` cubren el caso habitual (modelo del proyecto + función de dibujo o de piezas).
 5. **Comando:** un subcomando en `cli.build_parser` y una función de dos líneas que llama a `_load` y `_write_outputs` (ver `_moment` o `_splice`). Documéntelo en `docs/usuario/04-comandos.md`.

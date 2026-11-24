@@ -24,7 +24,7 @@ SPLICE_CODES = [
 
 
 def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
-    sp = project.splice
+    sp = project.require_splice()
     model = project.splice_model()
 
     def q(value, kind=Kind.LENGTH):
@@ -105,7 +105,7 @@ def build_splice_report(project: Project, today: dt.date | None = None) -> Repor
     def q(value, kind):
         return fmt(value, kind, units)
 
-    sp = project.splice
+    sp = project.require_splice()
     column = isinstance(model, ColumnSplice)
     forces = project.case_forces()
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.P, Kind.FORCE),

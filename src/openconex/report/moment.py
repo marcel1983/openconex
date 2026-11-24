@@ -31,7 +31,7 @@ SEISMIC_CODES = [
 
 
 def _inputs(project: Project, lang: str, units: UnitSystem) -> list[Row]:
-    mc = project.moment_connection
+    mc = project.require_moment_connection()
     model = project.moment_model()
 
     def q(value, kind=Kind.LENGTH):
@@ -152,7 +152,7 @@ def build_moment_report(project: Project, today: dt.date | None = None) -> Repor
         return fmt(value, kind, units)
 
     forces = project.case_forces()
-    mc = project.moment_connection
+    mc = project.require_moment_connection()
     end_plate = mc.type is FlangeDetail.END_PLATE
     column = project.column_forces()
     cases = [Row([c.name, tr(f"load.{c.type.value}", lang), q(f.V2, Kind.FORCE),

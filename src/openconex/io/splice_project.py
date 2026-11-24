@@ -119,7 +119,7 @@ class SpliceInput(_Input):
 
 def splice_model(project: Project) -> BeamSplice | ColumnSplice:
     """Engine model of the project's splice."""
-    sp = project.splice
+    sp = project.require_splice()
     assert sp is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     steel = project.material_library()[sp.grade]

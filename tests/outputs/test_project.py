@@ -613,3 +613,21 @@ def test_seismic_cases_without_sds_are_rejected():
     data["combinations"]["SDS"] = 0.0
     combos = Project.model_validate(data).load_combinations()
     assert any(c.seismic for c in combos)
+
+
+@pytest.mark.parametrize("key", ["base_plate", "shear_connection", "moment_connection", "splice"])
+def test_require_returns_the_block_or_fails(key):
+    from pathlib import Path
+
+    from openconex.families import KEYS
+    from openconex.io.project import load_project
+
+    examples = Path(__file__).parents[2] / "examples"
+    prefix = {"base_plate": "base_plate", "shear_connection": "shear",
+              "moment_connection": "moment", "splice": "splice"}[key]
+    project = load_project(next(examples.glob(f"{prefix}_*.ocnx")))
+    assert getattr(project, f"require_{key}")() is getattr(project, key)
+    for other in KEYS:
+        if other != key:
+            with pytest.raises(ValueError, match=f"no {other} block"):
+                getattr(project, f"require_{other}")()
