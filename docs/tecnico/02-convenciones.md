@@ -51,6 +51,7 @@ Los títulos y textos de la memoria y los planos están en `i18n/es.toml` y `i18
 ## Calidad del código
 
 - **Complejidad:** ruff rechaza funciones con complejidad ciclomática mayor que 25 (`C901`, `[tool.ruff.lint.mccabe]` en `pyproject.toml`). Las cinco que todavía la superan (`check_base_plate`, `build_base_plate_report`, `BasePlateEditor._project_from_form` (`gui/base_plate.py`), `import_beam_ends` y `_draw` de `drawing/splice.py`) llevan `# noqa: C901` hasta que se dividan. `Project._consistent_loads` y `Project._validate_shear` ya se dividieron en pasos con nombre. No se agregan excepciones nuevas: una función nueva que pase el límite se divide en pasos con nombre.
+- **Tipos:** la CI corre `python -m mypy` sobre `units.py`, `core/` y `kernel/` con `check_untyped_defs`. En esas carpetas toda función lleva anotaciones (`disallow_untyped_defs`). `connections/` e `io/` se suman en las etapas siguientes; la GUI queda fuera por ahora.
 - **Cobertura:** la CI mide la cobertura con los extras `dev,pdf,3d,gui-test` y exige 88 %. Sin esos extras se omiten las pruebas de la GUI y del 3D y el número baja.
 - **Resultados de los ejemplos:** una refactorización no cambia ningún resultado de `examples/` (`tests/test_examples_snapshot.py`, ver [validación](07-validacion.md)).
 

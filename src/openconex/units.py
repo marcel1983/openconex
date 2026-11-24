@@ -19,7 +19,7 @@ from enum import StrEnum
 from fractions import Fraction
 
 import pint
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, ValidationInfo, field_validator
 
 __all__ = [
     "PRESETS",
@@ -120,7 +120,8 @@ class UnitSystem(BaseModel):
 
     @field_validator(*(k.value for k in Kind))
     @classmethod
-    def _validate_unit(cls, value: str, info) -> str:
+    def _validate_unit(cls, value: str, info: ValidationInfo) -> str:
+        assert info.field_name is not None  # always set for a field validator
         _check_kind(_unit(value), Kind(info.field_name))
         return value
 
