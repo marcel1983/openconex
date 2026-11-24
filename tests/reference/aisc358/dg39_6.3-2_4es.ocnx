@@ -1,0 +1,58 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "AISC Design Guide 39, Ejemplo 6.3-2: 4ES, W24X62 en W14X159",
+    "number": "DG39-6.3-2",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-24",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "end_plate",
+    "beam": "W24X62",
+    "column": "W14X159",
+    "end_plate": {
+      "layout": "extended_4_stiffened",
+      "bolt": {
+        "diameter": "1.25 in",
+        "grade": "ASTM F3125 Gr. A490",
+        "threads": "N"
+      },
+      "width": "9 in",
+      "thickness": "1.125 in",
+      "gage": "5.5 in",
+      "pf": "2 in",
+      "pf_o": "2 in",
+      "pext": "3.625 in",
+      "weld_reinforcement": "5/16 in"
+    },
+    "two_sided": false,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "seismic": {
+      "connection": "bseep",
+      "system": "smf",
+      "span": "345 in",
+      "gravity_shear": "31 kip",
+      "column_axial": "99.7 kip",
+      "column_shear": "69 kip",
+      "stiffener_thickness": "1/2 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "10 kip",
+      "M": "50 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "include_code": true
+  }
+}

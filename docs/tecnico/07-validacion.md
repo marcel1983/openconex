@@ -160,11 +160,36 @@ Diferencias documentadas: la base de perfiles de la 16ª ed. da d = 13,9 in para
 - Placas de continuidad (§E3.6f): t_lim = b_bf/6 (la expresión 0,4√(1,8…) no está en AISC 341-22), P_f = 0,85M_f/d* con alma soldada, espesor 0,50/0,75 t_bf, ancho hasta los bordes del ala y b/t ≤ 0,56√(E/R_yF_y).
 - Números de ecuación y de paso según la edición 2022 (§5.7, §6.7, §7.5, §8.6).
 
-Coinciden con la norma: la fórmula de C_pr, φ_d y φ_n, los rangos de a, b y c, Z_RBS, S_h, M_pe, la rotura de pernos y la fluencia de la placa de extremo, los Y_p de las Tablas 6.2 a 6.4 (iguales a la DG16 y la DG4), las verificaciones de la extensión 4E, del rigidizador y de los pernos de compresión, el ala de la columna (Ec. 6.7-13), r_n, n, F_pr, la fluencia, la rotura, el bloque de corte y el pandeo de las placas de BFP, y los límites de viga de BFP y WUF-W.
+Coinciden con la norma: la fórmula de C_pr, φ_d y φ_n, los rangos de a, b y c, Z_RBS, S_h, M_pe, la rotura de pernos y la fluencia de la placa de extremo, las verificaciones de la extensión 4E, del rigidizador y de los pernos de compresión, el ala de la columna (Ec. 6.7-13), r_n, n, F_pr, la fluencia, la rotura, el bloque de corte y el pandeo de las placas de BFP, y los límites de viga de BFP y WUF-W.
 
 **Pruebas.** `tests/moment/test_seismic_aisc358.py` compara las cinco conexiones (`examples/moment_seismic_*.ocnx`) con cálculos a mano independientes en kip e in, a partir de las dimensiones de la base de perfiles. Compara M_pr, V_h, V_u, M_f, Z_RBS, M_pe, φ_vV_n, la relación columna-viga, el espesor de la zona de panel, t_lim y el tamaño de las placas de continuidad. En WUF-W compara C_pr = 1,4, la placa simple, P_f = 0,85M_f/d* y φ_v = 1,00; en BFP, Z_b,net, el diámetro máximo, los pernos y la fluencia y rotura de las placas. En la 4E compara M_np, el Y_p de la DG16 Tabla 4-2, la extensión con b_p ≤ b_bf + 1 in y los pernos de compresión. También compara el rigidizador de la 8ES, los límites de esbeltez de la Tabla D1.1b y la Tabla A3.2.
 
-**Pendiente.** No hay todavía un ejemplo resuelto del AISC Seismic Design Manual transcrito: el archivo del manual (452 MB) no se pudo leer. Por eso las verificaciones figuran como parciales (riesgo medio) en la matriz.
+**Ejemplos publicados (noviembre de 2026).** `tests/moment/test_seismic_manual.py` calcula cuatro ejemplos resueltos transcritos como proyectos en `tests/reference/aisc358/` y compara los valores publicados (kip e in, con el redondeo de cada ejemplo) dentro del 0,5 % salvo donde se indica:
+
+| Ejemplo | Conexión | Valores comparados |
+|---|---|---|
+| Seismic Design Manual 3.ª ed., 4.3.6 | RBS, W24X76 en W14X176, dos vigas | M_f 9720, M_pe 11 000, V_u 73,7, φV_n 315; flexión local del ala 483, fluencia del alma 424, aplastamiento 668; placas de continuidad b ≥ 4,08 y t ≥ 0,510 in; zona de panel R_u 691 con V_c 125 y doble placa de 1/2 in; t_mín 0,390 in; ΣM*_pc 34 100 y ΣM*_be 19 800 (1 %) |
+| Seismic Design Manual 3.ª ed., 4.3.7 | BFP, W24X76 en W14X176, PL 1-1/2 × 9, 14 pernos de 7/8 in | F_pr 591 (1,5 %), pernos 636, fluencia 675, rotura 614 y pandeo 608 de la placa, V_u 102 (1,5 %); ala y alma de la columna 483, 458 y 719; placas de continuidad; ΣM*_pc 34 100 y ΣM*_be 30 600 (1 %) |
+| Design Guide 39, 6.3-2 | 4ES, W24X62 en W14X159, un lado | M_f 10 400 (1 %), φM_np, Y_p 223 con b_p,ef = 8,04 in, rigidizador, φV_n 306, pernos de compresión 301; t_cf,req 1,08 (1 %), φ_dR_n 610; zona de panel φR_n 419; ΣM*_pc 27 500 y ΣM*_be 11 000; t_cw,req 0,390 |
+| Design Guide 39, 6.3-3 | 8ES, W36X150 en W18X258, un lado | M_f 39 600, φM_np, Y_p 528, rigidizador (h_st/t_s = 12), φV_n 673, pernos 725; límites de la Tabla 6.1 y L_c/d = 12,8; t_cf,req 1,54, φ_dR_n 2800, aplastamiento del alma 1960 (1,5 %); zona de panel φR_n 982; ΣM*_pc 57 100 y ΣM*_be 41 800; t_cw,req 0,566 |
+
+La comparación corrigió:
+
+- Y_p de la placa de extremo: el programa usaba las tablas de la DG16 y la DG4 (h hasta la cara del ala en compresión y, en la 4ES con d_e ≤ s, h_1/2s). Ahora usa las Tablas 6.2 a 6.4 de AISC 358-22, con h al centro del ala, 1/(2d_e) en el caso 1 y los coeficientes de cada caso de la 8ES, y con b_p,ef = mín(b_p, b_bf + 1 in) también en Y_p y en la rotura por corte de la extensión. Con la placa de 9 in de 6.3-2 el valor anterior era mayor que el publicado (del lado inseguro).
+- φ_v = 1,00 solo en perfiles laminados (§G2.1(a)); las secciones armadas toman 0,90, como en el Ejemplo 6.3-1.
+- Zona de panel: se resta el corte de la columna `column_shear` (Comentario de AISC 341-22, Ec. C-E3-11) y, con dos vigas, se suma M_f de una viga con M_f,mín de la otra (la gravedad reduce su corte), como en el Ejemplo 4.3.6.
+- Relación columna-viga: con dos vigas, V_h + V_h,mín; con `column_height_above` y `column_height_below`, M*_pc proyectado al eje de la viga.
+- Columna de las placas de extremo: φ_d = 1,00 en la resistencia del ala sin rigidizar (Ec. 6.7-15) y l_b con 2t_p en el aplastamiento del alma (Ec. 6.7-18).
+
+Diferencias que se mantienen (cada prueba las indica):
+
+- Los ejemplos del Manual siguen AISC 358-16 y 341-16: comparan los estados límite locales con P_f = M_f/d* (419 kip en 4.3.6) y no con 0,85M_f/d* (§E3.6f.1(a), 2022), y en la zona de panel de BFP proyectan R_yF_yZ_e (782 kip) en lugar de M_f (994 kip con la Ec. C-E3-11 y d + t_p de §7.5, paso 17). En BFP el Manual calcula V_h con w_u L_cf/2 (M_f 15 000 frente a 14 870).
+- El bloque de corte de BFP usa F_y y F_u (AISC 360 §J4.3); el Manual usa R_y F_y y R_t F_u del ala de la viga (909 kip).
+- La DG39 resta P_ub/2 en la zona de panel (Fig. 3.15(b)); el programa no lo resta (14 y 20 kip más de demanda).
+- La DG39 toma l_b = t_bf + w + 2t_p; la Ec. 6.7-17 dice t_bf + 2w + 2t_p, que es lo que usa el programa (529 frente a 517 kip en 6.3-2).
+- L_st = h_st/tan 30° (6,28 in en 6.3-2); la DG39 usa el largo detallado de 6,5 in (M_f 10 340 frente a 10 400).
+- El aplastamiento de los pernos de compresión incluye el desgarro hacia el borde de la extensión; la DG39 verifica solo el aplastamiento en la placa (543 frente a 788 kip en 6.3-2).
+- El Ejemplo 6.3-1 (4E en esquina, secciones armadas) no se transcribió como proyecto porque es una unión de esquina; WUF-W no tiene ejemplo en estas fuentes.
 
 ## Conexiones al alma de la columna
 

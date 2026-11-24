@@ -84,6 +84,9 @@ SEISMIC_FIELDS = [
     ("gravity_load", "Carga gravitacional mayorada w_u (1,2D + f₁L + 0,15S)"),
     ("gravity_shear", "Corte gravitacional adicional en la rótula"),
     ("column_axial", "Compresión mayorada de la columna P_uc"),
+    ("column_shear", "SMF: corte de piso en la columna V_c (resta en la zona del panel)"),
+    ("column_height_above", "SMF: eje de viga al punto de inflexión de la columna superior"),
+    ("column_height_below", "SMF: eje de viga al punto de inflexión de la columna inferior"),
     ("rbs_a", "RBS: distancia a de la cara al corte"),
     ("rbs_b", "RBS: largo b del corte"),
     ("rbs_c", "RBS: profundidad c del corte"),
@@ -255,7 +258,7 @@ class MomentWindow(ConnectionWindow):
                  "web_weld", "flange_weld", "weld_reinforcement", "continuity_plate",
                  "continuity_plate_weld", "continuity_plate_web_weld", "doubler_plate",
                  "doubler_weld"}
-        force = {"pretension", "gravity_shear", "column_axial"}
+        force = {"pretension", "gravity_shear", "column_axial", "column_shear"}
         groups = [self._flange, self._web, self._ep, self._stiff,
                   *self._plates.values()]
         for group in groups:

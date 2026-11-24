@@ -1,0 +1,75 @@
+{
+  "format_version": 13,
+  "info": {
+    "name": "AISC Seismic Design Manual, 3.ª ed., Ejemplo 4.3.7: BFP, W24X76 en W14X176",
+    "number": "SDM-4.3.7",
+    "client": "OpenConex",
+    "revision": "0",
+    "date": "2026-11-24",
+    "language": "es",
+    "units": "US"
+  },
+  "moment_connection": {
+    "type": "bolted_flange_plate",
+    "beam": "W24X76",
+    "column": "W14X176",
+    "web": {
+      "bolt": {
+        "diameter": "7/8 in"
+      },
+      "rows": 6,
+      "spacing": "3 in",
+      "length": "18 in",
+      "thickness": "1/2 in",
+      "lev": "1.5 in",
+      "leh": "2 in",
+      "weld": "5/16 in"
+    },
+    "top": {
+      "width": "9 in",
+      "thickness": "1.5 in",
+      "weld_to_column": "1/2 in",
+      "unbraced_length": "4.5 in"
+    },
+    "bolt": {
+      "diameter": "7/8 in",
+      "grade": "ASTM F3125 Gr. A490",
+      "threads": "X"
+    },
+    "rows": 7,
+    "spacing": "3 in",
+    "gage": "5.5 in",
+    "plate_lev": "1.5 in",
+    "beam_lev": "4 in",
+    "two_sided": true,
+    "panel_zone": true,
+    "panel_zone_inelastic": true,
+    "continuity_plate": "1.125 in",
+    "doubler_plate": "1 in",
+    "seismic": {
+      "connection": "bfp",
+      "system": "smf",
+      "span": "344.8 in",
+      "gravity_load": "1.15 kip/ft",
+      "column_axial": "249 kip",
+      "column_shear": "159 kip",
+      "bfp_s1": "4.5 in",
+      "column_height_above": "75 in",
+      "column_height_below": "84 in"
+    }
+  },
+  "cases": [
+    {
+      "name": "D",
+      "type": "D",
+      "V": "10 kip",
+      "M": "50 kip*ft"
+    }
+  ],
+  "combinations": {
+    "methods": [
+      "LRFD"
+    ],
+    "include_code": true
+  }
+}

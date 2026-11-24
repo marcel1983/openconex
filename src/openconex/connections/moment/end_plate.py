@@ -616,8 +616,13 @@ def _column_yield_parameter(mc: MomentConnection, c: Calc, stiffened: bool) -> f
 def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: Method,
                             combo: str, column_shear: float | None,
                             column_axial: float,
-                            panel_resistance: Resistance | None = None) -> list[CheckResult]:
+                            panel_resistance: Resistance | None = None,
+                            panel_force: float | None = None,
+                            seismic: bool = False) -> list[CheckResult]:
     """Column side of an end-plate connection (Design Guide 4, Steps 14 to 20).
+
+    ``seismic``: AISC 358-22 §6.7.2, with φ_d = 1.00 for the flange strength (Eq. 6.7-15)
+    and l_b = t_bf + 2w + 2t_p for web crippling (Eq. 6.7-18).
 
     Flange bending (Eq. 3.20 to 3.22) for the 4E, 4ES and 8ES layouts; web local
     yielding (Eq. 3.24), web buckling at the compression flange (Eq. 3.26, 3.27) and web
@@ -647,7 +652,9 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
         Yc = _column_yield_parameter(mc, c, False)
         mcf = c.step("M_{cf}", "F_{yc} Y_c t_{fc}^2", Fyc * Yc * col.tf**2, Kind.MOMENT, clause)
         rn = c.step("R_n", "M_{cf}/(d - t_{fb})", mcf / (beam.d - beam.tf), Kind.FORCE, clause)
-        rn = c.available(rn, FLEXURE, Kind.FORCE, clause)
+        if seismic:
+            clause = f"{clause}; AISC 358-22 §6.7.2, Eq. 6.7-14, 6.7-15"
+        rn = c.available(rn, J10_YIELD if seismic else FLEXURE, Kind.FORCE, clause)
         strengths.append(rn)
         out.append(c.result("moment.column_flange_strength", clause, Ffu, rn, Kind.FORCE,
                             applicable=not plates))
@@ -663,7 +670,8 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
     out.append(c.result("moment.column_web_local_yielding", clause, Ffu, rn, Kind.FORCE,
                         applicable=not plates))
     buckling = local.web_compression_buckling(col, Ffu, method, near, combo)
-    crippling = local.web_local_crippling(col, N, Ffu, method, near, combo)
+    crippling = local.web_local_crippling(col, N + 2 * ep.thickness if seismic else N, Ffu,
+                                          method, near, combo)
     for key, check, ref in (("column_web_compression_buckling", buckling, "Eq. 3.26, 3.27"),
                             ("column_web_crippling", crippling, "Eq. 3.29 to 3.31")):
         strengths.append(check.capacity)
@@ -678,7 +686,7 @@ def end_plate_column_checks(mc: MomentConnection, Ffu: float, N: float, method: 
         out += doubler_checks(mc, method, combo)
     if column_shear is not None:
         from .panel_zone import panel_zone_check
-        out += panel_zone_check(mc, Ffu, column_shear, column_axial, method, combo,
-                                panel_resistance)
+        out += panel_zone_check(mc, Ffu if panel_force is None else panel_force,
+                                column_shear, column_axial, method, combo, panel_resistance)
     return out
 

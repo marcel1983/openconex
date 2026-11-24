@@ -2,8 +2,8 @@
 # Copyright (C) 2026 The OpenConex contributors
 """Prequalified seismic moment connections (AISC 358-22, AISC 341-22).
 
-No published AISC Seismic Design Manual example is transcribed yet; the values below
-are independent hand calculations, in kip and inch, from the AISC Shapes Database
+The published worked examples are in test_seismic_manual.py; the values below are
+independent hand calculations, in kip and inch, from the AISC Shapes Database
 dimensions and the equations of AISC 358-22 (§2.4, §2.5, §5.7, §6.7, §7.5, §8.6) and
 AISC 341-22 (Tables A3.2 and D1.1b, §E3.4a, §E3.6e, §E3.6f), whose numbers were
 checked against the text of the standards (see docs/tecnico/07-validacion.md).
@@ -90,9 +90,11 @@ def test_rbs_hand_calculation():
                                                                   rel=2e-3)
     # a within 0.5bf..0.75bf, governed by the lower bound 4.495/5
     assert r["seismic.rbs_a"].ratio == pytest.approx(0.5 * 8.99 / 5.0, rel=1e-3)
-    # column-beam ratio with W14X257 above and below, P_uc = 400 kip, two beams
+    # column-beam ratio with W14X257 above and below, P_uc = 400 kip, two beams; the
+    # gravity load reduces the hinge shear of the other beam by 2 w_u L_h/2
     mpc = 2 * 487.0 * (50 - 400 / 75.6)
-    mbe = 2 * (mpr + vh * (14 + 16.4 / 2))
+    vg = 2.0 / 12 * (26 * 12 - 2 * 14) / 2
+    mbe = 2 * mpr + (2 * vh - 2 * vg) * (14 + 16.4 / 2)
     ratio = r["seismic.column_beam_ratio"]
     assert kip_in(ratio.capacity) == pytest.approx(mpc, rel=3e-3)
     assert kip_in(ratio.demand) == pytest.approx(mbe, rel=3e-3)
@@ -180,11 +182,11 @@ def test_bueep_hand_calculation():
     rupture = r["seismic.end_plate_bolt_rupture"]
     assert kip_in(rupture.demand) == pytest.approx(mf, rel=2e-3)
     assert kip_in(rupture.capacity) == pytest.approx(0.9 * 2 * 113 * ab * (h0 + h1), rel=2e-3)
-    # yield lines of the 4E plate (DG16 Table 4-2) with h to the compression flange face
-    bp, g, pf = 10.0, 5.5, 2.0
+    # yield lines of the 4E plate (AISC 358-22 Table 6.2) with h to the center of the
+    # compression flange and b_p,eff = b_bf + 1 in. = 8.04 in. < 10 in.
+    bp, g, pf = bf + 1, 5.5, 2.0
     s = 0.5 * math.sqrt(bp * g)
-    H1, H0 = d - tf - pf, d + pf
-    Y = bp / 2 * (H1 * (1 / pf + 1 / s) + H0 / pf - 0.5) + 2 / g * H1 * (pf + s)
+    Y = bp / 2 * (h1 * (1 / pf + 1 / s) + h0 / pf - 0.5) + 2 / g * h1 * (pf + s)
     yielding = r["seismic.end_plate_yielding"]
     assert kip_in(yielding.capacity) == pytest.approx(50 * 1.5**2 * Y / 1.11, rel=3e-3)
     ffu = mf / (d - tf)
