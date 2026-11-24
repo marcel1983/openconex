@@ -58,7 +58,7 @@ def _bolts(sp: SinglePlate, V: float, N: float, method: Method, combo: str,
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11; {PART12}"
     b, dh = sp.bolt, sp.bolt.hole_dimensions[0]
-    kw = {"deformation_considered": sp.deformation_considered}
+    deform = sp.deformation_considered
     shear = c.step(r"r_{n,bolt}", "", bolts.bolt_shear(b, 0.0, method).capacity, Kind.FORCE,
                    f"{SPEC} §J3.7")
     lc_web = c.step(r"l_{c,web}", r"l_{eh,web} - d_h/2 - \mathrm{underrun}",
@@ -69,10 +69,10 @@ def _bolts(sp: SinglePlate, V: float, N: float, method: Method, combo: str,
     for t, Fu, lc, name in ((sp.beam_tw, sp.beam_Fu, lc_web, "web"),
                             (sp.thickness, sp.plate_Fu, lc_plate, "plate")):
         per_bolt.append(c.step(rf"r_{{n,bearing,{name}}}", r"k\,d t F_u",
-                               bolts.bolt_bearing(b, t, Fu, 0.0, method, **kw).capacity,
+                               bolts.bolt_bearing(b, t, Fu, 0.0, method, deform).capacity,
                                Kind.FORCE, f"{SPEC} §J3.11(a)"))
         per_bolt.append(c.step(rf"r_{{n,tearout,{name}}}", r"k\,l_c t F_u",
-                               bolts.bolt_tearout(b, t, Fu, lc, 0.0, method, **kw).capacity,
+                               bolts.bolt_tearout(b, t, Fu, lc, 0.0, method, deform).capacity,
                                Kind.FORCE, f"{SPEC} §J3.11(b)"))
     rn = c.step(r"r_n", r"\min", min(per_bolt), Kind.FORCE, clause)
     theta = c.step(r"\theta", r"\tan^{-1}(N/V)",

@@ -88,20 +88,20 @@ def _bolts(sp: ExtendedSinglePlate, R: float, method: Method, combo: str) -> Che
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11; AISC Manual 16th ed., Part 7"
     b = sp.bolt
-    kw = {"deformation_considered": sp.deformation_considered}
+    deform = sp.deformation_considered
     per_bolt = [
         c.step(r"r_{n,bolt}", "", bolts.bolt_shear(b, 0.0, method).capacity, Kind.FORCE,
                f"{SPEC} §J3.7"),
         c.step(r"r_{n,web}", r"2.4 d t_w F_u",
-               bolts.bolt_bearing(b, sp.beam_tw, sp.beam_Fu, 0.0, method, **kw).capacity,
+               bolts.bolt_bearing(b, sp.beam_tw, sp.beam_Fu, 0.0, method, deform).capacity,
                Kind.FORCE, f"{SPEC} §J3.11(a)"),
         c.step(r"r_{n,plate}", r"2.4 d t_p F_u",
-               bolts.bolt_bearing(b, sp.thickness, sp.plate_Fu, 0.0, method, **kw).capacity,
+               bolts.bolt_bearing(b, sp.thickness, sp.plate_Fu, 0.0, method, deform).capacity,
                Kind.FORCE, f"{SPEC} §J3.11(a)"),
         c.step(r"r_{n,plate,edge}", r"1.2 l_c t_p F_u",
                bolts.bolt_tearout(b, sp.thickness, sp.plate_Fu,
                                   clear_distance(b, sp.lev, to_edge=True), 0.0, method,
-                                  **kw).capacity, Kind.FORCE, f"{SPEC} §J3.11(b)"),
+                                  deform).capacity, Kind.FORCE, f"{SPEC} §J3.11(b)"),
     ]
     rn = c.step("r_n", r"\min", min(per_bolt), Kind.FORCE, clause)
     e = c.step("e", r"a + (n_l - 1)g/2", sp.a + (sp.lines - 1) * sp.gage / 2, Kind.LENGTH,

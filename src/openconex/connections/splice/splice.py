@@ -161,7 +161,7 @@ class ColumnSplice:
 
 
 # -- helpers -----------------------------------------------------------------------------
-def _rename(check: CheckResult, key: str, **update) -> CheckResult:
+def _rename(check: CheckResult, key: str, **update: object) -> CheckResult:
     return check.model_copy(update={"id": f"splice.{key}", "text_id": f"check.splice.{key}",
                                     **update})
 
@@ -174,10 +174,9 @@ def _hole(bolt: BoltSpec) -> float:
 def _bear(bolt: BoltSpec, t: float, Fu: float, lc: float | None, method: Method,
           deform: bool) -> float:
     """min(bearing, tearout) available strength at one hole; ``lc`` None: bearing only."""
-    kw = {"deformation_considered": deform}
-    rn = bolts.bolt_bearing(bolt, t, Fu, 0.0, method, **kw).capacity
+    rn = bolts.bolt_bearing(bolt, t, Fu, 0.0, method, deform).capacity
     if lc is not None:
-        rn = min(rn, bolts.bolt_tearout(bolt, t, Fu, max(lc, 0.0), 0.0, method, **kw).capacity)
+        rn = min(rn, bolts.bolt_tearout(bolt, t, Fu, max(lc, 0.0), 0.0, method, deform).capacity)
     return rn
 
 

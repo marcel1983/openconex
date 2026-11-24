@@ -177,6 +177,7 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
                                 "OpenConex (axial tension not implemented for this connection)"))
         N = 0.0
     if conn.type is ShearType.DOUBLE_ANGLE:
+        assert isinstance(el, DoubleAngle)
         if N > 0:
             out += check_double_angle_axial(el, V, N, method, conn.gage, conn.outstanding_leg,
                                             combo, beam_leh=conn.beam_leh,
@@ -186,12 +187,14 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
             if conn.offset > 0 and not conn.welded_double_angle:
                 out.append(check_shared_support_bolts(el, V, method, combo))
     elif conn.type is ShearType.SINGLE_PLATE:
+        assert isinstance(el, SinglePlate)
         if C > 0:
             out += check_single_plate_axial(el, V, C, method, combo, compression=True)
         else:
             out += (check_single_plate_axial(el, V, N, method, combo) if N > 0
                     else check_single_plate(el, V, method, combo))
     elif conn.type is ShearType.EXTENDED_SINGLE_PLATE:
+        assert isinstance(el, ExtendedSinglePlate)
         if C > 0:
             out += check_extended_single_plate_axial(el, V, C, method, combo,
                                                      compression=True)
@@ -199,12 +202,16 @@ def check_shear_connection(conn: ShearConnection, forces: Forces, method: Method
             out += (check_extended_single_plate_axial(el, V, N, method, combo) if N > 0
                     else check_extended_single_plate(el, V, method, combo))
     elif conn.type is ShearType.END_PLATE:
+        assert isinstance(el, EndPlate)
         out += check_end_plate(el, V, method, combo)
     elif conn.type is ShearType.SEATED:
+        assert isinstance(el, SeatedAngle)
         out += check_seated(el, V, method, combo)
     elif conn.type is ShearType.STIFFENED_SEAT:
+        assert isinstance(el, StiffenedSeat)
         out += check_stiffened_seat(el, V, method, combo)
     elif conn.type is ShearType.SKEWED_BENT_PLATE:
+        assert isinstance(el, SkewedBentPlate)
         out += check_skewed_bent_plate(el, V, method, combo)
     else:
         raise AssertionError(f"unsupported shear connection type: {conn.type}")

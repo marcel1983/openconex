@@ -36,6 +36,7 @@ cope or edge near the bolts (non-edge tearout only).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Protocol
 
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
@@ -92,10 +93,20 @@ def _hole_net(bolt: BoltSpec) -> float:
     return bolt.hole_dimensions[0] + to_internal(1 / 16, "in", Kind.LENGTH)
 
 
-def _bearing_tearout(da: DoubleAngle, t: float, Fu: float, lc: float, method: Method) -> float:
-    kw = {"deformation_considered": da.deformation_considered}
-    bearing = bolts.bolt_bearing(da.bolt, t, Fu, 0.0, method, **kw).capacity
-    tearout = bolts.bolt_tearout(da.bolt, t, Fu, lc, 0.0, method, **kw).capacity
+class _Bolted(Protocol):
+    """An element with one bolt specification and the §J3.11 deformation option."""
+
+    @property
+    def bolt(self) -> BoltSpec: ...
+
+    @property
+    def deformation_considered(self) -> bool: ...
+
+
+def _bearing_tearout(da: _Bolted, t: float, Fu: float, lc: float, method: Method) -> float:
+    deform = da.deformation_considered
+    bearing = bolts.bolt_bearing(da.bolt, t, Fu, 0.0, method, deform).capacity
+    tearout = bolts.bolt_tearout(da.bolt, t, Fu, lc, 0.0, method, deform).capacity
     return min(bearing, tearout)
 
 

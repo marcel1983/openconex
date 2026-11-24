@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from itertools import pairwise
+from typing import TYPE_CHECKING
 
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
@@ -27,6 +28,9 @@ from openconex.core.materials import E_STEEL
 from openconex.kernel import elements
 from openconex.kernel.design import FLEXURE, Calc
 from openconex.units import Kind
+
+if TYPE_CHECKING:
+    from .coped_beam import CopedBeam
 
 __all__ = ["DoublerPlate", "LongitudinalStiffener", "ReinforcedSection",
            "check_doubler_plate", "check_longitudinal_stiffener", "reinforced_section"]
@@ -67,7 +71,7 @@ class ReinforcedSection:
     Iyc: float
 
 
-def _rectangles(cb, doubler: DoublerPlate | None,
+def _rectangles(cb: CopedBeam, doubler: DoublerPlate | None,
                 stiffener: LongitudinalStiffener | None) -> list[tuple[float, float, float]]:
     h = cb.d - cb.dc
     rects = [(0.0, cb.tf, cb.bf), (cb.tf, h, cb.tw)]
@@ -130,12 +134,12 @@ def _section(rects: list[tuple[float, float, float]], tw: float) -> ReinforcedSe
                              min(S_top, S_bottom), Z, Iy, Iyc)
 
 
-def reinforced_section(cb, doubler: DoublerPlate | None = None,
+def reinforced_section(cb: CopedBeam, doubler: DoublerPlate | None = None,
                        stiffener: LongitudinalStiffener | None = None) -> ReinforcedSection:
     return _section(_rectangles(cb, doubler, stiffener), cb.tw)
 
 
-def _buckling_parameters(cb, c: Calc) -> tuple[float, float]:
+def _buckling_parameters(cb: CopedBeam, c: Calc) -> tuple[float, float]:
     hc = cb.d - cb.dc
     cd, ch = cb.c / cb.d, cb.c / hc
     f = c.step("f", r"2c/d" if cd <= 1 else r"1 + c/d", 2 * cd if cd <= 1 else 1 + cd,
@@ -158,7 +162,8 @@ def _weld_capacity(weld: float, method: Method) -> float:
     return (1.392 if method is Method.LRFD else 0.928) * D * 175.1268  # kip/in -> N/mm
 
 
-def check_doubler_plate(cb, R: float, method: Method, combo: str = "") -> list[CheckResult]:
+def check_doubler_plate(cb: CopedBeam, R: float, method: Method,
+                        combo: str = "") -> list[CheckResult]:
     """Checks of a doubler plate on a top-coped web (II.A-6 C)."""
     dp = cb.doubler
     if dp is None:
@@ -213,7 +218,7 @@ def check_doubler_plate(cb, R: float, method: Method, combo: str = "") -> list[C
     return [flexure, shear_y, shear_r, compact_check, weld_check]
 
 
-def check_longitudinal_stiffener(cb, R: float, method: Method,
+def check_longitudinal_stiffener(cb: CopedBeam, R: float, method: Method,
                                  combo: str = "") -> list[CheckResult]:
     """Checks of a longitudinal stiffener on a top-coped web (II.A-6 D)."""
     st = cb.stiffener

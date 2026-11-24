@@ -91,7 +91,7 @@ class StiffenedSeat:
     top_angle_weld: float = TOP_ANGLE_WELD
 
 
-def _available(method: Method, nominal: float, r) -> float:
+def _available(method: Method, nominal: float, r: Resistance) -> float:
     return r.phi * nominal if method is Method.LRFD else nominal / r.omega
 
 

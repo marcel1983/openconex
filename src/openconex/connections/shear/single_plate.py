@@ -65,7 +65,7 @@ class SinglePlate:
     tearout of the web under axial load. Defaults to ``leh``."""
 
 
-def _result(sp, key: str, check: CheckResult) -> CheckResult:
+def _result(sp: SinglePlate, key: str, check: CheckResult) -> CheckResult:
     return check.model_copy(update={"id": f"single_plate.{key}",
                                     "text_id": f"check.single_plate.{key}"})
 

@@ -28,7 +28,15 @@ __all__ = [
     "IShape",
     "SteelPlate",
     "Threads",
+    "required",
 ]
+
+
+def required[T](value: T | None, name: str) -> T:
+    """``value``, which the caller needs; ``ValueError`` naming ``name`` if it is missing."""
+    if value is None:
+        raise ValueError(f"{name} is required")
+    return value
 
 
 class _Part(BaseModel):

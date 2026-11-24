@@ -59,14 +59,14 @@ def _beam_bolts(da: DoubleAngle, V: float, N: float, method: Method, combo: str,
     c = Calc(method, combo)
     clause = f"{SPEC} §J3.7, §J3.11"
     b, dh = da.bolt, da.bolt.hole_dimensions[0]
-    kw = {"deformation_considered": da.deformation_considered}
+    deform = da.deformation_considered
     theta = c.step(r"\theta", r"\tan^{-1}(N/V)", math.degrees(math.atan2(N, V)), clause=clause)
     cos_t, cos_b = math.cos(math.radians(theta)), math.sin(math.radians(theta))
 
-    def bearing_tearout(t, Fu, le, name):
+    def bearing_tearout(t: float, Fu: float, le: float, name: str) -> float:
         lc = le - dh / 2
-        bear = bolts.bolt_bearing(b, t, Fu, 0.0, method, **kw).capacity
-        tear = bolts.bolt_tearout(b, t, Fu, lc, 0.0, method, **kw).capacity
+        bear = bolts.bolt_bearing(b, t, Fu, 0.0, method, deform).capacity
+        tear = bolts.bolt_tearout(b, t, Fu, lc, 0.0, method, deform).capacity
         return c.step(rf"r_{{n,{name}}}", r"\min(2.4dtF_u, 1.2l_ctF_u)", min(bear, tear),
                       Kind.FORCE, clause, l_c=(lc, Kind.LENGTH))
 

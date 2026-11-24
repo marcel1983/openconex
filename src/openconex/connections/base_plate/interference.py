@@ -18,7 +18,7 @@ import math
 from openconex.core.bolting import base_plate_hole, min_edge_distance
 from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
-from openconex.core.model import HSSKind, HSSShape
+from openconex.core.model import HSSKind, HSSShape, required
 from openconex.kernel.design import Calc
 from openconex.units import Kind, from_internal, to_internal
 
@@ -66,7 +66,7 @@ def _column_clearance(bp: BasePlate, x: float, y: float) -> float:
 
 def _lug_rectangles(bp: BasePlate) -> list[tuple[float, float, float, float]]:
     """Plan rectangles (x0, y0, x1, y1) occupied by the shear lug."""
-    lug = bp.shear_lug
+    lug = required(bp.shear_lug, "shear lug")
     t, w = lug.thickness, lug.width
     rects = []
     if lug.direction in ("strong", "both"):
