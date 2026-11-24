@@ -4,9 +4,9 @@
 
 No published AISC Seismic Design Manual example is transcribed yet; the values below
 are independent hand calculations, in kip and inch, from the AISC Shapes Database
-dimensions and the equations of AISC 358-22 (§2.4.3, §5.8, §6.8, §7.6) and AISC 341-22
-(§E3.4a, §E3.6e, §E3.6f). They check the implementation of the equations, not the
-equations themselves (see docs/tecnico/07-validacion.md).
+dimensions and the equations of AISC 358-22 (§2.4, §2.5, §5.7, §6.7, §7.5, §8.6) and
+AISC 341-22 (Tables A3.2 and D1.1b, §E3.4a, §E3.6e, §E3.6f), whose numbers were
+checked against the text of the standards (see docs/tecnico/07-validacion.md).
 """
 
 import json
@@ -67,19 +67,20 @@ def test_examples_pass(name):
     assert any(r.combo == "AISC 358" for r in results)
 
 
-def _hinge(Zx_e, Sh, span, w=2.0 / 12, Ry=1.1, Fy=50.0, Fu=65.0):
-    cpr = min((Fy + Fu) / (2 * Fy), 1.2)
+def _hinge(Zx_e, Sh, span, w=2.0 / 12, Ry=1.1, Fy=50.0, Fu=65.0, cpr=None):
+    """(M_pr, V_h, M_f, V_u) of AISC 358-22 Eq. 2.4-1 to 2.4-4 and §2.5."""
+    cpr = cpr or min((Fy + Fu) / (2 * Fy), 1.2)
     mpr = cpr * Ry * Fy * Zx_e
     lh = span - 2 * Sh
-    vu = 2 * mpr / lh + w * lh / 2
-    return mpr, vu, mpr + vu * Sh
+    vh = 2 * mpr / lh + w * lh / 2
+    return mpr, vh, mpr + vh * Sh, vh + w * Sh
 
 
 def test_rbs_hand_calculation():
     """W24X76 beam (d 23.9, bf 8.99, tf 0.68, Zx 200), a = 5, b = 18, c = 2 in., 26 ft."""
     r = seismic(load_project(EXAMPLES / "moment_seismic_rbs.ocnx"))
     zrbs = 200.0 - 2 * 2.0 * 0.68 * (23.9 - 0.68)
-    mpr, vu, mf = _hinge(zrbs, 5 + 18 / 2, 26 * 12)
+    mpr, vh, mf, vu = _hinge(zrbs, 5 + 18 / 2, 26 * 12)
     face = r["seismic.rbs_moment_at_face"]
     assert kip_in(face.demand) == pytest.approx(mf, rel=2e-3)
     assert kip_in(face.capacity) == pytest.approx(1.1 * 50 * 200, rel=2e-3)
@@ -91,13 +92,12 @@ def test_rbs_hand_calculation():
     assert r["seismic.rbs_a"].ratio == pytest.approx(0.5 * 8.99 / 5.0, rel=1e-3)
     # column-beam ratio with W14X257 above and below, P_uc = 400 kip, two beams
     mpc = 2 * 487.0 * (50 - 400 / 75.6)
-    mpb = 2 * (mpr + vu * (14 + 16.4 / 2))
+    mbe = 2 * (mpr + vh * (14 + 16.4 / 2))
     ratio = r["seismic.column_beam_ratio"]
     assert kip_in(ratio.capacity) == pytest.approx(mpc, rel=3e-3)
-    assert kip_in(ratio.demand) == pytest.approx(mpb, rel=3e-3)
-    # continuity plates: 0.4 sqrt(1.8 bf tf) with equal RyFy, and bf/6
-    need = max(0.4 * math.sqrt(1.8 * 8.99 * 0.68), 8.99 / 6)
-    assert inch(r["seismic.continuity_plates"].demand) == pytest.approx(need, rel=2e-3)
+    assert kip_in(ratio.demand) == pytest.approx(mbe, rel=3e-3)
+    # limiting column flange thickness without continuity plates, b_bf/6 (Eq. E3-7)
+    assert inch(r["seismic.continuity_plates"].demand) == pytest.approx(8.99 / 6, rel=2e-3)
     # panel zone thickness (dz + wz)/90
     pz = r["seismic.panel_zone_thickness"]
     assert inch(pz.demand) == pytest.approx((23.9 - 2 * 0.68 + 16.4 - 2 * 1.89) / 90,
@@ -105,23 +105,55 @@ def test_rbs_hand_calculation():
 
 
 def test_wuf_w_hinge_at_the_column_face():
-    """W24X62 (Zx 153): S_h = 0, M_f = M_pr = 1.15 (1.1)(50)(153)."""
+    """W24X62 (Zx 153): C_pr = 1.4, S_h = 0, M_f = M_pr = 1.4 (1.1)(50)(153)."""
     r = seismic(load_project(EXAMPLES / "moment_seismic_wuf_w.ocnx"))
-    _, vu, _ = _hinge(153.0, 0.0, 26 * 12)
+    mpr, vh, mf, vu = _hinge(153.0, 0.0, 26 * 12, cpr=1.4)
+    assert mf == mpr and vu == vh
     assert kip(r["seismic.beam_shear"].demand) == pytest.approx(vu, rel=2e-3)
     assert "seismic.rbs_moment_at_face" not in r
     assert r["seismic.beam_weight"].ratio == pytest.approx(62 / 150, rel=1e-3)
     assert r["seismic.beam_flange_thickness"].ratio == pytest.approx(0.59, rel=1e-3)
+    # single plate: t_p ≥ t_bw, welds for 0.6 R_y F_yp h_p t_p (§8.5), A572 Gr. 50 plate
+    # R_y = 1.1
+    assert inch(r["seismic.wuf_w_plate_thickness"].demand) == pytest.approx(0.43, rel=1e-3)
+    weld = r["seismic.wuf_w_plate_weld"]
+    assert kip(weld.demand) == pytest.approx(0.6 * 1.1 * 50 * 18 * 0.5, rel=2e-3)
+    assert kip(weld.capacity) == pytest.approx(2 * 0.75 * 0.6 * 70 * 0.7071 * 7 / 16 * 18,
+                                               rel=2e-3)
+
+
+def test_welded_web_reduces_the_local_flange_force():
+    """RBS and WUF-W: P_f = 0.85 M_f/d* for the J10 checks, M_f/d* for the panel zone with
+    φ_v = 1.00 (AISC 341-22 §E3.6e.1, §E3.6f.1(a))."""
+    project = load_project(EXAMPLES / "moment_seismic_wuf_w.ocnx")
+    results = check_moment_envelope(project.moment_model(), project.load_combinations(),
+                                    project.case_forces(), project.column_forces())
+    r = {x.id: x for x in results if x.combo == "AISC 358"}
+    _, _, mf, _ = _hinge(153.0, 0.0, 26 * 12, cpr=1.4)
+    pf = mf / (23.7 - 0.59)
+    assert kip(r["moment.column_web_local_yielding"].demand) == pytest.approx(0.85 * pf,
+                                                                            rel=2e-3)
+    pz = r["moment.column_panel_zone"]
+    assert kip(pz.demand) == pytest.approx(2 * pf, rel=2e-3)
+    assert any(step.expression.startswith("1") and step.symbol.startswith(r"\phi")
+               for step in pz.steps)
+    imf = seismic(project_with("moment_seismic_wuf_w", system="imf"))
+    assert "seismic.panel_zone_thickness" not in imf
 
 
 def test_bfp_hand_calculation():
     """W24X76, PL 1-1/4 x 11, 7 rows of 7/8 in. A490-X at 3 in., S_1 = 2.5 in., 28 ft."""
     r = seismic(load_project(EXAMPLES / "moment_seismic_bfp.ocnx"))
     sh = 2.5 + 3 * (7 - 1)
-    _, _, mf = _hinge(200.0, sh, 28 * 12)
+    _, _, mf, _ = _hinge(200.0, sh, 28 * 12)
     fpr = mf / (23.9 + 1.25)
-    dmax = 8.99 / 2 * (1 - 1.1 * 50 / (1.1 * 65)) - 0.125
-    assert inch(r["seismic.bfp_bolt_diameter"].capacity) == pytest.approx(dmax, rel=2e-3)
+    # beam flange net section, Eq. 7.5-1: d_hole = 15/16 + 1/16 in. in both flanges
+    znet = 200.0 - 2 * (15 / 16 + 1 / 16) * 0.68 * (23.9 - 0.68)
+    rupture = r["seismic.bfp_beam_flange_rupture"]
+    assert kip_in(rupture.demand) == pytest.approx(1.1 * 50 * 200, rel=2e-3)
+    assert kip_in(rupture.capacity) == pytest.approx(1.1 * 65 * znet, rel=2e-3)
+    # maximum bolt diameter 1-1/8 in. (§7.4.4)
+    assert r["seismic.bfp_bolt_diameter"].ratio == pytest.approx(0.875 / 1.125, rel=1e-6)
     ab = math.pi * 0.875**2 / 4
     rn = min(84 * ab, 2.4 * 65 * 0.875 * 0.68, 2.4 * 65 * 0.875 * 1.25)
     bolts = r["seismic.bfp_bolts"]
@@ -132,13 +164,17 @@ def test_bfp_hand_calculation():
     an = min((11 - 2 * (15 / 16 + 1 / 16)) * 1.25, 0.85 * 11 * 1.25)
     assert kip(r["seismic.bfp_plate_rupture"].capacity) == pytest.approx(0.9 * 65 * an,
                                                                          rel=2e-3)
+    # column depth: W36 with a concrete slab, W14 without (§7.3.2)
+    assert r["seismic.column_depth"].ratio == pytest.approx(14 / 36, rel=1e-6)
+    r = seismic(project_with("moment_seismic_bfp", slab=False))
+    assert r["seismic.column_depth"].ratio == pytest.approx(1.0, rel=1e-6)
 
 
 def test_bueep_hand_calculation():
     """4E: W24X62, PL 1-1/2 x 10, g 5.5, p_f,i = p_f,o = 2, 1-1/4 in. A490, 26 ft."""
     r = seismic(load_project(EXAMPLES / "moment_seismic_bueep.ocnx"))
     d, bf, tf = 23.7, 7.04, 0.59
-    _, vu, mf = _hinge(153.0, min(d / 2, 3 * bf), 26 * 12)
+    _, _, mf, vu = _hinge(153.0, min(d / 2, 3 * bf), 26 * 12)
     h0, h1 = d + 2 - tf / 2, d - tf - 2 - tf / 2
     ab = math.pi * 1.25**2 / 4
     rupture = r["seismic.end_plate_bolt_rupture"]
@@ -153,8 +189,9 @@ def test_bueep_hand_calculation():
     assert kip_in(yielding.capacity) == pytest.approx(50 * 1.5**2 * Y / 1.11, rel=3e-3)
     ffu = mf / (d - tf)
     assert kip(r["seismic.end_plate_shear_yielding"].demand) == pytest.approx(ffu / 2, rel=2e-3)
+    # b_p taken not greater than b_bf + 1 in. (Eq. 6.7-7)
     assert kip(r["seismic.end_plate_shear_yielding"].capacity) == pytest.approx(
-        0.6 * 50 * bp * 1.5, rel=2e-3)
+        0.6 * 50 * (bf + 1) * 1.5, rel=2e-3)
     bolts = r["seismic.end_plate_compression_bolts"]
     assert kip(bolts.demand) == pytest.approx(vu, rel=2e-3)
     assert kip(bolts.capacity) == pytest.approx(0.9 * 4 * 84 * ab, rel=2e-3)
@@ -165,7 +202,7 @@ def test_bseep_8es_stiffener():
     """8ES stiffener: t_s ≥ t_bw F_yb/F_ys and h_st/t_s ≤ 0.56 sqrt(E/F_ys)."""
     r = seismic(load_project(EXAMPLES / "moment_seismic_bseep_8es.ocnx"))
     st = r["seismic.end_plate_stiffener_thickness"]
-    assert inch(st.demand) == pytest.approx(0.545, rel=2e-3)   # W30X108 t_w
+    assert inch(st.demand) == pytest.approx(0.565, rel=2e-3)   # W30X116 t_w
     assert r["seismic.end_plate_stiffener_slenderness"].ratio == pytest.approx(
         (7.5 / 0.625) / (0.56 * math.sqrt(29000 / 50)), rel=2e-3)
     assert r["seismic.end_plate_pb"].ratio == pytest.approx(1.0, rel=1e-6)
@@ -185,11 +222,54 @@ def test_expected_strength_ratios():
     assert expected_ratios("ASTM A992") == (1.1, 1.1)
     assert expected_ratios("ASTM A36") == (1.5, 1.2)
     assert expected_ratios("ASTM A36", plate=True) == (1.3, 1.2)
+    assert expected_ratios("ASTM A572 Gr. 50") == (1.1, 1.1)
+    assert expected_ratios("ASTM A572 Gr. 50", plate=True) == (1.1, 1.2)
+    assert expected_ratios("ASTM A709 Gr. 50W") == (1.1, 1.1)
+    # not listed in Table A3.2: A572 Gr. 42 shapes, A992 and A913 plates
+    assert expected_ratios("ASTM A572 Gr. 42") is None
+    assert expected_ratios("ASTM A572 Gr. 42", plate=True) == (1.3, 1.0)
+    assert expected_ratios("ASTM A992", plate=True) is None
+    assert expected_ratios("ASTM A913 Gr. 50", plate=True) is None
     assert expected_ratios("unknown") is None
     assert nominal_depth("W36X150") == 36.0
     r = seismic(project_with("moment_seismic_wuf_w", Ry_beam=1.3))
     base = seismic(load_project(EXAMPLES / "moment_seismic_wuf_w.ocnx"))
     assert r["seismic.beam_shear"].demand > base["seismic.beam_shear"].demand
+
+
+def test_width_to_thickness_limits():
+    """AISC 341-22 Table D1.1b: flanges 0.30 / 0.38 sqrt(E/RyFy), moment-frame webs
+    2.5 / 5.4 sqrt(E/RyFy)(1 - Ca)^2.3 with Ca = Pr/(Ry Fy Ag)."""
+    root = math.sqrt(29000 / (1.1 * 50))
+    r = seismic(load_project(EXAMPLES / "moment_seismic_wuf_w.ocnx"))
+    assert r["seismic.column_flange_slenderness"].capacity == pytest.approx(0.30 * root,
+                                                                            rel=1e-6)
+    ca = 400 / (1.1 * 50 * 75.6)        # W14X257, P_r = 400 kip
+    assert r["seismic.column_web_slenderness"].capacity == pytest.approx(
+        2.5 * root * (1 - ca) ** 2.3, rel=2e-3)
+    assert r["seismic.beam_web_slenderness"].capacity == pytest.approx(2.5 * root, rel=1e-6)
+    r = seismic(project_with("moment_seismic_wuf_w", system="imf"))
+    assert r["seismic.beam_flange_slenderness"].capacity == pytest.approx(0.38 * root,
+                                                                          rel=1e-6)
+    assert r["seismic.beam_web_slenderness"].capacity == pytest.approx(5.4 * root, rel=1e-6)
+
+
+def test_continuity_plate_size():
+    """AISC 341-22 §E3.6f.2: t ≥ 0.75 t_bf two-sided, reaching the beam flange tips, and
+    b/t ≤ 0.56 sqrt(E/(Ry Fy)) with A572 Gr. 50 plates (Ry = 1.1)."""
+    d = data("moment_seismic_rbs")
+    d["moment_connection"].update(continuity_plate="1/2 in")
+    r = seismic(Project.model_validate(d))
+    assert "seismic.continuity_plates" not in r
+    assert inch(r["seismic.continuity_plate_thickness"].demand) == pytest.approx(
+        0.75 * 0.68, rel=1e-3)
+    bs = (16.0 - 1.18) / 2                # W14X257 (b_f - t_w)/2
+    assert inch(r["seismic.continuity_plate_width"].demand) == pytest.approx(
+        (8.99 - 1.18) / 2, rel=2e-3)
+    assert r["seismic.continuity_plate_slenderness"].demand == pytest.approx(bs / 0.5,
+                                                                             rel=2e-3)
+    assert r["seismic.continuity_plate_slenderness"].capacity == pytest.approx(
+        0.56 * math.sqrt(29000 / (1.1 * 50)), rel=1e-6)
 
 
 def test_project_validation():
@@ -213,6 +293,16 @@ def test_project_validation():
         Project.model_validate(d)
     d["moment_connection"]["seismic"].update(Ry_beam=1.1, Rt_beam=1.1)
     assert Project.model_validate(d).moment_model().seismic.Ry_beam == 1.1
+    # BFP: A36 or A572 Gr. 50 plates, A490/F2280 bolts with threads excluded (§7.4)
+    for change, match in (({"grade": "ASTM A588"}, "A572 Gr. 50"),
+                          ({"bolt": {"diameter": "7/8 in", "grade": "ASTM F3125 Gr. A325",
+                                     "threads": "X"}}, "A490"),
+                          ({"bolt": {"diameter": "7/8 in", "grade": "ASTM F3125 Gr. A490",
+                                     "threads": "N"}}, "threads")):
+        d = data("moment_seismic_bfp")
+        d["moment_connection"].update(change)
+        with pytest.raises(ValidationError, match=match):
+            Project.model_validate(d)
 
 
 def test_report_and_command(tmp_path):

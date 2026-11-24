@@ -4,41 +4,48 @@
 
 Capacity design of the beam-to-column connection of special (SMF) and
 intermediate (IMF) moment frames for the probable maximum moment at the
-plastic hinge, M_pr = C_pr R_y F_y Z_e (§2.4.3), with C_pr = (F_y + F_u)/(2F_y)
-≤ 1.2. The hinge is at S_h from the column face; the shear at the hinge is
-V_u = 2M_pr/L_h + V_gravity with L_h = L_cf − 2S_h, and the moment at the
-column face is M_f = M_pr + V_u S_h. Resistance factors: φ_d = 1.00 for
-ductile limit states and φ_n = 0.90 for non-ductile ones (§2.4.1). Only LRFD
-is used, as in AISC 358.
+plastic hinge, M_pr = C_pr R_y F_y Z_e (Eq. 2.4-1), with C_pr = (F_y + F_u)/(2F_y)
+≤ 1.2 (Eq. 2.4-2; 1.4 for WUF-W, §8.6). The hinge is at S_h from the column
+face; the shear at the hinge is V_h = 2M_pr/L_h + V_gravity (Eq. 2.4-3) with
+L_h = L_cf − 2S_h and V_gravity from 1.2D + f1 L + 0.15S, and the moment at
+the column face is M_f = M_pr + V_h S_h (Eq. 2.4-4). The required shear of the
+beam adds the gravity load between the hinge and the column face (§2.5).
+Resistance factors: φ_d = 1.00 for ductile limit states and φ_n = 0.90 for
+non-ductile ones (§2.4.1). Only LRFD is used, as in AISC 358.
 
 Prequalified connections (the flange detail of the moment connection must
 match):
 
 * ``rbs`` — reduced beam section (Chapter 5) on a ``welded_flange`` connection:
-  limits on a, b and c, Z_RBS = Z_x − 2c t_bf (d − t_bf), S_h = a + b/2,
-  M_f ≤ φ_d M_pe with M_pe = R_y F_y Z_x;
+  limits on a, b and c (Eq. 5.7-1 to 5.7-3), Z_RBS = Z_b − 2c t_bf (d − t_bf),
+  S_h = a + b/2, M_f ≤ φ_d M_pe with M_pe = R_y F_y Z_b (Eq. 5.7-4 to 5.7-7);
 * ``wuf_w`` — welded unreinforced flange–welded web (Chapter 8) on a
-  ``welded_flange`` connection: hinge at the column face (S_h = 0, Z_e = Z_x);
+  ``welded_flange`` connection: C_pr = 1.4, hinge at the column face (S_h = 0),
+  single plate at least as thick as the beam web and welded to the column for
+  0.6 R_y F_yp h_p t_p (§8.5);
 * ``bfp`` — bolted flange plate (Chapter 7) on a ``bolted_flange_plate``
-  connection: maximum bolt diameter, bolts, plate yielding and rupture, block
-  shear and plate compression for F_pr = M_f/(d + t_p), S_h = S_1 + s(n/2 − 1);
+  connection: beam flange net-section rupture (Eq. 7.5-1), maximum bolt
+  diameter (§7.4.4), bolts, plate yielding and rupture, block shear and plate
+  buckling for F_pr = M_f/(d + t_p) (Eq. 7.5-3 to 7.5-11);
 * ``bueep`` / ``bseep`` — bolted unstiffened (4E) and stiffened (4ES, 8ES)
   extended end plates (Chapter 6) on an ``end_plate`` connection: Table 6.1
-  limits, bolt rupture without prying, plate yielding (yield lines of AISC
-  Design Guides 4 and 16), extension shear (4E), stiffener, compression bolts
-  and bearing, and the column flange.
+  limits, bolt rupture without prying, plate yielding (yield lines of Tables 6.2
+  to 6.4, as in AISC Design Guides 4 and 16), extension shear (4E), stiffener,
+  compression bolts, bearing and tearout, and the column flange (Eq. 6.7-3 to
+  6.7-13).
 
 Common checks: beam and column limits of each chapter, width-to-thickness
-ratios (AISC 341-22 Table D1.1: highly ductile for SMF, moderately ductile for
+ratios (AISC 341-22 Table D1.1b: highly ductile for SMF, moderately ductile for
 IMF), beam shear (AISC 360-22 §G2.1), the column-beam moment ratio (AISC 341
-§E3.4a, SMF), the panel-zone thickness (§E3.6e.2, SMF) and the continuity plates
-(§E3.6f). The column-side limit states of AISC 360 §J10 and the panel zone are
-evaluated again for the flange force from M_f (combination ``AISC 358``).
+§E3.4a, SMF), the panel zone (§E3.6e, SMF: φ_v = 1.00 for the moments at the
+column faces, thickness by Eq. E3-6) and the continuity plates (§E3.6f: the
+local limit states of AISC 360 §J10 for P_f = M_f/d*, or 0.85M_f/d* with a
+welded beam web, the limiting flange thickness b_bf/6, and the size of the
+plates).
 
-The limits and equations here come from the published text of AISC 358-22 and
-AISC 341-22 as summarized in the technical documentation; they must still be
-checked against the standards and the AISC Seismic Design Manual (see
-docs/tecnico/04-verificaciones.md).
+The limits and equations were checked against the text of AISC 358-22 and
+AISC 341-22; validation against a worked example of the AISC Seismic Design
+Manual is still pending (docs/tecnico/07-validacion.md).
 """
 
 from __future__ import annotations
@@ -53,7 +60,7 @@ from openconex.core.checks import CheckResult
 from openconex.core.loads import Method
 from openconex.core.materials import E_STEEL
 from openconex.kernel.bolts import clear_distance
-from openconex.kernel.design import Calc
+from openconex.kernel.design import Calc, Resistance
 from openconex.units import Kind, to_internal
 
 if TYPE_CHECKING:
@@ -61,8 +68,8 @@ if TYPE_CHECKING:
 
     from .fr_moment import MomentConnection
 
-__all__ = ["EXPECTED", "PHI_D", "PHI_N", "Prequalified", "Seismic", "SeismicSystem",
-           "expected_ratios", "seismic_checks"]
+__all__ = ["EXPECTED", "PHI_D", "PHI_N", "PLATES", "SHAPES", "Prequalified", "Seismic",
+           "SeismicSystem", "expected_ratios", "seismic_checks"]
 
 A358 = "AISC 358-22"
 A341 = "AISC 341-22"
@@ -70,6 +77,8 @@ SPEC = "AISC 360-22"
 COMBO = "AISC 358"
 PHI_D = 1.00
 PHI_N = 0.90
+PANEL_ZONE = Resistance(1.00, 1.50)
+"""Panel zone of SMF: φ_v = 1.00, Ω_v = 1.50 (AISC 341-22 §E3.6e.1)."""
 INCH = to_internal(1.0, "in", Kind.LENGTH)
 L, T, F, M = Kind.LENGTH, Kind.THICKNESS, Kind.FORCE, Kind.MOMENT
 W = Kind.FORCE_PER_LENGTH
@@ -100,34 +109,49 @@ class Prequalified(StrEnum):
     BSEEP = "bseep"
 
 
-EXPECTED: dict[str, tuple[float, float, float, float]] = {
-    # grade: (R_y shapes, R_t shapes, R_y plates, R_t plates); AISC 341-22 Table A3.2
-    "ASTM A36": (1.5, 1.2, 1.3, 1.2),
-    "ASTM A709 Gr. 36": (1.5, 1.2, 1.3, 1.2),
-    "ASTM A1043 Gr. 36": (1.3, 1.1, 1.3, 1.1),
-    "ASTM A1043 Gr. 50": (1.2, 1.1, 1.2, 1.1),
-    "ASTM A529 Gr. 50": (1.2, 1.2, 1.2, 1.2),
-    "ASTM A529 Gr. 55": (1.1, 1.2, 1.1, 1.2),
-    "ASTM A572 Gr. 42": (1.3, 1.1, 1.3, 1.0),
-    "ASTM A572 Gr. 50": (1.1, 1.1, 1.1, 1.2),
-    "ASTM A572 Gr. 55": (1.1, 1.1, 1.1, 1.2),
-    "ASTM A588": (1.1, 1.1, 1.1, 1.2),
-    "ASTM A709 Gr. 50": (1.1, 1.1, 1.1, 1.2),
-    "ASTM A913 Gr. 50": (1.1, 1.1, 1.1, 1.1),
-    "ASTM A913 Gr. 60": (1.1, 1.1, 1.1, 1.1),
-    "ASTM A913 Gr. 65": (1.1, 1.1, 1.1, 1.1),
-    "ASTM A913 Gr. 70": (1.1, 1.1, 1.1, 1.1),
-    "ASTM A992": (1.1, 1.1, 1.1, 1.1),
+SHAPES: dict[str, tuple[float, float]] = {
+    # grade: (R_y, R_t) of hot-rolled shapes and bars; AISC 341-22 Table A3.2
+    "ASTM A36": (1.5, 1.2),
+    "ASTM A529 Gr. 50": (1.2, 1.2),
+    "ASTM A529 Gr. 55": (1.1, 1.2),
+    "ASTM A572 Gr. 50": (1.1, 1.1),
+    "ASTM A572 Gr. 55": (1.1, 1.1),
+    "ASTM A588": (1.1, 1.1),
+    "ASTM A709 Gr. 36": (1.5, 1.2),
+    "ASTM A709 Gr. 50": (1.1, 1.1),
+    "ASTM A709 Gr. 50S": (1.1, 1.1),
+    "ASTM A709 Gr. 50W": (1.1, 1.1),
+    "ASTM A913 Gr. 50": (1.1, 1.1),
+    "ASTM A913 Gr. 60": (1.1, 1.1),
+    "ASTM A913 Gr. 65": (1.1, 1.1),
+    "ASTM A913 Gr. 70": (1.1, 1.1),
+    "ASTM A992": (1.1, 1.1),
+    "ASTM A1043 Gr. 36": (1.3, 1.1),
+    "ASTM A1043 Gr. 50": (1.2, 1.1),
 }
-"""Expected-to-specified strength ratios R_y and R_t (verify against AISC 341-22 Table A3.2)."""
+"""R_y and R_t of hot-rolled shapes (AISC 341-22 Table A3.2)."""
+
+PLATES: dict[str, tuple[float, float]] = {
+    # grade: (R_y, R_t) of plates, strips and sheets; AISC 341-22 Table A3.2
+    "ASTM A36": (1.3, 1.2),
+    "ASTM A572 Gr. 42": (1.3, 1.0),
+    "ASTM A572 Gr. 50": (1.1, 1.2),
+    "ASTM A572 Gr. 55": (1.1, 1.2),
+    "ASTM A588": (1.1, 1.2),
+    "ASTM A709 Gr. 36": (1.3, 1.2),
+    "ASTM A709 Gr. 50": (1.1, 1.2),
+    "ASTM A709 Gr. 50W": (1.1, 1.2),
+    "ASTM A1043 Gr. 36": (1.3, 1.1),
+    "ASTM A1043 Gr. 50": (1.2, 1.1),
+}
+"""R_y and R_t of plates (AISC 341-22 Table A3.2)."""
+
+EXPECTED = {"shapes": SHAPES, "plates": PLATES}
 
 
 def expected_ratios(grade: str, plate: bool = False) -> tuple[float, float] | None:
     """(R_y, R_t) of a steel grade, or ``None`` if the grade is not tabulated."""
-    row = EXPECTED.get(grade)
-    if row is None:
-        return None
-    return (row[2], row[3]) if plate else (row[0], row[1])
+    return (PLATES if plate else SHAPES).get(grade)
 
 
 @dataclass(frozen=True)
@@ -147,10 +171,11 @@ class Seismic:
     Ry_beam: float
     Ry_column: float
     Ry_plate: float = 1.0
+    """R_y of the connection plates (flange plates, single plate, continuity plates)."""
     Rt_beam: float = 1.0
     Rt_plate: float = 1.0
     gravity_load: float = 0.0
-    """Uniform factored gravity load on the beam (1.2D + f1 L + 0.2S)."""
+    """Uniform factored gravity load on the beam (1.2D + f1 L + 0.15S)."""
     gravity_shear: float = 0.0
     """Factored gravity shear at the plastic hinge, added to that of ``gravity_load``."""
     column_axial: float = 0.0
@@ -168,6 +193,8 @@ class Seismic:
     stiffener_thickness: float = 0.0
     """BSEEP: thickness of the end-plate stiffener."""
     stiffener_Fy: float = 0.0
+    slab: bool = True
+    """BFP: a concrete structural slab is provided (column depth limit, §7.3.2)."""
 
 
 def nominal_depth(label: str) -> float | None:
@@ -193,69 +220,98 @@ def _range(c: Calc, check_id: str, clause: str, value: float, lo: float | None,
 # -- prequalification limits ---------------------------------------------------------
 _BEAM = {
     # connection: (max nominal depth in, max weight lb/ft, max t_bf in, min L/d SMF, IMF)
-    Prequalified.RBS: (36.0, 302.0, 1.75, 7.0, 5.0, "§5.3.1"),
+    Prequalified.RBS: (44.0, 408.0, 2.125, 7.0, 5.0, "§5.3.1"),
     Prequalified.WUF_W: (36.0, 150.0, 1.0, 7.0, 5.0, "§8.3.1"),
     Prequalified.BFP: (36.0, 150.0, 1.0, 9.0, 7.0, "§7.3.1"),
     Prequalified.BUEEP: (None, None, None, 7.0, 5.0, "§6.3.1"),
     Prequalified.BSEEP: (None, None, None, 7.0, 5.0, "§6.3.1"),
 }
-_COLUMN = {Prequalified.RBS: "§5.3.2", Prequalified.WUF_W: "§8.3.2",
-           Prequalified.BFP: "§7.3.2", Prequalified.BUEEP: "§6.3.2",
-           Prequalified.BSEEP: "§6.3.2"}
+_COLUMN = {
+    # connection: (clause, max nominal depth of a rolled column in)
+    Prequalified.RBS: ("§5.3.2", 40.0), Prequalified.WUF_W: ("§8.3.2", 36.0),
+    Prequalified.BFP: ("§7.3.2", 36.0), Prequalified.BUEEP: ("§6.3.2", 36.0),
+    Prequalified.BSEEP: ("§6.3.2", 36.0),
+}
+BFP_COLUMN_NO_SLAB = 14.0
+"""BFP without a concrete structural slab: maximum column depth W14 (§7.3.2)."""
+BFP_BOLT_MAX = 1.125
+"""BFP: maximum bolt diameter in in. (§7.4.4)."""
 END_PLATE_LIMITS = {
     # layout: {parameter: (min in, max in)}; AISC 358-22 Table 6.1
-    "extended_4": {"tbf": (0.375, 0.75), "bbf": (6.0, 9.25), "d": (13.75, 55.0),
+    "extended_4": {"tbf": (0.375, 0.75), "bbf": (6.0, 9.25), "d": (13.75, 24.0),
                    "tp": (0.5, 2.25), "bp": (7.0, 10.75), "g": (4.0, 6.0),
                    "pf": (1.5, 4.5)},
     "extended_4_stiffened": {"tbf": (0.375, 0.75), "bbf": (6.0, 9.0), "d": (13.75, 24.0),
                              "tp": (0.5, 1.5), "bp": (7.0, 10.75), "g": (3.25, 6.0),
                              "pf": (1.75, 5.5)},
-    "extended_8_stiffened": {"tbf": (0.5625, 1.0), "bbf": (7.5, 12.25), "d": (18.5, 36.0),
+    "extended_8_stiffened": {"tbf": (0.5625, 1.0), "bbf": (7.5, 12.25), "d": (18.0, 36.0),
                              "tp": (0.75, 2.5), "bp": (9.0, 15.0), "g": (5.0, 6.0),
                              "pf": (1.625, 2.0), "pb": (3.5, 3.75)},
 }
-"""Parametric limits of the prequalified end plates (verify against AISC 358-22 Table 6.1)."""
+"""Parametric limits of the prequalified end plates (AISC 358-22 Table 6.1)."""
 
 
-def _hinge(mc: MomentConnection, s: Seismic, c: Calc) -> tuple[float, float, float, float]:
-    """(M_pr, S_h, V_u, M_f) with their trace in ``c``."""
+@dataclass(frozen=True)
+class Hinge:
+    """Capacity-design forces of the connection."""
+
+    mpr: float
+    """Probable maximum moment at the plastic hinge."""
+    sh: float
+    """Distance from the column face to the hinge."""
+    vh: float
+    """Shear at the hinge (Eq. 2.4-3)."""
+    mf: float
+    """Probable maximum moment at the column face (Eq. 2.4-4)."""
+    vu: float
+    """Required shear of the beam and of the connection at the column face (§2.5)."""
+
+
+def _hinge(mc: MomentConnection, s: Seismic, c: Calc) -> Hinge:
+    """Capacity-design forces with their trace in ``c``."""
     beam = mc.beam
     Fy, Fu = beam.material.Fy, beam.material.Fu
-    clause = f"{A358} §2.4.3"
-    cpr = c.step("C_{pr}", r"\min\left(\frac{F_y + F_u}{2F_y},\ 1.2\right)",
-                 min((Fy + Fu) / (2 * Fy), 1.2), D, clause, F_y=(Fy, Kind.STRESS),
-                 F_u=(Fu, Kind.STRESS))
+    clause = f"{A358} §2.4.3, Eq. 2.4-1"
     conn = s.connection
-    if conn is Prequalified.RBS:
-        ze = c.step("Z_{RBS}", r"Z_x - 2c\,t_{bf}(d - t_{bf})",
-                    s.beam_Zx - 2 * s.rbs_c * beam.tf * (beam.d - beam.tf),
-                    Kind.SECTION_MODULUS, f"{A358} §5.8, Eq. 5.8-4",
-                    Z_x=(s.beam_Zx, Kind.SECTION_MODULUS), c=(s.rbs_c, L))
-        sh = c.step("S_h", "a + b/2", s.rbs_a + s.rbs_b / 2, L, f"{A358} §5.8")
+    if conn is Prequalified.WUF_W:
+        cpr = c.step("C_{pr}", "1.4", 1.4, D, f"{A358} §8.6, Step 1")
     else:
-        ze = c.step("Z_e", "Z_x", s.beam_Zx, Kind.SECTION_MODULUS, clause)
+        cpr = c.step("C_{pr}", r"\min\left(\frac{F_y + F_u}{2F_y},\ 1.2\right)",
+                     min((Fy + Fu) / (2 * Fy), 1.2), D, f"{A358} §2.4.3, Eq. 2.4-2",
+                     F_y=(Fy, Kind.STRESS), F_u=(Fu, Kind.STRESS))
+    if conn is Prequalified.RBS:
+        ze = c.step("Z_{RBS}", r"Z_b - 2c\,t_{bf}(d - t_{bf})",
+                    s.beam_Zx - 2 * s.rbs_c * beam.tf * (beam.d - beam.tf),
+                    Kind.SECTION_MODULUS, f"{A358} §5.7, Eq. 5.7-4",
+                    Z_b=(s.beam_Zx, Kind.SECTION_MODULUS), c=(s.rbs_c, L))
+        sh = c.step("S_h", "a + b/2", s.rbs_a + s.rbs_b / 2, L, f"{A358} §5.7, Eq. 5.7-5")
+    else:
+        ze = c.step("Z_e", "Z_b", s.beam_Zx, Kind.SECTION_MODULUS, clause)
         if conn is Prequalified.WUF_W:
-            sh = c.step("S_h", "0", 0.0, L, f"{A358} §8.7")
+            sh = c.step("S_h", "0", 0.0, L, f"{A358} §8.6, Step 2")
         elif conn is Prequalified.BFP:
             sh = c.step("S_h", "S_1 + s(n/2 - 1)", s.bfp_s1 + mc.spacing * (mc.rows - 1), L,
-                        f"{A358} §7.6, Eq. 7.6-5", S_1=(s.bfp_s1, L), s=(mc.spacing, L))
+                        f"{A358} §7.5, Eq. 7.5-5", S_1=(s.bfp_s1, L), s=(mc.spacing, L))
         elif conn is Prequalified.BUEEP:
             sh = c.step("S_h", r"\min(d/2,\ 3b_{bf})", min(beam.d / 2, 3 * beam.bf), L,
-                        f"{A358} §6.8.1")
+                        f"{A358} §6.7.1, Eq. 6.7-1")
         else:
             ep = mc.end_plate
             lst = c.step("L_{st}", r"h_{st}/\tan 30°", ep.pext / math.tan(math.radians(30)),
                          L, f"{A358} §6.6.4", h_st=(ep.pext, L))
-            sh = c.step("S_h", "L_{st} + t_p", lst + ep.thickness, L, f"{A358} §6.8.1")
+            sh = c.step("S_h", "L_{st} + t_p", lst + ep.thickness, L,
+                        f"{A358} §6.7.1, Eq. 6.7-2")
     mpr = c.step("M_{pr}", "C_{pr} R_y F_y Z_e", cpr * s.Ry_beam * Fy * ze, M, clause,
                  R_y=(s.Ry_beam, D))
-    lh = c.step("L_h", "L_{cf} - 2S_h", s.span - 2 * sh, L, f"{A358} §2.3",
+    lh = c.step("L_h", "L_{cf} - 2S_h", s.span - 2 * sh, L, f"{A358} §2.4.4",
                 L_cf=(s.span, L))
+    clause = f"{A358} §2.4.4, Eq. 2.4-3"
     vg = c.step("V_{gravity}", r"w_u L_h/2 + V_{g}", s.gravity_load * lh / 2 + s.gravity_shear,
-                F, f"{A358} §2.4.3", w_u=(s.gravity_load, W))
-    vu = c.step("V_u", "2M_{pr}/L_h + V_{gravity}", 2 * mpr / lh + vg, F, f"{A358} §2.4.3")
-    mf = c.step("M_f", "M_{pr} + V_u S_h", mpr + vu * sh, M, f"{A358} §2.4.3")
-    return mpr, sh, vu, mf
+                F, clause, w_u=(s.gravity_load, W))
+    vh = c.step("V_h", "2M_{pr}/L_h + V_{gravity}", 2 * mpr / lh + vg, F, clause)
+    mf = c.step("M_f", "M_{pr} + V_h S_h", mpr + vh * sh, M, f"{A358} §2.4.5, Eq. 2.4-4")
+    vu = c.step("V_u", "V_h + w_u S_h", vh + s.gravity_load * sh, F, f"{A358} §2.5")
+    return Hinge(mpr, sh, vh, mf, vu)
 
 
 def _limits(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
@@ -281,17 +337,20 @@ def _limits(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
     out.append(_range(c, "seismic.span_depth", clause, ratio,
                       smf if s.system is SeismicSystem.SMF else imf, None, D))
     c = Calc(Method.LRFD, COMBO)
+    sec, cmax = _COLUMN[s.connection]
+    if s.connection is Prequalified.BFP and not s.slab:
+        cmax = BFP_COLUMN_NO_SLAB
     value = s.column_depth_label if s.column_depth_label is not None else col.d / INCH
-    out.append(_range(c, "seismic.column_depth", f"{A358} {_COLUMN[s.connection]}",
-                      _in(value), None, _in(36.0), L))
+    out.append(_range(c, "seismic.column_depth", f"{A358} {sec}", _in(value), None,
+                      _in(cmax), L))
     return out
 
 
 def _slenderness(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
-    """Width-to-thickness ratios of AISC 341-22 Table D1.1."""
+    """Width-to-thickness ratios of AISC 341-22 Table D1.1b (cases 7 and 11)."""
     highly = s.system is SeismicSystem.SMF
     level = "highly ductile" if highly else "moderately ductile"
-    clause = f"{A341} §D1.1, Table D1.1 ({level})"
+    clause = f"{A341} §D1.1, Table D1.1b ({level})"
     out = []
     beam = mc.beam
     bf = beam.bf
@@ -307,37 +366,30 @@ def _slenderness(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
         Fy = shape.material.Fy
         root = math.sqrt(E_STEEL / (Ry * Fy))
         c = Calc(Method.LRFD, COMBO)
-        lam = c.step(r"b_f/2t_f", "", width / (2 * shape.tf), D, clause, b_f=(width, L),
-                     t_f=(shape.tf, T))
-        k = 0.32 if highly else 0.40
-        lim = c.step(r"\lambda_{lim}", rf"{k}\sqrt{{E/(R_yF_y)}}", k * root, D, clause,
-                     R_y=(Ry, D))
-        out.append(c.result(f"seismic.{member}_flange_slenderness", clause, lam, lim, D))
+        lam = c.step(r"b_f/2t_f", "", width / (2 * shape.tf), D, f"{clause}, case 7",
+                     b_f=(width, L), t_f=(shape.tf, T))
+        k = 0.30 if highly else 0.38
+        lim = c.step(r"\lambda_{lim}", rf"{k}\sqrt{{E/(R_yF_y)}}", k * root, D,
+                     f"{clause}, case 7", R_y=(Ry, D))
+        out.append(c.result(f"seismic.{member}_flange_slenderness", f"{clause}, case 7", lam,
+                            lim, D))
         c = Calc(Method.LRFD, COMBO)
+        web = f"{clause}, case 11"
         h = shape.d - 2 * shape.k_des if shape.k_des > 0 else shape.d - 2 * shape.tf
-        lam = c.step(r"h/t_w", "", h / shape.tw, D, clause, h=(h, L), t_w=(shape.tw, T))
-        ca = c.step("C_a", r"P_u/(\phi_c R_y F_y A_g)", Pu / (0.9 * Ry * Fy * A), D, clause)
-        if highly:
-            if ca <= 0.114:
-                lim, expr = 2.57 * root * (1 - 1.04 * ca), r"2.57\sqrt{E/R_yF_y}(1-1.04C_a)"
-            else:
-                lim = max(0.88 * root * (2.68 - ca), 1.57 * root)
-                expr = r"0.88\sqrt{E/R_yF_y}(2.68-C_a) \ge 1.57\sqrt{E/R_yF_y}"
-        else:
-            if ca <= 0.114:
-                lim, expr = 3.96 * root * (1 - 3.04 * ca), r"3.96\sqrt{E/R_yF_y}(1-3.04C_a)"
-            else:
-                lim = max(1.29 * root * (2.12 - ca), 1.57 * root)
-                expr = r"1.29\sqrt{E/R_yF_y}(2.12-C_a) \ge 1.57\sqrt{E/R_yF_y}"
-        lim = c.step(r"\lambda_{lim}", expr, lim, D, clause)
-        out.append(c.result(f"seismic.{member}_web_slenderness", clause, lam, lim, D))
+        lam = c.step(r"h/t_w", "", h / shape.tw, D, web, h=(h, L), t_w=(shape.tw, T))
+        ca = c.step("C_a", r"P_r/(R_y F_y A_g)", Pu / (Ry * Fy * A), D, web,
+                    P_r=(Pu, F))
+        k = 2.5 if highly else 5.4
+        lim = c.step(r"\lambda_{lim}", rf"{k}\sqrt{{E/(R_yF_y)}}(1 - C_a)^{{2.3}}",
+                     k * root * max(1 - ca, 0.0) ** 2.3, D, web)
+        out.append(c.result(f"seismic.{member}_web_slenderness", web, lam, lim, D))
     return out
 
 
 def _beam_shear(mc: MomentConnection, vu: float, c: Calc) -> CheckResult:
     beam = mc.beam
     Fy = beam.material.Fy
-    clause = f"{SPEC} §G2.1; {A358} §2.4.3"
+    clause = f"{SPEC} §G2.1; {A358} §2.5"
     h = beam.d - 2 * beam.k_des if beam.k_des > 0 else beam.d - 2 * beam.tf
     rolled = h / beam.tw <= 2.24 * math.sqrt(E_STEEL / Fy)
     phi = c.step(r"\phi_v", r"1.00\ (h/t_w \le 2.24\sqrt{E/F_y}),\ 0.90",
@@ -351,129 +403,181 @@ def _beam_shear(mc: MomentConnection, vu: float, c: Calc) -> CheckResult:
     return c.result("seismic.beam_shear", clause, vu, cap, F)
 
 
-def _column_beam_ratio(mc: MomentConnection, s: Seismic, mpr: float, sh: float,
-                       vu: float) -> CheckResult:
+def _column_beam_ratio(mc: MomentConnection, s: Seismic, hinge: Hinge) -> CheckResult:
     col = mc.column
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A341} §E3.4a, Eq. E3-1"
+    clause = f"{A341} §E3.4a, Eq. E3-1 to E3-3"
     n_col = 2 if s.column_above else 1
     n_beam = 2 if mc.two_sided else 1
-    mpc = c.step(r"\sum M^*_{pc}", r"n_c Z_c (F_{yc} - P_{uc}/A_g)",
+    mpc = c.step(r"\sum M^*_{pc}", r"n_c Z_c (F_{yc} - P_r/A_g)",
                  n_col * s.column_Zx * max(col.material.Fy - s.column_axial / s.column_A, 0.0),
                  M, clause, n_c=(n_col, D), Z_c=(s.column_Zx, Kind.SECTION_MODULUS),
-                 P_uc=(s.column_axial, F))
-    mpb = c.step(r"\sum M^*_{pb}", r"n_b [M_{pr} + V_u (S_h + d_c/2)]",
-                 n_beam * (mpr + vu * (sh + col.d / 2)), M, clause, n_b=(n_beam, D))
-    c.step(r"\sum M^*_{pc}/\sum M^*_{pb}", r"> 1.0", mpc / mpb if mpb else math.inf, D, clause)
-    return c.result("seismic.column_beam_ratio", clause, mpb, mpc, M)
+                 P_r=(s.column_axial, F))
+    mbe = c.step(r"\sum M^*_{be}", r"n_b [M_{pr} + V_h (S_h + d_c/2)]",
+                 n_beam * (hinge.mpr + hinge.vh * (hinge.sh + col.d / 2)), M, clause,
+                 n_b=(n_beam, D))
+    c.step(r"\sum M^*_{pc}/\sum M^*_{be}", r"> 1.0", mpc / mbe if mbe else math.inf, D,
+           clause)
+    return c.result("seismic.column_beam_ratio", clause, mbe, mpc, M)
 
 
 def _panel_zone_thickness(mc: MomentConnection) -> list[CheckResult]:
     beam, col = mc.beam, mc.column
-    clause = f"{A341} §E3.6e.2, Eq. E3-7"
     out = []
     for key, t in (("seismic.panel_zone_thickness", col.tw),
                    ("seismic.doubler_thickness", mc.doubler_plate)):
         if t <= 0:
             continue
+        clause = f"{A341} §E3.6e.2, Eq. E3-6"
         c = Calc(Method.LRFD, COMBO)
         dz = c.step("d_z", "d - 2t_f", beam.d - 2 * beam.tf, L, clause)
         wz = c.step("w_z", "d_c - 2t_{cf}", col.d - 2 * col.tf, L, clause)
         need = c.step("t_{min}", "(d_z + w_z)/90", (dz + wz) / 90, T, clause)
+        if key == "seismic.doubler_thickness":
+            clause = f"{clause}; §E3.6e.3"
+            need = c.step("t_{min}", r"\max[(d_z + w_z)/90,\ 1/4\,in]",
+                          max(need, _in(0.25)), T, clause)
         out.append(c.result(key, clause, need, t, T))
     return out
 
 
 def _continuity(mc: MomentConnection, s: Seismic, b: float, t: float) -> list[CheckResult]:
-    """Continuity plates for flange width ``b`` and thickness ``t`` (beam flange or plate)."""
-    beam, col = mc.beam, mc.column
+    """Continuity plates for flange width ``b`` and thickness ``t`` (beam flange or plate).
+
+    The local limit states of AISC 360 §J10 (§E3.6f.1(a)) are checked with the column
+    checks; here the limiting column flange thickness (§E3.6f.1(b)) without plates, and
+    the size of the plates (§E3.6f.2) with them.
+    """
+    col = mc.column
     out = []
     if mc.continuity_plate <= 0:
         c = Calc(Method.LRFD, COMBO)
-        clause = f"{A341} §E3.6f.1, Eq. E3-8, E3-9"
-        Ryb = s.Ry_plate if s.connection is Prequalified.BFP else s.Ry_beam
-        Fyb = mc.plate_Fy if s.connection is Prequalified.BFP else beam.material.Fy
-        need = c.step("t_{cf,min}",
-                      r"\max\left(0.4\sqrt{1.8 b_{bf} t_{bf}\frac{R_{yb}F_{yb}}{R_{yc}F_{yc}}},"
-                      r"\ b_{bf}/6\right)",
-                      max(0.4 * math.sqrt(1.8 * b * t * Ryb * Fyb / (s.Ry_column
-                                                                     * col.material.Fy)),
-                          b / 6), T, clause, b_bf=(b, L), t_bf=(t, T))
+        clause = f"{A341} §E3.6f.1(b), Eq. E3-7"
+        need = c.step("t_{lim}", r"b_{bf}/6", b / 6, T, clause, b_bf=(b, L))
         out.append(c.result("seismic.continuity_plates", clause, need, col.tf, T))
+        return out
+    tcp = mc.continuity_plate
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A341} §E3.6f.2(b)"
+    if mc.two_sided:
+        need = c.step("t_{cp,min}", "0.75 t_{bf}", 0.75 * t, T, clause, t_bf=(t, T))
     else:
-        c = Calc(Method.LRFD, COMBO)
-        clause = f"{A341} §E3.6f.2"
-        if mc.two_sided:
-            need = c.step("t_{cp,min}", "t_{bf}", t, T, clause)
-        else:
-            need = c.step("t_{cp,min}", r"t_{bf}/2", t / 2, T, clause)
-        out.append(c.result("seismic.continuity_plate_thickness", clause, need,
-                            mc.continuity_plate, T))
+        need = c.step("t_{cp,min}", "0.50 t_{bf}", 0.5 * t, T, clause, t_bf=(t, T))
+    out.append(c.result("seismic.continuity_plate_thickness", clause, need, tcp, T))
+    bs = mc.continuity_plate_width or (col.bf - col.tw) / 2
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A341} §E3.6f.2(a)"
+    c.step("b_s", "", bs, L, clause)
+    need = c.step("b_{s,min}", r"(b_{bf} - t_{cw})/2", (b - col.tw) / 2, L, clause,
+                  b_bf=(b, L), t_cw=(col.tw, T))
+    out.append(c.result("seismic.continuity_plate_width", clause, need, bs, L))
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A341} §E3.6f.2(b)(3), Eq. E3-9"
+    Fy = mc.plate_Fy or col.material.Fy
+    lam = c.step("b/t", "", bs / tcp, D, clause, b=(bs, L), t=(tcp, T))
+    lim = c.step(r"\lambda_{lim}", r"0.56\sqrt{E/(R_yF_y)}",
+                 0.56 * math.sqrt(E_STEEL / (s.Ry_plate * Fy)), D, clause,
+                 R_y=(s.Ry_plate, D), F_y=(Fy, Kind.STRESS))
+    out.append(c.result("seismic.continuity_plate_slenderness", clause, lam, lim, D))
     return out
 
 
 # -- connection-specific -----------------------------------------------------------------
 def _rbs(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
     beam = mc.beam
-    clause = f"{A358} §5.8, Eq. 5.8-1 to 5.8-3"
     out = []
-    for key, value, klo, khi, ref, sym in (
-            ("rbs_a", s.rbs_a, 0.5, 0.75, beam.bf, "b_f"),
-            ("rbs_b", s.rbs_b, 0.65, 0.85, beam.d, "d"),
-            ("rbs_c", s.rbs_c, 0.1, 0.25, beam.bf, "b_f")):
+    for key, value, klo, khi, ref, sym, eq in (
+            ("rbs_a", s.rbs_a, 0.5, 0.75, beam.bf, "b_{bf}", "5.7-1"),
+            ("rbs_b", s.rbs_b, 0.65, 0.85, beam.d, "d", "5.7-2"),
+            ("rbs_c", s.rbs_c, 0.1, 0.25, beam.bf, "b_{bf}", "5.7-3")):
+        clause = f"{A358} §5.7, Eq. {eq}"
         c = Calc(Method.LRFD, COMBO)
         name = key[-1]
         c.step(name, rf"{klo:g}{sym} \le {name} \le {khi:g}{sym}", value, L, clause)
         out.append(_range(c, f"seismic.{key}", clause, value, klo * ref, khi * ref, L))
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §5.8, Step 6"
+    clause = f"{A358} §5.7, Eq. 5.7-6, 5.7-7"
     Fy = beam.material.Fy
-    mpe = c.step("M_{pe}", "R_y F_y Z_x", s.Ry_beam * Fy * s.beam_Zx, M, clause)
+    mpe = c.step("M_{pe}", "R_y F_y Z_b", s.Ry_beam * Fy * s.beam_Zx, M, clause)
     c.step("M_f", "", mf, M, clause)
     out.append(c.result("seismic.rbs_moment_at_face", clause, mf,
                         c.step(r"\phi_d M_{pe}", "", PHI_D * mpe, M, clause), M))
     return out
 
 
-def _bfp(mc: MomentConnection, s: Seismic, mpr: float, mf: float) -> list[CheckResult]:
+def _wuf_w(mc: MomentConnection, s: Seismic) -> list[CheckResult]:
+    """Single plate of the WUF-W web connection (§8.5)."""
+    w = mc.web
+    if w is None:
+        return []
+    out = []
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A358} §8.5(1)"
+    need = c.step("t_{p,min}", "t_{bw}", mc.beam.tw, T, clause)
+    out.append(c.result("seismic.wuf_w_plate_thickness", clause, need, w.thickness, T))
+    if w.weld > 0:
+        from openconex.kernel.welds import fillet_weld_per_length
+        c = Calc(Method.LRFD, COMBO)
+        clause = f"{A358} §8.5(2); {SPEC} §J2.4"
+        need = c.step("R_u", "0.6 R_y F_{yp} h_p t_p",
+                      0.6 * s.Ry_plate * w.Fy * w.length * w.thickness, F, clause,
+                      R_y=(s.Ry_plate, D), F_yp=(w.Fy, Kind.STRESS), h_p=(w.length, L),
+                      t_p=(w.thickness, T))
+        rw = fillet_weld_per_length(w.weld, mc.FEXX, 0.0, Method.LRFD).capacity
+        cap = c.step(r"\phi R_n", r"2 \phi r_w h_p", 2 * rw * w.length, F, clause,
+                     w=(w.weld, T))
+        out.append(c.result("seismic.wuf_w_plate_weld", clause, need, cap, F))
+    return out
+
+
+def _bfp(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
     beam, b, plate = mc.beam, mc.bolt, mc.top
     tp, bp = plate.thickness, plate.width
     Fy, Fu = beam.material.Fy, beam.material.Fu
+    hole = b.hole_dimensions[0] + _in(1 / 16)
     out = []
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Step 2"
-    dmax = c.step("d_{b,max}", r"\frac{b_{bf}}{2}\left(1 - \frac{R_yF_y}{R_tF_u}\right) - 1/8\,in",
-                  beam.bf / 2 * (1 - s.Ry_beam * Fy / (s.Rt_beam * Fu)) - _in(0.125), L,
-                  clause)
-    out.append(c.result("seismic.bfp_bolt_diameter", clause, b.diameter, dmax, L))
+    clause = f"{A358} §7.5, Eq. 7.5-1"
+    znet = c.step("Z_{b,net}", r"Z_b - 2(d_{hole} + 1/16\,in)t_f(d - t_f)",
+                  s.beam_Zx - 2 * hole * beam.tf * (beam.d - beam.tf), Kind.SECTION_MODULUS,
+                  clause, Z_b=(s.beam_Zx, Kind.SECTION_MODULUS), d_hole=(b.hole_dimensions[0], L))
+    need = c.step("R_y F_{yb} Z_b", "", s.Ry_beam * Fy * s.beam_Zx, M, clause,
+                  R_y=(s.Ry_beam, D))
+    cap = c.step("R_t F_{ub} Z_{b,net}", "", s.Rt_beam * Fu * znet, M, clause,
+                 R_t=(s.Rt_beam, D))
+    out.append(c.result("seismic.bfp_beam_flange_rupture", clause, need, cap, M))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Steps 3 to 9"
+    clause = f"{A358} §7.4.4"
+    out.append(_range(c, "seismic.bfp_bolt_diameter", clause, b.diameter, None,
+                      _in(BFP_BOLT_MAX), L))
+
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A358} §7.5, Eq. 7.5-3, 7.5-6, 7.5-7"
     Fnv = b.material.Fnv_N if b.threads.value == "N" else b.material.Fnv_X
-    rn = c.step("r_n", r"\min(F_{nv}A_b,\ 2.4F_{ub}d_bt_f,\ 2.4F_{up}d_bt_p)",
+    rn = c.step("r_n", r"\min(1.0F_{nv}A_b,\ 2.4F_{ub}d_bt_f,\ 2.4F_{up}d_bt_p)",
                 min(Fnv * b.area, 2.4 * Fu * b.diameter * beam.tf,
                     2.4 * mc.plate_Fu * b.diameter * tp), F, clause)
-    fpr = c.step("F_{pr}", "M_f/(d + t_p)", mf / (beam.d + tp), F, f"{A358} §7.6, Step 8",
+    fpr = c.step("F_{pr}", "M_f/(d + t_p)", mf / (beam.d + tp), F, f"{A358} §7.5, Eq. 7.5-6",
                  M_f=(mf, M))
     n = 2 * mc.rows
     cap = c.step(r"n\phi_n r_n", "", n * PHI_N * rn, F, clause, n=(n, D))
     out.append(c.result("seismic.bfp_bolts", clause, fpr, cap, F))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Step 10"
-    cap = c.step(r"\phi_d F_{yp} A_p", "", PHI_D * mc.plate_Fy * bp * tp, F, clause)
+    clause = f"{A358} §7.5, Eq. 7.5-8"
+    cap = c.step(r"\phi_d F_{yp} b_{fp} t_p", "", PHI_D * mc.plate_Fy * bp * tp, F, clause)
     out.append(c.result("seismic.bfp_plate_yielding", clause, fpr, cap, F))
 
-    hole = b.hole_dimensions[0] + _in(1 / 16)
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Step 11; {SPEC} §J4.1(b)"
-    an = c.step("A_n", r"\min[(b_p - 2(d_h + 1/16))t_p,\ 0.85A_g]",
+    clause = f"{A358} §7.5, Eq. 7.5-9; {SPEC} §J4.1(b)"
+    an = c.step("A_n", r"\min[(b_{fp} - 2(d_h + 1/16))t_p,\ 0.85A_g]",
                 min((bp - 2 * hole) * tp, 0.85 * bp * tp), Kind.AREA, clause)
     cap = c.step(r"\phi_n F_{up} A_n", "", PHI_N * mc.plate_Fu * an, F, clause)
     out.append(c.result("seismic.bfp_plate_rupture", clause, fpr, cap, F))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Step 12; {SPEC} §J4.3"
+    clause = f"{A358} §7.5, Eq. 7.5-10; {SPEC} §J4.3"
     length = (mc.rows - 1) * mc.spacing + mc.beam_lev - mc.underrun
     leh = (beam.bf - mc.gage) / 2
     t = beam.tf
@@ -496,7 +600,7 @@ def _bfp(mc: MomentConnection, s: Seismic, mpr: float, mf: float) -> list[CheckR
     out.append(c.result("seismic.bfp_block_shear", clause, fpr, cap, F))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §7.6, Step 13; {SPEC} §J4.4 (K = 0.65, L = S_1)"
+    clause = f"{A358} §7.5, Eq. 7.5-11; {SPEC} §J4.4 (KL = 0.65 S_1)"
     r = tp / math.sqrt(12)
     kl = c.step(r"L_c/r", r"0.65 S_1/r", 0.65 * s.bfp_s1 / r, D, clause)
     Fyp = mc.plate_Fy
@@ -514,7 +618,7 @@ def _bfp(mc: MomentConnection, s: Seismic, mpr: float, mf: float) -> list[CheckR
 
 def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[CheckResult]:
     from .end_plate import EndPlateLayout, _rows, _yield_parameter
-    ep, beam, col, b = mc.end_plate, mc.beam, mc.column, mc.end_plate.bolt
+    ep, beam, b = mc.end_plate, mc.beam, mc.end_plate.bolt
     out = []
     limits = END_PLATE_LIMITS[ep.layout.value]
     values = {"tbf": [beam.tf], "bbf": [beam.bf], "d": [beam.d], "tp": [ep.thickness],
@@ -527,7 +631,7 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
         out.append(max(checks, key=lambda r: r.ratio))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §6.8, Step 3"
+    clause = f"{A358} §6.7.1, Eq. 6.7-3, 6.7-4"
     rows = _rows(mc, c)
     Pt = c.step("P_t", "F_{nt}A_b", b.material.Fnt * b.area, F, clause)
     mnp = c.step("M_{np}", r"2P_t\sum h_i", 2 * Pt * rows.total, M, clause)
@@ -535,7 +639,7 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
     out.append(c.result("seismic.end_plate_bolt_rupture", clause, mf, cap, M))
 
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §6.8, Step 4"
+    clause = f"{A358} §6.7.1, Eq. 6.7-5"
     rows = _rows(mc, c)
     Y = _yield_parameter(mc, rows, c)
     cap = c.step(r"\phi_d F_{yp} t_p^2 Y_p / 1.11", "",
@@ -544,60 +648,84 @@ def _end_plate(mc: MomentConnection, s: Seismic, vu: float, mf: float) -> list[C
 
     c = Calc(Method.LRFD, COMBO)
     ffu = c.step("F_{fu}", "M_f/(d - t_{bf})", mf / (beam.d - beam.tf), F,
-                 f"{A358} §6.8, Step 6")
+                 f"{A358} §6.7.1, Eq. 6.7-6")
     if ep.layout is EndPlateLayout.EXTENDED_4:
-        clause = f"{A358} §6.8, Step 7"
+        clause = f"{A358} §6.7.1, Eq. 6.7-7"
+        bp = c.step("b_p", r"\min(b_p,\ b_{bf} + 1\,in)", min(ep.width, beam.bf + _in(1.0)),
+                    L, clause)
         cap = c.step(r"\phi_d 0.6 F_{yp} b_p t_p", "",
-                     PHI_D * 0.6 * ep.Fy * ep.width * ep.thickness, F, clause)
+                     PHI_D * 0.6 * ep.Fy * bp * ep.thickness, F, clause)
         out.append(c.result("seismic.end_plate_shear_yielding", clause, ffu / 2, cap, F))
         c = Calc(Method.LRFD, COMBO)
-        clause = f"{A358} §6.8, Step 8"
+        clause = f"{A358} §6.7.1, Eq. 6.7-8"
         an = c.step("A_n", r"[b_p - 2(d_b + 1/8\,in)]t_p",
                     (ep.width - 2 * (b.diameter + _in(0.125))) * ep.thickness, Kind.AREA,
                     clause)
         cap = c.step(r"\phi_n 0.6 F_{up} A_n", "", PHI_N * 0.6 * ep.Fu * an, F, clause)
         out.append(c.result("seismic.end_plate_shear_rupture", clause, ffu / 2, cap, F))
     else:
-        clause = f"{A358} §6.8, Step 9"
+        clause = f"{A358} §6.7.1, Eq. 6.7-9"
         ts = s.stiffener_thickness
         Fys = s.stiffener_Fy or ep.Fy
         need = c.step("t_{s,min}", r"t_{bw} F_{yb}/F_{ys}", beam.tw * beam.material.Fy / Fys,
                       T, clause)
         out.append(c.result("seismic.end_plate_stiffener_thickness", clause, need, ts, T))
         c = Calc(Method.LRFD, COMBO)
+        clause = f"{A358} §6.7.1, Eq. 6.7-10"
         lam = c.step(r"h_{st}/t_s", "", ep.pext / ts if ts > 0 else math.inf, D, clause)
         lim = c.step(r"0.56\sqrt{E/F_{ys}}", "", 0.56 * math.sqrt(E_STEEL / Fys), D, clause)
         out.append(c.result("seismic.end_plate_stiffener_slenderness", clause, lam, lim, D))
 
-    nb = 8 if ep.layout is EndPlateLayout.EXTENDED_8_STIFFENED else 4
+    eight = ep.layout is EndPlateLayout.EXTENDED_8_STIFFENED
+    nb = 8 if eight else 4
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §6.8, Step 10"
+    clause = f"{A358} §6.7.1, Eq. 6.7-11"
     Fnv = b.material.Fnv_N if b.threads.value == "N" else b.material.Fnv_X
     cap = c.step(r"\phi_n n_b F_{nv} A_b", "", PHI_N * nb * Fnv * b.area, F, clause,
                  n_b=(nb, D))
     out.append(c.result("seismic.end_plate_compression_bolts", clause, vu, cap, F))
-
-    c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §6.8, Step 11; {SPEC} §J3.11"
-    rn = 0.0
-    lc_inner = clear_distance(b, ep.pf + beam.tf + ep.pf_o, to_edge=False)
-    for i in range(nb // 2):
-        per = []
-        for t, Fu_ in ((ep.thickness, ep.Fu), (col.tf, col.material.Fu)):
-            bearing = 2.4 * b.diameter * t * Fu_
-            per.append(min(1.2 * lc_inner * t * Fu_, bearing) if i == 0 else bearing)
-        rn += 2 * min(per)
-    rn = c.step("R_n", r"n_i r_{ni} + n_o r_{no}", rn, F, clause)
-    cap = c.step(r"\phi_n R_n", "", PHI_N * rn, F, clause)
-    out.append(c.result("seismic.end_plate_bearing", clause, vu, cap, F))
+    out.append(_end_plate_bearing(mc, vu, eight))
     return out
+
+
+def _end_plate_bearing(mc: MomentConnection, vu: float, eight: bool) -> CheckResult:
+    """Bearing and tearout of the compression-flange bolts (Eq. 6.7-12).
+
+    r_ni = 1.2 l_c t F_u ≤ 2.4 d_b t F_u for each bolt, with l_c the smaller clear
+    distance to the adjacent hole on either side (the moment reverses) and, in the
+    end plate, to the edge of the extension; the column flange has no edge there.
+    """
+    ep, beam, col, b = mc.end_plate, mc.beam, mc.column, mc.end_plate.bolt
+    # bolt rows at one flange, measured outward from the outer face of the flange
+    rows = [ep.pf_o, -(beam.tf + ep.pf)]
+    if eight:
+        rows += [ep.pf_o + ep.pb, -(beam.tf + ep.pf + ep.pb)]
+    rows.sort()
+    edge = ep.pext
+    c = Calc(Method.LRFD, COMBO)
+    clause = f"{A358} §6.7.1, Eq. 6.7-12; {SPEC} §J3.11"
+    totals = []
+    for t, Fu, name, has_edge in ((ep.thickness, ep.Fu, "p", True),
+                                  (col.tf, col.material.Fu, "c", False)):
+        total = 0.0
+        for i, y in enumerate(rows):
+            gaps = [clear_distance(b, abs(y - rows[j]), to_edge=False)
+                    for j in (i - 1, i + 1) if 0 <= j < len(rows)]
+            if has_edge and i == len(rows) - 1:
+                gaps.append(clear_distance(b, edge - y, to_edge=True))
+            lc = min(gaps)
+            total += 2 * min(1.2 * lc * t * Fu, 2.4 * b.diameter * t * Fu)
+        totals.append(c.step(rf"\sum r_{{ni,{name}}}", r"\sum \min(1.2l_ctF_u,\ 2.4d_btF_u)",
+                             total, F, clause, t=(t, T)))
+    cap = c.step(r"\phi_n \sum r_{ni}", "", PHI_N * min(totals), F, clause)
+    return c.result("seismic.end_plate_bearing", clause, vu, cap, F)
 
 
 def _end_plate_column(mc: MomentConnection, s: Seismic, mf: float) -> list[CheckResult]:
     from .end_plate import _column_yield_parameter
     col = mc.column
     c = Calc(Method.LRFD, COMBO)
-    clause = f"{A358} §6.8, Step 13 (column flange flexural yielding)"
+    clause = f"{A358} §6.7.2, Eq. 6.7-13"
     Yc = _column_yield_parameter(mc, c, mc.continuity_plate > 0)
     need = c.step("t_{cf,req}", r"\sqrt{\frac{1.11 M_f}{\phi_d F_{yc} Y_c}}",
                   math.sqrt(1.11 * mf / (PHI_D * col.material.Fy * Yc)), T, clause)
@@ -612,33 +740,41 @@ def seismic_checks(mc: MomentConnection) -> list[CheckResult]:
     s = mc.seismic
     assert s is not None
     c = Calc(Method.LRFD, COMBO)
-    mpr, sh, vu, mf = _hinge(mc, s, c)
+    hinge = _hinge(mc, s, c)
+    mf = hinge.mf
     out = _limits(mc, s) + _slenderness(mc, s)
-    out.append(_beam_shear(mc, vu, c))
+    out.append(_beam_shear(mc, hinge.vu, c))
     smf = s.system is SeismicSystem.SMF
     if smf:
-        out.append(_column_beam_ratio(mc, s, mpr, sh, vu))
+        out.append(_column_beam_ratio(mc, s, hinge))
         out += _panel_zone_thickness(mc)
-    pz_shear = 0.0 if (smf or mc.panel_zone) else None
+    # SMF: panel zone for the moments at the column faces with φ_v = 1.00 (§E3.6e.1);
+    # IMF: no additional panel-zone requirement (§E2.6e)
+    pz_shear = 0.0 if smf else None
+    pz_phi = PANEL_ZONE if smf else None
     if s.connection is Prequalified.RBS:
         out += _rbs(mc, s, mf)
+    elif s.connection is Prequalified.WUF_W:
+        out += _wuf_w(mc, s)
     if s.connection is Prequalified.BFP:
-        out += _bfp(mc, s, mpr, mf)
+        out += _bfp(mc, s, mf)
         out += _continuity(mc, s, mc.top.width, mc.top.thickness)
         pf = mf / (mc.beam.d + mc.top.thickness)
         column = _column_checks(mc, pf, mc.top.thickness, Method.LRFD, COMBO, pz_shear,
-                                s.column_axial)
+                                s.column_axial, panel_resistance=pz_phi)
     elif s.connection in (Prequalified.BUEEP, Prequalified.BSEEP):
-        out += _end_plate(mc, s, vu, mf) + _end_plate_column(mc, s, mf)
+        out += _end_plate(mc, s, hinge.vu, mf) + _end_plate_column(mc, s, mf)
         ffu = mf / (mc.beam.d - mc.beam.tf)
         N = mc.beam.tf + 2 * (mc.end_plate.weld_reinforcement or 0.0)
         column = end_plate_column_checks(mc, ffu, N, Method.LRFD, COMBO, pz_shear,
-                                         s.column_axial)
+                                         s.column_axial, pz_phi)
     else:
+        # welded flanges and web (RBS, WUF-W): P_f = 0.85 M_f/d* for the local limit
+        # states (AISC 341 §E3.6f.1(a), User Note), M_f/d* for the panel zone
         out += _continuity(mc, s, mc.beam.bf, mc.beam.tf)
         pf = mf / (mc.beam.d - mc.beam.tf)
-        column = _column_checks(mc, pf, mc.beam.tf, Method.LRFD, COMBO, pz_shear,
-                                s.column_axial)
+        column = _column_checks(mc, 0.85 * pf, mc.beam.tf, Method.LRFD, COMBO, pz_shear,
+                                s.column_axial, panel_force=pf, panel_resistance=pz_phi)
     return out + column
 
 

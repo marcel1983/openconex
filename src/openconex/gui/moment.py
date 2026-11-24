@@ -110,7 +110,7 @@ FLANGE_BOLT_FIELDS = (("spacing", "Separación s"), ("gage", "Gramil g"),
 
 SEISMIC_FIELDS = [
     ("span", "Luz libre entre caras de columnas L_cf"),
-    ("gravity_load", "Carga gravitacional mayorada w_u (1,2D + f₁L + 0,2S)"),
+    ("gravity_load", "Carga gravitacional mayorada w_u (1,2D + f₁L + 0,15S)"),
     ("gravity_shear", "Corte gravitacional adicional en la rótula"),
     ("column_axial", "Compresión mayorada de la columna P_uc"),
     ("rbs_a", "RBS: distancia a de la cara al corte"),
@@ -121,7 +121,7 @@ SEISMIC_FIELDS = [
     ("Ry_beam", "R_y de la viga (vacío: AISC 341 Tabla A3.2)"),
     ("Rt_beam", "R_t de la viga"),
     ("Ry_column", "R_y de la columna"),
-    ("Ry_plate", "R_y de las placas de ala (BFP)"),
+    ("Ry_plate", "R_y de las placas (ala BFP, placa simple WUF-W, continuidad)"),
 ]
 """Fields of the AISC 358 group of the moment window."""
 
@@ -318,6 +318,9 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         self.seismic_column_above = QCheckBox("La columna continúa sobre el nudo")
         self.seismic_column_above.setChecked(True)
         form.addRow(self.seismic_column_above)
+        self.seismic_slab = QCheckBox("Losa estructural de concreto (BFP: columna hasta W36)")
+        self.seismic_slab.setChecked(True)
+        form.addRow(self.seismic_slab)
         self._seismic = {key: self._line(form, label) for key, label in SEISMIC_FIELDS}
         layout.addWidget(self.seismic_group)
 
@@ -470,6 +473,7 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
                 self.seismic_connection.findData(sz.connection.value))
             self.seismic_system.setCurrentIndex(self.seismic_system.findData(sz.system.value))
         self.seismic_column_above.setChecked(sz.column_above if sz else True)
+        self.seismic_slab.setChecked(sz.slab if sz else True)
         for key, edit in self._seismic.items():
             edit.setText(_text(getattr(sz, key)) if sz else "")
         self._bolt_extra = {
@@ -544,7 +548,8 @@ class MomentWindow(ProjectSessionMixin, QMainWindow):
         if self.seismic_group.isChecked():
             seismic: dict = {"connection": self.seismic_connection.currentData(),
                              "system": self.seismic_system.currentData(),
-                             "column_above": self.seismic_column_above.isChecked()}
+                             "column_above": self.seismic_column_above.isChecked(),
+                             "slab": self.seismic_slab.isChecked()}
             for key, edit in self._seismic.items():
                 text = edit.text().strip()
                 if text:

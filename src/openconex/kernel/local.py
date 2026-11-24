@@ -111,14 +111,16 @@ def web_compression_buckling(shape: IShape, demand: float, method: Method,
 def panel_zone_shear(column: IShape, Pr: float, demand: float, method: Method,
                      beam_depth: float | None = None, inelastic: bool = False,
                      combo: str = "", doubler: float = 0.0,
-                     doubler_Fy: float | None = None) -> CheckResult:
+                     doubler_Fy: float | None = None,
+                     resistance: Resistance = J10_090) -> CheckResult:
     """Web panel zone shear (§J10.6).
 
     Without considering panel-zone inelastic deformation in the stability
     analysis: Eq. J10-9/J10-10. With it (``inelastic``, needs ``beam_depth``):
     Eq. J10-11/J10-12. ``Pr`` is the required axial strength of the column.
     A ``doubler`` plate (total thickness, yield stress ``doubler_Fy``, the
-    column's by default) adds 0.60 F_yd d_c t_d to the web term.
+    column's by default) adds 0.60 F_yd d_c t_d to the web term. ``resistance``
+    replaces φ = 0.90 (AISC 341 §E3.6e.1 uses φ_v = 1.00).
     """
     c = Calc(method, combo)
     fy, dc, tw = column.material.Fy, column.d, column.tw
@@ -154,4 +156,4 @@ def panel_zone_shear(column: IShape, Pr: float, demand: float, method: Method,
                         r"{d_b d_c t_w}\right)(1.9 - 1.2\alpha P_r/P_y)",
                         base * extra * (1.9 - 1.2 * load), Kind.FORCE, clause)
     return c.result("local.panel_zone", clause, demand,
-                    c.available(rn, J10_090, Kind.FORCE, clause), Kind.FORCE)
+                    c.available(rn, resistance, Kind.FORCE, clause), Kind.FORCE)

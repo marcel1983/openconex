@@ -14,7 +14,7 @@ La lista completa de verificaciones, con su ecuación y su cláusula, está en [
 
 ## 1.1 Matriz de trazabilidad
 
-`docs/verificacion/matriz-verificacion.csv` contiene una fila por cada verificación publicada en el catálogo (186 identificadores). Columnas:
+`docs/verificacion/matriz-verificacion.csv` contiene una fila por cada verificación publicada en el catálogo (334 identificadores). Columnas:
 
 | Columna | Contenido |
 |---|---|
@@ -35,7 +35,7 @@ La matriz se genera desde el catálogo con:
 python tools/generate_verification_matrix.py
 ```
 
-Hoy **223** verificaciones están validadas contra ejemplos, tablas o cálculos manuales, **6** tienen una diferencia aceptada y documentada y **3** no aplican. **10** son parciales: cinco verificaciones de la placa de extremo de momento que los ejemplos de la DG16 y la DG4 no calculan, y cinco de las conexiones al alma de la columna, que la DG13 trata sin ejemplo resuelto (todas usan fórmulas de AISC 360-22 validadas en el núcleo). La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **46** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14), doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A), placa base (`docs/verificacion/calculos/placa_base.py`, 59 valores de DG1 4.7-1, 4.7-10 y 4.7-14), anclajes (`docs/verificacion/calculos/anclajes.py`, 39 valores de DG1 4.7-4, 4.7-9 y 4.7-15), placa extendida/viga destajada (`docs/verificacion/calculos/placa_extendida_viga_destajada.py`, 29 valores de II.A-4/6/7 y II.A-19A) y fuerzas concentradas (`tests/kernel/test_local.py`, cinco valores manuales de §J10). Los cinco scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
+Hoy **236** verificaciones están validadas contra ejemplos, tablas o cálculos manuales, **6** tienen una diferencia aceptada y documentada y **3** no aplican. **89** son parciales: cinco verificaciones de la placa de extremo de momento que los ejemplos de la DG16 y la DG4 no calculan, cinco de las conexiones al alma de la columna, que la DG13 trata sin ejemplo resuelto (todas usan fórmulas de AISC 360-22 validadas en el núcleo), 32 de los empalmes, y las 47 de la opción sísmica (AISC 358-22), cotejadas con el texto de AISC 358-22 y AISC 341-22 y con cálculos a mano, pero todavía sin un ejemplo del Seismic Design Manual. La comparación con software comercial sigue pendiente para todas. Hay cálculo independiente para **46** verificaciones: asientos (`docs/verificacion/calculos/asientos.py`, seis valores de II.A-12A, II.A-13 y II.A-14), doble ángulo/placa simple (`docs/verificacion/calculos/doble_angulo_placa_simple.py`, 18 valores de II.A-1A y II.A-17A), placa base (`docs/verificacion/calculos/placa_base.py`, 59 valores de DG1 4.7-1, 4.7-10 y 4.7-14), anclajes (`docs/verificacion/calculos/anclajes.py`, 39 valores de DG1 4.7-4, 4.7-9 y 4.7-15), placa extendida/viga destajada (`docs/verificacion/calculos/placa_extendida_viga_destajada.py`, 29 valores de II.A-4/6/7 y II.A-19A) y fuerzas concentradas (`tests/kernel/test_local.py`, cinco valores manuales de §J10). Los cinco scripts tienen `--check`. El estado y el riesgo son una foto honesta, no una declaración de cierre.
 
 ## 2. Referencias publicadas
 

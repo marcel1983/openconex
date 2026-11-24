@@ -17,18 +17,23 @@ from openconex.core.loads import Method
 from openconex.kernel import local
 
 if TYPE_CHECKING:
+    from openconex.kernel.design import Resistance
+
     from .fr_moment import MomentConnection
 
 __all__ = ["panel_zone_check"]
 
 
 def panel_zone_check(mc: MomentConnection, flange_force: float, column_shear: float,
-                     column_axial: float, method: Method, combo: str = "") -> list[CheckResult]:
+                     column_axial: float, method: Method, combo: str = "",
+                     resistance: Resistance | None = None) -> list[CheckResult]:
     """``moment.column_panel_zone`` for the flange force and the column forces, and the
     weld of a fillet-welded doubler plate for the shear it carries."""
     from .column_stiffening import doubler_checks
     demand = abs((2 * flange_force if mc.two_sided else flange_force) - column_shear)
     kw = {"beam_depth": mc.beam.d, "inelastic": mc.panel_zone_inelastic, "combo": combo}
+    if resistance is not None:
+        kw["resistance"] = resistance
     check = local.panel_zone_shear(mc.column, column_axial, demand, method,
                                    doubler=mc.doubler_plate, doubler_Fy=mc.plate_Fy or None,
                                    **kw)

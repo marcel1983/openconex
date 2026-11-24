@@ -351,55 +351,65 @@ Rigidizadores transversales (placas de continuidad, un par en cada ala de la vig
 
 Opción `seismic` de una conexión de momento (AISC 358-22 con AISC 341-22, solo LRFD). Las verificaciones se evalúan una vez, en la combinación `AISC 358`, con el momento probable en la rótula y no con los momentos del análisis:
 
-- C_pr = mín((F_y + F_u)/(2F_y), 1,2); M_pr = C_pr R_y F_y Z_e (§2.4.3), con Z_e = Z_RBS = Z_x − 2c t_bf (d − t_bf) en RBS y Z_x en las demás.
-- S_h: a + b/2 (RBS), 0 (WUF-W), S₁ + s(n/2 − 1) (BFP), mín(d/2, 3b_bf) (4E) y L_st + t_p con L_st = h_st/tan 30° (4ES, 8ES).
-- L_h = L_cf − 2S_h; V_u = 2M_pr/L_h + V_gravedad; M_f = M_pr + V_u S_h.
+- C_pr = mín((F_y + F_u)/(2F_y), 1,2) (Ec. 2.4-2), y C_pr = 1,4 en WUF-W (§8.6, paso 1); M_pr = C_pr R_y F_y Z_e (Ec. 2.4-1), con Z_e = Z_RBS = Z_b − 2c t_bf (d − t_bf) en RBS (Ec. 5.7-4) y Z_b en las demás.
+- S_h: a + b/2 (RBS, Ec. 5.7-5), 0 (WUF-W), S₁ + s(n/2 − 1) (BFP, Ec. 7.5-5), mín(d/2, 3b_bf) (4E, Ec. 6.7-1) y L_st + t_p con L_st = h_st/tan 30° (4ES, 8ES, Ec. 6.7-2).
+- L_h = L_cf − 2S_h; V_h = 2M_pr/L_h + V_gravedad (Ec. 2.4-3), con V_gravedad de 1,2D + f₁L + 0,15S; M_f = M_pr + V_h S_h (Ec. 2.4-4).
+- Corte requerido de la viga y de la conexión: V_u = V_h + w_u S_h (§2.5).
 - φ_d = 1,00 (estados límite dúctiles) y φ_n = 0,90 (no dúctiles), §2.4.1.
-- R_y y R_t de la Tabla A3.2 de AISC 341-22 (perfiles y placas) o dados en el proyecto.
+- R_y y R_t de la Tabla A3.2 de AISC 341-22, con filas separadas para perfiles laminados y para placas, o dados en el proyecto. Los aceros que la tabla no lista (por ejemplo A572 Gr. 42 en perfiles, A992 o A913 en placas) necesitan `Ry_*` en el proyecto.
 
-Los límites de precalificación y las fórmulas se tomaron del texto publicado de AISC 358-22 y AISC 341-22; ningún ejemplo del Seismic Design Manual está transcrito todavía (ver [validación](07-validacion.md#aisc-358-22-opción-sísmica)).
+Los límites y las ecuaciones se cotejaron con el texto de AISC 358-22 y AISC 341-22; falta validar contra un ejemplo del Seismic Design Manual (ver [validación](07-validacion.md#aisc-358-22-opción-sísmica)).
 
 | `id` | Verificación | Norma |
 |---|---|---|
-| `seismic.beam_depth` | Peralte nominal de la viga ≤ 36 in (RBS, WUF-W, BFP; de la designación del catálogo o d) | AISC 358 §5.3.1, §7.3.1, §8.3.1 |
-| `seismic.beam_weight` | Peso de la viga ≤ 302 lb/ft (RBS) o 150 lb/ft (WUF-W, BFP) | ídem |
-| `seismic.beam_flange_thickness` | t_bf ≤ 1,75 in (RBS) o 1 in (WUF-W, BFP) | ídem |
+| `seismic.beam_depth` | Peralte nominal de la viga ≤ W44 (RBS) o W36 (WUF-W, BFP), de la designación del catálogo o d | AISC 358 §5.3.1, §7.3.1, §8.3.1 |
+| `seismic.beam_weight` | Peso de la viga ≤ 408 lb/ft (RBS) o 150 lb/ft (WUF-W, BFP) | ídem |
+| `seismic.beam_flange_thickness` | t_bf ≤ 2-1/8 in (RBS) o 1 in (WUF-W, BFP) | ídem |
 | `seismic.span_depth` | L_cf/d ≥ 7 SMF y 5 IMF (RBS, WUF-W, placas de extremo); 9 SMF y 7 IMF (BFP) | §5.3.1, §6.3.1, §7.3.1, §8.3.1 |
-| `seismic.column_depth` | Peralte nominal de la columna ≤ 36 in | §5.3.2, §6.3.2, §7.3.2, §8.3.2 |
-| `seismic.beam_flange_slenderness` | b_f/2t_f ≤ 0,32√(E/R_yF_y) (SMF, muy dúctil) o 0,40√(E/R_yF_y) (IMF); en RBS, b_f en los extremos de los dos tercios centrales del corte | AISC 341 Tabla D1.1; AISC 358 §5.3.1 |
-| `seismic.beam_web_slenderness` | h/t_w ≤ 2,57√(E/R_yF_y)(1 − 1,04C_a) (SMF) o 3,96√(E/R_yF_y)(1 − 3,04C_a) (IMF), C_a = 0 | AISC 341 Tabla D1.1 |
-| `seismic.column_flange_slenderness` | Como la viga, con R_y de la columna | AISC 341 Tabla D1.1 |
-| `seismic.column_web_slenderness` | Como la viga, con C_a = P_uc/(0,9 R_y F_y A_g); para C_a > 0,114, 0,88√(E/R_yF_y)(2,68 − C_a) (SMF) o 1,29√(E/R_yF_y)(2,12 − C_a) (IMF), ≥ 1,57√(E/R_yF_y) | AISC 341 Tabla D1.1 |
-| `seismic.beam_shear` | V_u ≤ φ_v 0,6 F_y d t_w C_v1 (φ_v = 1,0 y C_v1 = 1 si h/t_w ≤ 2,24√(E/F_y)) | AISC 360 §G2.1; AISC 358 §2.4.3 |
-| `seismic.column_beam_ratio` | SMF: ΣM*_pc = n_c Z_c (F_yc − P_uc/A_g) > ΣM*_pb = n_b [M_pr + V_u (S_h + d_c/2)], con n_c = 2 (1 sin columna superior) y n_b = 2 con `two_sided` | AISC 341 §E3.4a, Ec. E3-1 |
-| `seismic.panel_zone_thickness` | SMF: t_w ≥ (d_z + w_z)/90, d_z = d − 2t_f, w_z = d_c − 2t_fc | AISC 341 §E3.6e.2, Ec. E3-7 |
-| `seismic.doubler_thickness` | SMF con `doubler_plate`: la doble placa con el mismo límite | AISC 341 §E3.6e.2 |
-| `seismic.continuity_plates` | Sin placas de continuidad (RBS, WUF-W, BFP): t_fc ≥ máx(0,4√(1,8 b_bf t_bf R_yb F_yb/(R_yc F_yc)), b_bf/6); en BFP, ancho, espesor y R_y de la placa de ala | AISC 341 §E3.6f.1, Ec. E3-8, E3-9 |
-| `seismic.continuity_plate_thickness` | Con placas: t ≥ t_bf/2 (un lado) o t_bf (dos lados; en BFP, t_p) | AISC 341 §E3.6f.2 |
-| `seismic.rbs_a` | 0,5 b_bf ≤ a ≤ 0,75 b_bf | AISC 358 §5.8, Ec. 5.8-1 |
-| `seismic.rbs_b` | 0,65 d ≤ b ≤ 0,85 d | Ec. 5.8-2 |
-| `seismic.rbs_c` | 0,1 b_bf ≤ c ≤ 0,25 b_bf | Ec. 5.8-3 |
-| `seismic.rbs_moment_at_face` | M_f ≤ φ_d M_pe, M_pe = R_y F_y Z_x | §5.8, paso 6 |
-| `seismic.bfp_bolt_diameter` | d_b ≤ (b_bf/2)(1 − R_yF_y/(R_tF_u)) − 1/8 in | §7.6, paso 2 |
-| `seismic.bfp_bolts` | F_pr = M_f/(d + t_p) ≤ n φ_n r_n, r_n = mín(F_nv A_b, 2,4F_ub d_b t_bf, 2,4F_up d_b t_p), n = 2 × `rows` | §7.6, pasos 3 a 9 |
-| `seismic.bfp_plate_yielding` | F_pr ≤ φ_d F_yp b_fp t_p | §7.6, paso 10 |
-| `seismic.bfp_plate_rupture` | F_pr ≤ φ_n F_up A_n, A_n = mín((b_fp − 2(d_h + 1/16)) t_p, 0,85A_g) | §7.6, paso 11; AISC 360 §J4.1(b) |
-| `seismic.bfp_block_shear` | F_pr ≤ φ_n R_n, el menor del ala de la viga y de la placa (§J4.3, U_bs = 1) | §7.6, paso 12 |
-| `seismic.bfp_plate_compression` | F_pr ≤ φ_n P_n de la placa con K = 0,65 y L = S₁ (§J4.4) | §7.6, paso 13 |
+| `seismic.column_depth` | Peralte nominal de la columna ≤ W40 (RBS), W36 (WUF-W, placas de extremo, BFP con losa estructural de concreto) o W14 (BFP con `slab: false`) | §5.3.2, §6.3.2, §7.3.2, §8.3.2 |
+| `seismic.beam_flange_slenderness` | b_f/2t_f ≤ 0,30√(E/R_yF_y) (SMF, muy dúctil) o 0,38√(E/R_yF_y) (IMF, moderadamente dúctil); en RBS, b_f en los extremos de los dos tercios centrales del corte | AISC 341 Tabla D1.1b, caso 7; AISC 358 §5.3.1 |
+| `seismic.beam_web_slenderness` | h/t_w ≤ 2,5√(E/R_yF_y)(1 − C_a)^2,3 (SMF) o 5,4√(E/R_yF_y)(1 − C_a)^2,3 (IMF), C_a = 0 | AISC 341 Tabla D1.1b, caso 11 |
+| `seismic.column_flange_slenderness` | Como la viga, con R_y de la columna | AISC 341 Tabla D1.1b, caso 7 |
+| `seismic.column_web_slenderness` | Como la viga, con C_a = P_r/(R_y F_y A_g) y P_r = `column_axial` | AISC 341 Tabla D1.1b, caso 11 |
+| `seismic.beam_shear` | V_u ≤ φ_v 0,6 F_y d t_w C_v1 (φ_v = 1,0 y C_v1 = 1 si h/t_w ≤ 2,24√(E/F_y)), V_u = V_h + w_u S_h | AISC 360 §G2.1; AISC 358 §2.5 |
+| `seismic.column_beam_ratio` | SMF: ΣM*_pc = n_c Z_c (F_yc − P_r/A_g) > ΣM*_be = n_b [M_pr + V_h (S_h + d_c/2)], con n_c = 2 (1 sin columna superior) y n_b = 2 con `two_sided` | AISC 341 §E3.4a, Ec. E3-1 a E3-3 |
+| `seismic.panel_zone_thickness` | SMF: t_w ≥ (d_z + w_z)/90, d_z = d − 2t_f, w_z = d_c − 2t_fc | AISC 341 §E3.6e.2, Ec. E3-6 |
+| `seismic.doubler_thickness` | SMF con `doubler_plate`: la doble placa con el mismo límite y al menos 1/4 in | AISC 341 §E3.6e.2, §E3.6e.3 |
+| `seismic.continuity_plates` | Sin placas de continuidad (RBS, WUF-W, BFP): t_fc ≥ t_lim = b_bf/6; en BFP, ancho de la placa de ala | AISC 341 §E3.6f.1(b), Ec. E3-7 |
+| `seismic.continuity_plate_thickness` | Con placas: t ≥ 0,50 t_bf (un lado) o 0,75 t_bf (dos lados); en BFP, t_p | AISC 341 §E3.6f.2(b) |
+| `seismic.continuity_plate_width` | Con placas: b_s ≥ (b_bf − t_cw)/2, hasta los bordes del ala de la viga | AISC 341 §E3.6f.2(a) |
+| `seismic.continuity_plate_slenderness` | Con placas: b_s/t ≤ 0,56√(E/(R_y F_y)), con R_y de placas del acero `grade` | AISC 341 §E3.6f.2(b)(3), Ec. E3-9 |
+| `seismic.rbs_a` | 0,5 b_bf ≤ a ≤ 0,75 b_bf | AISC 358 §5.7, Ec. 5.7-1 |
+| `seismic.rbs_b` | 0,65 d ≤ b ≤ 0,85 d | Ec. 5.7-2 |
+| `seismic.rbs_c` | 0,1 b_bf ≤ c ≤ 0,25 b_bf | Ec. 5.7-3 |
+| `seismic.rbs_moment_at_face` | M_f ≤ φ_d M_pe, M_pe = R_y F_y Z_b | Ec. 5.7-6, 5.7-7 |
+| `seismic.wuf_w_plate_thickness` | WUF-W con `web`: espesor de la placa simple ≥ t_bw | §8.5(1) |
+| `seismic.wuf_w_plate_weld` | WUF-W con soldadura de filete de la placa simple a la columna: 2φr_w h_p ≥ 0,6 R_y F_yp h_p t_p (h_p = `length`, R_y de placas) | §8.5(2); AISC 360 §J2.4 |
+| `seismic.bfp_beam_flange_rupture` | R_t F_ub Z_b,net ≥ R_y F_yb Z_b, Z_b,net = Z_b − 2(d_hole + 1/16 in) t_f (d − t_f) con los agujeros de las dos alas | §7.5, Ec. 7.5-1 |
+| `seismic.bfp_bolt_diameter` | d_b ≤ 1-1/8 in | §7.4.4 |
+| `seismic.bfp_bolts` | F_pr = M_f/(d + t_p) ≤ n φ_n r_n, r_n = mín(1,0F_nv A_b, 2,4F_ub d_b t_bf, 2,4F_up d_b t_p), n = 2 × `rows` | Ec. 7.5-3, 7.5-6, 7.5-7 |
+| `seismic.bfp_plate_yielding` | F_pr ≤ φ_d F_yp b_fp t_p | Ec. 7.5-8 |
+| `seismic.bfp_plate_rupture` | F_pr ≤ φ_n F_up A_n, A_n = mín((b_fp − 2(d_h + 1/16)) t_p, 0,85A_g) | Ec. 7.5-9; AISC 360 §J4.1(b) |
+| `seismic.bfp_block_shear` | F_pr ≤ φ_n R_n, el menor del ala de la viga y de la placa (§J4.3, U_bs = 1) | Ec. 7.5-10 |
+| `seismic.bfp_plate_compression` | F_pr ≤ φ_n P_n de la placa con KL = 0,65 S₁ (§J4.4) | Ec. 7.5-11 |
 | `seismic.end_plate_tbf`, `seismic.end_plate_bbf`, `seismic.end_plate_d`, `seismic.end_plate_tp`, `seismic.end_plate_bp`, `seismic.end_plate_g`, `seismic.end_plate_pf`, `seismic.end_plate_pb` | Límites paramétricos de 4E, 4ES y 8ES (t_bf, b_bf, d, t_p, b_p, g, p_f,i y p_f,o, p_b) | §6.3, Tabla 6.1 |
-| `seismic.end_plate_bolt_rupture` | M_f ≤ φ_n M_np = φ_n 2P_t Σh_i (sin efecto palanca), P_t = F_nt A_b | §6.8, paso 3 |
-| `seismic.end_plate_yielding` | M_f ≤ φ_d F_yp t_p² Y_p / 1,11, con Y_p de las líneas de fluencia de la configuración (DG16 Tablas 4-2 y 4-3, DG4 Tabla 3.3) | §6.8, paso 4 |
-| `seismic.end_plate_shear_yielding` | 4E: F_fu/2 ≤ φ_d 0,6 F_yp b_p t_p, F_fu = M_f/(d − t_bf) | §6.8, paso 7 |
-| `seismic.end_plate_shear_rupture` | 4E: F_fu/2 ≤ φ_n 0,6 F_up A_n, A_n = [b_p − 2(d_b + 1/8 in)] t_p | §6.8, paso 8 |
-| `seismic.end_plate_stiffener_thickness` | 4ES, 8ES: t_s ≥ t_bw F_yb/F_ys | §6.8, paso 9 |
-| `seismic.end_plate_stiffener_slenderness` | 4ES, 8ES: h_st/t_s ≤ 0,56√(E/F_ys), h_st = `pext` | §6.8, paso 9 |
-| `seismic.end_plate_compression_bolts` | V_u ≤ φ_n n_b F_nv A_b, n_b = 4 (4E, 4ES) u 8 (8ES) | §6.8, paso 10 |
-| `seismic.end_plate_bearing` | V_u ≤ φ_n Σ r_n en la placa y el ala de la columna: aplastamiento 2,4 d_b t F_u; en la fila interior, también desgarro 1,2 l_c t F_u con l_c entre las filas que rodean el ala | §6.8, paso 11; AISC 360 §J3.11 |
-| `seismic.end_plate_column_flange` | t_fc ≥ √(1,11 M_f/(φ_d F_yc Y_c)), con Y_c sin rigidizar o rigidizado (DG4 Tablas 3.4 y 3.5) | §6.8, paso 13 |
+| `seismic.end_plate_bolt_rupture` | M_f ≤ φ_n M_np = φ_n 2P_t Σh_i (sin efecto palanca), P_t = F_nt A_b | §6.7.1, Ec. 6.7-3, 6.7-4 |
+| `seismic.end_plate_yielding` | M_f ≤ φ_d F_yp t_p² Y_p / 1,11, con Y_p de las líneas de fluencia de la configuración (Tablas 6.2 a 6.4, iguales a DG16 Tablas 4-2 y 4-3 y DG4 Tabla 3.3) | Ec. 6.7-5 |
+| `seismic.end_plate_shear_yielding` | 4E: F_fu/2 ≤ φ_d 0,6 F_yp b_p t_p, F_fu = M_f/(d − t_bf), b_p ≤ b_bf + 1 in | Ec. 6.7-6, 6.7-7 |
+| `seismic.end_plate_shear_rupture` | 4E: F_fu/2 ≤ φ_n 0,6 F_up A_n, A_n = [b_p − 2(d_b + 1/8 in)] t_p | Ec. 6.7-8 |
+| `seismic.end_plate_stiffener_thickness` | 4ES, 8ES: t_s ≥ t_bw F_yb/F_ys | Ec. 6.7-9 |
+| `seismic.end_plate_stiffener_slenderness` | 4ES, 8ES: h_st/t_s ≤ 0,56√(E/F_ys), h_st = `pext` | Ec. 6.7-10 |
+| `seismic.end_plate_compression_bolts` | V_u ≤ φ_n n_b F_nv A_b, n_b = 4 (4E, 4ES) u 8 (8ES) | Ec. 6.7-11 |
+| `seismic.end_plate_bearing` | V_u ≤ φ_n Σ r_ni, r_ni = mín(1,2 l_c t F_u, 2,4 d_b t F_u) en cada perno del ala en compresión, el menor de la placa y del ala de la columna; l_c es la menor distancia libre a los agujeros vecinos (el corte puede cambiar de sentido) y, en la placa, al borde de la extensión | Ec. 6.7-12; AISC 360 §J3.11 |
+| `seismic.end_plate_column_flange` | t_fc ≥ √(1,11 M_f/(φ_d F_yc Y_c)), con Y_c sin rigidizar o rigidizado (Tablas 6.5 y 6.6, DG4 Tablas 3.4 y 3.5) | §6.7.2, Ec. 6.7-13 |
 
-En la misma combinación `AISC 358` se repiten las verificaciones de la columna de las conexiones de momento (§J10, rigidizadores, doble placa y `moment.column_panel_zone`) con la fuerza de ala de M_f: M_f/(d − t_bf) en RBS, WUF-W y placas de extremo, y M_f/(d + t_p) en BFP. La zona de panel usa V_c = 0 y los factores de AISC 360 (φ = 0,9 en §J10.6, más exigente que el φ_v = 1,0 de AISC 341 §E3.6e); con `two_sided`, ΣM_f de las dos vigas.
+En la misma combinación `AISC 358` se repiten las verificaciones de la columna de las conexiones de momento (§J10, rigidizadores, doble placa y `moment.column_panel_zone`), como pide AISC 341 §E3.6f.1(a):
 
-No se verifican: el arriostramiento lateral de la viga, la zona protegida, los agujeros de acceso de la soldadura, las soldaduras de demanda crítica ni la placa de cortante del alma de WUF-W, que son requisitos de detalle de AISC 358 y AISC 341.
+- Fuerza de ala para los estados límite locales: P_f = 0,85 M_f/d* en RBS y WUF-W (alma soldada a la columna), M_f/(d + t_p) en BFP y M_f/(d − t_bf) en placas de extremo; d* = d − t_bf.
+- Zona de panel, solo en SMF (§E3.6e.1): ΣM_f/d* sin el factor 0,85, V_c = 0 y φ_v = 1,00 sobre R_n de AISC 360 §J10.6; con `two_sided`, las dos vigas. En IMF, AISC 341 §E2.6e no agrega requisitos y la zona de panel se verifica solo con las combinaciones del proyecto.
+- En placas de extremo, la fluencia local del alma sigue la DG4, con l_b = t_bf + 2w; la Ec. 6.7-17 agrega 2t_p a l_b, así que el programa queda del lado seguro.
+
+No se verifican: el arriostramiento lateral de la viga, la zona protegida, los agujeros de acceso de la soldadura, las soldaduras de demanda crítica ni el resto de los detalles de la placa simple de WUF-W (Fig. 8.3) y de RBS (§5.5), que son requisitos de detalle de AISC 358 y AISC 341. En BFP la validación del proyecto exige placas A36 o A572 Gr. 50 (§7.4.1) y pernos A490 o F2280 con la rosca excluida (§7.4.4).
 
 ## Empalmes (`connections/splice/splice.py`)
 
