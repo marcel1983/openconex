@@ -18,6 +18,7 @@
 | quita o agrega una limitación | `docs/usuario/08-limitaciones.md` |
 | agrega un módulo o cambia el flujo | `docs/tecnico/01-arquitectura.md` |
 | cambia resultados a propósito (fórmula, criterio) o agrega o modifica un ejemplo | regenerar `tests/reference/examples_snapshot.json` con `python tools/snapshot_examples.py` y explicar el diff en el pull request |
+| agrega o cambia un campo o una acción de la interfaz | su entrada en `src/openconex/i18n/help.es.toml` (qué es, cómo se usa, efecto en el cálculo) y regenerar `docs/usuario/10-referencia-conexion-corte.md` y `11-referencia-placa-base.md` con `python tools/render_help.py` (`tests/test_help.py` falla si quedan viejas) |
 | avanza una fase | estado en `docs/PLAN.md` |
 
 ## Qué comprueba la integración continua

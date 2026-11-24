@@ -6,12 +6,14 @@ from pathlib import Path
 
 from openconex.help import (
     HELP_ITEMS,
+    help_text,
     render_base_help_markdown,
     render_shear_help_markdown,
     shear_fields,
     shear_menus,
 )
 from openconex.help_base import BASE_ITEMS
+from openconex.help_core import HelpItem, help_catalog
 from openconex.io.project import (
     BasePlateInput,
     BoltInput,
@@ -84,6 +86,28 @@ def test_main_menu_help():
     keys = {item.key for item in HELP_ITEMS.values()}
     assert {"main.file.open", "main.calc.run", "main.export.dxf",
             "main.help.fields", "base.ui.geometry"} <= keys
+
+
+def test_help_catalog_entries_are_unique_and_complete():
+    """Every entry of i18n/help.es.toml has a distinct key and only HelpItem fields."""
+    catalog = help_catalog()
+    entries = [entry for section in ("shear", "base") for part in catalog[section].values()
+               for entry in part]
+    keys = [entry["key"] for entry in entries]
+    assert len(keys) == len(set(keys)), "repeated help keys"
+    assert set(keys) == set(HELP_ITEMS)
+    fields = set(HelpItem.__dataclass_fields__)
+    for entry in entries:
+        assert set(entry) <= fields, entry["key"]
+    for page in catalog["pages"].values():
+        assert page["groups"] and page["reading"]
+
+
+def test_tooltip_has_the_three_answers():
+    item = HELP_ITEMS["beam"]
+    text = help_text("beam")
+    assert text.splitlines()[0] == item.what
+    assert item.how in text and item.effect in text
 
 
 def test_base_fields_are_in_the_document():
