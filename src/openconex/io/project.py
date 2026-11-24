@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -71,6 +71,11 @@ from openconex.io.splice_project import (
 from openconex.kernel.anchors import Edges
 from openconex.units import PRESETS, Kind, UnitSystem, format_value, parse, to_internal
 
+if TYPE_CHECKING:
+    from openconex.connections.moment.fr_moment import MomentConnection
+    from openconex.connections.shear.check import ShearConnection
+    from openconex.connections.splice.splice import BeamSplice, ColumnSplice
+
 __all__ = [
     "FORMAT_VERSION",
     "BasePlateInput",
@@ -108,6 +113,11 @@ __all__ = [
 
 FORMAT_VERSION = 14
 Quantity = str | float
+
+
+def _far_edges() -> list[Quantity | None]:
+    """Edge distances of both sides of a shear lug: far (None)."""
+    return [None, None]
 
 
 def _required[B](block: B | None, key: str) -> B:
@@ -287,7 +297,7 @@ class ShearLugInput(_Input):
     electrode: str = "E70XX"
     ca1: Quantity | None = None
     """Edge distance in the shear direction for concrete breakout (omit: not checked)."""
-    ca2: list[Quantity | None] = Field(default_factory=lambda: [None, None])
+    ca2: list[Quantity | None] = Field(default_factory=_far_edges)
     """Edge distances at both sides of the lug (null: far)."""
 
 
@@ -735,8 +745,10 @@ class Project(_Input):
         ties = (pedestal.tie_diameter, pedestal.tie_spacing)
         if (ties[0] is None) != (ties[1] is None):
             raise ValueError("pedestal ties need both tie_diameter and tie_spacing")
-        if ties[0] is not None and (self.quantity(ties[0], Kind.LENGTH) <= 0
-                                    or self.quantity(ties[1], Kind.LENGTH) <= 0):
+        diameter, spacing = ties
+        if diameter is not None and spacing is not None and (
+                self.quantity(diameter, Kind.LENGTH) <= 0
+                or self.quantity(spacing, Kind.LENGTH) <= 0):
             raise ValueError("pedestal tie diameter and spacing must be positive")
         for value in (pedestal.fy, pedestal.tie_fy):
             if self.quantity(value, Kind.STRESS) <= 0:
@@ -785,6 +797,8 @@ class Project(_Input):
             if not 0.0 < share < 1.0:
                 raise ValueError("share_a must be between 0 and 1")
         else:
+            if sc.row_distance is None or sc.load_offset is None:
+                raise ValueError("row_distance and load_offset are required")
             row = self.quantity(sc.row_distance, Kind.LENGTH)
             offset = self.quantity(sc.load_offset, Kind.LENGTH)
             if not 0.0 < offset < row:
@@ -836,7 +850,8 @@ class Project(_Input):
             if mc.panel_zone or mc.continuity_plate or mc.doubler_plate or mc.two_sided:
                 raise ValueError("connections to the column web take no panel zone, "
                                  "stiffeners, doubler plates or two_sided")
-        if end_plate and mc.end_plate.snug_tight and bolts[mc.end_plate.bolt.grade].Fnt > \
+        ep = mc.end_plate
+        if end_plate and ep is not None and ep.snug_tight and bolts[ep.bolt.grade].Fnt > \
                 to_internal(100.0, "ksi", Kind.STRESS):
             raise ValueError("snug-tight end-plate bolts must be Group A (A325)")
         if any((self.quantity(c.P, Kind.FORCE) and not end_plate)
@@ -896,7 +911,7 @@ class Project(_Input):
                 raise ValueError("column splice with strong-axis shear V needs web plates "
                                  "(web)")
 
-    def splice_model(self):
+    def splice_model(self) -> BeamSplice | ColumnSplice:
         """Engine model of the splice (:class:`BeamSplice` or :class:`ColumnSplice`)."""
         from openconex.io.splice_project import splice_model
         return splice_model(self)
@@ -936,12 +951,12 @@ class Project(_Input):
                 self.quantity(s.rbs_c, Kind.LENGTH) <= 0:
             raise ValueError("seismic rbs_c must be positive")
 
-    def moment_model(self):
+    def moment_model(self) -> MomentConnection:
         """Engine model of the moment connection (:class:`MomentConnection`)."""
         from openconex.io.moment_project import moment_model
         return moment_model(self)
 
-    def shear_model(self):
+    def shear_model(self) -> ShearConnection:
         """Engine model of the shear connection (:class:`ShearConnection`)."""
         from openconex.io.shear_project import shear_model
         return shear_model(self)
@@ -1052,7 +1067,7 @@ class Project(_Input):
         column = self.column_model(library)
         edges = Edges(**{k: self.quantity(v, L) for k, v in bp.edges.items()})
 
-        def dim(value, kind, default=0.0):
+        def dim(value: Quantity | None, kind: Kind, default: float = 0.0) -> float:
             return default if value is None else self.quantity(value, kind)
 
         return BasePlate(
@@ -1088,13 +1103,13 @@ class Project(_Input):
         )
 
     def _pedestal_width(self) -> float | None:
-        bp = self.base_plate
+        bp = self.require_base_plate()
         if bp.pedestal is not None and bp.pedestal.shape == "round" and bp.pedestal_N is not None:
             return self.quantity(bp.pedestal_N, Kind.LENGTH)
         return None if bp.pedestal_B is None else self.quantity(bp.pedestal_B, Kind.LENGTH)
 
     def _pedestal(self) -> Pedestal | None:
-        pedestal, L = self.base_plate.pedestal, Kind.LENGTH
+        pedestal, L = self.require_base_plate().pedestal, Kind.LENGTH
         if pedestal is None:
             return None
         return Pedestal(
@@ -1108,7 +1123,7 @@ class Project(_Input):
             min_ratio=pedestal.min_ratio, lightweight=pedestal.lightweight)
 
     def _reinforcement(self) -> Reinforcement | None:
-        reinforcement, L = self.base_plate.reinforcement, Kind.LENGTH
+        reinforcement, L = self.require_base_plate().reinforcement, Kind.LENGTH
         if reinforcement is None:
             return None
         return Reinforcement(
@@ -1121,7 +1136,7 @@ class Project(_Input):
             bars=reinforcement.bars)
 
     def _weak_base(self) -> WeakBase | None:
-        weak, L = self.base_plate.weak_base, Kind.LENGTH
+        weak, L = self.require_base_plate().weak_base, Kind.LENGTH
         if weak is None:
             return None
         return WeakBase(reduced_diameter=self.quantity(weak.reduced_diameter, L),
@@ -1129,7 +1144,7 @@ class Project(_Input):
                         Rt=weak.Rt)
 
     def _embedded_base(self) -> EmbeddedBase | None:
-        embedded = self.base_plate.embedded_base
+        embedded = self.require_base_plate().embedded_base
         if embedded is None:
             return None
 
@@ -1159,7 +1174,7 @@ class Project(_Input):
                              self.quantity(embedded.face_plate_weld, Kind.THICKNESS)))
 
     def _shear_lug(self, electrodes: dict[str, WeldElectrode]) -> ShearLug | None:
-        lug, L = self.base_plate.shear_lug, Kind.LENGTH
+        lug, L = self.require_base_plate().shear_lug, Kind.LENGTH
         if lug is None:
             return None
         sides = [None if v is None else self.quantity(v, L) for v in lug.ca2[:2]]
@@ -1168,9 +1183,10 @@ class Project(_Input):
                         thickness=self.quantity(lug.thickness, Kind.THICKNESS),
                         weld=self.quantity(lug.weld, Kind.THICKNESS), direction=lug.direction,
                         grade=lug.grade, FEXX=electrodes[lug.electrode].FEXX,
-                        grout=self.quantity(self.base_plate.grout, L),
+                        grout=self.quantity(self.require_base_plate().grout, L),
                         ca1=None if lug.ca1 is None else self.quantity(lug.ca1, L),
-                        ca2=tuple([*sides, None, None][:2]))
+                        ca2=(sides[0] if sides else None,
+                             sides[1] if len(sides) > 1 else None))
 
     def case_forces(self) -> dict[str, Forces]:
         F, M = Kind.FORCE, Kind.MOMENT

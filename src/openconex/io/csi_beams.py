@@ -143,7 +143,7 @@ def import_beam_ends(source: str | Path | dict[str, Table],  # noqa: C901
     missing = [t for t in REQUIRED[:3] if t not in tables]
     if forces_table is None:
         missing.append("Element Forces - Frames")
-    if missing:
+    if missing or forces_table is None:
         raise ValueError("missing tables: " + ", ".join(missing))
     warnings: list[str] = []
     coords = _coordinates(tables["Joint Coordinates"])
@@ -184,7 +184,8 @@ def import_beam_ends(source: str | Path | dict[str, Table],  # noqa: C901
     output_col, type_col = _column(t, "OutputCase"), _column(t, "CaseType")
     step_col = _column(t, "StepType")
     p_col, v_col = _column(t, "P"), _column(t, "V2")
-    if None in (frame_col, station_col, output_col, p_col, v_col):
+    if frame_col is None or station_col is None or output_col is None or p_col is None \
+            or v_col is None:
         raise ValueError("Element Forces - Frames needs Frame, Station, OutputCase, P and V2")
     to_force = {c: _converter(t, c, Kind.FORCE) for c in (p_col, v_col)}
     to_length = _converter(t, station_col, Kind.LENGTH)
@@ -247,15 +248,15 @@ def import_beam_ends(source: str | Path | dict[str, Table],  # noqa: C901
                 + direction[f][1] * direction[frame][1]) < math.cos(math.radians(45))]
             if columns:
                 support = sections[columns[0]]
-                kind = "column"
+                support_kind = "column"
                 element = _support_element(direction[frame], support)
             elif girders:
-                support, kind, element = sections[girders[0]], "girder", "web"
+                support, support_kind, element = sections[girders[0]], "girder", "web"
             else:
                 warnings.append(f"{tag}: no column or girder at joint {joint}, skipped")
                 continue
-            found.append(BeamEnd(frame, end, joint, sections[frame], support, kind, element,
-                                 end_forces[(frame, end)]))
+            found.append(BeamEnd(frame, end, joint, sections[frame], support, support_kind,
+                                 element, end_forces[(frame, end)]))
     if not found:
         warnings.append("no beam ends with a shear connection were found")
     return CsiBeamImport(found, cases, warnings)

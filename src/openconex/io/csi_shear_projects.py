@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from openconex.core.loads import LoadType, Method
+from openconex.core.loads import Forces, LoadType, Method
+from openconex.io.csi import ImportedColumn
 from openconex.io.csi_beams import BeamEnd, CsiBeamImport
 from openconex.io.csi_projects import LoadSource, _loads, column_input
 from openconex.io.project import (
@@ -36,12 +37,13 @@ class ShearGrouping(StrEnum):
     """One project per beam section, support section and support element."""
 
 
-def _shear_case(name: str, load_type: LoadType, forces) -> LoadCaseInput:
+def _shear_case(name: str, load_type: LoadType, forces: Forces) -> LoadCaseInput:
     return LoadCaseInput(name=name, type=load_type, P=f"{forces.P:.10g} N",
                          V=f"{forces.V2:.10g} N")
 
 
-def _section(frame, fallback: str):
+def _section(frame: ImportedColumn, fallback: str,
+             ) -> tuple[str | WSectionInput | None, str | None, str | None]:
     """Catalog label or generic W section of an imported I-shape; None otherwise."""
     section, grade, problem = column_input(frame, fallback)
     if section is None or not (isinstance(section, str | WSectionInput)):
@@ -51,8 +53,9 @@ def _section(frame, fallback: str):
     return section, grade, problem
 
 
-def _end_project(end: BeamEnd, data: CsiBeamImport, template: Project, source, include,
-                 envelopes, method, warnings: list[str]) -> Project | None:
+def _end_project(end: BeamEnd, data: CsiBeamImport, template: Project, source: LoadSource,
+                 include: str | None, envelopes: bool, method: Method | None,
+                 warnings: list[str]) -> Project | None:
     tag = f"beam {end.label}"
     sc = template.require_shear_connection()
     beam, beam_grade, problem = _section(end.beam, sc.beam_grade)

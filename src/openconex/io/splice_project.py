@@ -15,7 +15,7 @@ from openconex.connections.splice.splice import (
     FlangeSplice,
     WebSplice,
 )
-from openconex.core.model import BoltSpec
+from openconex.core.model import BoltSpec, required
 from openconex.io.moment_project import _section
 from openconex.io.shear_project import BoltInput
 from openconex.units import Kind
@@ -120,12 +120,11 @@ class SpliceInput(_Input):
 def splice_model(project: Project) -> BeamSplice | ColumnSplice:
     """Engine model of the project's splice."""
     sp = project.require_splice()
-    assert sp is not None
     L, T = Kind.LENGTH, Kind.THICKNESS
     steel = project.material_library()[sp.grade]
     bolts = project.bolt_library()
 
-    def q(value, kind=L, default=0.0):
+    def q(value: Quantity | None, kind: Kind = L, default: float = 0.0) -> float:
         return default if value is None else project.quantity(value, kind)
 
     def bolt(data: BoltInput) -> BoltSpec:
@@ -144,10 +143,14 @@ def splice_model(project: Project) -> BeamSplice | ColumnSplice:
         thickness=q(w.thickness, T), lev_member=q(w.lev_member), leh_plate=q(w.leh_plate),
         Fy=steel.Fy, Fu=steel.Fu, columns=w.columns, column_spacing=q(w.column_spacing))
     if sp.type is SpliceType.BEAM:
+        if sp.beam is None:
+            raise ValueError("beam is required")
         beam, Sx = _section(project, sp.beam, sp.beam_grade)
-        return BeamSplice(beam=beam, beam_Sx=Sx, flange=flange, web=web,
+        return BeamSplice(beam=beam, beam_Sx=Sx, flange=flange, web=required(web, "web"),
                           gap=q(sp.gap, default=project.quantity("0.5 in", L)),
                           deformation_considered=sp.deformation_considered)
+    if sp.upper is None or sp.lower is None:
+        raise ValueError("upper and lower are required")
     upper, _ = _section(project, sp.upper, sp.column_grade)
     lower, _ = _section(project, sp.lower, sp.column_grade)
     return ColumnSplice(upper=upper, lower=lower, flange=flange, web=web, gap=q(sp.gap),

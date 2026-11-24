@@ -37,10 +37,11 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from openconex.core.loads import Forces, LoadType
 from openconex.units import Kind, to_internal
@@ -204,7 +205,7 @@ def _pint_unit(csi_unit: str) -> str:
         raise ValueError(f"unknown unit in exported table: {csi_unit!r}") from None
 
 
-def _converter(table: Table, column: str, kind: Kind):
+def _converter(table: Table, column: str, kind: Kind) -> Callable[[Any], float]:
     unit = _pint_unit(table.unit(column))
     factor = to_internal(1.0, unit, kind)
     return lambda value: float(value or 0.0) * factor
@@ -245,13 +246,17 @@ class ImportedColumn:
     """t3 (depth), t2 (width), tf, tw [mm], as given by the program."""
 
 
+Restraints = tuple[bool, bool, bool, bool, bool, bool]
+"""U1, U2, U3, R1, R2, R3 (SAP2000) or UX, UY, UZ, RX, RY, RZ (ETABS)."""
+
+
 @dataclass(frozen=True)
 class Support:
     joint: str
     x: float
     y: float
     z: float
-    restraints: tuple[bool, bool, bool, bool, bool, bool]
+    restraints: Restraints
     column: ImportedColumn | None
     forces: dict[str, Forces]
     """Forces on the plate by case label (see ImportedCase.name)."""
@@ -264,16 +269,17 @@ class CsiImport:
     warnings: list[str]
 
 
-def _restraints(table: Table) -> dict[str, tuple[bool, ...]]:
+def _restraints(table: Table) -> dict[str, Restraints]:
     keys = ("U1", "U2", "U3", "R1", "R2", "R3")
-    return {str(r["Joint"]): tuple(str(r.get(k, "")).lower() == "yes" for k in keys)
+    return {str(r["Joint"]): cast(Restraints, tuple(str(r.get(k, "")).lower() == "yes"
+                                                    for k in keys))
             for r in table.rows}
 
 
 def _coordinates(table: Table) -> dict[str, tuple[float, float, float]]:
     cols = ("GlobalX", "GlobalY", "GlobalZ") if "GlobalX" in table.columns else ("XorR", "Y", "Z")
-    conv = [_converter(table, c, Kind.LENGTH) for c in cols]
-    return {str(r["Joint"]): tuple(f(r[c]) for f, c in zip(conv, cols, strict=True))
+    fx, fy, fz = (_converter(table, c, Kind.LENGTH) for c in cols)
+    return {str(r["Joint"]): (fx(r[cols[0]]), fy(r[cols[1]]), fz(r[cols[2]]))
             for r in table.rows}
 
 
@@ -288,7 +294,7 @@ def _cases(tables: dict[str, Table]) -> dict[str, tuple[str, LoadType | None]]:
 
 def _seismic_cases(tables: dict[str, Table]) -> set[str]:
     """Load cases and combinations that include a seismic (Quake) load pattern."""
-    def rows(name):
+    def rows(name: str) -> list[dict[str, Any]]:
         return tables[name].rows if name in tables else []
 
     quake = {str(r["LoadPat"]) for r in rows("Load Pattern Definitions")
@@ -311,7 +317,8 @@ def _seismic_cases(tables: dict[str, Table]) -> set[str]:
     return {name for name in direct | set(children) if seismic(name)}
 
 
-def _columns(tables: dict[str, Table], coords, warnings) -> dict[str, ImportedColumn]:
+def _columns(tables: dict[str, Table], coords: dict[str, tuple[float, float, float]],
+             warnings: list[str]) -> dict[str, ImportedColumn]:
     """Vertical frame connected to each support joint."""
     conn = tables.get("Connectivity - Frame")
     if conn is None or not conn.rows:
@@ -356,7 +363,8 @@ def _section_props(table: Table | None) -> dict[str, tuple[str, str, dict[str, f
             for r in table.rows}
 
 
-def _plate_forces(f1, f2, f3, m1, m2, m3, angle: float) -> Forces:
+def _plate_forces(f1: float, f2: float, f3: float, m1: float, m2: float, m3: float,
+                  angle: float) -> Forces:
     c, s = math.cos(math.radians(angle)), math.sin(math.radians(angle))
     return Forces(P=f3, V2=f1 * c + f2 * s, V3=-f1 * s + f2 * c,
                   M2=m1 * c + m2 * s, M3=-m1 * s + m2 * c, T=m3)
@@ -373,9 +381,18 @@ def _column(table: Table, *names: str) -> str | None:
     return None
 
 
-def _cell(row: dict[str, Any], *names: str) -> Any:
+def _all_columns(table: Table, names: tuple[str, ...]) -> list[str] | None:
+    """The table columns for all of ``names``; None if any is missing."""
+    found = [_column(table, name) for name in names]
+    return None if None in found else [c for c in found if c is not None]
+
+
+def _cell(row: dict[str, Any], *names: str | None) -> Any:
+    """Value of the first of ``names`` in ``row``; a name not in the table (None) is skipped."""
     keys = {_normalized(name): name for name in row}
     for name in names:
+        if name is None:
+            continue
         if name in row:
             return row[name]
         found = keys.get(_normalized(name))
@@ -582,21 +599,20 @@ def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
     coord_x = _column(coords_table, "X", "GlobalX")
     coord_y = _column(coords_table, "Y")
     coord_z = _column(coords_table, "Z")
-    if None in (coord_uid, coord_x, coord_y, coord_z):
+    if coord_uid is None or coord_x is None or coord_y is None or coord_z is None:
         raise ValueError("Point Object Connectivity needs UniqueName, X, Y and Z")
-    coord_conv = [_converter(coords_table, col, Kind.LENGTH)
-                  for col in (coord_x, coord_y, coord_z)]
-    coords = {str(_cell(row, coord_uid)): tuple(
-        conv(_cell(row, col)) for conv, col in zip(coord_conv, (coord_x, coord_y, coord_z),
-                                                   strict=True))
-        for row in coords_table.rows}
+    fx, fy, fz = (_converter(coords_table, col, Kind.LENGTH)
+                  for col in (coord_x, coord_y, coord_z))
+    coords = {str(_cell(row, coord_uid)): (fx(_cell(row, coord_x)), fy(_cell(row, coord_y)),
+                                           fz(_cell(row, coord_z)))
+              for row in coords_table.rows}
 
     rest_uid = _column(restraints_table, "UniqueName")
     if rest_uid is None:
         raise ValueError("Joint Assigns - Restraints needs UniqueName")
     keys = ("UX", "UY", "UZ", "RX", "RY", "RZ")
-    restraints = {str(_cell(row, rest_uid)): tuple(
-        str(_cell(row, key) or "").lower() == "yes" for key in keys)
+    restraints = {str(_cell(row, rest_uid)): cast(Restraints, tuple(
+        str(_cell(row, key) or "").lower() == "yes" for key in keys))
         for row in restraints_table.rows}
     support_ids = {uid for uid, values in restraints.items() if any(values)}
     all_coords = dict(coords)
@@ -638,9 +654,10 @@ def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
     output_col = _column(reactions_table, "OutputCase")
     case_type_col = _column(reactions_table, "CaseType")
     step_col = _column(reactions_table, "StepType")
-    force_cols = [_column(reactions_table, name) for name in ("FX", "FY", "FZ")]
-    moment_cols = [_column(reactions_table, name) for name in ("MX", "MY", "MZ")]
-    if None in (reactions_uid, output_col) or None in force_cols or None in moment_cols:
+    force_cols = _all_columns(reactions_table, ("FX", "FY", "FZ"))
+    moment_cols = _all_columns(reactions_table, ("MX", "MY", "MZ"))
+    if reactions_uid is None or output_col is None or force_cols is None \
+            or moment_cols is None:
         raise ValueError("Joint Reactions needs UniqueName, OutputCase, FX/FY/FZ and MX/MY/MZ")
     force = [_converter(reactions_table, col, Kind.FORCE) for col in force_cols]
     moment = [_converter(reactions_table, col, Kind.MOMENT) for col in moment_cols]
@@ -671,10 +688,10 @@ def _import_etabs(tables: dict[str, Table], warnings: list[str]) -> CsiImport:
             cases[label] = ImportedCase(label, output, case_type, kind, load_type, design,
                                         output in seismic_names)
         angle = found_columns[uid].angle if uid in found_columns else 0.0
-        forces[uid][label] = _plate_forces(
-            *(conv(_cell(row, col)) for conv, col in zip(force, force_cols, strict=True)),
-            *(conv(_cell(row, col)) for conv, col in zip(moment, moment_cols, strict=True)),
-            angle)
+        f1, f2, f3 = (conv(_cell(row, col)) for conv, col in zip(force, force_cols, strict=True))
+        m1, m2, m3 = (conv(_cell(row, col))
+                      for conv, col in zip(moment, moment_cols, strict=True))
+        forces[uid][label] = _plate_forces(f1, f2, f3, m1, m2, m3, angle)
     if skipped:
         warnings.append("output cases skipped (not a single set of forces): "
                         + ", ".join(sorted(skipped)))
@@ -730,9 +747,9 @@ def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
             cases[label] = ImportedCase(label, output, case_type, kind, load_type, design_type,
                                         output in seismic)
         angle = columns[joint].angle if joint in columns else 0.0
-        forces[joint][label] = _plate_forces(*(force[k](r[k]) for k in ("F1", "F2", "F3")),
-                                             *(moment[k](r[k]) for k in ("M1", "M2", "M3")),
-                                             angle)
+        f1, f2, f3 = (force[k](r[k]) for k in ("F1", "F2", "F3"))
+        m1, m2, m3 = (moment[k](r[k]) for k in ("M1", "M2", "M3"))
+        forces[joint][label] = _plate_forces(f1, f2, f3, m1, m2, m3, angle)
     if skipped:
         warnings.append("output cases skipped (not a single set of forces): "
                         + ", ".join(sorted(skipped)))
@@ -741,5 +758,5 @@ def import_supports(source: str | Path | dict[str, Table]) -> CsiImport:
     return CsiImport(supports, cases, warnings)
 
 
-def _natural(label: str):
+def _natural(label: str) -> tuple[int, int, str]:
     return (0, int(label), "") if label.isdigit() else (1, 0, label)
