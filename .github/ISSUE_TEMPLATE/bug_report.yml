@@ -1,0 +1,73 @@
+name: Reportar un fallo / Bug report
+description: El programa se cierra, muestra un error o no hace lo que debería (no un resultado de cálculo). / The program crashes, shows an error or does not do what it should (not a calculation result).
+title: '[Bug]: '
+labels:
+- bug
+body:
+- type: markdown
+  attributes:
+    value: |
+      Gracias por ayudar a mejorar el programa. Antes de enviarlo, busca si ya existe un issue con el mismo problema. Si lo que está mal es **un número o una verificación**, usa la plantilla **Error de cálculo**.
+
+      ---
+
+      Thanks for helping. Before sending, check whether an issue with the same problem already exists. If what is wrong is **a number or a check**, use the **Calculation error** template.
+- type: textarea
+  id: what
+  attributes:
+    label: ¿Qué pasó? / What happened?
+  validations:
+    required: true
+- type: textarea
+  id: steps
+  attributes:
+    label: Pasos para reproducirlo / Steps to reproduce
+    placeholder: |
+      1. Abrir el archivo de ejemplo ...
+      2. Hacer clic en ...
+      3. Aparece el error ... / 1. Open the example file ...
+      2. Click ...
+      3. The error appears ...
+  validations:
+    required: true
+- type: textarea
+  id: expected
+  attributes:
+    label: ¿Qué esperabas que pasara? / What did you expect?
+  validations:
+    required: true
+- type: dropdown
+  id: install
+  attributes:
+    label: ¿Cómo lo instalaste? / How did you install it?
+    options:
+    - Instalador o ejecutable descargado de Releases / Installer or executable from Releases
+    - Desde el código (pip install -e) / From source (pip install -e)
+  validations:
+    required: true
+- type: input
+  id: version
+  attributes:
+    label: Versión de OpenConex / OpenConex version
+    description: Aparece en Ayuda › Acerca de, o en el nombre del archivo descargado. / Shown in Help › About, or in the name of the downloaded file.
+    placeholder: 0.3.0
+  validations:
+    required: true
+- type: dropdown
+  id: os
+  attributes:
+    label: Sistema operativo / Operating system
+    options:
+    - Windows
+    - Linux
+    - macOS
+  validations:
+    required: true
+- type: textarea
+  id: logs
+  attributes:
+    label: Mensaje de error o registro / Error message or log
+    description: Pega el texto del error. Puedes arrastrar capturas de pantalla o el archivo .ocnx. / Paste the error text. You can drag screenshots or the .ocnx file here.
+    render: shell
+  validations:
+    required: false

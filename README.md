@@ -11,6 +11,10 @@ Aplicación libre (GPL-3.0) para el diseño de conexiones metálicas según AISC
 
 > **Estado: alfa.** Calcula placas base (AISC DG1 3ª ed., AISC 360-22, ACI 318-19), conexiones de corte y de momento viga–columna y viga–viga (Manual AISC, DG4, DG13, DG16) y empalmes apernados de viga y de columna, y genera memoria, planos DXF y modelo 3D desde la línea de comandos o desde la interfaz gráfica. Ver el [plan de desarrollo](docs/PLAN.md).
 
+**Descargar:** instaladores para Windows, macOS y Linux en [Releases](https://github.com/marcel1983/openconex/releases/latest) (sección *Assets*; ver [Instalación](docs/usuario/01-instalacion.md#instaladores)). · **Participar:** [cómo ayudar](#participar), aunque no programes.
+
+**OpenConex y OpenFEMConex.** OpenConex calcula las conexiones con los métodos de los manuales y guías de diseño del AISC. [OpenFEMConex](https://github.com/marcel1983/openfemconex) resuelve placas base con un modelo de elementos finitos (CalculiX), usa el mismo archivo `.ocnx` y toma de OpenConex el catálogo de perfiles y los materiales: sirve para contrastar el método de la guía con el FEM.
+
 ## Alcance previsto
 - **Conexiones:** placas base, viga–columna y viga–viga (corte y momento), empalmes de viga y columna.
 - **Normas:** AISC 360-22, AISC Design Guide 1 (3ª ed.), ACI 318-19 Cap. 17, ASCE 7-22; opción sísmica AISC 341-22 / 358-22.
@@ -49,6 +53,18 @@ python -m pytest
 ```
 
 Ver [CONTRIBUTING.md](CONTRIBUTING.md). La documentación se actualiza en el mismo pull request que cada cambio.
+
+## Participar
+
+No hace falta programar para ayudar. Desde [Issues](https://github.com/marcel1983/openconex/issues/new/choose) puedes:
+
+- aportar un **caso de validación**: un ejemplo con resultado conocido (guía de diseño, libro, cálculo a mano u otro programa) que se convierte en prueba automática;
+- reportar un **error de cálculo** o un **fallo** del programa;
+- **solicitar una característica**, por ejemplo una conexión o una norma nueva.
+
+Las preguntas de uso van a [Discussions](https://github.com/marcel1983/openconex/discussions). Necesitas una cuenta gratuita de GitHub.
+
+*Get involved:* the issue templates are in Spanish and English; write in either.
 
 ## Licencia
 [GPL-3.0-or-later](LICENSE). Las memorias de cálculo, planos y modelos que generes con OpenConex son tuyos y no quedan sujetos a la GPL.
