@@ -13,7 +13,7 @@ legend = "DA: doble ángulo; PS: placa simple; PSE: placa simple extendida; PE: 
 tooltip = "{what}\nCómo se usa: {how}\nEfecto en el cálculo: {effect}"
 table_header = ["Campo / acción", "Qué es", "Cómo se usa", "Efecto en el cálculo", "Defecto", "Tipos"]
 types_label = "Tipos"
-menus_heading = "Menús, botones y controles"
+menus_heading = "Ribbon, botones y controles"
 reading_heading = "Cómo leer una verificación"
 
 # Páginas de referencia (docs/usuario) ----------------------------------------
@@ -37,7 +37,7 @@ closing = "Las fórmulas y los valores intermedios de cada verificación están 
 title = "Referencia de la placa base"
 intro = "Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada responde qué es, cómo se usa y cómo afecta al cálculo. Si añade un campo o una acción, actualice la fuente y vuelva a generar la página con `python tools/render_help.py`."
 fields_heading = "Campos"
-groups = ["Conexión", "Placa base", "Anclajes", "Concreto", "Pedestal", "Refuerzo", "Base débil", "Base empotrada", "Llave de corte", "Menú principal", "Controles", "Diálogos"]
+groups = ["Conexión", "Placa base", "Anclajes", "Concreto", "Pedestal", "Refuerzo", "Base débil", "Base empotrada", "Llave de corte", "Ribbon principal", "Controles", "Diálogos"]
 reading = [
     "**Demanda:** fuerza o momento de la combinación.",
     "**Capacidad:** resistencia disponible con φ o Ω.",
@@ -782,108 +782,108 @@ how = "Úsela solo con secciones genéricas y carga axial."
 effect = "Se usa en las comprobaciones de tracción de la viga."
 types = "DA, PS, PSE"
 
-# Conexión de corte: menús, botones y controles -----------------------------
+# Conexión de corte: ribbon, botones y controles -----------------------------
 
 [[shear.menus]]
 key = "menu.file.new"
-label = "Archivo → Nuevo"
-group = "Menú Archivo"
+label = "Inicio → Nuevo"
+group = "Ribbon Inicio"
 what = "Crea un proyecto nuevo con la plantilla de placa simple."
-how = "Archivo → Nuevo (Ctrl+N)."
+how = "Inicio → Nuevo (Ctrl+N); también en Conexiones."
 effect = "Descarta el proyecto actual y carga la plantilla."
 
 [[shear.menus]]
 key = "menu.file.open"
-label = "Archivo → Abrir"
-group = "Menú Archivo"
+label = "Inicio → Abrir"
+group = "Ribbon Inicio"
 what = "Abre un proyecto .ocnx existente."
-how = "Archivo → Abrir (Ctrl+O) y elija el archivo."
+how = "Inicio → Abrir (Ctrl+O) y elija el archivo."
 effect = "Carga todos los datos y recalcula la ventana."
 
 [[shear.menus]]
 key = "menu.file.recent"
-label = "Archivo → Abrir reciente"
-group = "Menú Archivo"
+label = "Inicio → Recientes"
+group = "Ribbon Inicio"
 what = "Lista los últimos proyectos abiertos o guardados."
-how = "Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía."
+how = "Inicio → Recientes y elija el proyecto; «Borrar la lista» la vacía."
 effect = "Carga el proyecto en esta ventana si es del mismo tipo."
 
 [[shear.menus]]
 key = "menu.file.save"
-label = "Archivo → Guardar"
-group = "Menú Archivo"
+label = "Inicio → Guardar"
+group = "Ribbon Inicio"
 what = "Guarda el proyecto en el archivo actual."
-how = "Archivo → Guardar (Ctrl+S)."
+how = "Inicio → Guardar (Ctrl+S)."
 effect = "Escribe el .ocnx con los valores del formulario."
 
 [[shear.menus]]
 key = "menu.file.save_as"
-label = "Archivo → Guardar como"
-group = "Menú Archivo"
+label = "Inicio → Guardar como"
+group = "Ribbon Inicio"
 what = "Guarda el proyecto con otro nombre."
-how = "Archivo → Guardar como y elija la ruta."
+how = "Inicio → Guardar como y elija la ruta."
 effect = "Crea un archivo nuevo; no modifica el original."
 
 [[shear.menus]]
 key = "menu.calc.run"
-label = "Cálculo → Calcular"
-group = "Menú Cálculo"
+label = "Inicio/Cálculo → Calcular"
+group = "Ribbon Cálculo"
 what = "Ejecuta todas las comprobaciones del proyecto."
-how = "Cálculo → Calcular o F5."
+how = "Inicio → Calcular, Cálculo → Calcular o F5."
 effect = "Actualiza el resumen, las verificaciones y las figuras."
 
 [[shear.menus]]
 key = "menu.export.html"
-label = "Exportar → Memoria HTML"
-group = "Menú Exportar"
+label = "Exportar → HTML"
+group = "Ribbon Exportar"
 what = "Genera la memoria de cálculo en HTML."
-how = "Exportar → Memoria HTML y elija el archivo."
+how = "Exportar → HTML (también en Inicio → Memoria) y elija el archivo."
 effect = "Incluye datos, combinaciones, verificaciones y figuras."
 
 [[shear.menus]]
 key = "menu.export.docx"
-label = "Exportar → Memoria Word"
-group = "Menú Exportar"
+label = "Exportar → Word"
+group = "Ribbon Exportar"
 what = "Genera la memoria de cálculo en DOCX."
-how = "Exportar → Memoria Word y elija el archivo."
+how = "Exportar → Word (también en Inicio → Memoria) y elija el archivo."
 effect = "Incluye textos, tablas y figuras rasterizadas."
 
 [[shear.menus]]
 key = "menu.export.pdf"
-label = "Exportar → Memoria PDF"
-group = "Menú Exportar"
+label = "Exportar → PDF"
+group = "Ribbon Exportar"
 what = "Genera la memoria de cálculo en PDF."
-how = "Exportar → Memoria PDF y elija el archivo."
+how = "Exportar → PDF (también en Inicio → Memoria) y elija el archivo."
 effect = "Requiere el extra de PDF; produce el documento imprimible."
 
 [[shear.menus]]
 key = "menu.export.dxf"
 label = "Exportar → Plano DXF"
-group = "Menú Exportar"
+group = "Ribbon Exportar"
 what = "Genera el plano de la conexión."
 how = "Exportar → Plano DXF y elija el archivo."
 effect = "En II.A-10 produce la planta; en el resto, la elevación."
 
 [[shear.menus]]
 key = "menu.export.step"
-label = "Exportar → Modelo STEP"
-group = "Menú Exportar"
+label = "Exportar → STEP"
+group = "Ribbon Exportar"
 what = "Exporta el modelo 3D en STEP."
-how = "Exportar → Modelo STEP y elija el archivo."
+how = "Exportar → STEP y elija el archivo."
 effect = "Requiere el extra 3D; el archivo se abre en CAD."
 
 [[shear.menus]]
 key = "menu.export.stl"
-label = "Exportar → Modelo STL"
-group = "Menú Exportar"
+label = "Exportar → STL"
+group = "Ribbon Exportar"
 what = "Exporta el modelo 3D en STL."
-how = "Exportar → Modelo STL y elija el archivo."
+how = "Exportar → STL y elija el archivo."
 effect = "Requiere el extra 3D; el archivo se usa para impresión o visores."
 
 [[shear.menus]]
 key = "menu.help.guide"
 label = "Ayuda → Guía rápida"
-group = "Menú Ayuda"
+group = "Ribbon Ayuda"
 what = "Resumen del flujo de trabajo de la ventana."
 how = "Ayuda → Guía rápida o F1."
 effect = "No calcula; explica cómo introducir datos y calcular."
@@ -891,23 +891,23 @@ effect = "No calcula; explica cómo introducir datos y calcular."
 [[shear.menus]]
 key = "menu.help.fields"
 label = "Ayuda → Referencia de campos"
-group = "Menú Ayuda"
+group = "Ribbon Ayuda"
 what = "Lista buscable de todos los campos."
 how = "Ayuda → Referencia de campos."
 effect = "Muestra qué es, cómo se usa y cómo afecta cada campo."
 
 [[shear.menus]]
 key = "menu.help.menus"
-label = "Ayuda → Menús y acciones"
-group = "Menú Ayuda"
-what = "Lista de menús, botones y acciones."
-how = "Ayuda → Menús y acciones."
+label = "Ayuda → Comandos del ribbon"
+group = "Ribbon Ayuda"
+what = "Lista de los botones del ribbon y de los controles de la ventana."
+how = "Ayuda → Comandos del ribbon."
 effect = "Explica qué hace cada acción y cuándo se usa."
 
 [[shear.menus]]
 key = "menu.help.checks"
 label = "Ayuda → Verificaciones"
-group = "Menú Ayuda"
+group = "Ribbon Ayuda"
 what = "Guía para leer la tabla de verificaciones."
 how = "Ayuda → Verificaciones."
 effect = "Explica demanda, capacidad, relación, estado y referencia."
@@ -915,10 +915,18 @@ effect = "Explica demanda, capacidad, relación, estado y referencia."
 [[shear.menus]]
 key = "menu.help.about"
 label = "Ayuda → Acerca de"
-group = "Menú Ayuda"
+group = "Ribbon Ayuda"
 what = "Versión, licencia y aviso de responsabilidad."
 how = "Ayuda → Acerca de."
 effect = "No calcula; muestra información del programa."
+
+[[shear.menus]]
+key = "menu.units.presets"
+label = "Configuración → Sistema de unidades"
+group = "Ribbon Configuración"
+what = "Sistema de unidades del formulario y de la memoria."
+how = "Configuración → SI, MKS o US; equivale al campo Unidades del proyecto."
+effect = "Convierte los valores del formulario; el cálculo interno no cambia."
 
 [[shear.menus]]
 key = "action.calculate"
@@ -1876,190 +1884,198 @@ how = "Escriba una o dos distancias; vacío = lejano."
 effect = "Afecta el desprendimiento lateral."
 types = "PB"
 
-# Placa base: menús, botones, controles y diálogos --------------------------
+# Placa base: ribbon, botones, controles y diálogos --------------------------
 
 [[base.ui]]
 key = "main.file.new"
-label = "Archivo → Nueva conexión"
-group = "Menú principal"
+label = "Inicio → Nueva"
+group = "Ribbon principal"
 what = "Abre la galería para crear una conexión."
-how = "Archivo → Nueva conexión (Ctrl+N)."
+how = "Inicio → Nueva (Ctrl+N) o Conexiones → Galería."
 effect = "Crea un proyecto de placa base o de corte con valores iniciales."
 
 [[base.ui]]
 key = "main.file.open"
-label = "Archivo → Abrir"
-group = "Menú principal"
+label = "Inicio → Abrir"
+group = "Ribbon principal"
 what = "Abre un proyecto .ocnx."
-how = "Archivo → Abrir (Ctrl+O)."
+how = "Inicio → Abrir (Ctrl+O)."
 effect = "Carga el proyecto y actualiza la ventana."
 
 [[base.ui]]
 key = "main.file.recent"
-label = "Archivo → Abrir reciente"
-group = "Menú principal"
+label = "Inicio → Recientes"
+group = "Ribbon principal"
 what = "Lista los últimos proyectos abiertos o guardados."
-how = "Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía."
+how = "Inicio → Recientes y elija el proyecto; «Borrar la lista» la vacía."
 effect = "Abre el proyecto en la ventana que le corresponde."
 
 [[base.ui]]
 key = "main.file.save"
-label = "Archivo → Guardar"
-group = "Menú principal"
+label = "Inicio → Guardar"
+group = "Ribbon principal"
 what = "Guarda el proyecto actual."
-how = "Archivo → Guardar (Ctrl+S)."
+how = "Inicio → Guardar (Ctrl+S)."
 effect = "Escribe el archivo .ocnx."
 
 [[base.ui]]
 key = "main.file.save_as"
-label = "Archivo → Guardar como"
-group = "Menú principal"
+label = "Inicio → Guardar como"
+group = "Ribbon principal"
 what = "Guarda con otro nombre."
-how = "Archivo → Guardar como."
+how = "Inicio → Guardar como."
 effect = "Crea un archivo nuevo."
 
 [[base.ui]]
+key = "main.file.base_plate"
+label = "Conexiones → Placa base"
+group = "Ribbon principal"
+what = "Abre la galería en los tipos de placa base (expuesta, empotrada, base débil)."
+how = "Conexiones → Placa base y elija el tipo."
+effect = "Carga la plantilla elegida en esta ventana."
+
+[[base.ui]]
 key = "main.file.shear"
-label = "Archivo → Nueva conexión de corte"
-group = "Menú principal"
+label = "Conexiones → Corte"
+group = "Ribbon principal"
 what = "Abre la ventana de conexiones de corte."
-how = "Archivo → Nueva conexión de corte."
+how = "Conexiones → Corte."
 effect = "Abre una ventana independiente; no cambia el proyecto actual."
 
 [[base.ui]]
 key = "main.file.moment"
-label = "Archivo → Nueva conexión de momento"
-group = "Menú principal"
+label = "Conexiones → Momento"
+group = "Ribbon principal"
 what = "Abre la ventana de conexiones de momento viga–columna."
-how = "Archivo → Nueva conexión de momento."
+how = "Conexiones → Momento."
 effect = "Abre una ventana independiente; no cambia el proyecto actual."
 
 [[base.ui]]
 key = "main.file.splice"
-label = "Archivo → Nuevo empalme"
-group = "Menú principal"
+label = "Conexiones → Empalme"
+group = "Ribbon principal"
 what = "Abre la ventana de empalmes de viga y de columna."
-how = "Archivo → Nuevo empalme."
+how = "Conexiones → Empalme."
 effect = "Abre una ventana independiente; no cambia el proyecto actual."
 
 [[base.ui]]
 key = "main.file.import_csi"
-label = "Archivo → Importar SAP2000 / ETABS"
-group = "Menú principal"
+label = "Inicio → SAP2000 / ETABS"
+group = "Ribbon principal"
 what = "Importa reacciones de un modelo CSI."
-how = "Archivo → Importar SAP2000 / ETABS."
+how = "Inicio → Importar → SAP2000 / ETABS."
 effect = "Crea proyectos por apoyo o por sección."
 
 [[base.ui]]
 key = "main.file.import_table"
-label = "Archivo → Importar Excel / CSV"
-group = "Menú principal"
+label = "Inicio → Excel / CSV"
+group = "Ribbon principal"
 what = "Importa una tabla de reacciones."
-how = "Archivo → Importar Excel / CSV."
+how = "Inicio → Importar → Excel / CSV."
 effect = "Crea proyectos desde una tabla."
 
 [[base.ui]]
 key = "main.file.exit"
-label = "Archivo → Salir"
-group = "Menú principal"
+label = "Inicio → Salir"
+group = "Ribbon principal"
 what = "Cierra la aplicación."
-how = "Archivo → Salir."
+how = "Inicio → Salir."
 effect = "No guarda automáticamente."
 
 [[base.ui]]
 key = "main.library.sections"
-label = "Bibliotecas → Secciones"
-group = "Menú principal"
+label = "Conexiones → Secciones"
+group = "Ribbon principal"
 what = "Abre la biblioteca de secciones."
-how = "Bibliotecas → Secciones."
+how = "Conexiones → Bibliotecas → Secciones."
 effect = "Permite consultar y crear secciones propias."
 
 [[base.ui]]
 key = "main.library.materials"
-label = "Bibliotecas → Materiales"
-group = "Menú principal"
+label = "Conexiones → Materiales"
+group = "Ribbon principal"
 what = "Abre la biblioteca de materiales."
-how = "Bibliotecas → Materiales."
+how = "Conexiones → Bibliotecas → Materiales."
 effect = "Permite consultar y crear aceros, pernos y electrodos."
 
 [[base.ui]]
 key = "main.units.presets"
-label = "Unidades → Preset"
-group = "Menú principal"
+label = "Configuración → Sistema de unidades"
+group = "Ribbon principal"
 what = "Cambia el sistema de unidades."
-how = "Unidades → SI, MKS o US."
+how = "Configuración → SI, MKS o US."
 effect = "Convierte los valores guardados; no cambia el cálculo interno."
 
 [[base.ui]]
 key = "main.units.configure"
-label = "Unidades → Configurar"
-group = "Menú principal"
+label = "Configuración → Por magnitud"
+group = "Ribbon principal"
 what = "Configura la unidad de cada magnitud."
-how = "Unidades → Configurar por magnitud."
+how = "Configuración → Por magnitud."
 effect = "Cambia la presentación y la conversión."
 
 [[base.ui]]
 key = "main.calc.run"
-label = "Cálculo → Calcular"
-group = "Menú principal"
+label = "Inicio/Cálculo → Calcular"
+group = "Ribbon principal"
 what = "Calcula el proyecto actual."
-how = "Cálculo → Calcular o F5."
+how = "Inicio → Calcular, Cálculo → Calcular o F5."
 effect = "Actualiza el resumen y las figuras."
 
 [[base.ui]]
 key = "main.calc.optimize"
-label = "Cálculo → Optimizar"
-group = "Menú principal"
+label = "Cálculo → Optimizar N, B, tp"
+group = "Ribbon principal"
 what = "Optimiza N, B y tp."
-how = "Cálculo → Optimizar N, B y tp."
+how = "Cálculo → Optimizar → N, B, tp (también en Inicio)."
 effect = "Busca dimensiones menores con las mismas comprobaciones."
 types = "PB"
 
 [[base.ui]]
 key = "main.calc.optimize_global"
 label = "Cálculo → Optimización global"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Busca la placa más liviana probando diámetros y número de anclajes."
-how = "Cálculo → Optimización global…; revise la traza y pulse Aplicar."
+how = "Cálculo → Optimizar → Global (también en Inicio); revise la traza y pulse Aplicar."
 effect = "Cambia N, B, tp, f, separación, diámetro y barras por lado."
 types = "PB"
 
 [[base.ui]]
 key = "main.calc.batch"
-label = "Cálculo → Calcular lote"
-group = "Menú principal"
+label = "Cálculo → Lote"
+group = "Ribbon principal"
 what = "Calcula una carpeta de proyectos."
-how = "Cálculo → Calcular lote."
+how = "Cálculo → Lote (también en Inicio → Calcular lote)."
 effect = "Genera reportes y un resumen Excel."
 
 [[base.ui]]
 key = "main.export.html"
 label = "Exportar → HTML"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Memoria en HTML."
-how = "Exportar → Memoria HTML."
+how = "Exportar → HTML (también en Inicio → Memoria)."
 effect = "Incluye datos, verificaciones y figuras."
 
 [[base.ui]]
 key = "main.export.docx"
 label = "Exportar → Word"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Memoria en DOCX."
-how = "Exportar → Memoria Word."
+how = "Exportar → Word (también en Inicio → Memoria)."
 effect = "Incluye tablas y figuras."
 
 [[base.ui]]
 key = "main.export.pdf"
 label = "Exportar → PDF"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Memoria en PDF."
-how = "Exportar → Memoria PDF."
+how = "Exportar → PDF (también en Inicio → Memoria)."
 effect = "Requiere el extra de PDF."
 
 [[base.ui]]
 key = "main.export.dxf"
-label = "Exportar → DXF"
-group = "Menú principal"
+label = "Exportar → Plano DXF"
+group = "Ribbon principal"
 what = "Plano en DXF."
 how = "Exportar → Plano DXF."
 effect = "Genera la planta y elevación."
@@ -2067,23 +2083,23 @@ effect = "Genera la planta y elevación."
 [[base.ui]]
 key = "main.export.step"
 label = "Exportar → STEP"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Modelo 3D en STEP."
-how = "Exportar → Modelo STEP."
+how = "Exportar → STEP."
 effect = "Requiere el extra 3D."
 
 [[base.ui]]
 key = "main.export.stl"
 label = "Exportar → STL"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Modelo 3D en STL."
-how = "Exportar → Modelo STL."
+how = "Exportar → STL."
 effect = "Requiere el extra 3D."
 
 [[base.ui]]
 key = "main.help.guide"
 label = "Ayuda → Guía rápida"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Resumen del flujo de trabajo."
 how = "Ayuda → Guía rápida o F1."
 effect = "No calcula; explica el uso."
@@ -2091,23 +2107,23 @@ effect = "No calcula; explica el uso."
 [[base.ui]]
 key = "main.help.fields"
 label = "Ayuda → Referencia de campos"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Lista buscable de campos de placa base."
 how = "Ayuda → Referencia de campos."
 effect = "Explica qué es, cómo se usa y cómo afecta cada campo."
 
 [[base.ui]]
 key = "main.help.menus"
-label = "Ayuda → Menús y acciones"
-group = "Menú principal"
-what = "Lista de menús y acciones."
-how = "Ayuda → Menús y acciones."
+label = "Ayuda → Comandos del ribbon"
+group = "Ribbon principal"
+what = "Lista de los botones del ribbon y de los controles de la ventana."
+how = "Ayuda → Comandos del ribbon."
 effect = "Explica qué hace cada acción."
 
 [[base.ui]]
 key = "main.help.checks"
 label = "Ayuda → Verificaciones"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Guía para leer las verificaciones."
 how = "Ayuda → Verificaciones."
 effect = "Explica demanda, capacidad, relación y estado."
@@ -2115,7 +2131,7 @@ effect = "Explica demanda, capacidad, relación y estado."
 [[base.ui]]
 key = "main.help.about"
 label = "Ayuda → Acerca de"
-group = "Menú principal"
+group = "Ribbon principal"
 what = "Versión y licencia."
 how = "Ayuda → Acerca de."
 effect = "No calcula."
@@ -2246,7 +2262,7 @@ key = "viewer.refresh"
 label = "Actualizar 3D"
 group = "Controles"
 what = "Regenera el modelo 3D con los datos del formulario, aunque no hayan cambiado."
-how = "Pulse Actualizar en la pestaña 3D."
+how = "Vista 3D → Actualizar."
 effect = "Regenera la malla; no cambia el cálculo."
 
 [[base.ui]]
@@ -2254,7 +2270,7 @@ key = "viewer.auto"
 label = "Actualización automática del 3D"
 group = "Controles"
 what = "Regenera el modelo 3D poco después de cada cambio del formulario, sin pulsar Calcular ni Actualizar."
-how = "Marque o desmarque Automático en la barra del visor 3D."
+how = "Marque o desmarque Vista 3D → Automático."
 effect = "Solo cambia la vista; el cálculo sigue usando Calcular."
 
 [[base.ui]]
@@ -2262,7 +2278,7 @@ key = "viewer.reset"
 label = "Ajustar vista"
 group = "Controles"
 what = "Restablece la cámara del visor 3D."
-how = "Pulse Ajustar vista."
+how = "Vista 3D → Ajustar vista."
 effect = "Solo cambia la vista; no modifica el modelo."
 types = "PB"
 
@@ -2271,7 +2287,7 @@ key = "viewer.iso"
 label = "Vista isométrica"
 group = "Controles"
 what = "Vuelve a la vista isométrica de la conexión."
-how = "Pulse Iso en la barra del visor 3D."
+how = "Vista 3D → Iso."
 effect = "Solo cambia la cámara; no modifica el modelo."
 
 [[base.ui]]
@@ -2279,7 +2295,7 @@ key = "viewer.front"
 label = "Vista frontal"
 group = "Controles"
 what = "Mira la conexión de frente."
-how = "Pulse Frente en la barra del visor 3D."
+how = "Vista 3D → Frente."
 effect = "Solo cambia la cámara; no modifica el modelo."
 
 [[base.ui]]
@@ -2287,7 +2303,7 @@ key = "viewer.top"
 label = "Vista en planta"
 group = "Controles"
 what = "Mira la conexión desde arriba."
-how = "Pulse Planta en la barra del visor 3D."
+how = "Vista 3D → Planta."
 effect = "Solo cambia la cámara; no modifica el modelo."
 
 [[base.ui]]
@@ -2295,7 +2311,7 @@ key = "viewer.side"
 label = "Vista lateral"
 group = "Controles"
 what = "Mira la conexión de lado."
-how = "Pulse Lado en la barra del visor 3D."
+how = "Vista 3D → Lado."
 effect = "Solo cambia la cámara; no modifica el modelo."
 
 [[base.ui]]
@@ -2303,7 +2319,7 @@ key = "viewer.explode"
 label = "Separar conexión"
 group = "Controles"
 what = "Separa la viga del apoyo para ver placas, ángulos y asientos."
-how = "Marque Separar en la pestaña 3D."
+how = "Marque Vista 3D → Separar."
 effect = "Solo cambia la vista; no modifica el proyecto ni la exportación."
 
 [[base.ui]]

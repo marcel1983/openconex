@@ -22,6 +22,14 @@ from openconex.help import HELP_ITEMS, HelpItem
 
 __all__ = ["HelpDialog"]
 
+COMMAND_GROUPS = ("Acciones", "Controles")
+"""Help groups of buttons and controls, besides the ribbon tabs (``Ribbon …``)."""
+
+
+def _is_command(item: HelpItem) -> bool:
+    """Ribbon command, button or control (section *Comandos del ribbon*)."""
+    return item.group.startswith("Ribbon") or item.group in COMMAND_GROUPS
+
 
 class HelpDialog(QDialog):
     """List of fields, menus or checks with a detail pane and a search box."""
@@ -52,13 +60,10 @@ class HelpDialog(QDialog):
     def _section_items(self) -> list[HelpItem]:
         items = list(HELP_ITEMS.values())
         if self.section == "fields":
-            return [item for item in items if item.group not in
-                    ("Menú Archivo", "Menú Cálculo", "Menú Exportar", "Menú Ayuda",
-                     "Acciones", "Controles", "Verificaciones")]
+            return [item for item in items
+                    if not _is_command(item) and item.group != "Verificaciones"]
         if self.section == "menus":
-            return [item for item in items if item.group in
-                    ("Menú Archivo", "Menú Cálculo", "Menú Exportar", "Menú Principal",
-                     "Menú Ayuda", "Acciones", "Controles", "Diálogos")]
+            return [item for item in items if _is_command(item) or item.group == "Diálogos"]
         if self.section == "checks":
             return [item for item in items if item.group == "Verificaciones"]
         return items

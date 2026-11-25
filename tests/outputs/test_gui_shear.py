@@ -90,14 +90,8 @@ def test_fields_follow_the_type(app):
 def test_help_dialog_and_tooltips(app):
     window = ShearWindow()
     assert all(widget.toolTip() for widget in window._fields.values())
-    for menu in window.menuBar().actions():
-        submenu = menu.menu()
-        if submenu is None:
-            continue
-        for action in submenu.actions():
-            if action.isSeparator():
-                continue
-            assert action.toolTip(), action.text()
+    for _tab, _group, button in window.ribbon.buttons():
+        assert button.defaultAction().toolTip(), button.caption
     dialog = HelpDialog("fields")
     assert dialog.list.count() > 20
     dialog.search.setText("perno")

@@ -113,16 +113,15 @@ class ShearWindow(ConnectionWindow):
         self._cope_reinf: dict[str, QLineEdit] = {}
 
     # -- construction -----------------------------------------------------------
-    def _build_extra_menus(self) -> None:
-        help_menu = self.menuBar().addMenu("A&yuda")
-        help_menu.addAction(self._action("Guía rápida", self._show_guide, "F1",
-                                         "menu.help.guide"))
-        for label, topic in (("Referencia de campos", "fields"), ("Menús y acciones", "menus"),
-                             ("Verificaciones", "checks")):
-            help_menu.addAction(self._action(
-                label, lambda t=topic: HelpDialog(t, self).exec(), "", f"menu.help.{topic}"))
-        help_menu.addAction(self._action("Acerca de", self._show_about, "",
-                                         "menu.help.about"))
+    def _help_entries(self):
+        return [("Guía rápida", self._show_guide, "F1", "menu.help.guide", "Guía rápida\n(F1)",
+                 "guide"),
+                ("Referencia de campos", lambda: HelpDialog("fields", self).exec(), "",
+                 "menu.help.fields", "Referencia de campos", "help_fields"),
+                ("Comandos del ribbon", lambda: HelpDialog("menus", self).exec(), "",
+                 "menu.help.menus", "Comandos del ribbon", "help_menus"),
+                ("Verificaciones", lambda: HelpDialog("checks", self).exec(), "",
+                 "menu.help.checks", "Verificaciones", "help_checks")]
 
     def _show_guide(self) -> None:
         QMessageBox.information(
@@ -132,18 +131,8 @@ class ShearWindow(ConnectionWindow):
             "3. Defina los casos de carga y los métodos LRFD/ASD.\n"
             "4. Pulse Calcular (F5).\n"
             "5. Revise Resumen y Verificaciones; exporte la memoria o el plano.\n\n"
-            "Cada campo tiene un tooltip y el menú Ayuda → Referencia de campos "
+            "Cada campo tiene un tooltip y la pestaña Ayuda → Referencia de campos "
             "explica qué es, cómo se usa y cómo afecta al cálculo.")
-
-    def _show_about(self) -> None:
-        from openconex import __version__
-        QMessageBox.about(
-            self, "Acerca de OpenConex",
-            f"OpenConex {__version__}\n\n"
-            "Cálculo de conexiones metálicas según AISC 360-22, "
-            "AISC Design Guide 1 y ACI 318-19.\n\n"
-            "Software libre bajo GPL-3.0-or-later. La responsabilidad del "
-            "diseño corresponde al profesional que lo firma.")
 
     def _build_body(self) -> None:
         form = QWidget()

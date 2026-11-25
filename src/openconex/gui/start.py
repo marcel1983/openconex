@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 
 from openconex.families import family_of
 from openconex.gui.session import last_directory, recent_projects
-from openconex.gui.start_data import FAMILIES, Family, Subtype, build_project
+from openconex.gui.start_data import FAMILIES, Family, Subtype, build_project, family_by_id
 from openconex.io.project import Project
 
 DATA_PACKAGE = "openconex.data"
@@ -132,7 +132,8 @@ class ConnectionCard(QFrame):
 class ConnectionStartDialog(QDialog):
     """Two-step visual gallery: family, then connection subtype."""
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(self, parent: QWidget | None = None,
+                 family_id: str | None = None) -> None:
         super().__init__(parent)
         self.selection: StartSelection | None = None
         self.setWindowTitle("OpenConex — Nueva conexión")
@@ -142,6 +143,8 @@ class ConnectionStartDialog(QDialog):
         self.setStyleSheet(_STYLE)
         self._family: Family | None = None
         self._build_ui()
+        if family_id is not None:
+            self._show_family(family_by_id(family_id))
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)

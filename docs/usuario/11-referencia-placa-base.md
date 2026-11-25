@@ -138,38 +138,39 @@ Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada res
 | `shear_lug.ca1` | Distancia al borde en la dirección de la llave. | Escriba la distancia; debe ser positiva. | Afecta el corte hacia el borde. | — | PB |
 | `shear_lug.ca2` | Distancias laterales al borde. | Escriba una o dos distancias; vacío = lejano. | Afecta el desprendimiento lateral. | — | PB |
 
-## Menús, botones y controles
+## Ribbon, botones y controles
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
-| `main.file.new` | Abre la galería para crear una conexión. | Archivo → Nueva conexión (Ctrl+N). | Crea un proyecto de placa base o de corte con valores iniciales. | — | todas |
-| `main.file.open` | Abre un proyecto .ocnx. | Archivo → Abrir (Ctrl+O). | Carga el proyecto y actualiza la ventana. | — | todas |
-| `main.file.recent` | Lista los últimos proyectos abiertos o guardados. | Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía. | Abre el proyecto en la ventana que le corresponde. | — | todas |
-| `main.file.save` | Guarda el proyecto actual. | Archivo → Guardar (Ctrl+S). | Escribe el archivo .ocnx. | — | todas |
-| `main.file.save_as` | Guarda con otro nombre. | Archivo → Guardar como. | Crea un archivo nuevo. | — | todas |
-| `main.file.shear` | Abre la ventana de conexiones de corte. | Archivo → Nueva conexión de corte. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
-| `main.file.moment` | Abre la ventana de conexiones de momento viga–columna. | Archivo → Nueva conexión de momento. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
-| `main.file.splice` | Abre la ventana de empalmes de viga y de columna. | Archivo → Nuevo empalme. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
-| `main.file.import_csi` | Importa reacciones de un modelo CSI. | Archivo → Importar SAP2000 / ETABS. | Crea proyectos por apoyo o por sección. | — | todas |
-| `main.file.import_table` | Importa una tabla de reacciones. | Archivo → Importar Excel / CSV. | Crea proyectos desde una tabla. | — | todas |
-| `main.file.exit` | Cierra la aplicación. | Archivo → Salir. | No guarda automáticamente. | — | todas |
-| `main.library.sections` | Abre la biblioteca de secciones. | Bibliotecas → Secciones. | Permite consultar y crear secciones propias. | — | todas |
-| `main.library.materials` | Abre la biblioteca de materiales. | Bibliotecas → Materiales. | Permite consultar y crear aceros, pernos y electrodos. | — | todas |
-| `main.units.presets` | Cambia el sistema de unidades. | Unidades → SI, MKS o US. | Convierte los valores guardados; no cambia el cálculo interno. | — | todas |
-| `main.units.configure` | Configura la unidad de cada magnitud. | Unidades → Configurar por magnitud. | Cambia la presentación y la conversión. | — | todas |
-| `main.calc.run` | Calcula el proyecto actual. | Cálculo → Calcular o F5. | Actualiza el resumen y las figuras. | — | todas |
-| `main.calc.optimize` | Optimiza N, B y tp. | Cálculo → Optimizar N, B y tp. | Busca dimensiones menores con las mismas comprobaciones. | — | PB |
-| `main.calc.optimize_global` | Busca la placa más liviana probando diámetros y número de anclajes. | Cálculo → Optimización global…; revise la traza y pulse Aplicar. | Cambia N, B, tp, f, separación, diámetro y barras por lado. | — | PB |
-| `main.calc.batch` | Calcula una carpeta de proyectos. | Cálculo → Calcular lote. | Genera reportes y un resumen Excel. | — | todas |
-| `main.export.html` | Memoria en HTML. | Exportar → Memoria HTML. | Incluye datos, verificaciones y figuras. | — | todas |
-| `main.export.docx` | Memoria en DOCX. | Exportar → Memoria Word. | Incluye tablas y figuras. | — | todas |
-| `main.export.pdf` | Memoria en PDF. | Exportar → Memoria PDF. | Requiere el extra de PDF. | — | todas |
+| `main.file.new` | Abre la galería para crear una conexión. | Inicio → Nueva (Ctrl+N) o Conexiones → Galería. | Crea un proyecto de placa base o de corte con valores iniciales. | — | todas |
+| `main.file.open` | Abre un proyecto .ocnx. | Inicio → Abrir (Ctrl+O). | Carga el proyecto y actualiza la ventana. | — | todas |
+| `main.file.recent` | Lista los últimos proyectos abiertos o guardados. | Inicio → Recientes y elija el proyecto; «Borrar la lista» la vacía. | Abre el proyecto en la ventana que le corresponde. | — | todas |
+| `main.file.save` | Guarda el proyecto actual. | Inicio → Guardar (Ctrl+S). | Escribe el archivo .ocnx. | — | todas |
+| `main.file.save_as` | Guarda con otro nombre. | Inicio → Guardar como. | Crea un archivo nuevo. | — | todas |
+| `main.file.base_plate` | Abre la galería en los tipos de placa base (expuesta, empotrada, base débil). | Conexiones → Placa base y elija el tipo. | Carga la plantilla elegida en esta ventana. | — | todas |
+| `main.file.shear` | Abre la ventana de conexiones de corte. | Conexiones → Corte. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
+| `main.file.moment` | Abre la ventana de conexiones de momento viga–columna. | Conexiones → Momento. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
+| `main.file.splice` | Abre la ventana de empalmes de viga y de columna. | Conexiones → Empalme. | Abre una ventana independiente; no cambia el proyecto actual. | — | todas |
+| `main.file.import_csi` | Importa reacciones de un modelo CSI. | Inicio → Importar → SAP2000 / ETABS. | Crea proyectos por apoyo o por sección. | — | todas |
+| `main.file.import_table` | Importa una tabla de reacciones. | Inicio → Importar → Excel / CSV. | Crea proyectos desde una tabla. | — | todas |
+| `main.file.exit` | Cierra la aplicación. | Inicio → Salir. | No guarda automáticamente. | — | todas |
+| `main.library.sections` | Abre la biblioteca de secciones. | Conexiones → Bibliotecas → Secciones. | Permite consultar y crear secciones propias. | — | todas |
+| `main.library.materials` | Abre la biblioteca de materiales. | Conexiones → Bibliotecas → Materiales. | Permite consultar y crear aceros, pernos y electrodos. | — | todas |
+| `main.units.presets` | Cambia el sistema de unidades. | Configuración → SI, MKS o US. | Convierte los valores guardados; no cambia el cálculo interno. | — | todas |
+| `main.units.configure` | Configura la unidad de cada magnitud. | Configuración → Por magnitud. | Cambia la presentación y la conversión. | — | todas |
+| `main.calc.run` | Calcula el proyecto actual. | Inicio → Calcular, Cálculo → Calcular o F5. | Actualiza el resumen y las figuras. | — | todas |
+| `main.calc.optimize` | Optimiza N, B y tp. | Cálculo → Optimizar → N, B, tp (también en Inicio). | Busca dimensiones menores con las mismas comprobaciones. | — | PB |
+| `main.calc.optimize_global` | Busca la placa más liviana probando diámetros y número de anclajes. | Cálculo → Optimizar → Global (también en Inicio); revise la traza y pulse Aplicar. | Cambia N, B, tp, f, separación, diámetro y barras por lado. | — | PB |
+| `main.calc.batch` | Calcula una carpeta de proyectos. | Cálculo → Lote (también en Inicio → Calcular lote). | Genera reportes y un resumen Excel. | — | todas |
+| `main.export.html` | Memoria en HTML. | Exportar → HTML (también en Inicio → Memoria). | Incluye datos, verificaciones y figuras. | — | todas |
+| `main.export.docx` | Memoria en DOCX. | Exportar → Word (también en Inicio → Memoria). | Incluye tablas y figuras. | — | todas |
+| `main.export.pdf` | Memoria en PDF. | Exportar → PDF (también en Inicio → Memoria). | Requiere el extra de PDF. | — | todas |
 | `main.export.dxf` | Plano en DXF. | Exportar → Plano DXF. | Genera la planta y elevación. | — | todas |
-| `main.export.step` | Modelo 3D en STEP. | Exportar → Modelo STEP. | Requiere el extra 3D. | — | todas |
-| `main.export.stl` | Modelo 3D en STL. | Exportar → Modelo STL. | Requiere el extra 3D. | — | todas |
+| `main.export.step` | Modelo 3D en STEP. | Exportar → STEP. | Requiere el extra 3D. | — | todas |
+| `main.export.stl` | Modelo 3D en STL. | Exportar → STL. | Requiere el extra 3D. | — | todas |
 | `main.help.guide` | Resumen del flujo de trabajo. | Ayuda → Guía rápida o F1. | No calcula; explica el uso. | — | todas |
 | `main.help.fields` | Lista buscable de campos de placa base. | Ayuda → Referencia de campos. | Explica qué es, cómo se usa y cómo afecta cada campo. | — | todas |
-| `main.help.menus` | Lista de menús y acciones. | Ayuda → Menús y acciones. | Explica qué hace cada acción. | — | todas |
+| `main.help.menus` | Lista de los botones del ribbon y de los controles de la ventana. | Ayuda → Comandos del ribbon. | Explica qué hace cada acción. | — | todas |
 | `main.help.checks` | Guía para leer las verificaciones. | Ayuda → Verificaciones. | Explica demanda, capacidad, relación y estado. | — | todas |
 | `main.help.about` | Versión y licencia. | Ayuda → Acerca de. | No calcula. | — | todas |
 | `base.ui.type` | Selector de placa base expuesta o empotrada. | Seleccione el tipo. | Muestra solo los bloques aplicables. | exposed | PB |
@@ -185,14 +186,14 @@ Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada res
 | `base.ui.viewer` | Visor 3D del conjunto. | Gire, haga zoom o seleccione piezas. | No cambia el cálculo. | — | PB |
 | `geometry.undo` | Deshace el último cambio del editor gráfico. | Pulse Deshacer o Ctrl+Z. | Restaura la geometría anterior; no cambia el cálculo hasta Calcular. | — | PB |
 | `geometry.redo` | Rehace el cambio deshecho. | Pulse Rehacer o Ctrl+Y. | Vuelve a aplicar la geometría; no cambia el cálculo hasta Calcular. | — | PB |
-| `viewer.refresh` | Regenera el modelo 3D con los datos del formulario, aunque no hayan cambiado. | Pulse Actualizar en la pestaña 3D. | Regenera la malla; no cambia el cálculo. | — | todas |
-| `viewer.auto` | Regenera el modelo 3D poco después de cada cambio del formulario, sin pulsar Calcular ni Actualizar. | Marque o desmarque Automático en la barra del visor 3D. | Solo cambia la vista; el cálculo sigue usando Calcular. | — | todas |
-| `viewer.reset` | Restablece la cámara del visor 3D. | Pulse Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
-| `viewer.iso` | Vuelve a la vista isométrica de la conexión. | Pulse Iso en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
-| `viewer.front` | Mira la conexión de frente. | Pulse Frente en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
-| `viewer.top` | Mira la conexión desde arriba. | Pulse Planta en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
-| `viewer.side` | Mira la conexión de lado. | Pulse Lado en la barra del visor 3D. | Solo cambia la cámara; no modifica el modelo. | — | todas |
-| `viewer.explode` | Separa la viga del apoyo para ver placas, ángulos y asientos. | Marque Separar en la pestaña 3D. | Solo cambia la vista; no modifica el proyecto ni la exportación. | — | todas |
+| `viewer.refresh` | Regenera el modelo 3D con los datos del formulario, aunque no hayan cambiado. | Vista 3D → Actualizar. | Regenera la malla; no cambia el cálculo. | — | todas |
+| `viewer.auto` | Regenera el modelo 3D poco después de cada cambio del formulario, sin pulsar Calcular ni Actualizar. | Marque o desmarque Vista 3D → Automático. | Solo cambia la vista; el cálculo sigue usando Calcular. | — | todas |
+| `viewer.reset` | Restablece la cámara del visor 3D. | Vista 3D → Ajustar vista. | Solo cambia la vista; no modifica el modelo. | — | PB |
+| `viewer.iso` | Vuelve a la vista isométrica de la conexión. | Vista 3D → Iso. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.front` | Mira la conexión de frente. | Vista 3D → Frente. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.top` | Mira la conexión desde arriba. | Vista 3D → Planta. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.side` | Mira la conexión de lado. | Vista 3D → Lado. | Solo cambia la cámara; no modifica el modelo. | — | todas |
+| `viewer.explode` | Separa la viga del apoyo para ver placas, ángulos y asientos. | Marque Vista 3D → Separar. | Solo cambia la vista; no modifica el proyecto ni la exportación. | — | todas |
 | `dialog.import_csi.file` | Archivo Excel exportado de SAP2000 o ETABS. | Elija el archivo con Examinar. | Es la fuente de apoyos, reacciones y casos. | — | todas |
 | `dialog.import_csi.output` | Carpeta donde se escribirán los proyectos. | Elija la carpeta con Carpeta. | No cambia el cálculo; determina dónde se guardan los .ocnx. | — | todas |
 | `dialog.import_csi.group` | Criterio para crear proyectos: por apoyo o por sección de columna. | Seleccione Joint o Column. | Cambia el número de proyectos y su agrupación. | joint | todas |

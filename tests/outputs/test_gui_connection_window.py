@@ -29,8 +29,8 @@ WINDOWS = [
 ]
 
 
-def _menus(window) -> list[str]:
-    return [action.text() for action in window.menuBar().actions()]
+def _tabs(window) -> list[str]:
+    return [page.title for page in window.ribbon.pages]
 
 
 def test_every_family_window_uses_the_common_base():
@@ -41,11 +41,13 @@ def test_every_family_window_uses_the_common_base():
 
 
 @pytest.mark.parametrize(("window_type", "name"), WINDOWS)
-def test_menus_and_calculation(qtbot, window_type, name):
+def test_ribbon_and_calculation(qtbot, window_type, name):
     path = EXAMPLES / name
     window = window_type(load_project(path), path)
     qtbot.addWidget(window)
-    assert _menus(window)[:3] == ["&Archivo", "&Cálculo", "&Exportar"]
+    assert _tabs(window) == ["Inicio", "Conexiones", "Cálculo", "Vista 3D", "Exportar",
+                             "Configuración", "Ayuda"]
+    assert not window.menuBar().actions()
     assert not any(action.isEnabled() for action in window._export_actions)
     assert window.calculate()
     assert window.summary.rowCount() > 0
@@ -53,12 +55,15 @@ def test_menus_and_calculation(qtbot, window_type, name):
     assert path.name in window.windowTitle()
 
 
-def test_family_specific_menus(qtbot):
+def test_family_specific_ribbon(qtbot):
     shear, splice = ShearWindow(), SpliceWindow()
     qtbot.addWidget(shear)
     qtbot.addWidget(splice)
-    assert _menus(shear)[-1] == "A&yuda"
-    new = [a.text() for a in splice.menuBar().actions()[0].menu().actions()][:2]
+    help_texts = [a.text() for a in shear.ribbon.actions_of("Ayuda")]
+    assert help_texts[0] == "Guía rápida"
+    assert [a.text() for a in splice.ribbon.actions_of("Ayuda")] == ["Verificaciones",
+                                                                    "Acerca de"]
+    new = [a.text() for a in splice.ribbon.actions_of("Conexiones")]
     assert new == ["Nuevo empalme de viga", "Nuevo empalme de columna"]
 
 

@@ -28,7 +28,7 @@ from PySide6.QtCore import (
     QTimer,
     Signal,
 )
-from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPen, QPixmap, QPolygonF
+from PySide6.QtGui import QAction, QBrush, QColor, QFont, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -459,7 +459,12 @@ class Viewer3D(QWidget):
         self._selected: str | None = None
         self._use_opengl = _opengl_available() if use_opengl is None else use_opengl
         self._explode_button: QPushButton | None = None
+        self._controls: list[QWidget] = []
+        self._controls_visible = True
+        self.view_actions: dict[str, QAction] = {}
+        """Actions of the view controls (for the window's ribbon, *Vista 3D*)."""
         self._build_ui()
+        self._build_actions()
         self._update_explode_visibility()
 
     # -- construction -----------------------------------------------------------
@@ -491,12 +496,14 @@ class Viewer3D(QWidget):
         reset.setToolTip(help_text("viewer.reset"))
         bar.addWidget(refresh)
         bar.addWidget(reset)
+        self._controls += [refresh, reset]
         for label, name in (("Iso", "iso"), ("Frente", "front"),
                             ("Planta", "top"), ("Lado", "side")):
             view = QPushButton(label)
             view.setToolTip(help_text(f"viewer.{name}"))
             view.clicked.connect(lambda _=False, name=name: self._canvas.set_view(name))
             bar.addWidget(view)
+            self._controls.append(view)
         if self._explode_spec is not None:
             self._explode_button = QPushButton("Separar")
             self._explode_button.setCheckable(True)
@@ -509,6 +516,7 @@ class Viewer3D(QWidget):
         self._auto.toggled.connect(self._on_auto_toggled)
         self._auto.setVisible(self._snapshot is not None)
         bar.addWidget(self._auto)
+        self._controls.append(self._auto)
         self._status = QLabel("El modelo 3D se genera al abrir esta pestaña."
                               if self._snapshot is not None
                               else "Seleccione un proyecto y pulse Actualizar.")
@@ -539,6 +547,46 @@ class Viewer3D(QWidget):
                                 if self._snapshot is not None
                                 else "Pulse Actualizar para generar el modelo 3D.")
 
+    def _build_actions(self) -> None:
+        """Actions equivalent to the buttons of the bar, kept in sync with them."""
+        def make(name: str, label: str, slot: Callable[[], object]) -> QAction:
+            item = QAction(label, self)
+            item.setToolTip(help_text(f"viewer.{name}"))
+            item.setStatusTip(help_text(f"viewer.{name}"))
+            item.triggered.connect(lambda _checked=False: slot())
+            self.view_actions[name] = item
+            return item
+
+        make("refresh", "Actualizar", self.load_model)
+        make("reset", "Ajustar vista", self._reset_view)
+        for name, label in (("iso", "Iso"), ("front", "Frente"), ("top", "Planta"),
+                            ("side", "Lado")):
+            make(name, label, lambda name=name: self._canvas.set_view(name))
+        explode = make("explode", "Separar", lambda: None)
+        explode.setCheckable(True)
+        if self._explode_button is not None:
+            explode.toggled.connect(self._explode_button.setChecked)
+            self._explode_button.toggled.connect(explode.setChecked)
+        else:
+            explode.setEnabled(False)
+        auto = make("auto", "Automático", lambda: None)
+        auto.setCheckable(True)
+        auto.setChecked(self._auto.isChecked())
+        auto.setEnabled(self._snapshot is not None)
+        auto.toggled.connect(self._auto.setChecked)
+        self._auto.toggled.connect(auto.setChecked)
+        self._update_explode_visibility()
+
+    def set_controls_visible(self, visible: bool) -> None:
+        """Show or hide the buttons of the bar (the ribbon then holds them)."""
+        self._controls_visible = visible
+        for widget in self._controls:
+            if widget is self._auto:
+                widget.setVisible(visible and self._snapshot is not None)
+            else:
+                widget.setVisible(visible)
+        self._update_explode_visibility()
+
     # -- camera and view controls ----------------------------------------------
     def _reset_view(self) -> None:
         self._canvas.reset_view()
@@ -554,7 +602,10 @@ class Viewer3D(QWidget):
             return
         spec = self._explode_spec() if callable(self._explode_spec) else self._explode_spec
         available = spec is not None
-        self._explode_button.setVisible(available)
+        self._explode_button.setVisible(available and self._controls_visible)
+        explode = self.view_actions.get("explode")
+        if explode is not None:
+            explode.setEnabled(available)
         if not available:
             self._exploded = False
             self._explode_button.setChecked(False)

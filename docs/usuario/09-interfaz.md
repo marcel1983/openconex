@@ -32,25 +32,44 @@ Al abrir OpenConex sin un proyecto, aparece una galería visual:
 - **Corte viga-columna**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento, asiento rigidizado o placa doblada en esviaje.
 - **Corte viga-viga**: los mismos tipos, con la viga de apoyo en lugar de la columna.
 - **Empalmes**: empalme de viga o de columna con cubreplacas apernadas.
-- **Momento viga-columna**: se muestra como *Próximamente* (las conexiones de momento se crean con **Archivo > Nueva conexión de momento…**).
+- **Momento viga-columna**: se muestra como *Próximamente* (las conexiones de momento se crean con **Conexiones > Momento** en el ribbon).
 
 Cada tarjeta tiene una imagen y una descripción. Las tarjetas de **placa base** y de **corte** —salvo **placa doblada en esviaje**— usan una ilustración 3D generada con el mismo motor de dibujo del visor: **placa simple**, **placa extendida**, **doble ángulo**, **placa de extremo**, **asiento** y **asiento rigidizado**. Las ilustraciones de corte separan la viga del apoyo para que se vea la placa, el asiento o los ángulos. Las tarjetas de **corte viga-columna** añaden una columna corta de contexto; las de **corte viga-viga** muestran el alma del apoyo. **Placa doblada en esviaje** mantiene el isométrico SVG porque el modelo 3D actual no representa con claridad el apoyo en esviaje. Las tarjetas de las familias disponibles también muestran una ilustración 3D representativa. Al elegir una tarjeta, se abre el editor correspondiente con un proyecto inicial válido y valores habituales.
 
-La comparación entre los isométricos SVG y las ilustraciones 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Archivo > Nueva conexión** (`Ctrl+N`) vuelve a abrir la galería; **Abrir proyecto** carga un `.ocnx` existente. Debajo de las familias, **Proyectos recientes** muestra los cinco últimos proyectos abiertos o guardados; un clic los abre.
+La comparación entre los isométricos SVG y las ilustraciones 3D está en `docs/verificacion/miniaturas/comparacion.html`. **Inicio > Nueva** (`Ctrl+N`) o **Conexiones > Galería** vuelve a abrir la galería; **Conexiones > Placa base** la abre directamente en los tipos de placa base; **Abrir proyecto** carga un `.ocnx` existente. Debajo de las familias, **Proyectos recientes** muestra los cinco últimos proyectos abiertos o guardados; un clic los abre.
+
+## Ribbon
+
+Los comandos están en un **ribbon** de pestañas, como en las aplicaciones de oficina. Cada pestaña agrupa botones por tarea; los de uso diario están repetidos en **Inicio**.
+
+| Pestaña | Grupos y botones |
+|---|---|
+| **Inicio** | *Proyecto*: Nueva (`Ctrl+N`), Abrir (`Ctrl+O`), Recientes, Guardar (`Ctrl+S`), Guardar como, Salir. *Importar*: SAP2000 / ETABS, Excel / CSV. *Calcular*: Calcular (`F5`), Optimizar N, B, tp, Optimización global, Calcular lote. *Memoria*: PDF, Word, HTML. |
+| **Conexiones** | *Nueva conexión*: Galería. *Familias*: Placa base (abre la galería en los tipos de placa base), Corte, Momento, Empalme. *Bibliotecas*: Secciones, Materiales. |
+| **Cálculo** | *Ejecutar*: Calcular (`F5`), Lote. *Optimizar*: N, B, tp y Global (solo placa expuesta). *Ver resultados*: lleva al frente las pestañas Resumen, Verificaciones, Figuras, Geometría y 3D. |
+| **Vista 3D** | *Modelo*: Actualizar, Ajustar vista. *Vistas*: Iso, Frente, Planta, Lado. *Opciones*: Separar, Automático. Cada botón lleva al frente la pestaña 3D. |
+| **Exportar** | *Memoria de cálculo*: PDF, Word, HTML. *Planos y modelos*: Plano DXF, STEP, STL. Se activan después de calcular. |
+| **Configuración** | *Sistema de unidades*: SI (kN, m), SI (N, mm), MKS (tf, m), US (kip, in). *Unidades por magnitud*: Por magnitud. |
+| **Ayuda** | Guía rápida (`F1`), Referencia de campos, Comandos del ribbon, Verificaciones, Acerca de. |
+
+- `Ctrl+F1` o un doble clic en una pestaña pliega el ribbon a la fila de pestañas para dejar más espacio al formulario; un clic en una pestaña lo vuelve a abrir.
+- Los atajos funcionan aunque su pestaña no esté visible o el ribbon esté plegado.
+- Cada botón tiene el mismo tooltip que su comando (qué es, cómo se usa y efecto en el cálculo).
+- Las ventanas de corte, momento y empalme tienen el mismo ribbon, sin los comandos que no les corresponden (importar, optimizar, lote y unidades por magnitud son de la placa base).
 
 ## Cambios sin guardar, recientes y preferencias
 
 - **Cambios sin guardar.** Al editar un campo, una tabla, la geometría en el lienzo o al crear una sección o un material, el título de la ventana muestra `*`. Al cerrar la ventana, abrir otro proyecto del mismo tipo o crear uno nuevo, OpenConex pregunta **Guardar / Descartar / Cancelar**. **Cancelar** deja la ventana como estaba. Si no hay cambios, no pregunta.
-- **Archivo > Abrir reciente** lista los ocho últimos proyectos abiertos o guardados en cualquiera de las tres ventanas; los archivos que ya no existen no aparecen. **Borrar la lista** la vacía. En la ventana principal, un proyecto de corte o de momento se abre en su propia ventana.
+- **Inicio > Recientes** lista los ocho últimos proyectos abiertos o guardados en cualquiera de las tres ventanas; los archivos que ya no existen no aparecen. **Borrar la lista** la vacía. En la ventana principal, un proyecto de corte o de momento se abre en su propia ventana.
 - **Carpetas.** Los diálogos de abrir, guardar y exportar empiezan en la carpeta del proyecto actual o en la última usada.
-- **Unidades.** La ventana principal recuerda el último preset elegido en el menú **Unidades** y lo usa al abrirse. Al abrir un proyecto mandan las unidades del proyecto.
+- **Unidades.** La ventana principal recuerda el último preset elegido en **Configuración** y lo usa al abrirse. Al abrir un proyecto mandan las unidades del proyecto.
 - **Tamaño y posición** de cada ventana se recuerdan al cerrarla.
 
 Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de configuración del usuario (en Windows, `%APPDATA%\OpenConex`); no forman parte del proyecto ni cambian los resultados.
 
 ## Arrastrar y soltar
 
-- Un `.ocnx` soltado sobre cualquier ventana se abre como con **Archivo > Abrir**.
+- Un `.ocnx` soltado sobre cualquier ventana se abre como con **Inicio > Abrir**.
 - En la ventana principal, con un proyecto abierto como plantilla:
   - un `.xlsx` exportado por SAP2000/ETABS (hojas que empiezan con `TABLE:`) abre **Importar SAP2000 / ETABS**;
   - cualquier otro `.xlsx` o un `.csv` abre **Importar Excel / CSV**.
@@ -59,7 +78,7 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
 
 ## Flujo de trabajo
 
-1. Elegir una tarjeta en la **pantalla de inicio** o **Archivo > Abrir** para cargar un `.ocnx`.
+1. Elegir una tarjeta en la **pantalla de inicio** o **Inicio > Abrir** para cargar un `.ocnx`.
 2. Elegir el **tipo de conexión**:
    - **Placa base expuesta**, con sus dimensiones, anclajes y bloques opcionales.
    - **Base empotrada Tipo I**, con el empotramiento, el pedestal, las placas de cara (y su soldadura opcional), la placa embebida y el refuerzo horizontal.
@@ -83,10 +102,10 @@ Estas preferencias se guardan en un archivo `OpenConex.ini` de la carpeta de con
     - la pestaña **Resumen**, con demanda, capacidad, relación y estado;
     - la pestaña **Verificaciones**, con la traza y la cláusula;
     - la pestaña **Figuras**, con planta, elevación e isométrico.
-11. **Archivo > Guardar** o **Guardar como** para conservar los cambios.
+11. **Inicio > Guardar** o **Guardar como** para conservar los cambios.
 12. **Exportar** para generar HTML, DOCX, PDF, DXF, STEP o STL.
 
-El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. **Cálculo > Optimización global…** usa el mismo motor que `openconex baseplate --optimize global`: prueba diámetros y número de anclajes, muestra la traza de la búsqueda (disposición, N, B, tp, peso, ratio y verificación que gobierna) y aplica la mejor solución al pulsar **Aplicar**. Ambos se desactivan en las bases empotradas.
+El botón **Optimizar** reduce N, B y tp con el mismo criterio que `openconex baseplate --optimize`. **Cálculo > Global** (o **Inicio > Optimización global**) usa el mismo motor que `openconex baseplate --optimize global`: prueba diámetros y número de anclajes, muestra la traza de la búsqueda (disposición, N, B, tp, peso, ratio y verificación que gobierna) y aplica la mejor solución al pulsar **Aplicar**. Ambos se desactivan en las bases empotradas.
 
 ## Geometría
 
@@ -103,7 +122,7 @@ La columna se elige en el desplegable **Columna**; su huella en planta se actual
 
 ## Visor 3D
 
-La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE:
+La pestaña **3D** muestra el modelo de sólidos generado con OpenCASCADE. Los botones de cámara y de actualización están en la pestaña **Vista 3D** del ribbon:
 
 - **Arrastrar** con el botón izquierdo para girar.
 - **Rueda** para acercar o alejar.
@@ -198,7 +217,7 @@ Las verificaciones de concreto de ACI 318 se ejecutan solo con combinaciones **L
 
 ## Importar SAP2000 / ETABS
 
-**Archivo > Importar SAP2000 / ETABS…** crea proyectos de placa base a partir de la exportación de tablas a Excel. El proyecto abierto actúa como plantilla: aporta la placa, el concreto, los anclajes y las opciones; la columna y las cargas se toman del modelo.
+**Inicio > Importar > SAP2000 / ETABS** crea proyectos de placa base a partir de la exportación de tablas a Excel. El proyecto abierto actúa como plantilla: aporta la placa, el concreto, los anclajes y las opciones; la columna y las cargas se toman del modelo.
 
 Opciones del diálogo:
 
@@ -214,7 +233,7 @@ Los proyectos creados se pueden abrir uno a uno para revisar, calcular y exporta
 
 ## Importar Excel / CSV
 
-**Archivo > Importar Excel / CSV…** crea proyectos de placa base desde una tabla propia. La primera fila es la cabecera y cada fila es un caso de un apoyo:
+**Inicio > Importar > Excel / CSV** crea proyectos de placa base desde una tabla propia. La primera fila es la cabecera y cada fila es un caso de un apoyo:
 
 | Columna | Uso |
 |---|---|
@@ -232,11 +251,11 @@ Los números sin unidad usan el sistema elegido en el diálogo; también se pued
 
 ## Ayuda y tooltips
 
-Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. En las ventanas de momento y de empalme tienen tooltip los datos del proyecto, el idioma, las unidades, los métodos, los casos de carga y **Calcular**. El menú **Ayuda** de la ventana principal y de la de corte incluye:
+Cada campo de las ventanas de placa base y conexión de corte tiene un **tooltip** con tres datos: qué es, cómo se usa y cómo afecta al cálculo. En las ventanas de momento y de empalme tienen tooltip los datos del proyecto, el idioma, las unidades, los métodos, los casos de carga y **Calcular**. La pestaña **Ayuda** del ribbon de la ventana principal y de la de corte incluye:
 
 - **Guía rápida** (`F1`): flujo de trabajo.
 - **Referencia de campos**: lista buscable de todos los campos.
-- **Menús y acciones**: qué hace cada acción.
+- **Comandos del ribbon**: qué hace cada botón.
 - **Verificaciones**: cómo leer demanda, capacidad, relación y estado.
 - **Acerca de**: versión y licencia.
 
@@ -246,7 +265,7 @@ La misma información está en [Referencia de la conexión de corte](10-referenc
 
 Las conexiones de corte, de momento y los empalmes se editan en ventanas propias que funcionan igual:
 
-- Los menús **Archivo** (nuevo, abrir, abrir reciente, guardar, guardar como), **Cálculo** (`F5`) y **Exportar** (HTML, Word, PDF, DXF, STEP o STL; se activan después de calcular).
+- El mismo ribbon que la ventana principal: **Inicio** (nuevo, abrir, recientes, guardar, guardar como, calcular con `F5` y memoria), **Conexiones** (nuevo proyecto de la familia y, si la ventana se abrió desde la principal, la galería, las otras familias y las bibliotecas), **Cálculo**, **Vista 3D**, **Exportar** (HTML, Word, PDF, DXF, STEP o STL; se activan después de calcular), **Configuración** (presets de unidades, equivalentes al campo **Unidades**) y **Ayuda** (en momento y empalme: **Verificaciones** y **Acerca de**).
 - El grupo **Proyecto**: nombre, número, cliente, ingeniero, revisión, fecha, idioma, unidades y métodos LRFD/ASD.
 - Al cambiar **Unidades**, los valores del formulario y de los casos se convierten al sistema nuevo, así que un número escrito sin unidad conserva su magnitud.
 - Si el proyecto usa un sistema de unidades propio (no un preset), **Unidades** muestra `(del proyecto)` y al guardar se conserva ese sistema. Elegir un preset convierte los valores y reemplaza el sistema propio.
@@ -255,7 +274,7 @@ Las conexiones de corte, de momento y los empalmes se editan en ventanas propias
 
 ## Conexiones de corte
 
-**Archivo > Nueva conexión de corte…** abre una ventana propia para las conexiones de extremo de viga. Al abrir un `.ocnx` con `shear_connection` desde la ventana principal, se abre también en esa ventana.
+**Conexiones > Corte** abre una ventana propia para las conexiones de extremo de viga. Al abrir un `.ocnx` con `shear_connection` desde la ventana principal, se abre también en esa ventana.
 
 1. Elegir el **tipo**: doble ángulo, placa simple, placa extendida, placa de extremo, asiento o asiento rigidizado. Solo se muestran los campos de ese tipo; los obligatorios llevan `*`.
 2. Elegir la **viga** y el **apoyo** (catálogo W, editable) y si la conexión va al **ala** o al **alma** del apoyo.
@@ -263,7 +282,7 @@ Las conexiones de corte, de momento y los empalmes se editan en ventanas propias
 4. Marcar **Destaje de la viga** si la viga está destajada. Dentro del mismo grupo se puede activar la **placa doble** o el **rigidizador longitudinal** y editar sus dimensiones y soldadura.
 5. Completar los casos de carga con `V` y `P` (tracción negativa) y los métodos LRFD/ASD.
 6. **Calcular** (`F5`): pestañas **Resumen**, **Verificaciones**, **Figuras** (elevación e isométrico) y **3D**.
-7. **Archivo > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
+7. **Inicio > Guardar** y **Exportar** a HTML, Word, PDF, DXF, STEP o STL.
 
 Antes de calcular se revisa la geometría de los pernos. Cada fila debe quedar dentro de la placa, el ángulo o la placa de extremo, con las distancias al borde `l_ev` y `l_eh` de la Tabla J3.4 y una separación mínima de `2⅔d`. Si el grupo no cabe, **Calcular** muestra **Datos no válidos** con el campo y el valor necesario, y no genera figuras ni resultados. Por ejemplo, cuatro filas a 3 in con `l_ev = 1.25 in` necesitan 11.5 in de largo; un ángulo de 8.5 in se rechaza y pide aumentar el largo o reducir filas/separación.
 
@@ -271,15 +290,15 @@ El cálculo por lotes también admite proyectos de conexión de corte; en el res
 
 ## Conexiones de momento
 
-**Archivo > Nueva conexión de momento…** abre una ventana propia para las conexiones de momento viga–columna; al abrir un `.ocnx` con `moment_connection` se abre también en ella. Se elige el tipo (placas de ala apernadas, placas de ala soldadas, alas soldadas o placa de extremo de momento), la viga, la columna y la cara de la columna (ala o alma; con el alma, las alas soldadas usan las placas de ala como placas de conexión), y se completan la placa del alma, las placas de ala y, si son apernadas, los pernos de ala. Con placa de extremo se oculta la placa del alma y aparece el grupo **Placa de extremo (AISC DG16)**: configuración, pernos, dimensiones (las que no usa la configuración se dejan vacías), pretensión, soldaduras (vacías: penetración completa) y refuerzo de la soldadura de penetración completa, apriete ajustado y simetría. El grupo **Rigidización de la columna (AISC DG13)** define los rigidizadores (espesor, ancho, recorte, largo, soldaduras y altura completa o parcial), la doble placa y su soldadura, y activa la zona de panel. El grupo **Opción sísmica precalificada (AISC 358-22)**, que se activa con su casilla, elige la conexión (RBS, WUF-W, BFP, BUEEP o BSEEP), el sistema (SMF o IMF), la luz libre, las cargas gravitacionales, la compresión de la columna, las dimensiones propias de cada conexión, si hay losa estructural de concreto (BFP) y, si se quieren cambiar, R_y y R_t (vacíos: AISC 341 Tabla A3.2); el tipo de conexión de momento debe ser el que exige la conexión elegida. Los pernos de ala y de la placa de extremo conservan el material, las roscas y el agujero del archivo. Los casos llevan `V` y `M`, `P` en la placa de extremo (compresión positiva) y, para la zona de panel, `V_c` (corte de piso de la columna) y `P_c` (carga axial de la columna). Una viga o columna genérica del archivo (por ejemplo, una viga armada) se conserva mientras no se cambie su nombre en la lista. **Calcular** (`F5`) muestra el resumen, las verificaciones, las figuras (elevación e isométrico) y el 3D, y **Exportar** genera HTML, Word, PDF, DXF, STEP o STL. Las cantidades se escriben con su unidad (un número sin unidad usa las del proyecto). Al cambiar **Unidades**, todos los valores del formulario y de los casos se convierten al sistema nuevo, así que un número escrito sin unidad conserva su magnitud. Esta ventana no tiene editor gráfico. El cálculo por lotes también admite estos proyectos.
+**Conexiones > Momento** abre una ventana propia para las conexiones de momento viga–columna; al abrir un `.ocnx` con `moment_connection` se abre también en ella. Se elige el tipo (placas de ala apernadas, placas de ala soldadas, alas soldadas o placa de extremo de momento), la viga, la columna y la cara de la columna (ala o alma; con el alma, las alas soldadas usan las placas de ala como placas de conexión), y se completan la placa del alma, las placas de ala y, si son apernadas, los pernos de ala. Con placa de extremo se oculta la placa del alma y aparece el grupo **Placa de extremo (AISC DG16)**: configuración, pernos, dimensiones (las que no usa la configuración se dejan vacías), pretensión, soldaduras (vacías: penetración completa) y refuerzo de la soldadura de penetración completa, apriete ajustado y simetría. El grupo **Rigidización de la columna (AISC DG13)** define los rigidizadores (espesor, ancho, recorte, largo, soldaduras y altura completa o parcial), la doble placa y su soldadura, y activa la zona de panel. El grupo **Opción sísmica precalificada (AISC 358-22)**, que se activa con su casilla, elige la conexión (RBS, WUF-W, BFP, BUEEP o BSEEP), el sistema (SMF o IMF), la luz libre, las cargas gravitacionales, la compresión de la columna, las dimensiones propias de cada conexión, si hay losa estructural de concreto (BFP) y, si se quieren cambiar, R_y y R_t (vacíos: AISC 341 Tabla A3.2); el tipo de conexión de momento debe ser el que exige la conexión elegida. Los pernos de ala y de la placa de extremo conservan el material, las roscas y el agujero del archivo. Los casos llevan `V` y `M`, `P` en la placa de extremo (compresión positiva) y, para la zona de panel, `V_c` (corte de piso de la columna) y `P_c` (carga axial de la columna). Una viga o columna genérica del archivo (por ejemplo, una viga armada) se conserva mientras no se cambie su nombre en la lista. **Calcular** (`F5`) muestra el resumen, las verificaciones, las figuras (elevación e isométrico) y el 3D, y **Exportar** genera HTML, Word, PDF, DXF, STEP o STL. Las cantidades se escriben con su unidad (un número sin unidad usa las del proyecto). Al cambiar **Unidades**, todos los valores del formulario y de los casos se convierten al sistema nuevo, así que un número escrito sin unidad conserva su magnitud. Esta ventana no tiene editor gráfico. El cálculo por lotes también admite estos proyectos.
 
 ## Empalmes
 
-**Archivo > Nuevo empalme…** abre una ventana propia para los empalmes de viga y de columna; al abrir un `.ocnx` con `splice` se abre también en ella, y la galería de inicio la abre con un empalme de viga o de columna de partida. Se elige el tipo, la viga (o las columnas superior e inferior), los materiales, la separación entre extremos y, en columnas, si los extremos están fresados y si los rellenos se desarrollan. El grupo **Cubreplacas de ala** define los pernos, el gramil, la cubreplaca exterior, las distancias a los extremos y, si se completan, las cubreplacas interiores. El grupo **Cubreplacas del alma** se activa con su casilla (obligatorio en vigas). Los casos llevan `V`, `M`, `P` (compresión positiva) y, en columnas, `V débil`. Al cambiar **Unidades**, los valores del formulario y de los casos se convierten al sistema nuevo, como en la ventana de momento. **Calcular** (`F5`) muestra el resumen, las verificaciones, las figuras y el 3D, y **Exportar** genera HTML, Word, PDF, DXF, STEP o STL. El cálculo por lotes también admite estos proyectos.
+**Conexiones > Empalme** abre una ventana propia para los empalmes de viga y de columna; al abrir un `.ocnx` con `splice` se abre también en ella, y la galería de inicio la abre con un empalme de viga o de columna de partida. Se elige el tipo, la viga (o las columnas superior e inferior), los materiales, la separación entre extremos y, en columnas, si los extremos están fresados y si los rellenos se desarrollan. El grupo **Cubreplacas de ala** define los pernos, el gramil, la cubreplaca exterior, las distancias a los extremos y, si se completan, las cubreplacas interiores. El grupo **Cubreplacas del alma** se activa con su casilla (obligatorio en vigas). Los casos llevan `V`, `M`, `P` (compresión positiva) y, en columnas, `V débil`. Al cambiar **Unidades**, los valores del formulario y de los casos se convierten al sistema nuevo, como en la ventana de momento. **Calcular** (`F5`) muestra el resumen, las verificaciones, las figuras y el 3D, y **Exportar** genera HTML, Word, PDF, DXF, STEP o STL. El cálculo por lotes también admite estos proyectos.
 
 ## Cálculo por lotes
 
-**Cálculo > Calcular lote…** calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
+**Cálculo > Lote** (o **Inicio > Calcular lote**) calcula una carpeta completa de proyectos `.ocnx` sin abrirlos uno a uno.
 
 - **Proyectos:** carpeta de entrada; se puede incluir subcarpetas.
 - **Salida:** carpeta de los reportes; si se deja vacía, se usa la de entrada.
@@ -292,7 +311,7 @@ Cada proyecto se calcula con sus propios datos; el formulario abierto no se modi
 
 ## Unidades
 
-El menú **Unidades** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m)` y `US (kip, in)`, y **Configurar por magnitud…** para elegir la unidad de longitud, espesor, fuerza, momento, tensión, área, fuerza por longitud, módulo de sección e inercia.
+La pestaña **Configuración** ofrece los presets `SI (kN, m)`, `SI (N, mm)`, `MKS (tf, m)` y `US (kip, in)`, y **Por magnitud** para elegir la unidad de longitud, espesor, fuerza, momento, tensión, área, fuerza por longitud, módulo de sección e inercia.
 
 Al cambiar de unidades:
 
@@ -305,7 +324,7 @@ Los números se pueden escribir con su unidad (`"3/4 in"`, `"25 mm"`, `"120 kN*m
 
 ## Biblioteca de secciones
 
-**Bibliotecas > Secciones…** abre el catálogo AISC incluido (perfiles W, M, S y HP) con búsqueda por etiqueta y filtro por tipo. La tabla muestra las dimensiones en las unidades activas. **Usar sección** la lleva al formulario principal.
+**Conexiones > Secciones** abre el catálogo AISC incluido (perfiles W, M, S y HP) con búsqueda por etiqueta y filtro por tipo. La tabla muestra las dimensiones en las unidades activas. **Usar sección** la lleva al formulario principal.
 
 **Nueva sección…** crea una sección genérica:
 
@@ -317,7 +336,7 @@ Las secciones creadas se guardan en el bloque `sections` del proyecto y aparecen
 
 ## Biblioteca de materiales
 
-**Bibliotecas > Materiales…** muestra tres pestañas:
+**Conexiones > Materiales** muestra tres pestañas:
 
 - **Columnas y placas**: aceros de AISC 360-22 y materiales propios del proyecto. **Nuevo material…** crea un acero con nombre, Fy, Fu y E; queda disponible para columnas, placas y llaves de corte.
 - **Pernos y anclajes**: grados de AISC 360-22 Tabla J3.2 y grados propios del proyecto. **Nuevo perno…** crea un grado con Fnt, Fnv, Fu y Fy.
