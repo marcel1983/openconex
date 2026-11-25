@@ -169,4 +169,4 @@ Publicar la clave pública (`gpg --armor --export <id>`) junto con su huella en 
 
 ## 6. Historial de versiones
 
-Los commits `release: 0.5.16`, `0.5.17` y `0.5.18` están en `main` sin etiqueta ni release propios: esas versiones no se publicaron por separado y sus cambios están agrupados en las notas de la release 0.5.19. No se rellenan las etiquetas, porque crear ahora un release para ellas publicaría binarios que nadie probó en su momento. Desde la incorporación de `tools/check_release_version.py`, cada `release: X.Y.Z` debe ir seguido de su etiqueta `vX.Y.Z`.
+Los commits `release: 0.5.16`, `0.5.17` y `0.5.18` están en `main` sin etiqueta ni release propios: esas versiones no se publicaron por separado y sus cambios están agrupados en las notas de la release 0.5.19. La etiqueta `v0.5.21` existe pero no tiene release: se creó sin que corriera el workflow, y sus cambios se publicaron en la 0.5.22. No se rellenan las etiquetas, porque crear ahora un release para ellas publicaría binarios que nadie probó en su momento. Desde la incorporación de `tools/check_release_version.py`, cada `release: X.Y.Z` debe ir seguido de su etiqueta `vX.Y.Z`.

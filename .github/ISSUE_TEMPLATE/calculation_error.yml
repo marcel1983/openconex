@@ -1,0 +1,81 @@
+name: Error de cálculo / Calculation error
+description: Un resultado numérico o una verificación de norma es incorrecta. / A numerical result or a code check is wrong.
+title: '[Cálculo]: '
+labels:
+- bug
+- calculation
+body:
+- type: markdown
+  attributes:
+    value: |
+      Los errores de cálculo tienen **la máxima prioridad**. Gracias por reportarlo. Si puedes, adjunta un archivo `.ocnx` mínimo que muestre el problema. Si el resultado es correcto pero quieres aportarlo como ejemplo, usa la plantilla **Caso de validación**.
+
+      ---
+
+      Calculation errors get **top priority**. Thank you for reporting it. If you can, attach a minimal `.ocnx` file that shows the problem. If the result is right and you want to contribute it as an example, use the **Validation case** template instead.
+- type: input
+  id: check
+  attributes:
+    label: Verificación o resultado afectado / Check or result affected
+    placeholder: Arrancamiento del concreto en tracción (ACI 318 §17.6.2) / Concrete breakout in tension (ACI 318 §17.6.2)
+  validations:
+    required: true
+- type: dropdown
+  id: code
+  attributes:
+    label: Norma y edición / Code and edition
+    options:
+    - AISC 360-22 / ACI 318-19
+    - AISC Design Guide 1, 3.ª ed. / 3rd ed.
+    - AISC Manual, DG4, DG13, DG16
+    - AISC 341-22 / 358-22
+    - ASCE 7-22
+    - Otra / Other
+  validations:
+    required: true
+- type: input
+  id: obtained
+  attributes:
+    label: Resultado obtenido / Result obtained
+    placeholder: 152.3 kN
+  validations:
+    required: true
+- type: input
+  id: expected
+  attributes:
+    label: Resultado esperado / Expected result
+    placeholder: 138.9 kN
+  validations:
+    required: true
+- type: textarea
+  id: reference
+  attributes:
+    label: Fuente del valor esperado / Source of the expected value
+    description: Cláusula de la norma, libro, cálculo a mano u otro programa con su versión. Explica brevemente el razonamiento. / Code clause, book, hand calculation or another program and its version. Explain the reasoning briefly.
+  validations:
+    required: true
+- type: textarea
+  id: files
+  attributes:
+    label: Archivo del modelo / Model file
+    description: Arrastra aquí el archivo .ocnx (comprímelo en .zip si GitHub no acepta la extensión) y, si lo tienes, tu cálculo. / Drag the .ocnx file here (zip it if GitHub refuses the extension) and your calculation, if you have one.
+  validations:
+    required: false
+- type: input
+  id: version
+  attributes:
+    label: Versión de OpenConex / OpenConex version
+    description: Aparece en Ayuda › Acerca de, o en el nombre del archivo descargado. / Shown in Help › About, or in the name of the downloaded file.
+    placeholder: 0.3.0
+  validations:
+    required: true
+- type: dropdown
+  id: os
+  attributes:
+    label: Sistema operativo / Operating system
+    options:
+    - Windows
+    - Linux
+    - macOS
+  validations:
+    required: true

@@ -6,6 +6,20 @@
 
 ¡Gracias por tu interés! OpenConex es software libre bajo **GPL-3.0-or-later**.
 
+### Sin programar
+La mayor parte de lo que el proyecto necesita no es código. Desde la pestaña [Issues](https://github.com/marcel1983/openconex/issues/new/choose), elige una plantilla:
+
+| Quiero… | Plantilla |
+|---|---|
+| Aportar un ejemplo con resultado conocido (guía de diseño, libro, cálculo a mano, otro programa) | **Caso de validación** |
+| Avisar de que un número o una verificación está mal | **Error de cálculo** |
+| Avisar de que el programa se cierra o no hace lo que debería | **Reportar un fallo** |
+| Pedir una función nueva | **Solicitar una característica** |
+
+Las dudas de uso van a [Discussions](https://github.com/marcel1983/openconex/discussions). También ayudan las traducciones, las correcciones al manual y probar las versiones nuevas en tu sistema. Para abrir un issue necesitas una cuenta gratuita de GitHub.
+
+### Con código
+
 ### Certificado de origen del desarrollador (DCO)
 No pedimos ceder derechos (CLA). Cada commit debe llevar la línea `Signed-off-by`, que certifica que tienes derecho a aportar ese código según el [Developer Certificate of Origin 1.1](https://developercertificate.org/):
 
@@ -59,6 +73,8 @@ Para las pruebas de interfaz gráfica, instale también Qt y `pytest-qt`:
 ## English
 
 Thanks for your interest! OpenConex is free software under **GPL-3.0-or-later**.
+
+- **No programming needed** for most of what helps: open an issue from the [templates](https://github.com/marcel1983/openconex/issues/new/choose) (*Validation case*, *Calculation error*, *Bug report*, *Feature request*). Questions go to [Discussions](https://github.com/marcel1983/openconex/discussions).
 
 - **Stacked pull requests** (base is another PR's branch): merge the base PR first, then retarget the stacked PR to `main` (`gh pr edit <n> --base main`) and wait for CI before merging it; otherwise it merges into the other branch and never reaches `main`.
 - **DCO, no CLA:** sign off every commit (`git commit -s`) to certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/).
