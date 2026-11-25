@@ -1,0 +1,61 @@
+name: Solicitar una característica / Feature request
+description: Propón una función nueva o una mejora. / Propose a new feature or an improvement.
+title: '[Propuesta]: '
+labels:
+- enhancement
+body:
+- type: markdown
+  attributes:
+    value: |
+      Cuéntanos primero **el problema de ingeniería** que quieres resolver; la solución la podemos discutir juntos.
+
+      ---
+
+      Start with **the engineering problem** you want to solve; we can work out the solution together.
+- type: textarea
+  id: problem
+  attributes:
+    label: Problema o necesidad / Problem or need
+    description: ¿Qué trabajo intentas hacer y qué te lo impide hoy? / What are you trying to do, and what stops you today?
+  validations:
+    required: true
+- type: textarea
+  id: proposal
+  attributes:
+    label: Propuesta / Proposal
+    description: 'Cómo te imaginas la función: pantallas, datos de entrada, resultados, ejemplos. / How you picture it: screens, inputs, outputs, examples.'
+  validations:
+    required: true
+- type: dropdown
+  id: area
+  attributes:
+    label: Área / Area
+    options:
+    - Placa base / Base plate
+    - Conexión de corte / Shear connection
+    - Conexión de momento / Moment connection
+    - Empalmes / Splices
+    - Importación (SAP2000, ETABS, Excel, CSV) / Import
+    - Memoria de cálculo, planos DXF, modelo 3D / Report, drawings, 3D
+    - Unidades / Units
+    - Interfaz gráfica / GUI
+    - Instalación / Installation
+    - Otra / Other
+  validations:
+    required: true
+- type: textarea
+  id: reference
+  attributes:
+    label: Normas o referencias / Codes or references
+    description: Cláusulas, libros, artículos u otros programas que lo resuelven. / Clauses, books, papers or other programs that already do it.
+  validations:
+    required: false
+- type: checkboxes
+  id: help
+  attributes:
+    label: ¿Puedes ayudar? / Can you help?
+    options:
+    - label: Puedo aportar ejemplos con resultado conocido para validarla / I can provide examples with known answers to validate it
+    - label: Puedo probar las versiones de desarrollo / I can test development builds
+    - label: Puedo ayudar con la documentación o la traducción / I can help with documentation or translation
+    - label: Puedo programarla (con orientación) / I can implement it (with guidance)

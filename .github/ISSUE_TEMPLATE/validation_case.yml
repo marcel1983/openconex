@@ -1,0 +1,89 @@
+name: Caso de validación / Validation case
+description: Aporta un ejemplo con resultado conocido para comprobar OpenConex. No requiere programar. / Contribute an example with a known answer to check OpenConex. No programming needed.
+title: '[Validación]: '
+labels:
+- validation
+body:
+- type: markdown
+  attributes:
+    value: |
+      **Un caso de validación es un ejemplo con resultado conocido** (un ejemplo publicado, un cálculo a mano u otro programa) que permite comprobar que OpenConex calcula bien. No hace falta programar: con los datos y la fuente, el equipo lo convierte en una prueba automática que se ejecuta en cada cambio.
+
+      Cita la fuente y copia solo los **datos numéricos**; no pegues texto, tablas ni figuras de normas o libros protegidos.
+
+      ---
+
+      **A validation case is an example with a known answer** (a published example, a hand calculation or another program) that shows whether OpenConex gets it right. No programming needed: with the data and the source, the maintainers turn it into an automated test that runs on every change.
+
+      Cite the source and give only the **numbers**; do not paste text, tables or figures from copyrighted codes or books.
+- type: dropdown
+  id: source_type
+  attributes:
+    label: Tipo de referencia / Kind of reference
+    options:
+    - Ejemplo publicado (libro, guía de diseño, manual) / Published example (book, design guide, manual)
+    - Cálculo a mano / Hand calculation
+    - Otro programa (indicar cuál y su versión) / Another program (name and version)
+    - Ensayo de laboratorio / Laboratory test
+    - Otra / Other
+  validations:
+    required: true
+- type: textarea
+  id: reference
+  attributes:
+    label: Fuente / Source
+    description: Autor, título, edición, página o número de ejemplo. Si es otro programa, nombre y versión. / Author, title, edition, page or example number. For another program, its name and version.
+    placeholder: AISC Design Guide 1, 3rd ed., Example 4.7-11
+  validations:
+    required: true
+- type: dropdown
+  id: code
+  attributes:
+    label: Norma y edición / Code and edition
+    options:
+    - AISC 360-22 / ACI 318-19
+    - AISC Design Guide 1, 3.ª ed. / 3rd ed.
+    - AISC Manual, DG4, DG13, DG16
+    - AISC 341-22 / 358-22
+    - ASCE 7-22
+    - Otra / Other
+  validations:
+    required: false
+- type: textarea
+  id: inputs
+  attributes:
+    label: Datos de entrada / Input data
+    description: 'Geometría, materiales, cargas y unidades. Basta con lo necesario para reproducir el caso. / Geometry, materials, loads and units: what it takes to reproduce the case.'
+  validations:
+    required: true
+- type: textarea
+  id: expected
+  attributes:
+    label: Resultados de referencia / Reference results
+    description: Valores con unidades, tal como los da la fuente. / Values with units, as the source gives them.
+    placeholder: 'Tracción por anclaje / Anchor tension: 76.0 kips'
+  validations:
+    required: true
+- type: textarea
+  id: obtained
+  attributes:
+    label: Resultados de OpenConex (si ya lo probaste) / OpenConex results (if you already ran it)
+    description: Versión usada y valores obtenidos. Si no coinciden, indica la diferencia en porcentaje. / Version used and values obtained. If they differ, give the difference in percent.
+  validations:
+    required: false
+- type: textarea
+  id: files
+  attributes:
+    label: Archivos / Files
+    description: Arrastra aquí el archivo .ocnx, una hoja de cálculo o un PDF con tu cálculo (comprímelo en .zip si GitHub no acepta la extensión). / Drag the .ocnx file, a spreadsheet or a PDF of your calculation here (zip it if GitHub refuses the extension).
+  validations:
+    required: false
+- type: checkboxes
+  id: consent
+  attributes:
+    label: Permisos / Permissions
+    options:
+    - label: Acepto que este caso se incluya en las pruebas y la documentación del proyecto bajo su licencia. / I agree that this case may be added to the project's tests and documentation under its license.
+      required: true
+    - label: Solo incluí datos numéricos y la cita; no copié texto, tablas ni figuras protegidas. / I included only numbers and the citation; no copyrighted text, tables or figures.
+      required: true

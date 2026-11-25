@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+- name: Preguntas y ayuda (Discussions) / Questions and help (Discussions)
+  url: https://github.com/marcel1983/openconex/discussions
+  about: ¿Dudas de uso o ideas aún sin forma? Pregunta en Discussions. / Questions on how to use it, or ideas not yet shaped? Ask in Discussions.
+- name: Guía paso a paso / Step-by-step guide
+  url: https://marcel1983.github.io/#guia
+  about: 'Cómo descargar, instalar y reportar, sin saber programar. / How to download, install and report, no programming needed.'
+- name: Manual de usuario / User guide
+  url: https://github.com/marcel1983/openconex/blob/main/docs/usuario/README.md
+  about: Instalación, flujo de trabajo y limitaciones. / Installation, workflow and limitations.
+- name: Validación / Verification
+  url: https://github.com/marcel1983/openconex/blob/main/docs/verificacion/README.md
+  about: Casos ya comparados con ejemplos publicados. / Cases already compared with published examples.
+- name: Contribuir con código / Contributing code
+  url: https://github.com/marcel1983/openconex/blob/main/CONTRIBUTING.md
+  about: Entorno de desarrollo, pruebas y reglas para pull requests. / Development setup, tests and pull request rules.
