@@ -97,13 +97,8 @@ def test_base_plate_help_and_tooltips(qapp):
     assert all(box.toolTip() for box in window._plate_boxes.values())
     assert window._plain_edits["A2_over_A1"].toolTip()
     assert window._plain_edits["rods_per_side"].toolTip()
-    for menu in window.menuBar().actions():
-        submenu = menu.menu()
-        if submenu is None:
-            continue
-        for action in submenu.actions():
-            if not action.isSeparator():
-                assert action.toolTip(), action.text()
+    for _tab, _group, button in window.ribbon.buttons():
+        assert button.defaultAction().toolTip(), button.caption
     form = BasePlateAdvancedForm()
     assert all(field.edit.toolTip() for field in form._fields.values())
     dialog = HelpDialog("fields")

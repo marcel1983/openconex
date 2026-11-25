@@ -3,7 +3,7 @@
 """Common window of the connection families that open in their own window.
 
 :class:`ConnectionWindow` holds everything the shear, moment and splice
-windows share: the *Archivo*, *Cálculo* and *Exportar* menus, opening and
+windows share: the ribbon (:mod:`openconex.gui.ribbon`), opening and
 saving projects, the calculation, the results tabs (summary, checks,
 figures and 3D), the exports and the conversion of the form when the unit
 preset changes. A subclass sets :attr:`family_key`, its template and its
@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QPushButton,
     QScrollArea,
@@ -47,7 +48,9 @@ from openconex.core.loads import Method
 from openconex.core.shapes import ShapeDatabaseError, aisc_shapes
 from openconex.families import family, family_of
 from openconex.gui.exporting import parts_3d, write_3d, write_dxf
+from openconex.gui.help import HelpDialog
 from openconex.gui.quantity import TextField, convert_fields
+from openconex.gui.ribbon import Ribbon, add_result_views, add_view_page
 from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
@@ -102,11 +105,12 @@ class ConnectionWindow(ProjectSessionMixin, QMainWindow):
         self._units = self.project.info.unit_system()
         self.report: Report | None = None
         self._export_actions: list[QAction] = []
+        self._unit_actions: dict[str, QAction] = {}
         self._init_state()
         self.setWindowTitle(f"OpenConex — {self.noun}")
         self.resize(1280, 860)
-        self._build_menu()
         self._build_body()
+        self._build_ribbon()
         self._fill(self.project)
         self._init_session(self._form)
         # The 3D tab follows the form: it regenerates shortly after each edit.
@@ -116,7 +120,7 @@ class ConnectionWindow(ProjectSessionMixin, QMainWindow):
 
     # -- hooks of the subclass ---------------------------------------------------------
     def _init_state(self) -> None:
-        """Create the attributes that ``_build_body`` fills (before the menus)."""
+        """Create the attributes that ``_build_body`` fills (before the ribbon)."""
 
     def _build_body(self) -> None:
         raise NotImplementedError
@@ -132,11 +136,27 @@ class ConnectionWindow(ProjectSessionMixin, QMainWindow):
         raise NotImplementedError
 
     def _new_actions(self) -> list[tuple[str, Callable[[], object], str, str]]:
-        """Entries of *Archivo* that create a project: label, slot, shortcut, help key."""
+        """Commands that create a project (ribbon *Inicio*): label, slot, shortcut, help key."""
         return [("Nuevo", self.new_project, "Ctrl+N", "menu.file.new")]
 
-    def _build_extra_menus(self) -> None:
-        """Menus after *Exportar* (the shear window adds *Ayuda*)."""
+    def _help_entries(self) -> list[tuple[str, Callable[[], object], str, str, str, str]]:
+        """Commands of the *Ayuda* group: label, slot, shortcut, help key, caption, icon.
+
+        The first one is a large button. The shear window adds its guide and
+        the field reference.
+        """
+        return [("Verificaciones", lambda: HelpDialog("checks", self).exec(), "",
+                 "menu.help.checks", "Verificaciones", "help_checks")]
+
+    def _show_about(self) -> None:
+        from openconex import __version__
+        QMessageBox.about(
+            self, "Acerca de OpenConex",
+            f"OpenConex {__version__}\n\n"
+            "Cálculo de conexiones metálicas según AISC 360-22, "
+            "AISC Design Guide 1 y ACI 318-19.\n\n"
+            "Software libre bajo GPL-3.0-or-later. La responsabilidad del "
+            "diseño corresponde al profesional que lo firma.")
 
     # -- construction ------------------------------------------------------------------
     def _action(self, label: str, slot: Callable[[], object], shortcut: str = "",
@@ -151,29 +171,116 @@ class ConnectionWindow(ProjectSessionMixin, QMainWindow):
         item.triggered.connect(lambda _checked=False, s=slot: s())
         return item
 
-    def _build_menu(self) -> None:
-        menu = self.menuBar().addMenu("&Archivo")
-        for label, slot, shortcut, key in self._new_actions():
-            menu.addAction(self._action(label, slot, shortcut, key))
-        menu.addAction(self._action("Abrir…", self.open_dialog, "Ctrl+O", "menu.file.open"))
-        recent = menu.addMenu("Abrir reciente")
+    def _host(self) -> Any:
+        """Main window that opened this one (gallery, families, libraries), if any."""
+        parent = self.parent()
+        return parent if hasattr(parent, "open_family_window") else None
+
+    def _set_preset(self, name: str) -> None:
+        """Unit preset chosen on the ribbon: the combo of the form converts the values."""
+        self.units.setCurrentText(name)
+        # A failed conversion puts the combo back without signals.
+        self._sync_unit_actions(self.units.currentText())
+
+    def _sync_unit_actions(self, name: str) -> None:
+        for preset, item in self._unit_actions.items():
+            item.setChecked(preset == name)
+
+    def _build_ribbon(self) -> None:
+        """Ribbon with the commands of the window (see :mod:`openconex.gui.ribbon`)."""
+        act = self._action
+        new = [(act(label, slot, shortcut, key), label) for label, slot, shortcut, key
+               in self._new_actions()]
+        open_ = act("Abrir…", self.open_dialog, "Ctrl+O", "menu.file.open")
+        recent = QMenu("Abrir reciente", self)
         recent.setToolTipsVisible(True)
-        recent.menuAction().setStatusTip(help_text("menu.file.recent"))
         recent.aboutToShow.connect(lambda: populate_recent_menu(recent, self.open))
-        menu.addAction(self._action("Guardar", self.save_dialog, "Ctrl+S", "menu.file.save"))
-        menu.addAction(self._action("Guardar como…", lambda: self.save_dialog(True), "",
-                                    "menu.file.save_as"))
-        calc = self.menuBar().addMenu("&Cálculo")
-        self.calc_action = self._action("Calcular", self.calculate, "F5", "menu.calc.run")
-        calc.addAction(self.calc_action)
-        export = self.menuBar().addMenu("&Exportar")
+        recent_action = act("Abrir reciente", lambda: None, "", "menu.file.recent")
+        save = act("Guardar", self.save_dialog, "Ctrl+S", "menu.file.save")
+        save_as = act("Guardar como…", lambda: self.save_dialog(True), "", "menu.file.save_as")
+        self.calc_action = act("Calcular", self.calculate, "F5", "menu.calc.run")
+        exports: dict[str, QAction] = {}
         for key, label, suffix in EXPORTS:
-            item = self._action(label, lambda k=key, s=suffix: self.export(k, s), "",
-                                f"menu.export.{key}")
+            item = act(label, lambda k=key, s=suffix: self.export(k, s), "",
+                       f"menu.export.{key}")
             item.setEnabled(False)
-            export.addAction(item)
+            exports[key] = item
             self._export_actions.append(item)
-        self._build_extra_menus()
+
+        ribbon = self.ribbon = Ribbon(self)
+        home = ribbon.add_page("Inicio")
+        group = home.group("Proyecto")
+        group.large(new[0][0], "Nuevo", "new")
+        group.large(open_, "Abrir", "open")
+        group.menu(recent_action, recent, "Recientes", "recent")
+        group.large(save, "Guardar", "save")
+        for item, label in new[1:]:
+            group.small(item, label, "new")
+        group.small(save_as, "Guardar como", "save_as")
+        home.group("Calcular").large(self.calc_action, "Calcular\n(F5)", "calculate")
+        group = home.group("Memoria")
+        group.large(exports["pdf"], "PDF", "pdf")
+        group.small(exports["docx"], "Word", "docx")
+        group.small(exports["html"], "HTML", "html")
+
+        connections = ribbon.add_page("Conexiones")
+        group = connections.group("Nuevo proyecto")
+        for item, label in new:
+            group.large(item, label.replace(" de ", "\nde ", 1), "new")
+        host = self._host()
+        if host is not None:
+            connections.group("Nueva conexión").large(
+                act("Nueva conexión…", host.new_connection_dialog, "", "main.file.new"),
+                "Galería", "gallery")
+            group = connections.group("Familias")
+            for label, slot, key, caption, icon_name in (
+                    ("Placa base…", lambda: host.new_connection_dialog("base_plate"),
+                     "main.file.base_plate", "Placa\nbase", "base_plate"),
+                    ("Nueva conexión de corte…", lambda: host.open_shear_window(),
+                     "main.file.shear", "Corte", "shear"),
+                    ("Nueva conexión de momento…", lambda: host.open_moment_window(),
+                     "main.file.moment", "Momento", "moment"),
+                    ("Nuevo empalme…", lambda: host.open_splice_window(),
+                     "main.file.splice", "Empalme", "splice")):
+                group.large(act(label, slot, "", key), caption, icon_name)
+            group = connections.group("Bibliotecas")
+            group.large(act("Secciones…", host.open_section_library, "",
+                            "main.library.sections"), "Secciones", "sections")
+            group.large(act("Materiales…", host.open_material_library, "",
+                            "main.library.materials"), "Materiales", "materials")
+
+        calc = ribbon.add_page("Cálculo")
+        calc.group("Ejecutar").large(self.calc_action, "Calcular\n(F5)", "calculate")
+        add_result_views(self, calc.group("Ver resultados"), self.tabs)
+
+        add_view_page(ribbon, self.tabs, self.viewer)
+
+        export = ribbon.add_page("Exportar")
+        group = export.group("Memoria de cálculo")
+        for key, caption in (("pdf", "PDF"), ("docx", "Word"), ("html", "HTML")):
+            group.large(exports[key], caption, key)
+        group = export.group("Planos y modelos")
+        for key, caption in (("dxf", "Plano\nDXF"), ("step", "STEP"), ("stl", "STL")):
+            group.large(exports[key], caption, key)
+
+        settings = ribbon.add_page("Configuración")
+        group = settings.group("Sistema de unidades")
+        for name in sorted(PRESETS):
+            item = act(name, lambda n=name: self._set_preset(n), "", "menu.units.presets")
+            item.setCheckable(True)
+            self._unit_actions[name] = item
+            group.small(item, name, "units")
+        self.units.currentTextChanged.connect(self._sync_unit_actions)
+        self._sync_unit_actions(self.units.currentText())
+
+        help_ = ribbon.add_page("Ayuda")
+        group = help_.group("Ayuda")
+        for index, (label, slot, shortcut, key, caption, icon_name) in enumerate(
+                self._help_entries()):
+            add = group.large if index == 0 else group.small
+            add(act(label, slot, shortcut, key), caption, icon_name)
+        help_.group("Programa").large(act("Acerca de", self._show_about, "",
+                                          "menu.help.about"), "Acerca de", "about")
 
     def _line(self, form: QFormLayout, label: str) -> QLineEdit:
         edit = QLineEdit()
@@ -297,6 +404,7 @@ class ConnectionWindow(ProjectSessionMixin, QMainWindow):
                 if self.units.findText(CUSTOM_UNITS) < 0:
                     self.units.addItem(CUSTOM_UNITS)
                 self.units.setCurrentText(CUSTOM_UNITS)
+        self._sync_unit_actions(self.units.currentText())
         for method, check in self._methods.items():
             check.setChecked(method in project.combinations.methods)
 

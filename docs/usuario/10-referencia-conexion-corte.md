@@ -129,27 +129,28 @@ Esta página se genera desde `src/openconex/i18n/help.es.toml`. Cada entrada res
 |---|---|---|---|---|---|
 | `beam_area` | Área bruta de una viga genérica. | Úsela solo con secciones genéricas y carga axial. | Se usa en las comprobaciones de tracción de la viga. | — | DA, PS, PSE |
 
-## Menús, botones y controles
+## Ribbon, botones y controles
 
 | Campo / acción | Qué es | Cómo se usa | Efecto en el cálculo | Defecto | Tipos |
 |---|---|---|---|---|---|
-| `menu.file.new` | Crea un proyecto nuevo con la plantilla de placa simple. | Archivo → Nuevo (Ctrl+N). | Descarta el proyecto actual y carga la plantilla. | — | todas |
-| `menu.file.open` | Abre un proyecto .ocnx existente. | Archivo → Abrir (Ctrl+O) y elija el archivo. | Carga todos los datos y recalcula la ventana. | — | todas |
-| `menu.file.recent` | Lista los últimos proyectos abiertos o guardados. | Archivo → Abrir reciente y elija el proyecto; «Borrar la lista» la vacía. | Carga el proyecto en esta ventana si es del mismo tipo. | — | todas |
-| `menu.file.save` | Guarda el proyecto en el archivo actual. | Archivo → Guardar (Ctrl+S). | Escribe el .ocnx con los valores del formulario. | — | todas |
-| `menu.file.save_as` | Guarda el proyecto con otro nombre. | Archivo → Guardar como y elija la ruta. | Crea un archivo nuevo; no modifica el original. | — | todas |
-| `menu.calc.run` | Ejecuta todas las comprobaciones del proyecto. | Cálculo → Calcular o F5. | Actualiza el resumen, las verificaciones y las figuras. | — | todas |
-| `menu.export.html` | Genera la memoria de cálculo en HTML. | Exportar → Memoria HTML y elija el archivo. | Incluye datos, combinaciones, verificaciones y figuras. | — | todas |
-| `menu.export.docx` | Genera la memoria de cálculo en DOCX. | Exportar → Memoria Word y elija el archivo. | Incluye textos, tablas y figuras rasterizadas. | — | todas |
-| `menu.export.pdf` | Genera la memoria de cálculo en PDF. | Exportar → Memoria PDF y elija el archivo. | Requiere el extra de PDF; produce el documento imprimible. | — | todas |
+| `menu.file.new` | Crea un proyecto nuevo con la plantilla de placa simple. | Inicio → Nuevo (Ctrl+N); también en Conexiones. | Descarta el proyecto actual y carga la plantilla. | — | todas |
+| `menu.file.open` | Abre un proyecto .ocnx existente. | Inicio → Abrir (Ctrl+O) y elija el archivo. | Carga todos los datos y recalcula la ventana. | — | todas |
+| `menu.file.recent` | Lista los últimos proyectos abiertos o guardados. | Inicio → Recientes y elija el proyecto; «Borrar la lista» la vacía. | Carga el proyecto en esta ventana si es del mismo tipo. | — | todas |
+| `menu.file.save` | Guarda el proyecto en el archivo actual. | Inicio → Guardar (Ctrl+S). | Escribe el .ocnx con los valores del formulario. | — | todas |
+| `menu.file.save_as` | Guarda el proyecto con otro nombre. | Inicio → Guardar como y elija la ruta. | Crea un archivo nuevo; no modifica el original. | — | todas |
+| `menu.calc.run` | Ejecuta todas las comprobaciones del proyecto. | Inicio → Calcular, Cálculo → Calcular o F5. | Actualiza el resumen, las verificaciones y las figuras. | — | todas |
+| `menu.export.html` | Genera la memoria de cálculo en HTML. | Exportar → HTML (también en Inicio → Memoria) y elija el archivo. | Incluye datos, combinaciones, verificaciones y figuras. | — | todas |
+| `menu.export.docx` | Genera la memoria de cálculo en DOCX. | Exportar → Word (también en Inicio → Memoria) y elija el archivo. | Incluye textos, tablas y figuras rasterizadas. | — | todas |
+| `menu.export.pdf` | Genera la memoria de cálculo en PDF. | Exportar → PDF (también en Inicio → Memoria) y elija el archivo. | Requiere el extra de PDF; produce el documento imprimible. | — | todas |
 | `menu.export.dxf` | Genera el plano de la conexión. | Exportar → Plano DXF y elija el archivo. | En II.A-10 produce la planta; en el resto, la elevación. | — | todas |
-| `menu.export.step` | Exporta el modelo 3D en STEP. | Exportar → Modelo STEP y elija el archivo. | Requiere el extra 3D; el archivo se abre en CAD. | — | todas |
-| `menu.export.stl` | Exporta el modelo 3D en STL. | Exportar → Modelo STL y elija el archivo. | Requiere el extra 3D; el archivo se usa para impresión o visores. | — | todas |
+| `menu.export.step` | Exporta el modelo 3D en STEP. | Exportar → STEP y elija el archivo. | Requiere el extra 3D; el archivo se abre en CAD. | — | todas |
+| `menu.export.stl` | Exporta el modelo 3D en STL. | Exportar → STL y elija el archivo. | Requiere el extra 3D; el archivo se usa para impresión o visores. | — | todas |
 | `menu.help.guide` | Resumen del flujo de trabajo de la ventana. | Ayuda → Guía rápida o F1. | No calcula; explica cómo introducir datos y calcular. | — | todas |
 | `menu.help.fields` | Lista buscable de todos los campos. | Ayuda → Referencia de campos. | Muestra qué es, cómo se usa y cómo afecta cada campo. | — | todas |
-| `menu.help.menus` | Lista de menús, botones y acciones. | Ayuda → Menús y acciones. | Explica qué hace cada acción y cuándo se usa. | — | todas |
+| `menu.help.menus` | Lista de los botones del ribbon y de los controles de la ventana. | Ayuda → Comandos del ribbon. | Explica qué hace cada acción y cuándo se usa. | — | todas |
 | `menu.help.checks` | Guía para leer la tabla de verificaciones. | Ayuda → Verificaciones. | Explica demanda, capacidad, relación, estado y referencia. | — | todas |
 | `menu.help.about` | Versión, licencia y aviso de responsabilidad. | Ayuda → Acerca de. | No calcula; muestra información del programa. | — | todas |
+| `menu.units.presets` | Sistema de unidades del formulario y de la memoria. | Configuración → SI, MKS o US; equivale al campo Unidades del proyecto. | Convierte los valores del formulario; el cálculo interno no cambia. | — | todas |
 | `action.calculate` | Ejecuta el cálculo con los datos del formulario. | Pulse Calcular o F5. | Valida el proyecto, calcula y llena el resumen. | — | todas |
 | `tab.summary` | Tabla de verificaciones gobernantes. | Revise la pestaña Resumen después de calcular. | Muestra demanda, capacidad, relación y estado por combinación. | — | todas |
 | `tab.details` | Traza de cálculo de cada verificación. | Seleccione una fila del resumen y revise esta pestaña. | Muestra fórmulas, valores intermedios y cláusulas. | — | todas |

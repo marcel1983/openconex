@@ -4,7 +4,7 @@
 
 :class:`MainWindow` edits base plate projects (its form, calculation and
 outputs come from :class:`openconex.gui.base_plate.BasePlateEditor`) and is
-the application shell: menus, opening and saving, the start gallery, the
+the application shell: ribbon, opening and saving, the start gallery, the
 windows of the other families and the batch calculation.
 """
 
@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QProgressDialog,
 )
@@ -38,6 +39,7 @@ from openconex.gui.base_plate import (
 from openconex.gui.batch import BatchDialog, BatchSummaryDialog, calculate_batch
 from openconex.gui.branding import app_icon, show_splash, splash_pixmap
 from openconex.gui.help import HelpDialog
+from openconex.gui.ribbon import Ribbon, add_result_views, add_view_page
 from openconex.gui.session import (
     ProjectSessionMixin,
     add_recent_project,
@@ -87,8 +89,8 @@ class MainWindow(BasePlateEditor, ProjectSessionMixin, QMainWindow):
         self.setWindowTitle(f"{APP_NAME}[*]")
         self.setWindowIcon(app_icon())
         self.resize(1280, 860)
-        self._build_menu()
         self._build_body()
+        self._build_ribbon()
         self._geometry_timer = QTimer(self)
         self._geometry_timer.setSingleShot(True)
         self._geometry_timer.timeout.connect(self.refresh_geometry)
@@ -116,53 +118,110 @@ class MainWindow(BasePlateEditor, ProjectSessionMixin, QMainWindow):
         self.statusBar().showMessage("Abra un proyecto .ocnx o importe apoyos de "
                                      "SAP2000/ETABS.")
 
-    def _build_menu(self) -> None:
+    def _build_ribbon(self) -> None:
+        """Ribbon with the commands of the window (see :mod:`openconex.gui.ribbon`)."""
         def action(label: str, slot, shortcut: str, key: str) -> QAction:
             item = QAction(label, self)
             if shortcut:
                 item.setShortcut(shortcut)
-            item.triggered.connect(slot)
+            item.triggered.connect(lambda _checked=False: slot())
             self._tip(item, key)
             return item
 
-        file_menu = self.menuBar().addMenu("&Archivo")
-        file_menu.addAction(action("Nueva conexión…", self.new_connection_dialog,
-                                   "Ctrl+N", "main.file.new"))
-        file_menu.addAction(action("Abrir…", self.open_project_dialog, "Ctrl+O",
-                                   "main.file.open"))
-        recent = file_menu.addMenu("Abrir reciente")
+        new = action("Nueva conexión…", self.new_connection_dialog, "Ctrl+N", "main.file.new")
+        open_ = action("Abrir…", self.open_project_dialog, "Ctrl+O", "main.file.open")
+        recent = QMenu("Abrir reciente", self)
         recent.setToolTipsVisible(True)
-        self._tip(recent.menuAction(), "main.file.recent")
         recent.aboutToShow.connect(lambda: populate_recent_menu(recent, self.open_project))
-        file_menu.addAction(action("Guardar", self.save_project_dialog, "Ctrl+S",
-                                   "main.file.save"))
-        file_menu.addAction(action("Guardar como…",
-                                   lambda: self.save_project_dialog(save_as=True), "",
-                                   "main.file.save_as"))
-        file_menu.addAction(action("Nueva conexión de corte…",
-                                   lambda: self.open_shear_window(), "",
-                                   "main.file.shear"))
-        file_menu.addAction(action("Nueva conexión de momento…",
-                                   lambda: self.open_moment_window(), "",
-                                   "main.file.moment"))
-        file_menu.addAction(action("Nuevo empalme…",
-                                   lambda: self.open_splice_window(), "",
-                                   "main.file.splice"))
-        file_menu.addSeparator()
-        file_menu.addAction(action("Importar SAP2000 / ETABS…", self.import_csi_dialog,
-                                   "", "main.file.import_csi"))
-        file_menu.addAction(action("Importar Excel / CSV…", self.import_table_dialog,
-                                   "", "main.file.import_table"))
-        file_menu.addSeparator()
-        file_menu.addAction(action("Salir", self.close, "", "main.file.exit"))
+        recent_action = action("Abrir reciente", lambda: None, "", "main.file.recent")
+        save = action("Guardar", self.save_project_dialog, "Ctrl+S", "main.file.save")
+        save_as = action("Guardar como…", lambda: self.save_project_dialog(save_as=True), "",
+                         "main.file.save_as")
+        csi = action("Importar SAP2000 / ETABS…", self.import_csi_dialog, "",
+                     "main.file.import_csi")
+        table = action("Importar Excel / CSV…", self.import_table_dialog, "",
+                       "main.file.import_table")
+        exit_ = action("Salir", self.close, "", "main.file.exit")
+        self.calc_action = action("Calcular", self.calculate, "F5", "main.calc.run")
+        self.opt_action = action("Optimizar N, B y tp", self.optimize, "",
+                                 "main.calc.optimize")
+        self.global_opt_action = action("Optimización global…", self.optimize_global, "",
+                                        "main.calc.optimize_global")
+        batch = action("Calcular lote…", self.calculate_batch_dialog, "", "main.calc.batch")
+        exports: dict[str, QAction] = {}
+        for key, label, suffix in (
+                ("html", "Memoria HTML…", ".html"),
+                ("docx", "Memoria Word…", ".docx"),
+                ("pdf", "Memoria PDF…", ".pdf"),
+                ("dxf", "Plano DXF…", ".dxf"),
+                ("step", "Modelo STEP…", ".step"),
+                ("stl", "Modelo STL…", ".stl")):
+            item = action(label, lambda k=key, s=suffix: self.export(k, s), "",
+                          f"main.export.{key}")
+            item.setEnabled(False)
+            exports[key] = item
+            self._export_actions.append(item)
 
-        library_menu = self.menuBar().addMenu("&Bibliotecas")
-        library_menu.addAction(action("Secciones…", self.open_section_library, "",
-                                      "main.library.sections"))
-        library_menu.addAction(action("Materiales…", self.open_material_library, "",
-                                      "main.library.materials"))
+        ribbon = self.ribbon = Ribbon(self)
+        home = ribbon.add_page("Inicio")
+        group = home.group("Proyecto")
+        group.large(new, "Nueva", "new")
+        group.large(open_, "Abrir", "open")
+        group.menu(recent_action, recent, "Recientes", "recent")
+        group.large(save, "Guardar", "save")
+        group.small(save_as, "Guardar como", "save_as")
+        group.small(exit_, "Salir", "exit")
+        group = home.group("Importar")
+        group.large(csi, "SAP2000\nETABS", "import_csi")
+        group.large(table, "Excel\nCSV", "import_table")
+        group = home.group("Calcular")
+        group.large(self.calc_action, "Calcular\n(F5)", "calculate")
+        group.small(self.opt_action, "Optimizar N, B, tp", "optimize")
+        group.small(self.global_opt_action, "Optimización global", "optimize_global")
+        group.small(batch, "Calcular lote", "batch")
+        group = home.group("Memoria")
+        group.large(exports["pdf"], "PDF", "pdf")
+        group.small(exports["docx"], "Word", "docx")
+        group.small(exports["html"], "HTML", "html")
 
-        units_menu = self.menuBar().addMenu("&Unidades")
+        connections = ribbon.add_page("Conexiones")
+        connections.group("Nueva conexión").large(new, "Galería", "gallery")
+        group = connections.group("Familias")
+        group.large(action("Placa base…", lambda: self.new_connection_dialog("base_plate"),
+                           "", "main.file.base_plate"), "Placa\nbase", "base_plate")
+        group.large(action("Nueva conexión de corte…", lambda: self.open_shear_window(), "",
+                           "main.file.shear"), "Corte", "shear")
+        group.large(action("Nueva conexión de momento…", lambda: self.open_moment_window(),
+                           "", "main.file.moment"), "Momento", "moment")
+        group.large(action("Nuevo empalme…", lambda: self.open_splice_window(), "",
+                           "main.file.splice"), "Empalme", "splice")
+        group = connections.group("Bibliotecas")
+        group.large(action("Secciones…", self.open_section_library, "",
+                           "main.library.sections"), "Secciones", "sections")
+        group.large(action("Materiales…", self.open_material_library, "",
+                           "main.library.materials"), "Materiales", "materials")
+
+        calc = ribbon.add_page("Cálculo")
+        group = calc.group("Ejecutar")
+        group.large(self.calc_action, "Calcular\n(F5)", "calculate")
+        group.large(batch, "Lote", "batch")
+        group = calc.group("Optimizar")
+        group.large(self.opt_action, "N, B, tp", "optimize")
+        group.large(self.global_opt_action, "Global", "optimize_global")
+        add_result_views(self, calc.group("Ver resultados"), self.tabs)
+
+        add_view_page(ribbon, self.tabs, self.viewer)
+
+        export = ribbon.add_page("Exportar")
+        group = export.group("Memoria de cálculo")
+        for key, caption in (("pdf", "PDF"), ("docx", "Word"), ("html", "HTML")):
+            group.large(exports[key], caption, key)
+        group = export.group("Planos y modelos")
+        for key, caption in (("dxf", "Plano\nDXF"), ("step", "STEP"), ("stl", "STL")):
+            group.large(exports[key], caption, key)
+
+        settings = ribbon.add_page("Configuración")
+        group = settings.group("Sistema de unidades")
         self._unit_group = QActionGroup(self)
         self._unit_group.setExclusive(True)
         for name in ("SI_kN_m", "SI_N_mm", "MKS", "US"):
@@ -171,56 +230,26 @@ class MainWindow(BasePlateEditor, ProjectSessionMixin, QMainWindow):
             item.triggered.connect(
                 lambda _checked=False, preset=name: self.set_unit_system(preset))
             self._unit_group.addAction(item)
-            units_menu.addAction(item)
             self._unit_actions[name] = item
             self._tip(item, "main.units.presets")
-        units_menu.addSeparator()
-        units_menu.addAction(action("Configurar por magnitud…", self.configure_units,
-                                    "", "main.units.configure"))
+            group.small(item, UNIT_PRESET_LABELS[name], "units")
+        group = settings.group("Unidades por magnitud")
+        group.large(action("Configurar por magnitud…", self.configure_units, "",
+                           "main.units.configure"), "Por\nmagnitud", "units_config")
         self._check_unit_action(self._units.name)
 
-        calc_menu = self.menuBar().addMenu("&Cálculo")
-        self.calc_action = action("Calcular", self.calculate, "F5", "main.calc.run")
-        calc_menu.addAction(self.calc_action)
-        self.opt_action = action("Optimizar N, B y tp", self.optimize, "",
-                                 "main.calc.optimize")
-        calc_menu.addAction(self.opt_action)
-        self.global_opt_action = action("Optimización global…", self.optimize_global, "",
-                                        "main.calc.optimize_global")
-        calc_menu.addAction(self.global_opt_action)
-        calc_menu.addSeparator()
-        calc_menu.addAction(action("Calcular lote…", self.calculate_batch_dialog, "",
-                                   "main.calc.batch"))
-
-        export_menu = self.menuBar().addMenu("&Exportar")
-        for key, label, suffix in (
-                ("html", "Memoria HTML…", ".html"),
-                ("docx", "Memoria Word…", ".docx"),
-                ("pdf", "Memoria PDF…", ".pdf"),
-                ("dxf", "Plano DXF…", ".dxf"),
-                ("step", "Modelo STEP…", ".step"),
-                ("stl", "Modelo STL…", ".stl")):
-            item = action(label,
-                          lambda _checked=False, k=key, s=suffix: self.export(k, s),
-                          "", f"main.export.{key}")
-            item.setEnabled(False)
-            export_menu.addAction(item)
-            self._export_actions.append(item)
-
-        help_menu = self.menuBar().addMenu("A&yuda")
-        help_menu.addAction(action("Guía rápida", self._show_guide, "F1",
-                                   "main.help.guide"))
-        help_menu.addAction(action("Referencia de campos",
-                                   lambda: HelpDialog("fields", self).exec(), "",
-                                   "main.help.fields"))
-        help_menu.addAction(action("Menús y acciones",
-                                   lambda: HelpDialog("menus", self).exec(), "",
-                                   "main.help.menus"))
-        help_menu.addAction(action("Verificaciones",
-                                   lambda: HelpDialog("checks", self).exec(), "",
-                                   "main.help.checks"))
-        help_menu.addAction(action("Acerca de", self._show_about, "",
-                                   "main.help.about"))
+        help_ = ribbon.add_page("Ayuda")
+        group = help_.group("Ayuda")
+        group.large(action("Guía rápida", self._show_guide, "F1", "main.help.guide"),
+                    "Guía rápida\n(F1)", "guide")
+        group.small(action("Referencia de campos", lambda: HelpDialog("fields", self).exec(),
+                           "", "main.help.fields"), "Referencia de campos", "help_fields")
+        group.small(action("Comandos del ribbon", lambda: HelpDialog("menus", self).exec(), "",
+                           "main.help.menus"), "Comandos del ribbon", "help_menus")
+        group.small(action("Verificaciones", lambda: HelpDialog("checks", self).exec(), "",
+                           "main.help.checks"), "Verificaciones", "help_checks")
+        help_.group("Programa").large(action("Acerca de", self._show_about, "",
+                                             "main.help.about"), "Acerca de", "about")
 
     def _show_guide(self) -> None:
         QMessageBox.information(
@@ -230,7 +259,7 @@ class MainWindow(BasePlateEditor, ProjectSessionMixin, QMainWindow):
             "3. Defina casos y combinaciones LRFD/ASD.\n"
             "4. Pulse Calcular (F5).\n"
             "5. Revise Resumen, Verificaciones y Figuras; exporte la memoria o el plano.\n\n"
-            "Cada campo tiene un tooltip y el menú Ayuda → Referencia de campos "
+            "Cada campo tiene un tooltip y la pestaña Ayuda → Referencia de campos "
             "explica qué es, cómo se usa y cómo afecta al cálculo.")
 
     def _show_about(self) -> None:
@@ -300,10 +329,11 @@ class MainWindow(BasePlateEditor, ProjectSessionMixin, QMainWindow):
         else:
             self.import_table_dialog(str(path))
 
-    def new_connection_dialog(self) -> None:
+    def new_connection_dialog(self, family_id: str | None = None) -> None:
+        """Start gallery; ``family_id`` opens it on that family's subtypes."""
         from openconex.gui.start import ConnectionStartDialog
 
-        dialog = ConnectionStartDialog(self)
+        dialog = ConnectionStartDialog(self, family_id)
         if dialog.exec() != QDialog.DialogCode.Accepted or dialog.selection is None:
             return
         selection = dialog.selection
