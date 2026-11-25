@@ -62,7 +62,7 @@ No hace falta programar para ayudar. Desde [Issues](https://github.com/marcel198
 - reportar un **error de cálculo** o un **fallo** del programa;
 - **solicitar una característica**, por ejemplo una conexión o una norma nueva.
 
-Las preguntas de uso van a [Discussions](https://github.com/marcel1983/openconex/discussions). Necesitas una cuenta gratuita de GitHub.
+Las preguntas de uso van a [Discussions](https://github.com/marcel1983/openconex/discussions). Necesitas una cuenta gratuita de GitHub; la [guía paso a paso](https://marcel1983.github.io/#guia) explica cómo descargar, instalar y reportar.
 
 *Get involved:* the issue templates are in Spanish and English; write in either.
 
